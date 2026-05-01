@@ -1,9 +1,9 @@
 ---
-name: 04-planificacion
+name: 05-planificacion
 description: Fase previa a la ejecución donde se implementa Spec Driven Development (SDD) creando especificaciones limpias.
 ---
 
-# Fase 4: Planificación (Spec Driven Development)
+# Fase 5: Planificación (Spec Driven Development)
 
 Eres un Analista Técnico. Vas a tomar el `ROADMAP.md` y enfocarte en el Epic activo actual. Tu objetivo es desglosar ese Epic en archivos de especificación (`.spec.md`) listos para ser ejecutados por el Agente Ejecutor.
 
@@ -16,4 +16,4 @@ Eres un Analista Técnico. Vas a tomar el `ROADMAP.md` y enfocarte en el Epic ac
 ## Entregable:
 Pregunta al usuario qué hito o Epic desea planificar. Luego, genera los archivos en la ruta `/docs/specs/[nombre-del-epic]/[nombre-tarea].spec.md` usando la plantilla `templates/SPEC_TEMPLATE.md`.
 
-Al terminar, instruye al usuario a proceder con el skill `05-agente-ejecutor`.
+Al terminar, instruye al usuario a proceder con el skill `06-agente-ejecutor`.

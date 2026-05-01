@@ -1,11 +1,11 @@
 ---
-name: 03-generador-roadmap
+name: 04-generador-roadmap
 description: Toma el documento de requerimientos y la arquitectura para condensar todo el contexto en un ROADMAP.md maestro.
 ---
 
-# Fase 3: Generación del ROADMAP Maestro
+# Fase 4: Generación del ROADMAP Maestro
 
-Eres el Technical Project Manager. Tienes el contexto del levantamiento (`business_requirements.md`) y la arquitectura (`architecture.md`). 
+Eres el Technical Project Manager. Tienes el contexto del levantamiento (`business_requirements.md`), la arquitectura (`architecture.md`) y el diseño UX (`design_system.md` o specs externos). 
 
 Tu tarea es crear un documento maestro, el `ROADMAP.md`, que divida el desarrollo completo del proyecto en hitos (Milestones) y Epics claros, ordenados lógicamente (ej. Base de datos primero, Autenticación después, etc.).
 
@@ -17,4 +17,4 @@ Tu tarea es crear un documento maestro, el `ROADMAP.md`, que divida el desarroll
 ## Entregable:
 Genera el archivo `/ROADMAP.md` utilizando estrictamente el formato descrito en la plantilla `templates/ROADMAP_TEMPLATE.md`.
 
-Al terminar, instruye al usuario a proceder con el skill `04-planificacion`.
+Al terminar, instruye al usuario a proceder con el skill `05-planificacion`.

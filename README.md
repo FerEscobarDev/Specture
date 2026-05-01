@@ -4,22 +4,30 @@ Aquí se inicia el desarrollo de VibeCoding herramienta para ayudar a programado
 
 VibeCoding es un framework y CLI asistido por IA diseñado para aplicar metodologías de ingeniería de software estructuradas al desarrollo impulsado por IA. Abandona el caos del "prompting" ad-hoc en favor de un enfoque estricto y en 5 fases, garantizando código de alta calidad, testeado, y una arquitectura escalable.
 
-## Las 5 Fases de VibeCoding
+## Las 7 Fases de VibeCoding
 
 1. **Levantamiento de Información (`01-levantamiento`)**:
    La IA usa el método socrático para extraer de ti la idea del proyecto, aterrizando los requerimientos y definiendo las reglas de negocio estrictas, eliminando ambigüedades tempranamente.
 
 2. **Diseño de Arquitectura (`02-arquitectura`)**:
-   Definición estricta de la estructura técnica usando .NET (C#), Entity Framework Core, PostgreSQL y un enfoque de Domain-Driven Design (DDD) con arquitectura Monolito Modular. Incluye la selección del framework Frontend (Angular, React, Nextjs, Flutter). 
+   Definición estricta de la estructura técnica usando .NET (C#), Entity Framework Core, PostgreSQL y un enfoque de Domain-Driven Design (DDD) y CQRS con arquitectura Monolito Modular. Incluye la selección del framework Frontend (Angular, React, Nextjs, Flutter).
 
-3. **Generación de ROADMAP (`03-generador-roadmap`)**:
+3. **Diseño UX/UI Frontend (`03-diseno-ux-frontend`)**:
+   Planificación de la experiencia de usuario y arquitectura de información. Ofrece dos rutas:
+   - *Ruta 1 (Delegada)*: Genera mapa de navegación y specs visuales para delegar la codificación UI a IAs especializadas en diseño (ej. Claude Design).
+   - *Ruta 2 (Design System First)*: Construye un Design System interno completo para ser codificado posteriormente en la Fase 6 por VibeCoding.
+
+4. **Generación de ROADMAP (`04-generador-roadmap`)**:
    La IA consolida todo el contexto generado en un documento único de alto nivel (`ROADMAP.md`). Este archivo será la única brújula a nivel macro.
 
-4. **Planificación y SDD (`04-planificacion`)**:
+5. **Planificación y SDD (`05-planificacion`)**:
    La fase crítica donde el ROADMAP se desglosa en Especificaciones concretas usando Spec Driven Development (SDD). Los archivos generados (`.spec.md`) contienen **sólo reglas e instrucciones claras**, prohibiendo la inclusión de ejemplos de código para evitar que la IA alucine o asuma implementaciones. 
 
-5. **Ejecución (`05-agente-ejecutor`)**:
-   La IA, operando como CLI automatizado (o guiándote paso a paso en repositorios existentes), limpia su contexto, lee *únicamente* la Especificación de turno, y la implementa usando estricto TDD (Test-Driven Development). Una vez que la prueba pasa y la regla se cumple, el contexto se limpia y se avanza a la siguiente tarea.
+6. **Ejecución (`06-agente-ejecutor`)**:
+   La IA limpia su contexto, lee *únicamente* la Especificación de turno, y la implementa usando estricto TDD (Test-Driven Development). Una vez que la prueba pasa y la regla se cumple, el contexto se limpia y se avanza a la siguiente tarea.
+
+7. **Auditoría de Código (`07-auditoria-codigo`)**:
+   Actúa como un *Code Reviewer* estricto. Audita el código generado por la Fase 6 comparándolo contra la Arquitectura y el Design System, produciendo reportes de error detallados sin intentar parchar el código automáticamente.
 
 ## Instalación y Uso
 
