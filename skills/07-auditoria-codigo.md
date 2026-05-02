@@ -23,5 +23,5 @@ Bajo ninguna circunstancia intentes "arreglar" o "parchar" el código automátic
 
 ## Entregable:
 Lee el código relevante a la última tarea/Epic y genera un reporte llamado `/docs/reviews/review-[fecha-o-epic].md`.
-Si hay errores graves, indica: "ESTADO: RECHAZADO - Regresar a la Fase 6".
+Si hay errores graves, indica: "ESTADO: RECHAZADO - Ejecuta el protocolo de emergencia leyendo `08-depuracion.md` para resolver las fallas descritas en este reporte".
 Si todo está en orden, indica: "ESTADO: APROBADO - Listo para siguiente Spec o Merge".

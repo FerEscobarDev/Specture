@@ -29,6 +29,9 @@ VibeCoding es un framework y CLI asistido por IA diseñado para aplicar metodolo
 7. **Auditoría de Código (`07-auditoria-codigo`)**:
    Actúa como un *Code Reviewer* estricto. Audita el código generado por la Fase 6 comparándolo contra la Arquitectura y el Design System, produciendo reportes de error detallados sin intentar parchar el código automáticamente.
 
+8. **Fase Transversal: Depuración Sistemática (`08-depuracion`)**:
+   Protocolo de emergencia (basado en la Ley de Hierro: cero fixes sin investigación de causa raíz). Se activa obligatoriamente cuando la IA falla un test más de 2 veces o el código es rechazado. Obliga a generar un registro físico del error (`DEBUG_LOG_TEMPLATE.md`) y formular una hipótesis científica antes de intentar parchar el código, eliminando las alucinaciones por "prueba y error".
+
 ## Instalación y Uso
 
 VibeCoding no es un programa que instalas tradicionalmente (`.exe` o `npm global`), sino un **Plugin de Comportamiento** (conjunto de habilidades/skills) que se inyecta en agentes de IA como Claude Code o Antigravity para que operen bajo esta estricta metodología. El agente de IA actúa como tu CLI, ejecutando comandos de terminal por ti guiado por estos skills.

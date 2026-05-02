@@ -21,7 +21,10 @@ Para evitar alucinaciones, tu único contexto válido es el `.spec.md` activo y 
    - **GREEN**: Escribe la implementación mínima necesaria para que la prueba pase.
    - **REFACTOR**: Mejora el código sin romper la prueba. Aplica buenas prácticas de C#.
 
-3. **Cero Suposiciones**:
+3. **Regla de Atasco (¡NUEVO!)**:
+   Si tu test falla durante el ciclo TDD más de 2 veces consecutivas después de intentar arreglarlo, **DETENTE INMEDIATAMENTE**. Estás "adivinando". Abandona esta fase temporalmente y ejecuta el protocolo de emergencia leyendo el archivo `08-depuracion.md`.
+
+4. **Cero Suposiciones**:
    Si el Spec es ambiguo, DEBES DEJAR DE CODIFICAR y pedir al usuario que regrese a la fase `05-planificacion` para corregir el spec. No adivines comportamientos.
 
 ## Entregable:
