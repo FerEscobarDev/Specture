@@ -29,16 +29,17 @@ This skill **fuses** what was previously split into "planificación", "ejecució
 
 ```
 For each epic where state is [ ] or [/]:
-  1. Lock the epic            → mark as [/]
-  2. Generate spec(s)         → SPEC_TEMPLATE.md → docs/05-specs/<epic>/<task>.spec.md
-  3. Validate architecture    → dispatch architecture-validator (REQUIRED)
-  4. Write tests              → dispatch tdd-test-writer (REQUIRED, fresh context, no impl)
-  5. Implement                → dispatch implementer (REQUIRED, fresh context, gets tests + spec)
-  6. Review                   → dispatch code-reviewer (REQUIRED)
-  7. If REJECTED              → loop back to step 5 (max 3 iterations, then escalate)
-  8. Verify                   → run tests fresh, see them pass, see no warnings
-  9. Mark epic as [x]         → update ROADMAP.md
- 10. Context reset            → instruct user to clear chat / reset session before next epic
+   1. Lock the epic           → mark as [/]
+   2. Generate spec(s)        → SPEC_TEMPLATE.md → docs/05-specs/<epic>/<task>.spec.md
+   3. Validate architecture   → dispatch architecture-validator (REQUIRED)
+   4. Write tests             → dispatch tdd-test-writer; agent commits RED → capture RED_SHA
+   5. Implement               → dispatch implementer (separate commits, MUST NOT touch tests)
+ 5.5. TDD Honesty Gate        → git diff RED_SHA..HEAD -- <test-globs> MUST be empty
+   6. Review                  → dispatch code-reviewer (REQUIRED, 4 dimensions inc. TDD Honesty)
+   7. If REJECTED             → loop back to step 5 (max 3 iterations, then escalate)
+   8. Verify                  → run tests fresh, see them pass, see no warnings
+   9. Mark epic as [x]        → update ROADMAP.md
+  10. Context reset           → instruct user to clear chat / reset session before next epic
 ```
 
 ## Step 1 — Pick & Lock the Epic
@@ -94,9 +95,20 @@ Dispatch the `tdd-test-writer` agent (`agents/tdd-test-writer.md`).
 - `.vibecoding/conventions.md` testing section.
 - **NOT** any existing implementation files. The agent must be blind to implementation to avoid biasing tests toward existing behavior.
 
-**Expected output**: test file(s) at the path indicated by conventions, all currently failing (RED).
+**Expected output**: test file(s) at the path indicated by conventions, all currently failing (RED), **committed by the agent in a single RED commit**, and the SHA of that commit reported as `RED_SHA`.
 
-**Verify**: run the tests yourself (orchestrator step) and confirm they fail for the right reason ("function not defined", not "syntax error in test").
+**Orchestrator post-checks (all mandatory)**:
+
+1. **Verify failure reason**: run the tests yourself and confirm they fail for the right reason ("function not defined" / "wrong return value"), not because of syntax errors or missing dependencies.
+2. **Verify the RED commit exists and is clean**:
+   ```
+   git show --stat <RED_SHA>
+   ```
+   The commit MUST contain only test files (paths matching `conventions.md` test globs). If the commit touches any production code, abort — re-dispatch `tdd-test-writer` with a clear instruction to commit tests in isolation.
+3. **Capture `RED_SHA`** for use in Step 5.5 and Step 6. This is now the immutable reference point for the test contract.
+4. **Capture the test path globs** from `conventions.md` (e.g. `**/*.test.ts`, `tests/**/*.py`). Both Step 5.5 and the code-reviewer need them.
+
+If any post-check fails, do NOT proceed to Step 5.
 
 ## Step 5 — Implement (TDD GREEN phase)
 
@@ -104,20 +116,50 @@ Dispatch the `implementer` agent (`agents/implementer.md`).
 
 **Context to pass**:
 - The `.spec.md`.
-- The test files just written.
+- The test files just written (as content reference — the implementer must NOT edit them).
+- The `RED_SHA` value, with an explicit instruction: *"The tests committed at `<RED_SHA>` are the sealed contract. You must NOT modify, delete, skip, rename, or move any of those test files. The TDD Honesty Gate will run `git diff <RED_SHA>..HEAD -- <test-globs>` after your work and any change will abort the spec."*
 - `.vibecoding/stack.yml`, `.vibecoding/conventions.md`, all ADRs.
 - The relevant existing source files the implementer needs to modify (NOT the whole codebase — pick the minimum).
 
-**Expected output**: minimal code to make tests pass; agent commits with conventional message; reports status `DONE` / `DONE_WITH_CONCERNS` / `NEEDS_CONTEXT` / `BLOCKED`.
+**Expected output**: minimal code to make tests pass; agent commits implementation in commits **separate from the RED commit**; reports status `DONE` / `DONE_WITH_CONCERNS` / `NEEDS_CONTEXT` / `BLOCKED`, plus the `HEAD_SHA` after the last implementation commit.
 
 Handle each status per the implementer's protocol.
+
+## Step 5.5 — TDD Honesty Gate (mandatory, automated)
+
+Before dispatching the code-reviewer, the orchestrator runs the gate itself. This is a mechanical check — no agent involved.
+
+```
+git diff <RED_SHA>..<HEAD_SHA> -- <test-path-globs>
+```
+
+**Interpretation**:
+
+- **Empty output** → ✅ Tests untouched between RED and HEAD. Proceed to Step 6.
+- **Non-empty output** → ❌ TDD violation. The implementer modified the sealed test contract. Do NOT proceed to review.
+
+**On violation, the orchestrator MUST**:
+
+1. Show the diff to the user verbatim. No paraphrasing.
+2. Classify the violation:
+   - **Test assertion weakened / removed / replaced**: this is the prototypical violation. Treat as `REJECTED_MAJOR`.
+   - **Test skipped (`it.skip`, `xit`, `@Disabled`, etc.)**: same severity.
+   - **Test renamed / moved**: same — even no-op renames break the contract identifier.
+   - **New test file added by implementer (not present at RED)**: investigate. May be legitimate (test helper) or a smokescreen.
+3. Options for recovery (escalate to user):
+   - **Revert the test changes** (`git checkout <RED_SHA> -- <test-paths>`) and re-dispatch the implementer with a stronger reminder.
+   - **If the implementer was right that the test was wrong** (rare but possible): revert, then re-run `tdd-test-writer` with the implementer's concern as input. Get a new RED commit. Restart Step 5 with the new `RED_SHA`.
+   - **Abort the spec entirely** if the violation suggests a fundamental spec/implementation mismatch.
+
+The gate exists because TDD violations are invisible if you only look at the implementation diff. Without this gate, the code-reviewer might APPROVE code whose tests were silently softened.
 
 ## Step 6 — Code Review (mandatory gate)
 
 Dispatch the `code-reviewer` agent (`agents/code-reviewer.md`).
 
 **Context to pass**:
-- The git diff of the implementer's commits.
+- `RED_SHA` and `HEAD_SHA` (the code-reviewer's Dimension 4 uses these to verify TDD honesty independently — defense in depth even after Step 5.5).
+- The test path globs (so the reviewer can run the same `git diff` check).
 - The `.spec.md`.
 - `.vibecoding/stack.yml`, `.vibecoding/conventions.md`, all ADRs.
 - The architecture sections relevant to the touched modules.
@@ -171,8 +213,11 @@ If the user can't reset (or refuses): start the next epic with a hard reminder t
 
 | Don't | Do |
 |-------|-----|
-| Pasar al implementer la conversación entera | Pasarle solo: spec + tests + archivos a tocar + .vibecoding/ |
+| Pasar al implementer la conversación entera | Pasarle solo: spec + tests + archivos a tocar + .vibecoding/ + RED_SHA |
 | Saltar la validación de arquitectura "porque es un spec simple" | Siempre validar. Es barato y atrapa errores caros. |
+| Permitir que el `tdd-test-writer` deje los tests sin commitear | Sin RED commit no hay TDD Honesty Gate. Aborta y re-dispatcha exigiendo el commit. |
+| Permitir que el implementer commitee tests junto con código en un solo commit | RED y GREEN deben estar en commits separados. El test commit es el de tdd-test-writer; el implementer NO commitea tests. |
+| Saltarse Step 5.5 "porque el implementer dijo que no tocó tests" | El gate es mecánico (`git diff`), no de confianza. Siempre se corre. |
 | Aceptar `DONE_WITH_CONCERNS` sin leer las concerns | Lee y decide: ¿bloquea? ¿es nota para futuro? |
 | Reescribir el spec a mitad de implementación | Si el spec está mal, abortar el epic, fix spec, restart desde paso 3 |
 | Marcar epic `[x]` sin haber corrido tests fresh | Verification gate (transversal-verification) lo prohibe |

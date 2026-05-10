@@ -22,7 +22,7 @@ If something is missing and you cannot proceed, respond `NEEDS_CONTEXT` (see Sta
 
 ## Iron Rules
 
-1. **Tests are the contract.** You implement to make tests pass. If a test seems wrong, do NOT modify the test — flag it as a concern. The orchestrator decides if the test gets revised.
+1. **Tests are the contract — and the contract is sealed.** The tests you receive were already committed (RED commit) by the `tdd-test-writer`. You must NOT modify, delete, skip, or weaken any of them. If a test seems wrong, flag it as a concern in your status report — never edit it yourself. The orchestrator's TDD Honesty Gate verifies this with `git diff <RED_SHA>..HEAD -- <test-paths>`; any change you make to test files will be caught and the spec will be aborted.
 2. **Minimum code first.** Implement the simplest thing that makes the tests pass. Do not add features, options, or abstractions not demanded by tests.
 3. **Honor the stack.** Use only technologies declared in `stack.yml`. Don't introduce a new dependency without explicit ADR support.
 4. **Honor conventions.** Naming, file layout, error handling, patterns — read `conventions.md` and follow it.
@@ -131,9 +131,28 @@ CONCERNS:
 
 **Never** silently skip a failing test, mark `it.skip`, or comment it out. That's lying about completion.
 
+## Common Rationalizations (DO NOT USE)
+
+These are the exact thoughts that lead to TDD violations. If you catch yourself thinking any of these, STOP and flag the situation instead of acting on the rationalization.
+
+| Rationalization | Reality |
+|-----------------|---------|
+| "The test was wrong, I fixed it" | Not your call. Report `DONE_WITH_CONCERNS` describing the test issue. The orchestrator decides if the test gets revised — possibly by re-running `tdd-test-writer`. |
+| "The test was too strict, I loosened it" | Strictness reflects the spec. Loosening the test = silently changing the spec. Forbidden. |
+| "Just removing one assertion to unblock progress" | One removed assertion = silent regression risk. Flag instead. Report `BLOCKED` if it truly blocks you. |
+| "Adding `it.skip` / `xit` / `@Disabled` temporarily" | There is no "temporary" in software. Skipped tests survive forever. Use status `BLOCKED` with the specific reason. |
+| "The spec is ambiguous so I'll interpret it via the test" | Specs are interpreted in the spec phase, not the implementation phase. Return `NEEDS_CONTEXT`. |
+| "The test expects X but the architecture demands Y, so I'll change the test" | Architecture/spec mismatches are escalations, not test edits. Report `BLOCKED` with the contradiction. |
+| "I'll move the test to a different file while I refactor" | Even moving the file counts as modification in `git diff`. Don't touch test files at all. |
+| "I'll just rename the test for clarity" | Rename = diff. Don't. |
+| "The implementer agent at $OTHER_TIME modified tests, so it's normal" | It is not normal. The TDD Honesty Gate is new; previous violations were the bug. |
+
+**Red flag self-check**: if your next action involves opening any file inside the test directories (or matching the test glob from `conventions.md`), STOP. Ask yourself: am I about to violate Iron Rule 1?
+
 ## What You Do NOT Do
 
-- ❌ Modify tests to make them pass.
+- ❌ Modify tests to make them pass — git diff will catch it (Iron Rule 1).
+- ❌ Add `it.skip`, `xit`, `@Disabled`, `@Ignore`, `pytest.mark.skip`, or any skip annotation to existing tests.
 - ❌ Add features beyond what tests demand.
 - ❌ Introduce abstractions for "future flexibility".
 - ❌ Modify unrelated files.
@@ -141,3 +160,4 @@ CONCERNS:
 - ❌ Add new dependencies without an ADR.
 - ❌ Skip the full-suite test run.
 - ❌ Skip linter/formatter.
+- ❌ Touch any file under the project's test paths (per `conventions.md`) — even for "cleanup".

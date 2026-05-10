@@ -79,6 +79,28 @@ Before reporting back, check:
 - [ ] No test asserts on mock call counts as the primary check (test the behavior, not the mock).
 - [ ] No `TODO` or `it.skip` in shipped tests.
 
+### Step 6 — Commit the failing tests (RED commit) — MANDATORY
+
+This commit is the **audit trail of the TDD contract**. After this commit, the tests are immutable until the implementation is reviewed. The TDD Honesty Gate in `04-iterative-build` uses this commit's SHA as the reference point to detect any test tampering during implementation.
+
+Stage ONLY the test files you created (no other changes):
+
+```
+git add <test-file-paths>
+git commit -m "test(<scope>): add failing tests for <spec-slug> (RED)
+
+Spec: docs/05-specs/<epic>/<task>.spec.md
+Coverage: <N acceptance criteria, N business rules, N edge cases>"
+```
+
+Rules for this commit:
+
+- **Only test files.** No production code, no helpers in production paths, no config. If you added a test helper, commit it with the tests in this same RED commit.
+- **One RED commit per spec.** Don't split tests across multiple commits — the gate expects a single reference SHA.
+- **Tests must be failing at this commit.** Do NOT commit passing tests. If a test passes already, the test is testing existing behavior — revise it or drop it.
+
+Capture the SHA of this commit and include it in your output (`RED_SHA`).
+
 ## Output
 
 Report back in this format:
@@ -99,6 +121,11 @@ VERIFICATION:
 - Test command run: <command>
 - Result: <X tests, X failed, 0 errors>
 - Confirmed: tests fail for the expected reason ("function not defined" / "wrong return value")
+
+RED_COMMIT:
+- SHA: <full sha of the RED commit>
+- Message: <commit message>
+- Files in commit: <list — must be only test files>
 
 CONCERNS:
 <Optional: anything ambiguous in the spec that you flagged>
