@@ -27,4 +27,8 @@
   - Descripción: [Breve descripción]
 
 ---
-*Nota para la IA:* Al actualizar este ROADMAP, marca con una `[x]` los epics o hitos que ya hayan sido completados satisfactoriamente.
+## Convención de Estados
+*Nota para la IA:* Al leer o actualizar este ROADMAP, debes usar estrictamente los siguientes estados para llevar un control del progreso:
+- `[ ]` **Pendiente:** Tarea no iniciada.
+- `[/]` **En Progreso:** El `.spec.md` está en desarrollo o el Agente Ejecutor está trabajando en ello.
+- `[x]` **Completado:** La funcionalidad ha pasado todas las pruebas (TDD) y ha sido auditada.
