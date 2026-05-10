@@ -1,0 +1,59 @@
+# VibeCoding — Project Stack Configuration
+# This file is the SINGLE SOURCE OF TRUTH for the technical stack of the project.
+# All skills and agents read this file before generating code, plans, or reviews.
+# Edit through `/setup` (mode: reconfigure) to keep validation and ADRs in sync.
+
+# --- Identity --------------------------------------------------------------
+project:
+  name: "[Project Name]"
+  type: "[web | api | mobile | desktop | cli | library | hybrid]"
+  description: "[One-line description of what this project does]"
+
+# --- Backend ---------------------------------------------------------------
+backend:
+  language: "[e.g. typescript | csharp | python | go | java | rust | none]"
+  runtime: "[e.g. node 20 | dotnet 9 | python 3.12 | go 1.22 | jvm 21 | none]"
+  framework: "[e.g. express | nestjs | aspnet-core | fastapi | django | gin | spring-boot | none]"
+  package_manager: "[e.g. npm | pnpm | yarn | nuget | pip | poetry | go-mod | maven | gradle | none]"
+  testing_framework: "[e.g. jest | vitest | xunit | nunit | pytest | go-test | junit | none]"
+
+# --- Database & Persistence ------------------------------------------------
+database:
+  primary: "[e.g. postgresql | mysql | mongodb | sqlite | dynamodb | none]"
+  orm_or_driver: "[e.g. prisma | typeorm | ef-core | sqlalchemy | mongoose | gorm | none]"
+  cache: "[e.g. redis | memcached | none]"
+  search: "[e.g. elasticsearch | meilisearch | none]"
+
+# --- Frontend (omit or set to null if no frontend) -------------------------
+frontend:
+  framework: "[e.g. react | nextjs | angular | vue | svelte | flutter | none]"
+  language: "[e.g. typescript | javascript | dart | none]"
+  ui_library: "[e.g. shadcn | mui | antd | chakra | tailwind-only | bootstrap | none]"
+  styling: "[e.g. tailwind | css-modules | styled-components | sass | none]"
+  state_management: "[e.g. zustand | redux-toolkit | pinia | provider | none]"
+  testing_framework: "[e.g. vitest | jest | playwright | cypress | none]"
+
+# --- Architecture Pattern --------------------------------------------------
+architecture:
+  pattern: "[e.g. modular-monolith | layered | hexagonal | clean | mvc | microservices | serverless]"
+  module_strategy: "[e.g. by-feature | by-layer | ddd-bounded-contexts | none]"
+  uses_ddd: false
+  uses_cqrs: false
+  uses_event_driven: false
+
+# --- DevOps & Deployment ---------------------------------------------------
+devops:
+  containerization: "[e.g. docker | none]"
+  ci_cd: "[e.g. github-actions | gitlab-ci | azure-pipelines | none]"
+  hosting: "[e.g. aws | azure | gcp | vercel | self-hosted | none]"
+
+# --- Quality Gates (read by code-reviewer agent) ---------------------------
+quality:
+  linter: "[e.g. eslint | ruff | dotnet-format | golangci-lint | none]"
+  formatter: "[e.g. prettier | black | dotnet-format | gofmt | none]"
+  type_checker: "[e.g. tsc | mypy | none]"
+  required_test_coverage_percent: 0  # 0 = not enforced
+
+# --- Conventions Pointer ---------------------------------------------------
+conventions_file: ".vibecoding/conventions.md"
+decisions_dir: ".vibecoding/decisions/"

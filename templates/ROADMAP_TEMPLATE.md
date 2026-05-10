@@ -1,34 +1,63 @@
 # ROADMAP: [Nombre del Proyecto]
 
 ## Visión General
-[Breve descripción del proyecto y su objetivo principal, máximo 2 párrafos]
 
-## Contexto de Negocio
-- **Documento de Requerimientos:** [Enlace a business_requirements.md]
-- **Documento de Arquitectura:** [Enlace a architecture.md]
+[Breve descripción del proyecto y su objetivo principal — máximo 2 párrafos. Esta sección es el "elevator pitch" que cualquier IA o humano lee en 30 segundos para entender de qué va el sistema.]
+
+## Contexto Técnico
+
+- **Configuración del stack:** [`.vibecoding/stack.yml`](../.vibecoding/stack.yml) *(fuente de verdad)*
+- **Convenciones del proyecto:** [`.vibecoding/conventions.md`](../.vibecoding/conventions.md)
+- **Decisiones registradas (ADRs):** [`.vibecoding/decisions/`](../.vibecoding/decisions/)
+- **Requerimientos de negocio:** [`docs/01-requirements/business_requirements.md`](../01-requirements/business_requirements.md)
+- **Arquitectura:** [`docs/02-architecture/architecture.md`](../02-architecture/architecture.md)
+- **UX/UI** *(si aplica)*: [`docs/03-ux-ui/`](../03-ux-ui/)
+
+---
+
+## Convención de Estados
+
+*Reglas estrictas para la IA al actualizar este archivo:*
+
+| Símbolo | Estado | Significado |
+|---------|--------|-------------|
+| `[ ]` | Pendiente | El epic aún no se ha tocado. |
+| `[/]` | En Progreso | Hay un spec activo o el agente ejecutor está trabajando en él. Solo UN epic puede estar en `[/]` a la vez. |
+| `[x]` | Completado | Todos los specs del epic han sido implementados, revisados (`code-reviewer` APPROVED), y verificados (tests pasan, lint limpio). |
+
+---
 
 ## Hitos (Milestones) y Epics
 
-### Milestone 1: [Nombre del Hito, ej. Setup Inicial y Autenticación]
-*Objetivo:* [Qué se busca lograr con este hito]
+> Los hitos están ordenados por dependencia. No empieces el Milestone N+1 si N tiene epics pendientes que el N+1 necesita.
+
+### Milestone 1: [Nombre del Hito, ej. "Foundation"]
+*Objetivo:* [Una frase que describe qué se logra al cerrar este hito.]
 
 - [ ] **Epic 1.1:** [Nombre del Epic]
-  - Dependencias: [Ninguna / Lista de otros epics]
-  - Descripción: [Breve descripción]
-  - Reglas clave: [Regla 1], [Regla 2]
+  - **Dependencias:** Ninguna
+  - **Descripción:** [1-2 frases.]
+  - **Reglas de negocio clave:** [Links a secciones de `business_requirements.md`]
+  - **Componentes de arquitectura involucrados:** [Links a secciones de `architecture.md`]
+  - **Specs estimados:** [N — orientativo, se concretará en Fase 4]
+
 - [ ] **Epic 1.2:** [Nombre del Epic]
-  - Dependencias: Epic 1.1
+  - **Dependencias:** Epic 1.1
+  - **Descripción:** ...
 
 ### Milestone 2: [Nombre del Hito]
-*Objetivo:* [Qué se busca lograr con este hito]
+*Objetivo:* ...
 
-- [ ] **Epic 2.1:** [Nombre del Epic]
-  - Dependencias: Milestone 1
-  - Descripción: [Breve descripción]
+- [ ] **Epic 2.1:** ...
+  - **Dependencias:** Milestone 1 completo
+
+### Milestone N: [...]
 
 ---
-## Convención de Estados
-*Nota para la IA:* Al leer o actualizar este ROADMAP, debes usar estrictamente los siguientes estados para llevar un control del progreso:
-- `[ ]` **Pendiente:** Tarea no iniciada.
-- `[/]` **En Progreso:** El `.spec.md` está en desarrollo o el Agente Ejecutor está trabajando en ello.
-- `[x]` **Completado:** La funcionalidad ha pasado todas las pruebas (TDD) y ha sido auditada.
+
+## Reglas para Modificar este Archivo
+
+1. **Solo el orquestador (`04-iterative-build`)** modifica los checkboxes durante construcción.
+2. **Solo `transversal-new-feature`** agrega nuevos Milestones/Epics después de la planificación inicial.
+3. **NUNCA borres un epic ya completado.** Si una funcionalidad cambia, márcala con un nuevo epic que la sustituya y deja el anterior como `[x]` con una nota de superseded.
+4. **Cuando agregues un epic nuevo**, declara explícitamente sus dependencias contra los epics existentes.

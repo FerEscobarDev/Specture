@@ -1,0 +1,183 @@
+---
+name: 04-iterative-build
+description: Use when `docs/04-roadmap/ROADMAP.md` exists and contains epics marked `[ ]` (pending) or `[/]` (in progress), or when the user says "construyamos", "sigamos con el roadmap", "implementemos el siguiente epic". Orchestrates a strict per-epic loop: spec → architecture validation → tests → implementation → review → verification → mark complete. Dispatches 4 specialized agents.
+---
+
+# 04 — Iterative Build (The Build Loop)
+
+You are the **Orchestrator** of the build phase. You do NOT write code, tests, or reviews directly. Your job is to:
+
+1. Pick the next epic.
+2. Generate the spec.
+3. Dispatch the right agent at the right time with the right (restricted) context.
+4. Verify each step before moving on.
+5. Mark progress in `ROADMAP.md`.
+6. Reset context between epics.
+
+This skill **fuses** what was previously split into "planificación", "ejecución", and "auditoría". The split was artificial — for AI, those are one tight loop per epic.
+
+## Required Inputs (Read Once at Start)
+
+- `.vibecoding/stack.yml` — for routing decisions and to know testing framework, language, etc.
+- `.vibecoding/conventions.md` — for context to pass to agents.
+- `.vibecoding/decisions/` — all ADRs.
+- `docs/01-requirements/business_requirements.md` — ground truth for business rules.
+- `docs/02-architecture/architecture.md` — boundaries.
+- `docs/04-roadmap/ROADMAP.md` — what to build next.
+
+## The Loop
+
+```
+For each epic where state is [ ] or [/]:
+  1. Lock the epic            → mark as [/]
+  2. Generate spec(s)         → SPEC_TEMPLATE.md → docs/05-specs/<epic>/<task>.spec.md
+  3. Validate architecture    → dispatch architecture-validator (REQUIRED)
+  4. Write tests              → dispatch tdd-test-writer (REQUIRED, fresh context, no impl)
+  5. Implement                → dispatch implementer (REQUIRED, fresh context, gets tests + spec)
+  6. Review                   → dispatch code-reviewer (REQUIRED)
+  7. If REJECTED              → loop back to step 5 (max 3 iterations, then escalate)
+  8. Verify                   → run tests fresh, see them pass, see no warnings
+  9. Mark epic as [x]         → update ROADMAP.md
+ 10. Context reset            → instruct user to clear chat / reset session before next epic
+```
+
+## Step 1 — Pick & Lock the Epic
+
+- Read `ROADMAP.md`.
+- Find the first epic with state `[ ]` whose dependencies are all `[x]`. (Don't break dependency order.)
+- If multiple epics with state `[/]` exist, that's a stale state — ask the user which one to continue.
+- Update the chosen epic to `[/]`. Commit `ROADMAP.md`.
+
+## Step 2 — Generate Spec(s)
+
+For the chosen epic, decompose into 1-3 specs. Each spec must be:
+
+- **Granular**: implementable in 1-3 commits, ~1 AI session.
+- **Code-free**: zero code examples, zero language-specific snippets. Only rules, contracts, and test descriptions.
+- **Self-contained**: contains all the info the implementer needs without re-reading the requirements doc.
+
+Use `templates/SPEC_TEMPLATE.md`. Write to `docs/05-specs/<epic-slug>/<task-slug>.spec.md`.
+
+### Spec self-review
+
+Before passing the spec to the validator, check:
+
+- [ ] No `TBD`, `TODO`, or "fill in later".
+- [ ] All business rules cited from `business_requirements.md`.
+- [ ] Acceptance criteria are concrete and testable (not "should work well").
+- [ ] No code examples present.
+- [ ] Inputs, outputs, error conditions, and side effects all listed.
+
+## Step 3 — Architecture Validation (mandatory gate)
+
+Dispatch the `architecture-validator` agent (`agents/architecture-validator.md`).
+
+**Context to pass (restricted)**:
+- The new `.spec.md` content.
+- `.vibecoding/stack.yml`.
+- `.vibecoding/decisions/` (all ADRs).
+- The relevant section of `architecture.md`.
+
+**Expected output**: `APPROVED` or `REJECTED` with a list of violations.
+
+If `REJECTED`:
+- Either fix the spec (most common) and re-dispatch.
+- Or, if the rejection reveals a flaw in the architecture itself, escalate to the user and consider a `reconfigure` (new ADR).
+
+## Step 4 — Write Tests (TDD RED phase)
+
+Dispatch the `tdd-test-writer` agent (`agents/tdd-test-writer.md`).
+
+**Context to pass (restricted)**:
+- The validated `.spec.md`.
+- `.vibecoding/stack.yml` (specifically `testing_framework` for backend or frontend, depending on what the spec covers).
+- `.vibecoding/conventions.md` testing section.
+- **NOT** any existing implementation files. The agent must be blind to implementation to avoid biasing tests toward existing behavior.
+
+**Expected output**: test file(s) at the path indicated by conventions, all currently failing (RED).
+
+**Verify**: run the tests yourself (orchestrator step) and confirm they fail for the right reason ("function not defined", not "syntax error in test").
+
+## Step 5 — Implement (TDD GREEN phase)
+
+Dispatch the `implementer` agent (`agents/implementer.md`).
+
+**Context to pass**:
+- The `.spec.md`.
+- The test files just written.
+- `.vibecoding/stack.yml`, `.vibecoding/conventions.md`, all ADRs.
+- The relevant existing source files the implementer needs to modify (NOT the whole codebase — pick the minimum).
+
+**Expected output**: minimal code to make tests pass; agent commits with conventional message; reports status `DONE` / `DONE_WITH_CONCERNS` / `NEEDS_CONTEXT` / `BLOCKED`.
+
+Handle each status per the implementer's protocol.
+
+## Step 6 — Code Review (mandatory gate)
+
+Dispatch the `code-reviewer` agent (`agents/code-reviewer.md`).
+
+**Context to pass**:
+- The git diff of the implementer's commits.
+- The `.spec.md`.
+- `.vibecoding/stack.yml`, `.vibecoding/conventions.md`, all ADRs.
+- The architecture sections relevant to the touched modules.
+
+**Expected output**: a structured review at `docs/07-reviews/review-<epic>-<spec>-<date>.md` with status:
+
+- `APPROVED` → proceed to Step 7 (verification).
+- `REJECTED_MINOR` → loop back to Step 5 with the issues; implementer fixes; re-review.
+- `REJECTED_MAJOR` → either large fix needed (loop with fresh context) or architectural issue (escalate to user).
+
+### Iteration Cap
+
+If you've looped Step 5 → Step 6 **3 times** for the same spec without `APPROVED`, **STOP**. This is a sign of either:
+- A spec problem (ambiguous or contradictory) → fix the spec, restart from Step 3.
+- An architecture problem → escalate to user, possibly add an ADR.
+- Stuck in a debugging loop → invoke `transversal-systematic-debug.md`.
+
+Do NOT do a 4th naive retry.
+
+## Step 7 — Verification (mandatory)
+
+Before declaring the spec done:
+
+```
+[Run the test command yourself — not the agents]
+[Read the full output]
+[Confirm: 0 failures, 0 errors, no unexpected warnings]
+[Run linter / type-checker if conventions.md requires]
+```
+
+If anything is red, you cannot mark the spec complete. See `transversal-verification.md` — same iron law applies here.
+
+## Step 8 — Mark Epic Complete
+
+After all specs in the epic are APPROVED + verified:
+
+- Update `ROADMAP.md`: change the epic from `[/]` to `[x]`.
+- Commit the ROADMAP update.
+
+## Step 9 — Context Reset Between Epics
+
+This is **non-negotiable**. Acumulated context across epics is the #1 source of degraded quality in AI development.
+
+Announce to the user:
+> "Epic [N] completado. **Por favor, inicia una nueva conversación** antes de continuar con el siguiente epic. Si tu interfaz no permite limpiar el chat, dímelo y forzaremos un reset mental."
+
+If the user can't reset (or refuses): start the next epic with a hard reminder to yourself:
+> "RESET: ignoro toda conversación previa. Mi único contexto válido para el próximo epic es: el spec activo, los archivos que el spec referencia, y `.vibecoding/`."
+
+## Anti-Patterns
+
+| Don't | Do |
+|-------|-----|
+| Pasar al implementer la conversación entera | Pasarle solo: spec + tests + archivos a tocar + .vibecoding/ |
+| Saltar la validación de arquitectura "porque es un spec simple" | Siempre validar. Es barato y atrapa errores caros. |
+| Aceptar `DONE_WITH_CONCERNS` sin leer las concerns | Lee y decide: ¿bloquea? ¿es nota para futuro? |
+| Reescribir el spec a mitad de implementación | Si el spec está mal, abortar el epic, fix spec, restart desde paso 3 |
+| Marcar epic `[x]` sin haber corrido tests fresh | Verification gate (transversal-verification) lo prohibe |
+| Omitir el review porque "el implementer ya hizo self-review" | Self-review ≠ review independiente. Ambos son necesarios. |
+
+## After Loop Completion
+
+If the ROADMAP reaches 100% `[x]`, route back to `00-using-vibecoding.md` which will offer the user options (audit, new feature, finalize).
