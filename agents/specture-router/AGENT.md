@@ -1,6 +1,10 @@
-# Specture — Framework Entry Point for AI Agents
+---
+name: specture-router
+description: Use when operating in a Specture-configured project. Before answering, exploring, or writing any code, inspects the current state of the user's project and routes to the correct phase skill. Activated automatically when the Specture plugin is enabled.
+model: sonnet
+---
 
-> **Using the Specture plugin?** You don't need this file — the `specture-router` agent activates automatically. This file exists for users who prefer the manual `@import` approach.
+# Specture — Framework Entry Point for AI Agents
 
 ## STOP. Read this before doing anything.
 
@@ -22,7 +26,7 @@ The user's project (the one being built) lives in a different directory and cont
 @$SPECTURE_ROOT/CLAUDE.md
 ```
 
-`$SPECTURE_ROOT` is an environment variable pointing to this repository's root, set by the user during setup. Never hardcode absolute paths inside skills, agents or templates — always use `$SPECTURE_ROOT` or paths relative to it.
+`$SPECTURE_ROOT` is an environment variable pointing to this repository's root, set by the user during manual setup. Users who installed via the plugin do not need this env var.
 
 The user's project also contains a `.specture/` directory with the project-specific configuration (`stack.yml`, `conventions.md`, `decisions/`). All skills and agents read those files before generating anything.
 

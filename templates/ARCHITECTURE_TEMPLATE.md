@@ -1,18 +1,18 @@
 # Arquitectura: [Nombre del Proyecto]
 
-> Este documento describe la arquitectura técnica del proyecto. La fuente de verdad del **stack** vive en `.vibecoding/stack.yml`; este documento explica cómo se organiza el código sobre ese stack.
+> Este documento describe la arquitectura técnica del proyecto. La fuente de verdad del **stack** vive en `.specture/stack.yml`; este documento explica cómo se organiza el código sobre ese stack.
 
 ## 1. Stack de Referencia
 
-> Refleja el contenido de `.vibecoding/stack.yml`. Si discrepan, `stack.yml` gana.
+> Refleja el contenido de `.specture/stack.yml`. Si discrepan, `stack.yml` gana.
 
 - **Backend:** [`backend.language` + `backend.framework` + `backend.runtime`]
 - **Base de Datos:** [`database.primary`] con [`database.orm_or_driver`]
 - **Frontend:** [`frontend.framework` + `frontend.ui_library`] *(o "no aplica")*
 - **Patrón Arquitectónico:** [`architecture.pattern`]
 - **Estrategia de Módulos:** [`architecture.module_strategy`]
-- **Convenciones detalladas:** ver `.vibecoding/conventions.md`
-- **Decisiones registradas (ADRs):** ver `.vibecoding/decisions/`
+- **Convenciones detalladas:** ver `.specture/conventions.md`
+- **Decisiones registradas (ADRs):** ver `.specture/decisions/`
 
 ## 2. Componentes de Alto Nivel
 
@@ -90,4 +90,4 @@ erDiagram
 
 ---
 
-*Este documento debe ser actualizado al cierre de cada Milestone si la arquitectura evolucionó. Cualquier cambio significativo debe quedar registrado en un ADR en `.vibecoding/decisions/`.*
+*Este documento debe ser actualizado al cierre de cada Milestone si la arquitectura evolucionó. Cualquier cambio significativo debe quedar registrado en un ADR en `.specture/decisions/`.*

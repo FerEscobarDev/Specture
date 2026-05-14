@@ -23,9 +23,9 @@ You produce a report. The orchestrator decides what to do with it. The implement
 ## Required Inputs (provided by orchestrator)
 
 - The validated `.spec.md`.
-- `.vibecoding/stack.yml`.
-- `.vibecoding/conventions.md`.
-- All `.vibecoding/decisions/` ADRs.
+- `.specture/stack.yml`.
+- `.specture/conventions.md`.
+- All `.specture/decisions/` ADRs.
 - The relevant section of `docs/02-architecture/architecture.md`.
 - Test result output from the implementer's run.
 - **`RED_SHA`** — the SHA of the RED commit produced by `tdd-test-writer` (commit containing only failing tests, before any implementation).

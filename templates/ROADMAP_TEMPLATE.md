@@ -6,9 +6,9 @@
 
 ## Contexto Técnico
 
-- **Configuración del stack:** [`.vibecoding/stack.yml`](../.vibecoding/stack.yml) *(fuente de verdad)*
-- **Convenciones del proyecto:** [`.vibecoding/conventions.md`](../.vibecoding/conventions.md)
-- **Decisiones registradas (ADRs):** [`.vibecoding/decisions/`](../.vibecoding/decisions/)
+- **Configuración del stack:** [`.specture/stack.yml`](../.specture/stack.yml) *(fuente de verdad)*
+- **Convenciones del proyecto:** [`.specture/conventions.md`](../.specture/conventions.md)
+- **Decisiones registradas (ADRs):** [`.specture/decisions/`](../.specture/decisions/)
 - **Requerimientos de negocio:** [`docs/01-requirements/business_requirements.md`](../01-requirements/business_requirements.md)
 - **Arquitectura:** [`docs/02-architecture/architecture.md`](../02-architecture/architecture.md)
 - **UX/UI** *(si aplica)*: [`docs/03-ux-ui/`](../03-ux-ui/)
@@ -57,7 +57,7 @@
 
 ## Reglas para Modificar este Archivo
 
-1. **Solo el orquestador (`04-iterative-build`)** modifica los checkboxes durante construcción.
-2. **Solo `transversal-new-feature`** agrega nuevos Milestones/Epics después de la planificación inicial.
+1. **Solo el orquestador (`skills/build/SKILL.md`)** modifica los checkboxes durante construcción.
+2. **Solo `skills/new-feature/SKILL.md`** agrega nuevos Milestones/Epics después de la planificación inicial.
 3. **NUNCA borres un epic ya completado.** Si una funcionalidad cambia, márcala con un nuevo epic que la sustituya y deja el anterior como `[x]` con una nota de superseded.
 4. **Cuando agregues un epic nuevo**, declara explícitamente sus dependencias contra los epics existentes.

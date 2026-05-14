@@ -1,4 +1,4 @@
-# VibeCoding — Project Stack Configuration
+# Specture — Project Stack Configuration
 # This file is the SINGLE SOURCE OF TRUTH for the technical stack of the project.
 # All skills and agents read this file before generating code, plans, or reviews.
 # Edit through `/setup` (mode: reconfigure) to keep validation and ADRs in sync.
@@ -55,5 +55,5 @@ quality:
   required_test_coverage_percent: 0  # 0 = not enforced
 
 # --- Conventions Pointer ---------------------------------------------------
-conventions_file: ".vibecoding/conventions.md"
-decisions_dir: ".vibecoding/decisions/"
+conventions_file: ".specture/conventions.md"
+decisions_dir: ".specture/decisions/"

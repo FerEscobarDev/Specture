@@ -1,5 +1,5 @@
 ---
-name: transversal-systematic-debug
+name: debug
 description: Use the moment any test fails twice, when a build breaks unexpectedly, when the code-reviewer rejects code, when the implementer reports BLOCKED, when the user reports a bug, or when you find yourself "trying things". Stops guess-and-check loops. Forces root-cause investigation with a physical debug log artifact before any fix is attempted.
 ---
 
@@ -68,7 +68,7 @@ Invoke immediately on any of these triggers:
 
 - Document the resolution in the log (root cause confirmed + final fix description).
 - Verify no other tests broke.
-- Return to the previous skill (`04-iterative-build`, `02-architecture-and-plan`, etc.).
+- Return to the previous skill (`skills/build/SKILL.md`, `skills/architecture/SKILL.md`, etc.).
 
 #### If the hypothesis was wrong
 

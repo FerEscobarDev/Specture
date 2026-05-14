@@ -2,7 +2,7 @@
 
 > Esta plantilla cubre las DOS rutas de la Fase 3 (UX Design):
 > - **Ruta 1 (Delegada):** Solo se llenan §3 (Mapa de Navegación) y §4 (Specs para IA de Diseño). El Design System lo produce la IA externa.
-> - **Ruta 2 (Full VibeCoding):** Se llenan todas las secciones; el Design System aquí descrito será codificado en los epics de frontend.
+> - **Ruta 2 (Full Specture):** Se llenan todas las secciones; el Design System aquí descrito será codificado en los epics de frontend.
 
 ## 1. Identidad de Marca
 
@@ -13,7 +13,7 @@
 
 ## 2. Tokens del Design System (Solo Ruta 2)
 
-> Los tokens son la fuente de verdad del estilo. La librería UI declarada en `.vibecoding/stack.yml` (`frontend.ui_library`) los consumirá.
+> Los tokens son la fuente de verdad del estilo. La librería UI declarada en `.specture/stack.yml` (`frontend.ui_library`) los consumirá.
 
 ### 2.1 Color
 
@@ -92,7 +92,7 @@
 - **Patrones prohibidos:** [ej. "no carousels en home", "no modales para acciones primarias"]
 - **Responsividad:** [mobile-first / desktop-first]
 - **Modo oscuro:** [sí/no]
-- **Stack que consumirá la UI:** [`frontend.framework` + `frontend.ui_library`]
+- **Stack que consumirá la UI:** [`frontend.framework` + `frontend.ui_library`] (de `.specture/stack.yml`)
 
 ## 5. Mapa de Navegación (Ambas Rutas)
 
@@ -127,4 +127,4 @@
 
 ## 7. Notas de Decisión
 
-> Si elegiste cierta librería, paleta, o patrón sobre otro, registra el "por qué" aquí. Si la decisión es importante, conviértela en un ADR en `.vibecoding/decisions/`.
+> Si elegiste cierta librería, paleta, o patrón sobre otro, registra el "por qué" aquí. Si la decisión es importante, conviértela en un ADR en `.specture/decisions/`.

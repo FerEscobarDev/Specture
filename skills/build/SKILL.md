@@ -1,5 +1,5 @@
 ---
-name: 04-iterative-build
+name: build
 description: Use when `docs/04-roadmap/ROADMAP.md` exists and contains epics marked `[ ]` (pending) or `[/]` (in progress), or when the user says "construyamos", "sigamos con el roadmap", "implementemos el siguiente epic". Orchestrates a strict per-epic loop: spec → architecture validation → tests → implementation → review → verification → mark complete. Dispatches 4 specialized agents.
 ---
 
@@ -18,9 +18,9 @@ This skill **fuses** what was previously split into "planificación", "ejecució
 
 ## Required Inputs (Read Once at Start)
 
-- `.vibecoding/stack.yml` — for routing decisions and to know testing framework, language, etc.
-- `.vibecoding/conventions.md` — for context to pass to agents.
-- `.vibecoding/decisions/` — all ADRs.
+- `.specture/stack.yml` — for routing decisions and to know testing framework, language, etc.
+- `.specture/conventions.md` — for context to pass to agents.
+- `.specture/decisions/` — all ADRs.
 - `docs/01-requirements/business_requirements.md` — ground truth for business rules.
 - `docs/02-architecture/architecture.md` — boundaries.
 - `docs/04-roadmap/ROADMAP.md` — what to build next.
@@ -71,12 +71,12 @@ Before passing the spec to the validator, check:
 
 ## Step 3 — Architecture Validation (mandatory gate)
 
-Dispatch the `architecture-validator` agent (`agents/architecture-validator.md`).
+Dispatch the `architecture-validator` agent (`agents/architecture-validator/AGENT.md`).
 
 **Context to pass (restricted)**:
 - The new `.spec.md` content.
-- `.vibecoding/stack.yml`.
-- `.vibecoding/decisions/` (all ADRs).
+- `.specture/stack.yml`.
+- `.specture/decisions/` (all ADRs).
 - The relevant section of `architecture.md`.
 
 **Expected output**: `APPROVED` or `REJECTED` with a list of violations.
@@ -87,12 +87,12 @@ If `REJECTED`:
 
 ## Step 4 — Write Tests (TDD RED phase)
 
-Dispatch the `tdd-test-writer` agent (`agents/tdd-test-writer.md`).
+Dispatch the `tdd-test-writer` agent (`agents/tdd-test-writer/AGENT.md`).
 
 **Context to pass (restricted)**:
 - The validated `.spec.md`.
-- `.vibecoding/stack.yml` (specifically `testing_framework` for backend or frontend, depending on what the spec covers).
-- `.vibecoding/conventions.md` testing section.
+- `.specture/stack.yml` (specifically `testing_framework` for backend or frontend, depending on what the spec covers).
+- `.specture/conventions.md` testing section.
 - **NOT** any existing implementation files. The agent must be blind to implementation to avoid biasing tests toward existing behavior.
 
 **Expected output**: test file(s) at the path indicated by conventions, all currently failing (RED), **committed by the agent in a single RED commit**, and the SHA of that commit reported as `RED_SHA`.
@@ -112,13 +112,13 @@ If any post-check fails, do NOT proceed to Step 5.
 
 ## Step 5 — Implement (TDD GREEN phase)
 
-Dispatch the `implementer` agent (`agents/implementer.md`).
+Dispatch the `implementer` agent (`agents/implementer/AGENT.md`).
 
 **Context to pass**:
 - The `.spec.md`.
 - The test files just written (as content reference — the implementer must NOT edit them).
 - The `RED_SHA` value, with an explicit instruction: *"The tests committed at `<RED_SHA>` are the sealed contract. You must NOT modify, delete, skip, rename, or move any of those test files. The TDD Honesty Gate will run `git diff <RED_SHA>..HEAD -- <test-globs>` after your work and any change will abort the spec."*
-- `.vibecoding/stack.yml`, `.vibecoding/conventions.md`, all ADRs.
+- `.specture/stack.yml`, `.specture/conventions.md`, all ADRs.
 - The relevant existing source files the implementer needs to modify (NOT the whole codebase — pick the minimum).
 
 **Expected output**: minimal code to make tests pass; agent commits implementation in commits **separate from the RED commit**; reports status `DONE` / `DONE_WITH_CONCERNS` / `NEEDS_CONTEXT` / `BLOCKED`, plus the `HEAD_SHA` after the last implementation commit.
@@ -155,13 +155,13 @@ The gate exists because TDD violations are invisible if you only look at the imp
 
 ## Step 6 — Code Review (mandatory gate)
 
-Dispatch the `code-reviewer` agent (`agents/code-reviewer.md`).
+Dispatch the `code-reviewer` agent (`agents/code-reviewer/AGENT.md`).
 
 **Context to pass**:
 - `RED_SHA` and `HEAD_SHA` (the code-reviewer's Dimension 4 uses these to verify TDD honesty independently — defense in depth even after Step 5.5).
 - The test path globs (so the reviewer can run the same `git diff` check).
 - The `.spec.md`.
-- `.vibecoding/stack.yml`, `.vibecoding/conventions.md`, all ADRs.
+- `.specture/stack.yml`, `.specture/conventions.md`, all ADRs.
 - The architecture sections relevant to the touched modules.
 
 **Expected output**: a structured review at `docs/07-reviews/review-<epic>-<spec>-<date>.md` with status:
@@ -175,7 +175,7 @@ Dispatch the `code-reviewer` agent (`agents/code-reviewer.md`).
 If you've looped Step 5 → Step 6 **3 times** for the same spec without `APPROVED`, **STOP**. This is a sign of either:
 - A spec problem (ambiguous or contradictory) → fix the spec, restart from Step 3.
 - An architecture problem → escalate to user, possibly add an ADR.
-- Stuck in a debugging loop → invoke `transversal-systematic-debug.md`.
+- Stuck in a debugging loop → invoke `skills/debug/SKILL.md`.
 
 Do NOT do a 4th naive retry.
 
@@ -190,7 +190,7 @@ Before declaring the spec done:
 [Run linter / type-checker if conventions.md requires]
 ```
 
-If anything is red, you cannot mark the spec complete. See `transversal-verification.md` — same iron law applies here.
+If anything is red, you cannot mark the spec complete. See `skills/verify/SKILL.md` — same iron law applies here.
 
 ## Step 8 — Mark Epic Complete
 
@@ -207,22 +207,22 @@ Announce to the user:
 > "Epic [N] completado. **Por favor, inicia una nueva conversación** antes de continuar con el siguiente epic. Si tu interfaz no permite limpiar el chat, dímelo y forzaremos un reset mental."
 
 If the user can't reset (or refuses): start the next epic with a hard reminder to yourself:
-> "RESET: ignoro toda conversación previa. Mi único contexto válido para el próximo epic es: el spec activo, los archivos que el spec referencia, y `.vibecoding/`."
+> "RESET: ignoro toda conversación previa. Mi único contexto válido para el próximo epic es: el spec activo, los archivos que el spec referencia, y `.specture/`."
 
 ## Anti-Patterns
 
 | Don't | Do |
 |-------|-----|
-| Pasar al implementer la conversación entera | Pasarle solo: spec + tests + archivos a tocar + .vibecoding/ + RED_SHA |
+| Pasar al implementer la conversación entera | Pasarle solo: spec + tests + archivos a tocar + .specture/ + RED_SHA |
 | Saltar la validación de arquitectura "porque es un spec simple" | Siempre validar. Es barato y atrapa errores caros. |
 | Permitir que el `tdd-test-writer` deje los tests sin commitear | Sin RED commit no hay TDD Honesty Gate. Aborta y re-dispatcha exigiendo el commit. |
 | Permitir que el implementer commitee tests junto con código en un solo commit | RED y GREEN deben estar en commits separados. El test commit es el de tdd-test-writer; el implementer NO commitea tests. |
 | Saltarse Step 5.5 "porque el implementer dijo que no tocó tests" | El gate es mecánico (`git diff`), no de confianza. Siempre se corre. |
 | Aceptar `DONE_WITH_CONCERNS` sin leer las concerns | Lee y decide: ¿bloquea? ¿es nota para futuro? |
 | Reescribir el spec a mitad de implementación | Si el spec está mal, abortar el epic, fix spec, restart desde paso 3 |
-| Marcar epic `[x]` sin haber corrido tests fresh | Verification gate (transversal-verification) lo prohibe |
+| Marcar epic `[x]` sin haber corrido tests fresh | Verification gate (verify/SKILL.md) lo prohibe |
 | Omitir el review porque "el implementer ya hizo self-review" | Self-review ≠ review independiente. Ambos son necesarios. |
 
 ## After Loop Completion
 
-If the ROADMAP reaches 100% `[x]`, route back to `00-using-vibecoding.md` which will offer the user options (audit, new feature, finalize).
+If the ROADMAP reaches 100% `[x]`, route back to `skills/start/SKILL.md` which will offer the user options (audit, new feature, finalize).

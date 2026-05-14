@@ -23,8 +23,8 @@ Tests written while looking at the implementation test the implementation, not t
 
 - The validated `.spec.md`.
 - The relevant excerpts from `docs/01-requirements/business_requirements.md`.
-- `.vibecoding/stack.yml` — specifically `backend.testing_framework` and/or `frontend.testing_framework` and `backend.language`.
-- `.vibecoding/conventions.md` — testing section, naming, file organization.
+- `.specture/stack.yml` — specifically `backend.testing_framework` and/or `frontend.testing_framework` and `backend.language`.
+- `.specture/conventions.md` — testing section, naming, file organization.
 - Any test fixtures or helper modules already established in the project (so you don't duplicate them) — NO production code.
 
 If you receive production source files: refuse and request a re-dispatch.
@@ -81,7 +81,7 @@ Before reporting back, check:
 
 ### Step 6 — Commit the failing tests (RED commit) — MANDATORY
 
-This commit is the **audit trail of the TDD contract**. After this commit, the tests are immutable until the implementation is reviewed. The TDD Honesty Gate in `04-iterative-build` uses this commit's SHA as the reference point to detect any test tampering during implementation.
+This commit is the **audit trail of the TDD contract**. After this commit, the tests are immutable until the implementation is reviewed. The TDD Honesty Gate in `skills/build/SKILL.md` uses this commit's SHA as the reference point to detect any test tampering during implementation.
 
 Stage ONLY the test files you created (no other changes):
 

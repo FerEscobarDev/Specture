@@ -1,5 +1,5 @@
 ---
-name: 01-discovery
+name: discover
 description: Use when the user wants to start a new project, lift requirements, "levantar requerimientos", "iniciar un proyecto nuevo", "definir el negocio", or whenever `docs/01-requirements/business_requirements.md` does not yet exist. Extracts business rules, user stories, actors, and edge cases through Socratic questioning. Does NOT write code or define technology.
 ---
 
@@ -13,8 +13,8 @@ Do NOT discuss tech stack, frameworks, libraries, database choices, or code in t
 
 ## Read Before Starting
 
-- `.vibecoding/stack.yml` — only to know if this is greenfield or adopted (does not influence questioning).
-- `.vibecoding/conventions.md` — only to know the user's preferred interaction language.
+- `.specture/stack.yml` — only to know if this is greenfield or adopted (does not influence questioning).
+- `.specture/conventions.md` — only to know the user's preferred interaction language.
 
 ## Mode Detection
 

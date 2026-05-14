@@ -1,5 +1,5 @@
 ---
-name: transversal-verification
+name: verify
 description: Use before claiming any work is "done", "completed", "fixed", "passing", or "ready". Use before committing, before creating PRs, before marking a task or epic complete in ROADMAP, before delegating downstream. Forces fresh execution of the relevant verification command and reading of its output before any success claim.
 ---
 
@@ -75,13 +75,13 @@ If you catch yourself with any of these, you are about to violate the Iron Law:
 
 ## How to Use This Skill
 
-This skill does not replace other phases — it is a **gate** that the orchestrator (`04-iterative-build`) passes through before marking anything complete. Any phase that produces an artifact must invoke this gate before reporting "done".
+This skill does not replace other phases — it is a **gate** that the orchestrator (`skills/build/SKILL.md`) passes through before marking anything complete. Any phase that produces an artifact must invoke this gate before reporting "done".
 
 In practice:
 
 ```
 Implementer says "DONE" 
-  → invoke transversal-verification
+  → invoke skills/verify/SKILL.md
   → run tests fresh, read output, check 0 failures
   → if pass: continue to review
   → if fail: don't continue; investigate
@@ -89,7 +89,7 @@ Implementer says "DONE"
 
 ```
 About to mark epic [x] in ROADMAP
-  → invoke transversal-verification
+  → invoke skills/verify/SKILL.md
   → run full test suite, lint, type-check (per stack.yml)
   → all pass: write [x]
   → any fail: stay [/], escalate
@@ -97,7 +97,7 @@ About to mark epic [x] in ROADMAP
 
 ## When This Skill is the Wrong Skill
 
-- If the verification command itself is failing for reasons unrelated to the work (env issue, missing dep) → that's a debugging issue, route to `transversal-systematic-debug.md`.
+- If the verification command itself is failing for reasons unrelated to the work (env issue, missing dep) → that's a debugging issue, route to `skills/debug/SKILL.md`.
 - If the verification is impossible to run (prod-only feature, hardware-specific) → say so explicitly. State what you can verify and what you can't. Do NOT claim completion based on what's verifiable when there are unverifiable parts.
 
 ## The Bottom Line

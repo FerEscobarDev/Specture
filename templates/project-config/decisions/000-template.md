@@ -1,6 +1,6 @@
 # ADR-000: [Título corto y descriptivo de la decisión]
 
-> Plantilla de Architecture Decision Record para VibeCoding.
+> Plantilla de Architecture Decision Record para Specture.
 > Renombra el archivo a `NNN-slug.md` (ej. `001-postgres-as-primary-db.md`) e incrementa el número por cada decisión nueva.
 > Una decisión NUNCA se borra. Si se revierte, se crea un ADR nuevo con `Status: Supersedes ADR-NNN` y el ADR anterior pasa a `Status: Superseded by ADR-NNN`.
 

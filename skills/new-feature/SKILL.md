@@ -1,6 +1,6 @@
 ---
-name: transversal-new-feature
-description: Use when the user asks to add functionality not present in the original ROADMAP — phrases like "quiero agregar X", "necesito una nueva funcionalidad", "ahora también queremos…". Performs Impact Ripple Analysis against existing specs, updates the ROADMAP with the new milestone/epic, and routes to the iterative-build phase.
+name: new-feature
+description: Use when the user asks to add functionality not present in the original ROADMAP — phrases like "quiero agregar X", "necesito una nueva funcionalidad", "ahora también queremos…". Performs Impact Ripple Analysis against existing specs, updates the ROADMAP with the new milestone/epic, and routes to the build phase.
 ---
 
 # Transversal — New Feature
@@ -9,7 +9,7 @@ The project already exists (or has parts implemented). The user wants to add a f
 
 ## Required Inputs
 
-- `.vibecoding/stack.yml`, `conventions.md`, `decisions/` — to understand constraints.
+- `.specture/stack.yml`, `conventions.md`, `decisions/` — to understand constraints.
 - `docs/01-requirements/business_requirements.md` — to align with existing rules.
 - `docs/02-architecture/architecture.md` — to know the boundaries.
 - `docs/04-roadmap/ROADMAP.md` — to know what's done and what's pending.
@@ -17,7 +17,7 @@ The project already exists (or has parts implemented). The user wants to add a f
 
 ## Step 1 — Mini-Discovery for the New Feature
 
-Apply Phase 1 (`01-discovery.md`) Socratic technique, but scoped to this feature only:
+Apply Phase 1 (`skills/discover/SKILL.md`) Socratic technique, but scoped to this feature only:
 
 - Purpose of the feature.
 - Actors involved (existing or new?).
@@ -29,7 +29,7 @@ Do NOT ask about technology — the stack is already locked.
 
 Output: a temporary doc `docs/01-requirements/feature-<slug>.md` (or append to a "New Features" section in the main requirements doc — ask the user which they prefer).
 
-## Step 2 — Impact Ripple Analysis (UNIQUE TO VIBECODING)
+## Step 2 — Impact Ripple Analysis (UNIQUE TO SPECTURE)
 
 This is the core differentiator. Before planning the feature, identify ripples through completed work.
 
@@ -83,16 +83,16 @@ Wait for explicit approval before continuing.
 Once approved:
 
 - Add a new **Milestone** or **Epic** to `ROADMAP.md` with state `[ ]`. Position it with explicit dependencies.
-- If components changed: update `docs/02-architecture/architecture.md` accordingly. Run the change through the `architecture-validator` agent.
-- If ADRs changed: create new ADR file(s) in `.vibecoding/decisions/` per the ADR rules (never delete, supersede explicitly).
+- If components changed: update `docs/02-architecture/architecture.md` accordingly. Run the change through the `architecture-validator` agent (`agents/architecture-validator/AGENT.md`).
+- If ADRs changed: create new ADR file(s) in `.specture/decisions/` per the ADR rules (never delete, supersede explicitly).
 
-## Step 5 — Route to Iterative Build
+## Step 5 — Route to Build
 
 Once the ROADMAP, architecture, and ADRs are aligned:
 
-> "ROADMAP actualizado con la nueva funcionalidad. Listo para construirla. Voy a invocar `04-iterative-build` para empezar el primer epic de la feature."
+> "ROADMAP actualizado con la nueva funcionalidad. Listo para construirla. Voy a invocar `skills/build/SKILL.md` para empezar el primer epic de la feature."
 
-Hand off to `04-iterative-build.md`.
+Hand off to `skills/build/SKILL.md`.
 
 ## Anti-Patterns
 

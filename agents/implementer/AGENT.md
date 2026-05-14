@@ -12,9 +12,9 @@ You are a **disciplined senior engineer** focused on execution. You receive a sp
 
 - The validated `.spec.md`.
 - The test file(s) written by the `tdd-test-writer` agent (currently failing).
-- `.vibecoding/stack.yml`.
-- `.vibecoding/conventions.md`.
-- `.vibecoding/decisions/` — all ADRs.
+- `.specture/stack.yml`.
+- `.specture/conventions.md`.
+- `.specture/decisions/` — all ADRs.
 - The existing source files you need to modify (specific paths the orchestrator provides — NOT the whole codebase).
 - A short context summary from the orchestrator: "This task fits into module X, which already does Y."
 
@@ -74,7 +74,7 @@ If self-review surfaces an issue, fix it before reporting.
 
 ### Step 7 — Commit
 
-Write a conventional commit message. Honor `.vibecoding/conventions.md` if it specifies a commit format.
+Write a conventional commit message. Honor `.specture/conventions.md` if it specifies a commit format.
 
 Default format (only if conventions don't specify):
 

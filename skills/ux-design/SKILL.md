@@ -1,5 +1,5 @@
 ---
-name: 03-ux-design
+name: ux-design
 description: Use only when the project has a frontend (`stack.yml.frontend.framework` is set and not `none`) and `docs/03-ux-ui/` is empty. Plans UX and information architecture before any UI code is written. Offers two routes (delegate to a design-specialized AI, or build a Design System internally) and produces navigation maps and design tokens. NO code in this phase.
 ---
 
@@ -11,15 +11,15 @@ You are a **Product Designer specialized in UX/UI and information architecture**
 
 This skill activates only if:
 
-- `.vibecoding/stack.yml` has `frontend.framework` set and not `none`/`null`.
+- `.specture/stack.yml` has `frontend.framework` set and not `none`/`null`.
 - `docs/03-ux-ui/navigation_map.md` does NOT exist (or `design_system.md` does not exist when the user chose Route 2).
 
-If there is no frontend in stack, do not invoke this skill. Skip to `04-iterative-build`.
+If there is no frontend in stack, do not invoke this skill. Skip to `skills/build/SKILL.md`.
 
 ## Required Inputs
 
-- `.vibecoding/stack.yml` — to know `frontend.framework`, `frontend.ui_library`, `frontend.styling`.
-- `.vibecoding/conventions.md`.
+- `.specture/stack.yml` — to know `frontend.framework`, `frontend.ui_library`, `frontend.styling`.
+- `.specture/conventions.md`.
 - `docs/01-requirements/business_requirements.md` — actors and main user stories.
 - `docs/02-architecture/architecture.md` — to know what APIs/contracts the UI will consume.
 
@@ -41,7 +41,7 @@ Read `stack.yml.frontend.ui_library`:
   - Angular → Angular Material, PrimeNG, Tailwind
   - Vue → Vuetify, PrimeVue, Tailwind
   - Flutter → Material, Cupertino, custom
-- Update `stack.yml` (via `00-setup-and-detect` reconfigure mode) once confirmed.
+- Update `stack.yml` (via `skills/setup/SKILL.md` reconfigure mode) once confirmed.
 
 ## Step 2 — Choose Route
 
@@ -49,15 +49,15 @@ Present BOTH routes clearly and let the user pick:
 
 ### Route 1 — Delegate UI to a Design-Specialized AI
 
-VibeCoding produces:
+Specture produces:
 - `docs/03-ux-ui/navigation_map.md` — list of screens, navigation flows, what each screen shows.
 - `docs/03-ux-ui/design_specs_for_ai.md` — brand requirements, tone, target audience, accessibility notes, references — designed to be handed off to an external design-focused AI (e.g. Claude Design, Vercel v0, Lovable).
 
-VibeCoding then **pauses the frontend track** until the user brings back the generated UI code. When that happens, VibeCoding can validate it against `architecture.md` and integrate it.
+Specture then **pauses the frontend track** until the user brings back the generated UI code. When that happens, Specture can validate it against `architecture.md` and integrate it.
 
-### Route 2 — Full VibeCoding (Design System First)
+### Route 2 — Full Specture (Design System First)
 
-VibeCoding produces:
+Specture produces:
 - `docs/03-ux-ui/design_system.md` — brand identity, color tokens, typography, spacing, base components specification.
 - `docs/03-ux-ui/navigation_map.md` — same as Route 1.
 
@@ -67,7 +67,7 @@ The frontend epics in the ROADMAP will then build the UI from these specs in Pha
 
 - If the user has strong brand identity already (existing logo, colors, fonts, tone) → either route works.
 - If the user wants a polished, opinionated UI fast and is OK delegating → Route 1.
-- If the user wants tight integration with VibeCoding's strict TDD/spec discipline → Route 2.
+- If the user wants tight integration with Specture's strict TDD/spec discipline → Route 2.
 
 ## Step 3 — Generate Deliverables
 
@@ -115,6 +115,6 @@ Before reporting done:
 ## Step 5 — Hand-off
 
 Announce in Spanish:
-> "UX completo. Output en `docs/03-ux-ui/`. [Si Ruta 1: 'Pasa los specs a tu IA de diseño y vuelve cuando tengas el código.'] [Si Ruta 2: 'El Design System está listo y será codificado en los epics de frontend de la Fase 4.'] ¿Procedemos a la Fase 4 (iterative-build)?"
+> "UX completo. Output en `docs/03-ux-ui/`. [Si Ruta 1: 'Pasa los specs a tu IA de diseño y vuelve cuando tengas el código.'] [Si Ruta 2: 'El Design System está listo y será codificado en los epics de frontend de la Fase 4.'] ¿Procedemos a la Fase 4 (build)?"
 
 Wait for the user. Do not auto-route.

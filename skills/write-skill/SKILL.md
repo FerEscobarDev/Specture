@@ -1,6 +1,6 @@
 ---
-name: transversal-writing-skills
-description: Use when the user wants to create a new VibeCoding skill, modify an existing one, write a custom agent, or extend the framework. Enforces TDD-for-documentation: every skill must be tested with pressure scenarios before it ships.
+name: write-skill
+description: Use when the user wants to create a new Specture skill, modify an existing one, write a custom agent, or extend the framework. Enforces TDD-for-documentation: every skill must be tested with pressure scenarios before it ships.
 ---
 
 # Transversal — Writing Skills
@@ -13,7 +13,7 @@ A skill is documentation that **changes how an AI behaves**. It is code in the s
 
 ## Required Background
 
-You MUST be familiar with `transversal-verification.md` and the testing discipline it imposes. The same discipline applies to documentation.
+You MUST be familiar with `skills/verify/SKILL.md` and the testing discipline it imposes. The same discipline applies to documentation.
 
 ## The Iron Law
 
@@ -47,21 +47,28 @@ Create a skill when:
 Do NOT create a skill for:
 - One-off solutions.
 - Standard practices already documented elsewhere.
-- Project-specific conventions (those go in `.vibecoding/conventions.md`).
+- Project-specific conventions (those go in `.specture/conventions.md`).
 - Mechanical constraints (if a regex or validation can enforce it, automate it instead).
 
 ## Skill File Structure
 
-VibeCoding skills live in `$VIBECODING_ROOT/skills/`. Naming convention:
+Specture skills live in `$SPECTURE_ROOT/skills/`. Each skill is a directory:
 
-- Phase skills: `NN-semantic-name.md` (e.g. `01-discovery.md`).
-- Transversal skills: `transversal-<purpose>.md`.
+```
+skills/
+└── <semantic-name>/
+    └── SKILL.md          # main skill file
+```
+
+Examples:
+- Phase skills: `discover/SKILL.md`, `architecture/SKILL.md`, `build/SKILL.md`
+- Transversal skills: `debug/SKILL.md`, `verify/SKILL.md`, `new-feature/SKILL.md`
 
 ### Mandatory frontmatter
 
 ```yaml
 ---
-name: <kebab-case-name-matching-filename>
+name: <kebab-case-semantic-name>
 description: Use when [specific triggering conditions] — symptoms, user phrases, file states. Do not summarize the workflow. (Spanish phrases the user might say are welcome here.)
 ---
 ```
@@ -107,7 +114,7 @@ Table of rationalizations agents use to skip the discipline, with counters.
 Checklist: what must be true before you can leave this skill.
 ```
 
-## Language Rules in VibeCoding Skills
+## Language Rules in Specture Skills
 
 - **Skill body**: English (multi-model compatibility, CSO works better with English keywords, future-proof).
 - **User-facing messages produced BY the skill**: Spanish (this is the user's preference).
@@ -145,12 +152,12 @@ Even without a formal test harness, you can manually pressure-test a skill:
 - ❌ Generic step labels (`step1`, `helper2`) — labels must mean something
 - ❌ Narrative storytelling ("In session 2025-X-Y we found…") — skills are reusable references, not war stories
 - ❌ Frontmatter `description` that explains workflow (CSO killer)
-- ❌ Hardcoded absolute paths (use `$VIBECODING_ROOT` or relative)
+- ❌ Hardcoded absolute paths (use `$SPECTURE_ROOT` or relative)
 
 ## After Writing a Skill
 
 1. Test it (manually if not automated).
-2. Add a pointer in `00-using-vibecoding.md` if it's a transversal that needs routing.
+2. Add a pointer in `skills/start/SKILL.md` if it's a transversal that needs routing.
 3. Commit with a message describing what behavior the skill enforces.
 4. Update `README.md` if it changes the framework's surface area.
 

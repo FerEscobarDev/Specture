@@ -1,11 +1,11 @@
 ---
-name: 00-setup-and-detect
-description: Use when the user says "configura el proyecto", "setup", "instala VibeCoding", "ajusta las reglas", or when `.vibecoding/stack.yml` does not exist in the project root. Initializes the VibeCoding configuration in three modes (bootstrap for empty projects, adopt for existing codebases, reconfigure for already-set-up projects).
+name: setup
+description: Use when the user says "configura el proyecto", "setup", "instala Specture", "ajusta las reglas", or when `.specture/stack.yml` does not exist in the project root. Initializes the Specture configuration in three modes (bootstrap for empty projects, adopt for existing codebases, reconfigure for already-set-up projects).
 ---
 
-# 00 — Setup & Detect
+# Setup & Detect
 
-You are a Solution Architect configuring VibeCoding for the user's project. Your output is the `.vibecoding/` configuration directory + a `CLAUDE.md` in the user's project root that imports VibeCoding.
+You are a Solution Architect configuring Specture for the user's project. Your output is the `.specture/` configuration directory + a `CLAUDE.md` in the user's project root that imports Specture.
 
 You operate in one of **three modes**. Detect which one applies before doing anything else.
 
@@ -15,9 +15,9 @@ Inspect the user's project directory:
 
 | Condition | Mode |
 |-----------|------|
-| `.vibecoding/stack.yml` does NOT exist AND project directory is empty (or only has `.git/`, `README.md`, `LICENSE`, `.gitignore`) | **Bootstrap** |
-| `.vibecoding/stack.yml` does NOT exist AND project has source files (`package.json`, `*.csproj`, `requirements.txt`, `go.mod`, `Cargo.toml`, `pom.xml`, etc.) | **Adopt** |
-| `.vibecoding/stack.yml` already exists | **Reconfigure** |
+| `.specture/stack.yml` does NOT exist AND project directory is empty (or only has `.git/`, `README.md`, `LICENSE`, `.gitignore`) | **Bootstrap** |
+| `.specture/stack.yml` does NOT exist AND project has source files (`package.json`, `*.csproj`, `requirements.txt`, `go.mod`, `Cargo.toml`, `pom.xml`, etc.) | **Adopt** |
+| `.specture/stack.yml` already exists | **Reconfigure** |
 
 Announce the detected mode to the user before continuing.
 
@@ -30,7 +30,7 @@ The user is starting from scratch. You will create the configuration through an 
 ### Steps
 
 1. **Greet and explain** (in Spanish):
-   > "Detecté un proyecto nuevo. Voy a hacerte preguntas para configurar VibeCoding. Tus respuestas se guardarán en `.vibecoding/stack.yml` y `.vibecoding/conventions.md` y serán la fuente de verdad para todas las fases."
+   > "Detecté un proyecto nuevo. Voy a hacerte preguntas para configurar Specture. Tus respuestas se guardarán en `.specture/stack.yml` y `.specture/conventions.md` y serán la fuente de verdad para todas las fases."
 
 2. **Ask in groups of 2-3 questions** (never more at once). Suggested order:
    - Tipo de proyecto y propósito en una línea.
@@ -45,34 +45,34 @@ The user is starting from scratch. You will create the configuration through an 
    - Solo frontend declarado pero pidiendo configurar database.
    - DDD declarado para un proyecto CRUD trivial → preguntar si realmente lo necesita (YAGNI).
 
-4. **Generate the configuration files** by populating these templates from `$VIBECODING_ROOT`:
-   - `templates/project-config/stack.template.yml` → `.vibecoding/stack.yml`
-   - `templates/project-config/conventions.template.md` → `.vibecoding/conventions.md`
-   - `templates/project-config/decisions/000-template.md` → `.vibecoding/decisions/001-initial-stack.md` (registra la decisión inicial del stack)
+4. **Generate the configuration files** by populating these templates from `$SPECTURE_ROOT`:
+   - `templates/project-config/stack.template.yml` → `.specture/stack.yml`
+   - `templates/project-config/conventions.template.md` → `.specture/conventions.md`
+   - `templates/project-config/decisions/000-template.md` → `.specture/decisions/001-initial-stack.md` (registra la decisión inicial del stack)
 
 5. **Generate the project's `CLAUDE.md`** in the user project root:
 
    ```markdown
    # [Project Name]
 
-   This project uses **VibeCoding** as its AI-assisted development methodology.
+   This project uses **Specture** as its AI-assisted development methodology.
 
-   @$VIBECODING_ROOT/CLAUDE.md
+   @$SPECTURE_ROOT/CLAUDE.md
 
-   The project-specific configuration lives in `.vibecoding/`:
+   The project-specific configuration lives in `.specture/`:
    - `stack.yml` — technical stack (single source of truth)
    - `conventions.md` — naming, patterns, code style
    - `decisions/` — Architecture Decision Records
 
-   When working on this project, always start by invoking the VibeCoding entry point.
+   When working on this project, always start by invoking the Specture entry point.
    ```
 
-6. **Confirm `$VIBECODING_ROOT` is set**:
-   > "Necesito confirmar que tienes la variable `$VIBECODING_ROOT` apuntando al repositorio de VibeCoding. ¿Está configurada en tu shell?"
-   - Si no: explica cómo configurarla en Windows (`setx VIBECODING_ROOT "C:\ruta\a\VibeCoding"`), Mac/Linux (`export VIBECODING_ROOT=...` en `.zshrc`/`.bashrc`).
+6. **Confirm `$SPECTURE_ROOT` is set** (only needed for @import manual setup; plugin users can skip):
+   > "Si estás usando el plugin de Specture, no necesitas esta variable. Si usas la instalación manual, necesito confirmar que tienes `$SPECTURE_ROOT` apuntando al repositorio de Specture. ¿Está configurada?"
+   - Si no: explica cómo configurarla en Windows (`setx SPECTURE_ROOT "C:\ruta\a\Specture"`), Mac/Linux (`export SPECTURE_ROOT=...` en `.zshrc`/`.bashrc`).
 
 7. **Suggest next step**:
-   > "Setup completo. Ahora puedes pasar a la Fase 1 (`01-discovery`) para levantar requerimientos, o decirme 'continuemos' y te enrutaré automáticamente."
+   > "Setup completo. Ahora puedes pasar a la Fase 1 (`discover`) para levantar requerimientos, o decirme 'continuemos' y te enrutaré automáticamente."
 
 ---
 
@@ -83,7 +83,7 @@ The user has an existing codebase. You will **detect** the stack from files and 
 ### Steps
 
 1. **Greet and explain**:
-   > "Detecté un proyecto existente con código. Voy a analizarlo para proponerte una configuración VibeCoding. Después la valides o la corrijas."
+   > "Detecté un proyecto existente con código. Voy a analizarlo para proponerte una configuración Specture. Después la valides o la corrijas."
 
 2. **Detection scan** — read these files if they exist (use Glob/Read tools):
 
@@ -132,18 +132,18 @@ The user has an existing codebase. You will **detect** the stack from files and 
 8. **Write all files** and generate the project `CLAUDE.md` (same as Bootstrap step 5).
 
 9. **Suggest next step**:
-   - If the project already has features: offer to either (a) continue building with VibeCoding for new features (`transversal-new-feature`), or (b) audit the existing code (full code review against the inferred conventions).
-   - If the project is just scaffolding: offer to go to `01-discovery` to formalize requirements.
+   - If the project already has features: offer to either (a) continue building with Specture for new features (`transversal-new-feature`), or (b) audit the existing code (full code review against the inferred conventions).
+   - If the project is just scaffolding: offer to go to `discover` to formalize requirements.
 
 ---
 
 ## Mode C — Reconfigure (already set up)
 
-The user already has `.vibecoding/`. They want to update something.
+The user already has `.specture/`. They want to update something.
 
 ### Steps
 
-1. **Read the current `.vibecoding/`** completely (stack.yml, conventions.md, all decisions).
+1. **Read the current `.specture/`** completely (stack.yml, conventions.md, all decisions).
 
 2. **Ask what they want to change**:
    - Stack (e.g. switching from REST to GraphQL, adding Redis, swapping ORM)?
@@ -159,7 +159,7 @@ The user already has `.vibecoding/`. They want to update something.
 
 5. **Notify of cascading impacts**:
    > "Este cambio afecta los siguientes documentos: [docs/02-architecture/architecture.md, ROADMAP.md]. ¿Quieres que también los actualice?"
-   - If yes, route to the appropriate skill (e.g. `02-architecture-and-plan` for arch changes).
+   - If yes, route to the appropriate skill (e.g. `architecture` for arch changes).
 
 ---
 
@@ -167,15 +167,15 @@ The user already has `.vibecoding/`. They want to update something.
 
 Before reporting setup complete, confirm:
 
-- [ ] `.vibecoding/stack.yml` exists and is valid YAML.
-- [ ] `.vibecoding/conventions.md` exists and has all sections filled (no remaining `[placeholder]` text).
-- [ ] At least one ADR exists in `.vibecoding/decisions/`.
-- [ ] User project's root `CLAUDE.md` exists and references `$VIBECODING_ROOT/CLAUDE.md`.
-- [ ] `$VIBECODING_ROOT` is set in the user's environment (or the user has been told how to set it).
+- [ ] `.specture/stack.yml` exists and is valid YAML.
+- [ ] `.specture/conventions.md` exists and has all sections filled (no remaining `[placeholder]` text).
+- [ ] At least one ADR exists in `.specture/decisions/`.
+- [ ] User project's root `CLAUDE.md` exists and references `$SPECTURE_ROOT/CLAUDE.md` (or user has Specture plugin installed).
+- [ ] `$SPECTURE_ROOT` is set in the user's environment (or user confirmed using the plugin).
 
-If any check fails, fix it before announcing completion. Do not claim "setup done" if any item is unchecked — see `transversal-verification.md`.
+If any check fails, fix it before announcing completion. Do not claim "setup done" if any item is unchecked — see `skills/verify/SKILL.md`.
 
 ## After Setup
 
 Announce in Spanish:
-> "Setup completo. Resumen: [una línea con el stack detectado/elegido]. ¿Quieres que pase a `01-discovery` ahora o prefieres revisar la configuración antes?"
+> "Setup completo. Resumen: [una línea con el stack detectado/elegido]. ¿Quieres que pase a `discover` ahora o prefieres revisar la configuración antes?"
