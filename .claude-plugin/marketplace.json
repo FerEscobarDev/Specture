@@ -9,7 +9,7 @@
   "plugins": [
     {
       "name": "specture",
-      "source": ".",
+      "source": "./",
       "description": "Spec-Driven Development framework for AI-assisted software development. 5 phases + 4 transversal skills, 4 restricted-context agents, zero code without a spec.",
       "author": {
         "name": "Fernando Escobar",
