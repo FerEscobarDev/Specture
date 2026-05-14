@@ -1,0 +1,25 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "specture",
+  "description": "The Specture marketplace — SDD framework for AI-assisted software development",
+  "owner": {
+    "name": "Fernando Escobar",
+    "email": "keishmen17@gmail.com"
+  },
+  "plugins": [
+    {
+      "name": "specture",
+      "source": ".",
+      "description": "Spec-Driven Development framework for AI-assisted software development. 5 phases + 4 transversal skills, 4 restricted-context agents, zero code without a spec.",
+      "author": {
+        "name": "Fernando Escobar",
+        "email": "keishmen17@gmail.com"
+      },
+      "homepage": "https://github.com/FerEscobarDev/Specture",
+      "repository": "https://github.com/FerEscobarDev/Specture",
+      "license": "MIT",
+      "category": "development",
+      "tags": ["sdd", "spec-driven", "tdd", "methodology", "framework", "scaffolding", "ai-assisted"]
+    }
+  ]
+}

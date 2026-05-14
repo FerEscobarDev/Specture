@@ -224,4 +224,4 @@ Specture está en desarrollo activo. Para decisiones arquitectónicas internas, 
 
 ## Licencia
 
-Por definir.
+MIT — ver [LICENSE](LICENSE).
