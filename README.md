@@ -90,6 +90,150 @@ Specture **no** especializa por capa técnica (no hay "Frontend Agent" ni "Backe
 
 ---
 
+## Referencia de Comandos y Agentes
+
+### Slash Commands (`/specture:*`)
+
+#### `/specture:start`
+**Router principal del framework.** Úsalo al iniciar cualquier conversación o cuando no estés seguro de en qué fase está el proyecto. Inspecciona el filesystem (no el historial de chat) para detectar el estado actual y redirige automáticamente al skill correcto. Es una máquina de estados: si falta `.specture/stack.yml` → enruta a `setup`; si falta `business_requirements.md` → a `discover`; si falta el `ROADMAP.md` → a `architecture`; si hay epics pendientes → a `build`.
+
+> Úsalo cuando digas "continuemos", "sigamos con el roadmap", o al empezar una sesión nueva.
+
+---
+
+#### `/specture:setup`
+**Configura Specture en el proyecto destino.** Opera en tres modos que detecta automáticamente:
+- **Bootstrap** — proyecto vacío: guía un wizard interactivo para definir el stack, naming conventions y primer ADR.
+- **Adopt** — proyecto existente con código: lee la estructura actual, infiere el stack, y propone una configuración `.specture/` sin romper nada.
+- **Reconfigure** — ya tiene `.specture/`: actualiza stack, conventions o decisiones archivadas.
+
+Output: directorio `.specture/` con `stack.yml`, `conventions.md`, `decisions/` + `CLAUDE.md` en el proyecto.
+
+> Úsalo cuando digas "configura el proyecto", "setup", "ajusta las reglas", o cuando `.specture/stack.yml` no existe.
+
+---
+
+#### `/specture:discover`
+**Levantamiento socrático de requerimientos de negocio.** Actúa como Product Architect + Business Analyst. NO habla de tecnología — si el usuario intenta hablar de frameworks, lo redirige. Extrae actores, user stories, reglas de negocio, edge cases y scope mediante preguntas en lotes de 3-5, esperando respuesta antes de seguir.
+
+Output: `docs/01-requirements/business_requirements.md` con reglas verificables y actores definidos.
+
+> Úsalo cuando digas "inicia el proyecto", "levanta los requerimientos", "definamos el negocio".
+
+---
+
+#### `/specture:architecture`
+**Diseña la arquitectura técnica y genera el ROADMAP.** Fusiona dos responsabilidades en una: produce `architecture.md` basado en el stack declarado en `stack.yml` (nunca inventa tecnología), y luego convierte esa arquitectura + los requerimientos en un `ROADMAP.md` de milestones y epics con dependencias explícitas. Valida el documento con el agente `architecture-validator` antes de finalizarlo.
+
+Output: `docs/02-architecture/architecture.md` + `docs/04-roadmap/ROADMAP.md`.
+
+> Úsalo cuando digas "diseñemos la arquitectura", "generemos el roadmap", o cuando `ROADMAP.md` no existe.
+
+---
+
+#### `/specture:ux-design`
+**Define UX e información arquitectónica antes de escribir UI.** Solo se activa si el proyecto tiene frontend declarado en `stack.yml`. Ofrece dos rutas:
+- **Ruta 1 (Delegada)** — genera specs para una IA de diseño externa (v0, Lovable, Figma AI): produce el brief de marca, restricciones y mapa de navegación.
+- **Ruta 2 (Full Specture)** — construye el Design System internamente: tokens de color, tipografía, spacing, componentes base con variantes/estados/accesibilidad.
+
+No produce código en esta fase — solo especificación en Markdown.
+
+Output: `docs/03-ux-ui/navigation_map.md` + (Ruta 2) `docs/03-ux-ui/design_system.md`.
+
+> Úsalo cuando el frontend esté declarado y `docs/03-ux-ui/` no exista.
+
+---
+
+#### `/specture:build`
+**Orquesta el loop de construcción spec → test → código → review por epic.** Es el skill más denso: toma el próximo epic del ROADMAP, genera su spec, lo despacha al `architecture-validator`, luego al `tdd-test-writer` (RED commit), luego al `implementer` (GREEN), y finalmente al `code-reviewer`. Cada agente recibe solo el contexto que necesita. Incluye un **TDD Honesty Gate** que verifica con `git diff` que el implementer no modificó los tests. Marca el epic como `[x]` solo cuando el reviewer aprueba y los tests pasan.
+
+Output: código implementado, testeado, revisado, y ROADMAP actualizado.
+
+> Úsalo cuando digas "construyamos", "implementemos el siguiente epic", o cuando el ROADMAP tenga epics `[ ]`.
+
+---
+
+#### `/specture:debug`
+**Debug sistemático con causa raíz obligatoria.** Se activa ante cualquiera de estos triggers: un test falla por segunda vez, el build se rompe, el `code-reviewer` devuelve `REJECTED_MAJOR`, el `implementer` reporta `BLOCKED`, o el usuario reporta un bug. Prohíbe fixes sin investigación previa. Obliga a escribir un `DEBUG_LOG.md` con síntoma, hipótesis, experimentos y causa raíz confirmada antes de proponer cualquier solución.
+
+> Úsalo ante cualquier fallo que no se resuelve con el primer intento.
+
+---
+
+#### `/specture:new-feature`
+**Integra una funcionalidad nueva que no estaba en el ROADMAP original.** Realiza un mini-discovery socrático scopeado a la nueva feature, luego ejecuta un **Impact Ripple Analysis** — analiza qué specs existentes se ven afectados por la nueva feature, qué contratos cambian, qué tests pueden romperse. Agrega el nuevo milestone/epic al ROADMAP con dependencias explícitas y enruta al build loop.
+
+> Úsalo cuando digas "quiero agregar X", "necesito una nueva funcionalidad", "ahora también queremos…".
+
+---
+
+#### `/specture:verify`
+**Gate de verificación antes de cualquier claim de "completado".** Implementa la regla: evidencia antes que afirmaciones. Antes de commitear, crear un PR, o marcar un epic como `[x]`, identifica el comando de verificación relevante (tests, lint, build, type-check), lo ejecuta en el turno actual, lee el output completo, y solo entonces emite el veredicto. No acepta output cacheado ni asume que algo "debería pasar".
+
+> Úsalo antes de cualquier "listo", "completado", "pasan los tests", "fixed".
+
+---
+
+#### `/specture:write-skill`
+**Crea o modifica skills y agentes del framework.** Trata a los skills como código: impone TDD para documentación — primero observa cómo Claude falla sin el skill (baseline), luego escribe el skill para corregir ese comportamiento, luego verifica que el comportamiento cambió. Nunca escribe el skill antes de ver el fallo que debe corregir. Aplica las convenciones CSO (`description: Use when...`) y el formato de frontmatter correcto.
+
+> Úsalo cuando quieras crear nuevos skills o modificar el comportamiento del framework.
+
+---
+
+### Agentes
+
+Los agentes de Specture son subagentes con **contexto restringido** — cada uno recibe exactamente los archivos que necesita, no la conversación completa. Esto previene drift y alucinación acumulada.
+
+---
+
+#### `specture-router`
+**Orquestador principal del framework (se activa automáticamente).** Cuando el plugin está activo, este agente intercepta toda conversación en un proyecto Specture e invoca `skills/start/SKILL.md` antes de hacer cualquier otra cosa. Garantiza que el framework siempre opere desde el estado real del filesystem, no desde suposiciones del historial de chat.
+
+- **Se activa:** automáticamente con el plugin habilitado, o manualmente con `/specture:start`.
+- **No escribe código** — solo enruta.
+
+---
+
+#### `architecture-validator`
+**Revisor independiente de conformidad arquitectónica.** Recibe un documento (plan, spec, o architecture.md) y lo compara contra `.specture/stack.yml`, `conventions.md`, y todos los ADRs aceptados. Devuelve `APPROVED` o `REJECTED` con las violaciones específicas (tecnología no declarada en stack, patrón prohibido, ADR ignorado, naming incorrecto).
+
+- **Contexto que recibe:** documento candidato + `.specture/` completo.
+- **Contexto que NO recibe:** código de implementación.
+- **Output:** `APPROVED` | `REJECTED — [violaciones]` | `BLOCKED — missing input: [qué]`
+- **Modelo:** Opus (razonamiento de alta precisión).
+
+---
+
+#### `tdd-test-writer`
+**Especialista en fase RED del ciclo TDD.** Traduce un `.spec.md` a tests que fallan. La restricción crítica es que **nunca ve el código de implementación** — si lo recibe, rechaza el contexto activamente. Tests escritos mirando la implementación testean lo que el código hace, no lo que el negocio requiere.
+
+- **Contexto que recibe:** spec validado + business rules + stack (testing framework) + conventions (sección testing) + fixtures existentes (no código de producción).
+- **Contexto que NO recibe:** archivos de implementación (anti-bias crítico).
+- **Output:** archivos de test que fallan al ejecutarse (RED commit).
+- **Modelo:** Sonnet.
+
+---
+
+#### `implementer`
+**Ingeniero de implementación con contexto mínimo.** Recibe el spec, los tests fallando, y los archivos fuente relevantes (solo los que debe tocar). Escribe el código mínimo para hacer pasar los tests. Tiene prohibido modificar, saltar, o debilitar los tests recibidos — el **TDD Honesty Gate** del build loop verifica esto con `git diff`. Si algo falta para proceder, responde `NEEDS_CONTEXT` en lugar de inventar.
+
+- **Contexto que recibe:** spec + tests (RED) + archivos fuente a modificar + `.specture/`.
+- **Contexto que NO recibe:** la conversación entera, archivos no relacionados.
+- **Output:** código que hace pasar los tests, sin modificar los tests.
+- **Modelo:** Sonnet.
+
+---
+
+#### `code-reviewer`
+**Staff Engineer + Lead Reviewer en un solo pase.** Revisa el código implementado en tres dimensiones simultáneas: (1) conformidad con el spec, (2) conformidad con la arquitectura y ADRs, (3) calidad del código (naming, patrones, dead code, seguridad). No modifica código — produce un reporte estructurado.
+
+- **Contexto que recibe:** diff del implementer + spec + `.specture/` + output de tests + sección relevante de `architecture.md`.
+- **Output:** `APPROVED` | `REJECTED_MINOR — [lista de fixes]` | `REJECTED_MAJOR — [razón crítica]`.
+- **Modelo:** Opus (máxima precisión en review).
+
+---
+
 ## Configuración por Proyecto
 
 Cada proyecto que use Specture tiene una carpeta `.specture/`:
