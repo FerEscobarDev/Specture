@@ -33,7 +33,8 @@ $SPECTURE_ROOT/
 │   ├── debug/SKILL.md
 │   ├── new-feature/SKILL.md
 │   ├── verify/SKILL.md
-│   └── write-skill/SKILL.md
+│   ├── write-skill/SKILL.md
+│   └── modernize/SKILL.md
 ├── agents/
 │   ├── specture-router/AGENT.md       # Orquestador principal (reemplaza CLAUDE.md)
 │   ├── architecture-validator/AGENT.md  # Valida planes contra .specture/
@@ -74,6 +75,7 @@ $SPECTURE_ROOT/
 | `new-feature` | `/specture:new-feature` | Usuario pide funcionalidad fuera del ROADMAP original |
 | `verify` | `/specture:verify` | Antes de cualquier "completado", "fixed", "passing" |
 | `write-skill` | `/specture:write-skill` | Crear o modificar skills del framework |
+| `modernize` | `/specture:modernize` | Subir versión de una tecnología o migrar a otro stack |
 
 ---
 
@@ -178,6 +180,25 @@ Output: código implementado, testeado, revisado, y ROADMAP actualizado.
 **Crea o modifica skills y agentes del framework.** Trata a los skills como código: impone TDD para documentación — primero observa cómo Claude falla sin el skill (baseline), luego escribe el skill para corregir ese comportamiento, luego verifica que el comportamiento cambió. Nunca escribe el skill antes de ver el fallo que debe corregir. Aplica las convenciones CSO (`description: Use when...`) y el formato de frontmatter correcto.
 
 > Úsalo cuando quieras crear nuevos skills o modificar el comportamiento del framework.
+
+---
+
+#### `/specture:modernize`
+**Modernización tecnológica incremental con red de seguridad.** Cubre dos casos: (1) **Version Upgrade** — misma tecnología, versión mayor (.NET 8 → 10, Angular 6 → 20, Node 18 → 22); (2) **Tech Migration** — cambio de tecnología con función equivalente (AngularJS → React, Express → NestJS, Vue 2 → Vue 3).
+
+Flujo en 8 pasos:
+1. **Discovery** — detecta tipo de migración y confirma con el usuario.
+2. **Gap Analysis** — documenta breaking changes, APIs deprecadas, mapa de equivalencias, impacto por módulo. Validado por `architecture-validator`.
+3. **Migration Strategy** — siempre Strangler Fig (nunca Big Bang); ordena módulos de inside-out; define seams de coexistencia.
+4. **stack.yml + ADR** — agrega sección `migration:` al stack.yml y crea ADR de decisión.
+5. **Characterization Tests** ← **GATE OBLIGATORIO** — despacha `tdd-test-writer` con brief especial para documentar el comportamiento actual. Todos deben pasar en el stack viejo. Commit → captura `CHARACTERIZATION_SHA`.
+6. **Migration ROADMAP** — agrega milestone "Migration: Source → Target" al `ROADMAP.md` con un epic por módulo + cleanup epic al final.
+7. **Execution per-epic** — mismo loop de 9 pasos que `/specture:build`, con `MIGRATION_SPEC_TEMPLATE.md`, contexto adicional de gap analysis, y una dimensión extra en el code review: "no mixed tech debt" dentro del módulo migrado.
+8. **Completion Gate** — suite completa en nuevo stack, cleanup epic, eliminación de la sección `migration:` del stack.yml.
+
+Output: `docs/migration/gap_analysis.md` + milestone de migración en `ROADMAP.md` + código migrado módulo a módulo + ADR de cierre.
+
+> Úsalo cuando digas "migra a X", "sube la versión a Y", "moderniza el stack", "quiero pasar de A a B".
 
 ---
 
