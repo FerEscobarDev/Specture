@@ -362,6 +362,7 @@ Al iniciar una conversación en ese directorio, Claude leerá el `CLAUDE.md` y c
 - *"Hay un bug en X"* → `/specture:debug`
 - *"Quiero agregar Y"* → `/specture:new-feature`
 - *"Reconfigura el stack"* → `/specture:setup` modo reconfigure
+- *"Migra a X"* / *"Sube la versión a Y"* / *"Moderniza el stack"* / *"Quiero pasar de A a B"* → `/specture:modernize`
 
 ---
 
