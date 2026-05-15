@@ -50,6 +50,8 @@ The user is starting from scratch. You will create the configuration through an 
    - `templates/project-config/conventions.template.md` → `.specture/conventions.md`
    - `templates/project-config/decisions/000-template.md` → `.specture/decisions/001-initial-stack.md` (registra la decisión inicial del stack)
 
+4.5. **Add `.specture/state/` to `.gitignore`**. This directory holds runtime state used by Specture hooks (e.g. `build-locked.json`). It must never be committed. If a `.gitignore` does not exist, create one. If it exists and already ignores `.specture/state/`, skip.
+
 5. **Generate the project's `CLAUDE.md`** in the user project root:
 
    ```markdown
@@ -129,7 +131,7 @@ The user has an existing codebase. You will **detect** the stack from files and 
    - Any technical debt or inconsistency observed (e.g. "mix of camelCase and snake_case in test files — recommend standardizing on camelCase").
    - Status: `Accepted`.
 
-8. **Write all files** and generate the project `CLAUDE.md` (same as Bootstrap step 5).
+8. **Write all files** and generate the project `CLAUDE.md` (same as Bootstrap step 5). Also ensure `.specture/state/` is listed in `.gitignore` (same rule as Bootstrap step 4.5).
 
 9. **Suggest next step**:
    - If the project already has features: offer to either (a) continue building with Specture for new features (`transversal-new-feature`), or (b) audit the existing code (full code review against the inferred conventions).

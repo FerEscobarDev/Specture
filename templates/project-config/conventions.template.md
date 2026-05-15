@@ -72,3 +72,12 @@
 
 - [Regla 1]
 - [Regla 2]
+
+## 10. Specture / Claude Code Integration
+
+> Toggles opt-in para las capacidades nativas de Claude Code que Specture integra. Por defecto todos quedan en `false`: Specture funciona como en v1.1.0 (skill-based, sin hooks, sin MCP externo). Activá lo que quieras usar.
+
+- **hooks.enabled**: [true | false]      # activa el SessionStart hook (auto-routing) y el TDD Honesty Gate (bloqueo mecánico de edits a tests durante GREEN)
+- **context7.enabled**: [true | false]   # permite consultas a Context7 MCP en code-reviewer (Dimension 5: stack idiomaticity) y en modernize (gap analysis con docs vivas)
+
+Cuando `hooks.enabled: false`, los scripts del plugin se cargan pero retornan sin actuar. Cuando `context7.enabled: false`, los agentes/skills que lo consultarían omiten esa fuente y marcan secciones afectadas como "needs manual verification" si aplica.
