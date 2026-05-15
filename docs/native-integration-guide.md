@@ -83,6 +83,8 @@ Ver `hooks/README.md` — tabla de síntomas y causas. Los más comunes:
 
 ## 4. TaskCreate en el build loop
 
+> **Nota v1.3.0 (Prompt Optimization):** desde v1.3.0 el spec usa un template con slots obligatorios (IDs estables, tabla de contrato, "Fuera de Scope", "Superficie de Código Existente"). Antes de despachar `tdd-test-writer` o `implementer`, el orquestador ensambla un **Dispatch Manifest**; el agente lo valida como su Step 0 y devuelve `NEEDS_CONTEXT` en el turno 1 si algún slot falta — el spec incompleto se rechaza **antes** de gastar un ciclo de agente, no a mitad del trabajo. Esto reduce la latencia de creación de tests e implementación. Ver `docs/prompt-optimization-report.md`.
+
 ### 4.1 Mapeo de los 9 pasos a estados visibles
 
 Cuando `/specture:build` empieza un epic, el orchestrator crea una task por cada spec del epic (1–3 typically). Cada task progresa por estos `activeForm`:

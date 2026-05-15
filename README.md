@@ -428,6 +428,21 @@ Specture está en desarrollo activo. Para decisiones arquitectónicas internas, 
 
 ## Changelog
 
+### v1.3.0 — Prompt Optimization
+
+**Motivación:** reducir la latencia de creación de tests e implementación. El análisis (`docs/prompt-optimization-report.md`) determinó que el cuello de botella estaba aguas arriba — en el spec pobre y la falta de un gate de contexto — no en los agentes.
+
+**Cambios:**
+- `SPEC_TEMPLATE.md` reescrito: secciones con IDs estables (`AC-1`, `BR-1`, `EC-1`), tabla de contrato machine-readable, "Fuera de Scope" explícito y "Superficie de Código Existente" con firmas exactas. Prosa de negocio en español; identificadores en el idioma de `conventions.md` §8.
+- **Dispatch Manifest** (pre-flight dual): el orquestador ensambla un manifest antes de despachar; `tdd-test-writer` e `implementer` lo validan como Step 0 y devuelven `NEEDS_CONTEXT` en el turno 1 si falta algo — elimina los round-trips caros de trabajo parcial.
+- **Cota de proporcionalidad de tests** en `tdd-test-writer`: ~1 test por AC/BR/EC, sin matrices combinatorias. El bloat de tests era multiplicador directo del tiempo de GREEN.
+- **Exemplars few-shot** (pseudo-estructura agnóstica) en `tdd-test-writer` e `implementer`, mismo mini-spec en ambos para continuidad del patrón.
+- `COVERAGE_MAP` dirigido por IDs (subproducto determinístico, no segunda pasada). Frontera de ejecución de tests determinizada (el test-writer siempre corre, sin negociación). Firmas pasadas en el dispatch del implementer (sin re-explorar la API).
+
+**Impacto en `/specture:build`:** los specs son más estructurados y la generación en Step 2 es más exigente; un spec incompleto se rechaza en el Manifest antes de gastar un ciclo de agente. Sin nuevos opt-in: aplica a todo proyecto desde v1.3.0.
+
+**Archivos nuevos:** `docs/prompt-optimization-report.md`.
+
 ### v1.2.0 — Native Claude Code Integration
 
 **Nuevas capacidades (opt-in):**
