@@ -280,6 +280,44 @@ Cada proyecto que use Specture tiene una carpeta `.specture/`:
 
 ---
 
+## Native Claude Code Integration (v1.2.0)
+
+Specture v1.2.0 integra seis capacidades nativas de Claude Code para convertir las "leyes de hierro" de convención a enforcement mecánico. Todas son **opt-in**: por defecto el plugin se comporta como v1.1.0.
+
+| Capacidad | Función |
+|-----------|---------|
+| Hook `SessionStart` | Recuerda al modelo invocar `start/SKILL.md` al inicio de cada sesión Specture. |
+| Hook `PreToolUse` (TDD Honesty Gate) | Bloquea mecánicamente edits a tests durante GREEN. |
+| `TaskCreate` | Lista en vivo de specs del epic activo durante `/specture:build`. |
+| `Context7` MCP | Docs vigentes para `code-reviewer` (Dimension 5: idiomaticity) y `modernize` (gap analysis). |
+| `Plan mode` | Gate de aprobación antes de tocar código en `debug` y `new-feature`. |
+| Background tasks | Paraleliza review + linter + type-checker en el build loop. |
+
+### Cómo activar
+
+En `.specture/conventions.md` sección 10:
+
+```markdown
+- **hooks.enabled**: true       # activa SessionStart + TDD Honesty Gate
+- **context7.enabled**: true    # activa Context7 en code-reviewer y modernize
+```
+
+Sin esos toggles, los hooks shippean pero no actúan, y Context7 nunca se consulta.
+
+### Lo que vas a ver distinto
+
+- Al abrir Claude Code en un proyecto Specture, el modelo arranca automáticamente con el routing del state machine (no improvisa primer paso).
+- Durante `/specture:build`, una lista visible trackea los specs del epic activo y su progreso por los 9 pasos del loop.
+- Si algún agente intenta modificar un test durante GREEN, la edición se rechaza con un mensaje del TDD Honesty Gate explicando el contrato sellado.
+- Al pedir `/specture:debug` o `/specture:new-feature`, Claude entra automáticamente en Plan mode — el fix o el análisis se aprueba antes de tocar el codebase.
+- En reviews y migraciones, las findings pueden citar APIs vigentes para tu stack consultadas en tiempo real vía Context7.
+
+### Documentación detallada
+
+Ver [`docs/native-integration-guide.md`](docs/native-integration-guide.md) para la guía operativa completa: troubleshooting, edge cases, FAQ.
+
+---
+
 ## Instalación y Uso
 
 ### Opción A — Plugin (recomendado)
@@ -385,6 +423,33 @@ Specture está en desarrollo activo. Para decisiones arquitectónicas internas, 
 
 - [`docs/original-vision.md`](docs/original-vision.md) — Requisitos originales del framework.
 - [`REPORTE_ANALISIS_EXPERTO.md`](REPORTE_ANALISIS_EXPERTO.md) — Análisis comparativo que motivó la reescritura.
+
+---
+
+## Changelog
+
+### v1.2.0 — Native Claude Code Integration
+
+**Nuevas capacidades (opt-in):**
+- Hooks Node.js: `SessionStart` auto-routing, `PreToolUse` TDD Honesty Gate.
+- `TaskCreate`: visibilidad por-spec dentro del build loop.
+- `Context7` MCP: docs vivas para `code-reviewer` (Dimension 5) y `modernize` (gap analysis).
+- `Plan mode`: gate de aprobación automático en `debug` y `new-feature`.
+- Background tasks: paralelismo en review/verify del build loop.
+
+**Hardening del principio de contexto restringido:** los 4 agentes especializados (`architecture-validator`, `tdd-test-writer`, `implementer`, `code-reviewer`) ahora tienen cláusulas anti-memory + anti-context7 explícitas. Solo `code-reviewer` (Dimension 5) y `modernize` pueden usar Context7.
+
+**Activación:** ver sección "Native Claude Code Integration" arriba. Por defecto todo queda inactivo (comportamiento idéntico a v1.1.0).
+
+**Archivos nuevos:** `hooks/`, `docs/native-integration-guide.md`. Sección 10 nueva en `templates/project-config/conventions.template.md`.
+
+### v1.1.0
+
+`/specture:modernize` agregado para migraciones tecnológicas (version upgrade + tech migration) con Strangler Fig y characterization tests obligatorios.
+
+### v1.0.0
+
+Reescritura de VibeCoding como plugin Specture. Stack-agnostic, contexto restringido por agente, TDD Honesty Gate, 5 fases + 4 capacidades transversales.
 
 ---
 
