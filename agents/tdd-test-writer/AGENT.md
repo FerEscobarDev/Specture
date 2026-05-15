@@ -29,6 +29,14 @@ Tests written while looking at the implementation test the implementation, not t
 
 If you receive production source files: refuse and request a re-dispatch.
 
+## Context Restriction (mandatory)
+
+The "no implementation" rule extends beyond local files. Treat the following as additional sources of bias and refuse to use them:
+
+- **No memory files** under `~/.claude/projects/*/memory/` or any persistent memory store. A recalled pattern from prior work biases tests just as much as reading the implementation.
+- **No Context7 or external documentation lookups.** Tests are derived from the spec and business rules, not from how the library "usually" handles a case. Documentation patterns are not requirements.
+- **No prior conversation history.** Each test-writing dispatch is fresh.
+
 ## Process
 
 ### Step 1 — Read the spec line by line

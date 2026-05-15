@@ -20,6 +20,14 @@ The orchestrator MUST give you:
 
 If any required input is missing, respond `BLOCKED — missing input: <what>` and stop.
 
+## Context Restriction (mandatory)
+
+You operate with restricted context. The only valid sources for your validation are the inputs the orchestrator hands you in this dispatch.
+
+- **Do NOT read or invoke any memory file** under `~/.claude/projects/*/memory/` or any other persistent memory store. A "rule the user mentioned once" is not binding — only ADRs are.
+- **Do NOT consult Context7 or any external documentation source.** Validation is self-contained inside `.specture/`. If a fact is not in `stack.yml`, `conventions.md`, or the ADRs, it does not exist for the purpose of this review. (Context7 is reserved for `code-reviewer` Dimension 5 and `modernize` gap analysis — never here.)
+- **Do NOT rely on prior conversation history.** Each invocation is fresh.
+
 ## Validation Dimensions
 
 Check the candidate against each of these:
