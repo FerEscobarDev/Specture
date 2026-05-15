@@ -50,6 +50,17 @@ Announce the detected type before continuing. Ask for confirmation.
 
 Produce `docs/migration/gap_analysis.md` using the structure below. Do NOT propose solutions in this step — only document the gaps.
 
+### Sourcing the facts: Context7 (when available)
+
+Migration knowledge depends on **current** documentation, not on the model's training cutoff. If `context7.enabled: true` in `.specture/conventions.md` AND the Context7 MCP server is reachable in this session, use it as the primary source for:
+
+- **Source stack**: confirm which APIs are deprecated in the declared version range and in what release they are scheduled for removal.
+- **Target stack**: confirm which APIs are vigent in the declared target version, the recommended replacements for deprecated/removed APIs, and the supported package/runtime version matrix.
+
+Resolve each major library/framework ID via Context7 and pull the migration/release-notes docs for the version range that brackets the migration (source version → target version).
+
+**Fallback (graceful)**: if `context7.enabled: false`, or if Context7 fails/times-out for a specific lookup, do NOT abort the gap analysis. Mark the affected rows with the suffix `[needs manual verification]` and continue with the model's best knowledge. The user will see the marker and can fill in the gap before the migration ROADMAP is built.
+
 ### For Version Upgrade
 
 Analyze the official migration/changelog/upgrade guide for the target version. Document per category:
@@ -338,3 +349,13 @@ When all migration epics (except the cleanup epic) are `[x]`:
 | Mix feature development with migration epics | Scope creep; cannot audit what was migration vs new behavior; characterization test regressions become ambiguous |
 | Mark epic `[x]` before characterization tests pass | Creates a false "safe" checkpoint that hides regressions |
 | Write characterization tests that test framework internals | Tests break on migration even when behavior is correct — characterize observable behavior, not implementation |
+
+## What the User Sees Differently with Context7 Active (v1.2.0)
+
+When `context7.enabled: true` in `.specture/conventions.md`, Step 2 (Gap Analysis) sources its facts from current documentation via the Context7 MCP server instead of relying on the model's training cutoff. The user sees:
+
+- More accurate breaking-change lists for the declared target version (including changes shipped after the model's training data).
+- Equivalence maps backed by current target-framework docs.
+- Library-compatibility tables that reflect the actual support matrix at migration time.
+
+When Context7 is unavailable (toggle off, network failure, MCP unreachable), the gap analysis still completes — affected rows are suffixed with `[needs manual verification]` so the user knows where to double-check before approving the migration ROADMAP. No silent fallback to stale knowledge.

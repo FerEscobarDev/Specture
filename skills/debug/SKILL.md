@@ -48,6 +48,8 @@ Invoke immediately on any of these triggers:
 
 ### Phase 3 — Hypothesis & Log (MANDATORY ARTIFACT)
 
+**Before drafting the hypothesis or proposing any fix, enter Plan mode**: invoke `EnterPlanMode`. The plan file is the debug log itself — write the entire log content (raw symptom, Phase 1 findings, Phase 2 findings, hypothesis, proposed minimal fix) into the plan and call `ExitPlanMode` to request user approval. Until the user approves the plan, you cannot run `Edit`, `Write`, or any other non-read tool — Plan mode enforces this mechanically. This converts the Iron Law from convention into a hard system-level gate.
+
 1. **Form ONE hypothesis** in the format: "I think the cause is X because Y."
 2. **Create or update** the debug log file at `docs/06-debug-logs/YYYY-MM-DD-<short-slug>.md` using `templates/DEBUG_LOG_TEMPLATE.md`. The log MUST contain:
    - Exact error / symptom (paste raw).
@@ -55,6 +57,8 @@ Invoke immediately on any of these triggers:
    - Pattern analysis findings from Phase 2.
    - Hypothesis.
    - Proposed minimal fix.
+
+The log file on disk is written **after** the user approves the plan in `ExitPlanMode`. The plan content and the log content are identical — Plan mode just guarantees the user sees and ratifies it before any fix touches the codebase.
 
 **You cannot write any fix code until this log exists.** No exceptions. The log is your commitment device.
 
@@ -117,3 +121,7 @@ You can leave this skill and resume the calling phase only when:
 - [ ] The debug log is committed to `docs/06-debug-logs/`.
 
 If any item is unchecked, you are not done.
+
+## What the User Sees Differently with Plan Mode (v1.2.0)
+
+Phase 3 (Hypothesis & Log) now enters Plan mode automatically. The user gets an explicit aprovecho-or-reject dialog showing the proposed debug log content **before** any fix touches the code. Until the plan is approved, `Edit` and `Write` tools are blocked at the platform level — no "let me just try this real quick" path exists. The on-disk debug log is written only after `ExitPlanMode` returns approval.

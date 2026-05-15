@@ -69,6 +69,25 @@ Before passing the spec to the validator, check:
 - [ ] No code examples present.
 - [ ] Inputs, outputs, error conditions, and side effects all listed.
 
+## Step 2.5 — Create Visible Tasks (TaskCreate)
+
+After the specs for the epic are generated (Step 2), create one `TaskCreate` per spec so the user has live visibility into the loop. Subject format: `<epic-slug> / <task-slug>` with a brief description summarizing what the spec implements. Start each task as `pending`.
+
+The lifecycle of each task mirrors the orchestrator's progress through the remaining steps for that spec:
+
+| Internal step | Task status / `activeForm` |
+|---------------|----------------------------|
+| Step 3 — architecture-validator dispatch | `in_progress` — "validating architecture" |
+| Step 4 — tdd-test-writer dispatch | `in_progress` — "writing tests (RED)" |
+| Step 5 — implementer dispatch | `in_progress` — "implementing (GREEN)" |
+| Step 5.5 — TDD Honesty Gate | `in_progress` — "verifying TDD honesty" |
+| Step 6 — code-reviewer dispatch | `in_progress` — "code review" |
+| Step 7 — verify (fresh test run + lint) | `in_progress` — "running verification" |
+| Step 8 — epic marked [x] | `completed` |
+| Any `REJECTED_MAJOR` / `BLOCKED` | `in_progress` with an `activeForm` that surfaces the blocker (e.g. "blocked: spec ambiguity") |
+
+**Rule of authority**: `ROADMAP.md` is the source of truth across conversations. TaskCreate is **intra-conversation visibility only** — when the user closes the session, the tasks disappear. If ROADMAP and TaskCreate diverge for any reason, ROADMAP wins. Never mark an epic `[x]` in ROADMAP based on TaskCreate state; mark tasks completed only after the ROADMAP update lands.
+
 ## Step 3 — Architecture Validation (mandatory gate)
 
 Dispatch the `architecture-validator` agent (`agents/architecture-validator/AGENT.md`).
@@ -107,6 +126,16 @@ Dispatch the `tdd-test-writer` agent (`agents/tdd-test-writer/AGENT.md`).
    The commit MUST contain only test files (paths matching `conventions.md` test globs). If the commit touches any production code, abort — re-dispatch `tdd-test-writer` with a clear instruction to commit tests in isolation.
 3. **Capture `RED_SHA`** for use in Step 5.5 and Step 6. This is now the immutable reference point for the test contract.
 4. **Capture the test path globs** from `conventions.md` (e.g. `**/*.test.ts`, `tests/**/*.py`). Both Step 5.5 and the code-reviewer need them.
+5. **Seal the test contract via state file** (enables the TDD Honesty Gate hook). Write `.specture/state/build-locked.json`:
+   ```json
+   {
+     "epic": "<epic-slug>",
+     "red_sha": "<RED_SHA>",
+     "test_paths": ["<glob1>", "<glob2>"],
+     "locked_at": "<ISO-8601 timestamp>"
+   }
+   ```
+   If the user opted in to hooks (`hooks.enabled: true` in `.specture/conventions.md`), `hooks/pre-tool-use-tdd-gate.js` will use this file to deny any Edit/Write that targets a sealed test path until the epic is marked complete. The orchestrator-side `git diff` check in Step 5.5 still runs as defense-in-depth.
 
 If any post-check fails, do NOT proceed to Step 5.
 
@@ -164,6 +193,14 @@ Dispatch the `code-reviewer` agent (`agents/code-reviewer/AGENT.md`).
 - `.specture/stack.yml`, `.specture/conventions.md`, all ADRs.
 - The architecture sections relevant to the touched modules.
 
+**Parallelism (wall-clock optimization)**: the `code-reviewer` dispatch is independent of the linter and the type-checker — they all read the diff but produce orthogonal outputs. Launch them concurrently to compress wall-clock:
+
+- The `code-reviewer` dispatch via `Agent` tool.
+- The linter (whatever `conventions.md` / `stack.yml` declares — e.g. `eslint`, `ruff`, `golangci-lint`) via `Bash` with `run_in_background: true`.
+- The type-checker (if applicable — e.g. `tsc --noEmit`, `mypy`, `dotnet build`) via `Bash` with `run_in_background: true`.
+
+Do NOT proceed to Step 7 until all three have reported. Use the `Monitor` tool (or wait-on-completion semantics) to gather the background outputs. If the reviewer needs the linter/type-checker output as evidence for its own findings, attach those once both are available — concurrency saves time but does not weaken any check.
+
 **Expected output**: a structured review at `docs/07-reviews/review-<epic>-<spec>-<date>.md` with status:
 
 - `APPROVED` → proceed to Step 7 (verification).
@@ -190,6 +227,8 @@ Before declaring the spec done:
 [Run linter / type-checker if conventions.md requires]
 ```
 
+**Parallelism**: the fresh test-suite run can be launched via `Bash` with `run_in_background: true` while the orchestrator prepares the `ROADMAP.md` update payload for Step 8. Do NOT commit the ROADMAP update until the background test run has completed and its output has been read in full. The verification gate is non-negotiable; concurrency only reduces wall-clock, never the rigor of the check.
+
 If anything is red, you cannot mark the spec complete. See `skills/verify/SKILL.md` — same iron law applies here.
 
 ## Step 8 — Mark Epic Complete
@@ -198,6 +237,7 @@ After all specs in the epic are APPROVED + verified:
 
 - Update `ROADMAP.md`: change the epic from `[/]` to `[x]`.
 - Commit the ROADMAP update.
+- **Release the test contract**: delete `.specture/state/build-locked.json` if it exists. Without this, the next epic's edits to its own files could be blocked by stale test globs.
 
 ## Step 9 — Context Reset Between Epics
 
@@ -226,3 +266,12 @@ If the user can't reset (or refuses): start the next epic with a hard reminder t
 ## After Loop Completion
 
 If the ROADMAP reaches 100% `[x]`, route back to `skills/start/SKILL.md` which will offer the user options (audit, new feature, finalize).
+
+## What the User Sees Differently with Hooks/Context7 Active (v1.2.0)
+
+When `hooks.enabled: true` and/or `context7.enabled: true` in `.specture/conventions.md`:
+
+- **TaskCreate visible**: every spec of the epic shows up as a live task in the user's view, transitioning through `validating architecture` → `writing tests (RED)` → `implementing (GREEN)` → `code review` → `running verification` → `completed`. Without hooks, only `ROADMAP.md` reflects progress and the user has to read it manually.
+- **TDD Honesty Gate as hard block**: while `.specture/state/build-locked.json` exists, any `Edit`/`Write` against a sealed test path is denied at the platform level — the implementer cannot even start modifying a test. Without the hook, the violation is detected post-mortem via `git diff` in Step 5.5.
+- **Parallel review (Step 6)**: `code-reviewer` runs concurrently with the linter and type-checker. The user sees ~30–50% reduction in wall-clock for Step 6 on large diffs. The rigor of each gate is unchanged.
+- **Context7-backed Dimension 5**: when `context7.enabled: true`, reviews can cite version-specific deprecations from the framework declared in `stack.yml`. Without it, the reviewer skips Dimension 5 and notes it explicitly in the report.

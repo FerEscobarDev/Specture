@@ -33,6 +33,10 @@ Output: a temporary doc `docs/01-requirements/feature-<slug>.md` (or append to a
 
 This is the core differentiator. Before planning the feature, identify ripples through completed work.
 
+**Before producing any analysis output, enter Plan mode**: invoke `EnterPlanMode`. The plan file is the impact analysis itself — write the full structure described below (architecture impact, spec impact, ADR impact, output document) into the plan and call `ExitPlanMode` to request user approval. Until the user approves the plan, you cannot run `Edit`, `Write`, modify `ROADMAP.md`, or create ADRs — Plan mode enforces this mechanically.
+
+This converts Step 3 (User Validation) from "ask politely" into a system-level gate: the user cannot be skipped, the analysis cannot be acted upon before they see it, and the eventual write of `docs/05-specs/_impact-analysis-<feature-slug>.md` happens only after the plan is approved.
+
 ### Architecture impact
 
 For each architectural component in `architecture.md`:
@@ -102,3 +106,7 @@ Hand off to `skills/build/SKILL.md`.
 | Add the feature inline in an existing epic | Impossible to track separately, ROADMAP becomes a lie. |
 | Modify completed specs in-place without trace | Specs are immutable artifacts. If they change, it's a new spec or a deprecation. |
 | Decide architecture changes alone | If the new feature requires architectural change, the user must approve and an ADR must record it. |
+
+## What the User Sees Differently with Plan Mode (v1.2.0)
+
+Step 2 (Impact Ripple Analysis) now enters Plan mode before producing any output. The user gets an explicit approve-or-reject dialog with the full impact analysis (affected components, affected specs, affected ADRs, migration risks). Step 3 (User Validation) becomes a system-level gate instead of a polite question: ROADMAP, architecture and ADRs cannot be modified until `ExitPlanMode` returns approval.
