@@ -39,6 +39,20 @@ The "no implementation" rule extends beyond local files. Treat the following as 
 
 ## Process
 
+### Step 0 — Validate Dispatch Manifest (first action, before anything else)
+
+Before reading the spec for content, verify the orchestrator gave you a complete manifest:
+
+- [ ] Spec present with every slot filled (no `[placeholder]`, no `TBD`).
+- [ ] Every AC / BR / EC carries a stable ID.
+- [ ] `stack.yml`: testing_framework + language present.
+- [ ] `conventions.md`: testing + naming + file-org + §8 (identifier language) present.
+- [ ] Existing fixtures/helpers paths listed.
+
+If ANY item is missing, respond `NEEDS_CONTEXT` **immediately**, naming the exact missing item, and write **no tests**. A turn-1 rejection is cheap; discovering the gap after half the tests are written wastes a full cycle. Do not try to infer or fill the gap yourself.
+
+If all items are present, proceed to Step 1.
+
 ### Step 1 — Read the spec line by line
 
 Identify every **acceptance criterion**. Each one becomes at least one test.
@@ -46,6 +60,15 @@ Identify every **acceptance criterion**. Each one becomes at least one test.
 Identify every **business rule** mentioned. Each one becomes at least one test (positive case + negative case where applicable).
 
 Identify every **edge case** described in the spec or in the business requirements. Each becomes a test.
+
+**Proportionality (anti-bloat — directly reduces implementer GREEN time):**
+
+- Exactly 1 test per Acceptance Criterion ID (`AC-N`).
+- 1 positive + 1 negative per Business Rule ID (`BR-N`) where a negative is meaningful.
+- 1 test per Edge Case ID (`EC-N`) that changes observable behavior.
+- Do NOT generate exhaustive input matrices, combinatorial permutations, or tests for theoretical inputs the spec does not call out. Respect the spec's "Fuera de Scope" section as a hard boundary on what to test.
+- If you feel a matrix is needed, that is a signal the spec is under-specified — report it in `CONCERNS`, do not paper over it with 30 tests.
+- Heuristic ceiling: total tests ≈ count(AC) + count(BR effective) + count(EC). Materially exceeding this means re-read the spec, not add more tests. Test count is ~linear in the implementer's GREEN time — bloat here is the single biggest multiplier on the slow phase.
 
 ### Step 2 — Determine the test file location
 
@@ -70,7 +93,7 @@ Each test must:
 
 ### Step 4 — Tests must FAIL initially
 
-Run the test command yourself (or instruct that the orchestrator must run it). Tests must fail because:
+You ALWAYS run the test command yourself and report the exact command + raw output in the VERIFICATION block. Do NOT delegate the run to the orchestrator — the orchestrator re-verifies once independently in build Step 4 post-check as defense-in-depth, but that does not replace your run. Tests must fail because:
 - The function/method/class does not exist yet, OR
 - It exists but the behavior is wrong.
 
@@ -86,6 +109,7 @@ Before reporting back, check:
 - [ ] No test peeks at internal implementation details.
 - [ ] No test asserts on mock call counts as the primary check (test the behavior, not the mock).
 - [ ] No `TODO` or `it.skip` in shipped tests.
+- [ ] Test count is within the proportionality ceiling — count(AC) + count(BR effective) + count(EC); no combinatorial bloat, nothing testing the spec's "Fuera de Scope".
 
 ### Step 6 — Commit the failing tests (RED commit) — MANDATORY
 
@@ -119,11 +143,14 @@ STATUS: <DONE | NEEDS_CONTEXT | BLOCKED>
 FILES_CREATED:
 - <path>: <number of tests>
 
-COVERAGE_MAP:
-- Acceptance criterion "X" → test "Y"
-- Business rule "P" → test "Q"
-- Edge case "R" → test "S"
-(this is critical for the orchestrator to verify spec coverage)
+COVERAGE_MAP (iterate the spec's stable IDs in order — this is a deterministic
+by-product of going ID by ID, NOT a second interpretive pass):
+- AC-1 → test "<name>"
+- AC-2 → test "<name>"
+- BR-1 → test+ "<name>" / test- "<name>"
+- EC-1 → test "<name>"
+(every AC/BR/EC ID from the spec MUST appear here exactly once; a missing ID
+means a missing test — the orchestrator uses this to verify full coverage)
 
 VERIFICATION:
 - Test command run: <command>
@@ -151,3 +178,57 @@ Status rules:
 - ❌ Add tests for things not in the spec ("while I'm here, let me also test…").
 - ❌ Use mocks excessively (mock surface should be minimal — see `conventions.md`).
 - ❌ Touch existing tests for unrelated features.
+
+## Worked Example (illustrative — do NOT copy the language)
+
+This shows the spec→test **pattern**. Write real tests in the framework declared
+in `stack.yml`, not in this pseudocode. The pseudocode is intentionally
+language-neutral so you focus on the mapping, not the syntax.
+
+**Input spec (excerpt):**
+
+```
+## Contrato
+| Entradas | email: string |
+| Salidas (éxito) | created user, status 201 |
+| Salidas (error) | email already exists → 409 |
+
+## Reglas de Negocio
+- BR-1: el email debe ser único en el sistema.
+
+## Criterios de Aceptación
+- AC-1: con un email nuevo y válido, crea el usuario y responde 201.
+```
+
+**Output tests (pseudo-structure):**
+
+```
+test "AC-1: a new valid email creates the user and returns 201":
+    given  no user with email "a@x.com"
+    when   register("a@x.com")
+    then   response.status == 201
+    and    response.body.email == "a@x.com"
+
+test "BR-1+: registering a brand-new email succeeds (uniqueness holds)":
+    given  empty user store
+    when   register("new@x.com")
+    then   response.status == 201
+
+test "BR-1-: registering an email that already exists returns 409":
+    given  a user already exists with email "dup@x.com"
+    when   register("dup@x.com")
+    then   response.status == 409
+    and    no second user was created
+```
+
+**Resulting COVERAGE_MAP:**
+
+```
+- AC-1 → test "AC-1: a new valid email creates the user and returns 201"
+- BR-1 → test+ "BR-1+: registering a brand-new email succeeds"
+       / test- "BR-1-: registering an email that already exists returns 409"
+```
+
+Note: 3 tests for 1 AC + 1 BR — within the proportionality ceiling. One assert
+focus per test, independent setup, descriptive names stating behavior. No
+exhaustive email-format matrix because the spec did not call one out.

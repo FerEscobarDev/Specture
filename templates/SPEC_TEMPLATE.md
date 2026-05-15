@@ -1,25 +1,38 @@
-# SPEC: [Nombre de la Tarea/Funcionalidad]
+# SPEC: [Nombre] — id: <epic-slug>/<task-slug>
 
-**Epic:** [Referencia al Epic del ROADMAP]
-**Módulo:** [Módulo de la Arquitectura al que pertenece]
+**Epic:** [ref ROADMAP]   **Módulo:** [ref architecture.md]
 
 ## Objetivo
-[Descripción de lo que debe lograr esta implementación, en lenguaje claro y de negocio]
+[2-3 líneas, lenguaje de negocio — español]
 
-## Reglas de Negocio (Business Rules)
-1. [Regla 1: ej. "El correo electrónico debe ser único y validado con formato estándar"]
-2. [Regla 2]
-3. [Regla 3]
+## Fuera de Scope (NO testear, NO implementar)
+- [Lo que explícitamente NO entra en este spec]
 
-## Requerimientos Técnicos
-- **Entradas:** [Formatos esperados, tipos de datos, DTOs (sin código)]
-- **Salidas:** [Formatos devueltos, códigos HTTP, objetos]
-- **Eventos:** [Eventos de dominio que debe emitir, si aplica]
+## Contrato (machine-readable — identificadores en el idioma de conventions.md §8)
+| Aspecto | Detalle |
+|---------|---------|
+| Entradas | `nombre`: tipo (restricción) |
+| Salidas (éxito) | shape + código/estado |
+| Salidas (error) | condición → código/tipo de error |
+| Efectos secundarios | persistencia / eventos emitidos |
+| Idempotencia | sí/no + comportamiento en reintento |
 
-## Criterios de Aceptación (Tests a implementar)
-1. [Prueba 1: ej. "Debería retornar Error 400 si el email ya existe"]
-2. [Prueba 2: ej. "Debería retornar 201 y crear el usuario si el email es válido y único"]
-3. [Prueba 3]
+## Reglas de Negocio
+- **BR-1:** [regla] — fuente: business_requirements.md §X
+- **BR-2:** ...
+
+## Criterios de Aceptación (≥1 test por ID)
+- **AC-1:** [comportamiento observable y verificable]
+- **AC-2:** ...
+
+## Edge Cases (los que cambian comportamiento — NO exhaustivo)
+- **EC-1:** [caso] → [resultado esperado]
+
+## Superficie de Código Existente (para el implementer — lo llena el orquestador en Step 2)
+- Llama a: `<símbolo existente>` en `<path>` — firma: `[...]`
+- Crea: `<símbolo nuevo>` en `<path>`
+- Fixtures disponibles: `<path>` (no duplicar)
 
 ---
-*(Nota estricta para la IA en fase de Planificación: PROHIBIDO incluir ejemplos de código C#, SQL, JS, etc. en este documento. Solo texto descriptivo y reglas claras).*
+*Prohibido código de implementación. Solo contratos, reglas e IDs estables.
+Prosa de negocio en español; identificadores y firmas en el idioma de conventions.md §8.*

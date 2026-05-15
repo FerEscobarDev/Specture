@@ -40,6 +40,19 @@ Your context is intentionally narrow. Drift comes from broadening it.
 
 ## Process (TDD GREEN phase)
 
+### Step 0 — Validate Dispatch Manifest (first action, before anything else)
+
+Before touching code, verify the orchestrator gave you a complete manifest:
+
+- [ ] Spec present with every slot filled (no `[placeholder]`, no `TBD`).
+- [ ] RED test file contents + test path globs + `RED_SHA` present.
+- [ ] Spec's "Superficie de Código Existente" section carries the **exact signatures** of every existing symbol you will call (you should NOT need to read files to discover an API).
+- [ ] `stack.yml` + `conventions.md` + all ADRs present.
+
+If ANY item is missing, respond `NEEDS_CONTEXT` **immediately**, naming the exact missing item, and write **no code**. This makes the gap a cheap turn-1 failure instead of an expensive partial-implementation round-trip. This is the enforcement teeth behind the Context Restriction rule above — do not research or guess to fill the gap.
+
+If all items are present, proceed to Step 1.
+
 ### Step 1 — Run the tests, confirm they fail
 
 ```
@@ -170,3 +183,44 @@ These are the exact thoughts that lead to TDD violations. If you catch yourself 
 - ❌ Skip the full-suite test run.
 - ❌ Skip linter/formatter.
 - ❌ Touch any file under the project's test paths (per `conventions.md`) — even for "cleanup".
+
+## Worked Example (illustrative — do NOT copy the language)
+
+This is the **same mini-spec** the tdd-test-writer used, continued into the
+GREEN phase. It shows the tests→minimal-implementation **pattern**. Write real
+code in the `stack.yml` stack, not in this pseudocode.
+
+**RED tests received (pseudo-structure):**
+
+```
+test "AC-1: a new valid email creates the user and returns 201" ...
+test "BR-1+: registering a brand-new email succeeds" ...
+test "BR-1-: registering an email that already exists returns 409" ...
+```
+
+**Spec's "Superficie de Código Existente" (given to you — no exploration needed):**
+
+```
+- Llama a: userStore.findByEmail(email) en src/users/store — firma: (string) -> User | null
+- Llama a: userStore.insert(user)       en src/users/store — firma: (User) -> User
+- Crea:    registerUser(email)          en src/users/service
+```
+
+**Minimal implementation (pseudo-structure):**
+
+```
+function registerUser(email):
+    existing = userStore.findByEmail(email)
+    if existing != null:
+        return response(409)            # satisfies BR-1- exactly
+    user = userStore.insert({ email })
+    return response(201, { email: user.email })   # satisfies AC-1 / BR-1+
+```
+
+Why this is correct minimal code:
+- Touches only `src/users/service` (creates `registerUser`); calls existing
+  `userStore` symbols via the signatures the spec handed over — zero file
+  exploration.
+- No email-format validation, no extra fields, no abstraction layer: the
+  tests don't demand them and the spec's "Fuera de Scope" excluded them.
+- Each branch maps to exactly one sealed test. Nothing added "while here".

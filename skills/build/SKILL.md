@@ -61,13 +61,16 @@ Use `templates/SPEC_TEMPLATE.md`. Write to `docs/05-specs/<epic-slug>/<task-slug
 
 ### Spec self-review
 
-Before passing the spec to the validator, check:
+Before passing the spec to the validator, check against the `SPEC_TEMPLATE.md` slots:
 
-- [ ] No `TBD`, `TODO`, or "fill in later".
+- [ ] Every template slot filled — no `[placeholder]`, no `TBD`, no "fill in later".
+- [ ] Every AC / BR / EC has a stable ID (`AC-1`, `BR-1`, `EC-1`...).
+- [ ] Contract table complete: entradas, salidas (éxito), salidas (error), efectos secundarios, idempotencia.
+- [ ] "Superficie de Código Existente" filled with **exact signatures** of every existing symbol the implementation will call (not "see the code"). This is what lets the implementer skip exploration.
+- [ ] "Fuera de Scope" explicit (the test-writer uses it to bound test generation).
 - [ ] All business rules cited from `business_requirements.md`.
 - [ ] Acceptance criteria are concrete and testable (not "should work well").
-- [ ] No code examples present.
-- [ ] Inputs, outputs, error conditions, and side effects all listed.
+- [ ] Zero implementation code; business prose in Spanish, identifiers/signatures in the `conventions.md` §8 language.
 
 ## Step 2.5 — Create Visible Tasks (TaskCreate)
 
@@ -88,6 +91,25 @@ The lifecycle of each task mirrors the orchestrator's progress through the remai
 
 **Rule of authority**: `ROADMAP.md` is the source of truth across conversations. TaskCreate is **intra-conversation visibility only** — when the user closes the session, the tasks disappear. If ROADMAP and TaskCreate diverge for any reason, ROADMAP wins. Never mark an epic `[x]` in ROADMAP based on TaskCreate state; mark tasks completed only after the ROADMAP update lands.
 
+## Dispatch Manifest (mandatory pre-flight)
+
+Before Step 4 (tdd-test-writer) and Step 5 (implementer), the orchestrator MUST assemble and pass this manifest. The dispatched agent validates it as its first action (its Step 0) and returns `NEEDS_CONTEXT` immediately if any item is missing — a cheap turn-1 failure instead of an expensive partial-work round-trip.
+
+**For tdd-test-writer:**
+- [ ] Spec with every slot filled (no `[placeholder]`, no `TBD`)
+- [ ] Every AC / BR / EC has a stable ID
+- [ ] `stack.yml`: testing_framework + language present
+- [ ] `conventions.md`: testing + naming + file-org + §8 (identifier language) present
+- [ ] Existing fixtures/helpers paths listed (so tests don't duplicate them)
+
+**For implementer:**
+- [ ] Spec (same completeness as above)
+- [ ] RED test file contents + test path globs + `RED_SHA`
+- [ ] Spec's "Superficie de Código Existente" section carries the **exact signatures** of every existing symbol the implementation will call
+- [ ] `stack.yml` + `conventions.md` + all ADRs
+
+If the orchestrator cannot fill an item, it resolves it BEFORE dispatch (read the file, extract the signature). Dispatching with an incomplete manifest is the #1 cause of `NEEDS_CONTEXT` round-trips — each one wastes a full agent cycle.
+
 ## Step 3 — Architecture Validation (mandatory gate)
 
 Dispatch the `architecture-validator` agent (`agents/architecture-validator/AGENT.md`).
@@ -107,6 +129,8 @@ If `REJECTED`:
 ## Step 4 — Write Tests (TDD RED phase)
 
 Dispatch the `tdd-test-writer` agent (`agents/tdd-test-writer/AGENT.md`).
+
+**First assemble the Dispatch Manifest** (see "Dispatch Manifest" section above). Do not dispatch until every tdd-test-writer item is checked.
 
 **Context to pass (restricted)**:
 - The validated `.spec.md`.
@@ -143,12 +167,14 @@ If any post-check fails, do NOT proceed to Step 5.
 
 Dispatch the `implementer` agent (`agents/implementer/AGENT.md`).
 
+**First assemble the Dispatch Manifest** (see "Dispatch Manifest" section above). Do not dispatch until every implementer item is checked.
+
 **Context to pass**:
 - The `.spec.md`.
 - The test files just written (as content reference — the implementer must NOT edit them).
 - The `RED_SHA` value, with an explicit instruction: *"The tests committed at `<RED_SHA>` are the sealed contract. You must NOT modify, delete, skip, rename, or move any of those test files. The TDD Honesty Gate will run `git diff <RED_SHA>..HEAD -- <test-globs>` after your work and any change will abort the spec."*
 - `.specture/stack.yml`, `.specture/conventions.md`, all ADRs.
-- The relevant existing source files the implementer needs to modify (NOT the whole codebase — pick the minimum).
+- The **exact signatures** of existing symbols the implementation will call — already captured in the spec's "Superficie de Código Existente" section (do not make the implementer rediscover an API by reading files) — PLUS the minimum set of source files to actually modify (NOT the whole codebase).
 
 **Expected output**: minimal code to make tests pass; agent commits implementation in commits **separate from the RED commit**; reports status `DONE` / `DONE_WITH_CONCERNS` / `NEEDS_CONTEXT` / `BLOCKED`, plus the `HEAD_SHA` after the last implementation commit.
 
