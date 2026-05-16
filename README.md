@@ -428,6 +428,21 @@ Specture está en desarrollo activo. Para decisiones arquitectónicas internas, 
 
 ## Changelog
 
+### v1.3.1 — Token Cost Optimization
+
+**Motivación:** el informe real de consumo (`docs/usage-cost-analysis.md`) mostró que el arranque/routing consumía costo accidental desproporcionado. Optimizaciones con afectación de calidad nula o mínima (`docs/token-optimization-report.md`).
+
+**Cambios (sin cambio de comportamiento observable):**
+- **SessionStart hook no-op** cuando el `specture-router` agent está activo — elimina doble enforcement del arranque (relevante en sesiones largas/loop).
+- **`start/SKILL.md` con lecturas mínimas**: routing es máquina de estados de filesystem; existence-checks en Steps 1-3, campo único en Step 4, checkboxes en Step 5. Prohibido leer archivos completos para enrutar.
+- **Tabla de violaciones TDD a `docs/tdd-honesty-violations.md`** (progressive disclosure): `build` Step 5.5 y `code-reviewer` Dimension 4 se reducen a ~6 líneas; el detalle se lee on-demand solo cuando hay violación. El reviewer ahora consume el resultado de Step 5.5 en vez de re-correr `git diff`.
+- **`code-reviewer` recibe solo ADRs relevantes** al spec (regla de seguridad: ante duda, incluir).
+- **Bloques "What the User Sees Differently" movidos** a `docs/native-integration-guide.md` (eran descripción, no instrucción de comportamiento).
+- **Step 9 y exemplars compactados** sin perder regla ni patrón.
+- **`specture-router` con resistencia endurecida** ante presión de atajo. El cambio de modelo a Haiku queda **pendiente de un gate A/B empírico** (routing correcto + resistencia a "saltate la metodología") antes de aplicarse.
+
+**Sin nuevos archivos de comportamiento.** Nuevo: `docs/tdd-honesty-violations.md`. Reportes de análisis en `docs/` como audit trail.
+
 ### v1.3.0 — Prompt Optimization
 
 **Motivación:** reducir la latencia de creación de tests e implementación. El análisis (`docs/prompt-optimization-report.md`) determinó que el cuello de botella estaba aguas arriba — en el spec pobre y la falta de un gate de contexto — no en los agentes.
