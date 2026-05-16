@@ -25,7 +25,77 @@ This skill **fuses** what was previously split into "planificación", "ejecució
 - `docs/02-architecture/architecture.md` — boundaries.
 - `docs/04-roadmap/ROADMAP.md` — what to build next.
 
-## The Loop
+## Execution Mode Selection
+
+Before starting the loop, present this choice to the user (once per build session):
+
+> **Dos modos de ejecución:**
+>
+> **1. Agentes por Epic (recomendado para 4+ epics)** — Despacho un agente-orquestador fresco por cada epic. Este chat solo coordina: elige el epic, revisa el resultado, actualiza el ROADMAP. El contexto de este chat NO acumula specs, tests, outputs de agentes ni reviews.
+>
+> **2. Inline (recomendado para 1-3 epics)** — Ejecuto el loop completo en este chat. El contexto se acumula epic a epic; requiere resets manuales (Step 9).
+>
+> ¿Cuál preferís?
+
+- **Agentes por Epic** → seguir `## Modo: Agentes por Epic`.
+- **Inline** → seguir `## Modo: Inline (The Loop)`.
+
+If the user has no preference: default to **Agentes por Epic** when the ROADMAP has 4+ pending epics, else Inline.
+
+## Modo: Agentes por Epic
+
+This chat is **coordinator only**. It does NOT generate specs, dispatch the 4 workers, or run tests — it dispatches one fresh **epic-agent** per epic and processes its report. The coordinator's context grows O(n_epics) instead of O(total work).
+
+### Per epic (in this coordinator chat)
+
+1. Read **only the epic checkbox lines** of `ROADMAP.md` (not the whole doc).
+2. Find the first epic `[ ]` whose dependencies are all `[x]`.
+3. Mark it `[/]` in `ROADMAP.md`; commit.
+4. `TaskCreate` **one** task for the epic (subject `<epic-slug>`, `activeForm` "running epic via fresh agent"). This is the only user-visible task in this mode — the epic-agent's internal step tracking is discarded with its context.
+5. Assemble the **base context** to hand to the epic-agent: `.specture/stack.yml`, `.specture/conventions.md`, all ADRs, `docs/01-requirements/business_requirements.md`, `docs/02-architecture/architecture.md`, `templates/SPEC_TEMPLATE.md`, and the full text of this `build/SKILL.md`.
+
+### Dispatch the epic-agent
+
+Dispatch a general-purpose agent with a self-contained prompt — **do NOT inherit this chat's history**:
+
+~~~
+You are the build-loop orchestrator for ONE epic of a Specture project.
+
+Execute Steps 2 through 8 of build/SKILL.md (Generate Spec → ... → Verify)
+for this single epic. SKIP these:
+- "Execution Mode Selection" — you are already in Agentes-por-Epic mode.
+- Step 1 (Pick & Lock) — the epic is already marked [/].
+- Step 9 (Context Reset) — N/A, your context is discarded when you finish.
+Run Step 2.5 (TaskCreate) only for your own internal tracking; the
+coordinator owns the user-visible epic task.
+Honor every gate: Dispatch Manifest, architecture-validator, RED commit,
+TDD Honesty Gate (Step 5.5), code-reviewer, verification.
+
+## Epic
+[paste the full epic block from ROADMAP.md]
+
+## Base context
+[paste the assembled base context]
+
+## Required final report
+Report exactly one of: DONE | BLOCKED | REJECTED_MAJOR
+Plus: which specs were built, which tests pass, what remains.
+If DONE: update ROADMAP.md to [x] for this epic and commit BEFORE reporting.
+~~~
+
+### Coordinator processes the report
+
+- **DONE** → verify the epic is `[x]` in `ROADMAP.md` and the commit landed (don't trust the report — `git log`/read the checkbox). Mark the coordinator task `completed`. Continue with the next epic.
+- **BLOCKED** / **REJECTED_MAJOR** → escalate to the user with the report summary before continuing. Do not auto-retry.
+- **BLOCKED: insufficient context** → the epic is too large for one agent. Escalate to the user to consider splitting it before re-dispatching.
+
+### Why this mode
+
+The coordinator only ever holds: ROADMAP checkboxes + one epic block + agent reports. Specs, tests, agent outputs and reviews stay inside each epic-agent and are discarded when it finishes. This is the structural fix for context-cost growth across long build loops.
+
+## Modo: Inline (The Loop)
+
+> **Inline mode.** Context accumulates in this chat as epics progress. Recommended only for 1-3 epics. For larger ROADMAPs use **Agentes por Epic** (above). Steps 1-9 run in this chat; Step 9 (Context Reset) is the mitigation for the accumulation this mode causes.
 
 ```
 For each epic where state is [ ] or [/]:
