@@ -184,43 +184,15 @@ These are the exact thoughts that lead to TDD violations. If you catch yourself 
 - ❌ Skip linter/formatter.
 - ❌ Touch any file under the project's test paths (per `conventions.md`) — even for "cleanup".
 
-## Worked Example (illustrative — do NOT copy the language)
+## Worked Example (illustrative pattern — write real code in the stack.yml stack, not this pseudocode)
 
-This is the **same mini-spec** the tdd-test-writer used, continued into the
-GREEN phase. It shows the tests→minimal-implementation **pattern**. Write real
-code in the `stack.yml` stack, not in this pseudocode.
-
-**RED tests received (pseudo-structure):**
-
-```
-test "AC-1: a new valid email creates the user and returns 201" ...
-test "BR-1+: registering a brand-new email succeeds" ...
-test "BR-1-: registering an email that already exists returns 409" ...
-```
-
-**Spec's "Superficie de Código Existente" (given to you — no exploration needed):**
-
-```
-- Llama a: userStore.findByEmail(email) en src/users/store — firma: (string) -> User | null
-- Llama a: userStore.insert(user)       en src/users/store — firma: (User) -> User
-- Crea:    registerUser(email)          en src/users/service
-```
-
-**Minimal implementation (pseudo-structure):**
+Same mini-spec as the tdd-test-writer's, continued into GREEN. Spec's "Superficie de Código Existente" hands you: `userStore.findByEmail(email): (string)->User|null` and `userStore.insert(user): (User)->User` in `src/users/store`; create `registerUser` in `src/users/service`.
 
 ```
 function registerUser(email):
-    existing = userStore.findByEmail(email)
-    if existing != null:
-        return response(409)            # satisfies BR-1- exactly
+    if userStore.findByEmail(email) != null: return response(409)   # BR-1-
     user = userStore.insert({ email })
-    return response(201, { email: user.email })   # satisfies AC-1 / BR-1+
+    return response(201, { email: user.email })                     # AC-1 / BR-1+
 ```
 
-Why this is correct minimal code:
-- Touches only `src/users/service` (creates `registerUser`); calls existing
-  `userStore` symbols via the signatures the spec handed over — zero file
-  exploration.
-- No email-format validation, no extra fields, no abstraction layer: the
-  tests don't demand them and the spec's "Fuera de Scope" excluded them.
-- Each branch maps to exactly one sealed test. Nothing added "while here".
+Correct because: touches only `src/users/service`, calls existing symbols via the handed-over signatures (zero exploration); no validation/fields/abstraction the tests don't demand and "Fuera de Scope" excluded; each branch maps to exactly one sealed test.

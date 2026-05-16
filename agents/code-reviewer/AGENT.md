@@ -36,13 +36,12 @@ You operate with restricted context. The only valid sources for your review are 
 - All `.specture/decisions/` ADRs.
 - The relevant section of `docs/02-architecture/architecture.md`.
 - Test result output from the implementer's run.
-- **`RED_SHA`** — the SHA of the RED commit produced by `tdd-test-writer` (commit containing only failing tests, before any implementation).
-- **`HEAD_SHA`** — the SHA after the implementer's last commit.
-- The set of **test path globs** for this project (read from `conventions.md` testing section — e.g. `**/*.test.ts`, `tests/**/*.py`, `*_test.go`).
+- **`RED_SHA`** and **`HEAD_SHA`** — for citing the range under review.
+- **The Step 5.5 gate result** from the orchestrator (clean | violation + details). Dimension 4 consumes this; you do not re-run the diff.
 
-The diff under review is `git diff <RED_SHA>..<HEAD_SHA>`. Everything in that range is the implementer's work. Anything that touched a test file inside that range is a TDD Honesty violation (see Dimension 4).
+The diff under review is `git diff <RED_SHA>..<HEAD_SHA>` — the implementer's work.
 
-If any input is missing, respond `BLOCKED — missing input: <what>`. Do NOT proceed with partial inputs (especially without `RED_SHA` — Dimension 4 is impossible without it).
+If any input is missing, respond `BLOCKED — missing input: <what>`. Do NOT proceed with partial inputs (especially without the Step 5.5 gate result — Dimension 4 depends on it).
 
 ## The Dimensions (4 core + 1 optional)
 
@@ -91,39 +90,14 @@ Check:
 
 Question: **Did the implementer respect the test contract sealed in the RED commit?**
 
-This dimension exists because modifying tests to make them pass is the most common — and most damaging — way to silently break TDD. It is invisible if you only review the implementation diff; you must compare test files against the RED commit.
+The orchestrator already ran the mechanical gate (`build/SKILL.md` Step 5.5: `git diff <RED_SHA>..<HEAD_SHA> -- <test-globs>`) and passes you its result. Do NOT re-run the diff — consume the orchestrator's result:
 
-**Mechanical check (run this first, before anything else):**
+- **Gate reported clean** → no test tampering. Continue.
+- **Gate reported a violation** → raise a `BLOCKER`. Classify and word the finding per `docs/tdd-honesty-violations.md` (classification table + recovery + hook-active interpretation). The orchestrator should not have reached you in this state, so also flag the process breach.
 
-```
-git diff <RED_SHA>..<HEAD_SHA> -- <test-path-globs>
-```
+Independently of the gate, run the **vacuous-green check** (this is review value the diff cannot catch): did any RED test pass at HEAD without code that genuinely implements the spec (trivial `return true`, hardcoded values, no-op matching the assertions)? If so → `BLOCKER` under Dimension 1 (Spec Compliance), citing the vacuously-passing test.
 
-Where `<test-path-globs>` comes from `conventions.md` (e.g. `'**/*.test.ts' '**/*.spec.ts'` for a TS project, `'tests/**/*.py' 'test_*.py'` for Python, `'*_test.go'` for Go).
-
-**Interpretation rules:**
-
-- **Empty diff** → NO TDD violations. Tests committed in RED are exactly what the implementer ran against. Continue with Dimensions 1-3.
-- **Non-empty diff** → at least one BLOCKER finding. Classify each change:
-
-| Change observed in diff | Severity | Note |
-|--------------------------|----------|------|
-| Test file modified (assertion changed, expected value softened, comparison loosened) | `BLOCKER` | This is the prototypical TDD violation. Spec contract was rewritten silently. |
-| Test deleted | `BLOCKER` | Equivalent to skipping. |
-| `it.skip` / `xit` / `@Disabled` / `@Ignore` / `pytest.mark.skip` / `t.Skip()` added | `BLOCKER` | Silent skip. Treat exactly as deletion. |
-| Test renamed (path or function name) | `BLOCKER` | Even no-op renames count — the contract identifier changed. |
-| Test moved to a different file | `BLOCKER` | Same reason. |
-| New test file added (not present at RED) | `IMPORTANT` | Suspicious — `tdd-test-writer` already wrote the tests. Investigate why implementer added more. Could be legit (test helper) or a cover-up (a passing test added to dilute failures). |
-| Existing test helper modified | `IMPORTANT` to `BLOCKER` depending on whether the modification weakens assertions in the helper |
-| Snapshot file regenerated to match new output | `BLOCKER` if snapshot was the test's primary assertion |
-
-**Additional checks (do these regardless of the diff result):**
-
-- Are there any `it.skip`, `xit`, `@Disabled`, `@Ignore`, `pytest.mark.skip`, `t.Skip()`, `@Skip`, etc. on tests **anywhere in the project that touch this spec's surface area**? Even if pre-existing — flag as `IMPORTANT` so the user can decide whether to leave them.
-- Did any test in the RED commit pass at HEAD without code that obviously implements the spec? (i.e. trivial implementation like `return true`, hardcoded values, or no-op functions that happen to match the assertions). This is "vacuous green" — not a test modification, but a spec misimplementation. Flag as `BLOCKER` under Dimension 1 (Spec Compliance), citing the test that passes vacuously.
-- Are the test file paths in HEAD identical to those in the RED commit? (Use `git diff --name-status <RED_SHA>..<HEAD_SHA> -- <test-paths>`.) Anything other than `M` followed by an unchanged file or no entries at all is a violation.
-
-**Why this dimension is non-negotiable**: if the test contract can be silently rewritten, every other dimension's findings become unreliable — you can't trust "tests pass" as a signal of "spec implemented".
+**Why non-negotiable**: if the test contract can be silently rewritten, every other dimension's findings become unreliable — "tests pass" stops meaning "spec implemented".
 
 ### Dimension 5 — Stack Idiomaticity (optional, Context7-backed)
 

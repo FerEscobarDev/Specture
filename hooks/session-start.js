@@ -1,13 +1,35 @@
 #!/usr/bin/env node
 // SessionStart hook — emits a routing reminder to the model when the cwd is
 // a Specture project that has opted in (hooks.enabled: true in conventions.md).
-// In any other case it exits silently with code 0.
+//
+// No-op when the plugin's specture-router agent is active: that agent already
+// forces skills/start/SKILL.md on every session, so emitting the reminder here
+// would be redundant double enforcement (wasteful, especially in long/loop
+// sessions). The reminder is only useful in manual @import setups that have no
+// router agent. In any other case it exits silently with code 0.
 
+const fs = require("fs");
+const path = require("path");
 const { guard } = require("./lib/specture-guard");
 
 const result = guard();
 if (!result.active) {
   process.exit(0);
+}
+
+// If the plugin ships the specture-router agent (settings.json declares it),
+// the router already enforces start routing — skip to avoid double enforcement.
+try {
+  const settingsPath = path.join(__dirname, "..", "settings.json");
+  if (fs.existsSync(settingsPath)) {
+    const settings = JSON.parse(fs.readFileSync(settingsPath, "utf8"));
+    if (settings && settings.agent === "specture-router") {
+      process.exit(0);
+    }
+  }
+} catch {
+  // If settings can't be read/parsed, fall through and emit the reminder
+  // (fail toward enforcement, not toward silence).
 }
 
 const message = [

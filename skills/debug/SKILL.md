@@ -122,6 +122,4 @@ You can leave this skill and resume the calling phase only when:
 
 If any item is unchecked, you are not done.
 
-## What the User Sees Differently with Plan Mode (v1.2.0)
-
-Phase 3 (Hypothesis & Log) now enters Plan mode automatically. The user gets an explicit aprovecho-or-reject dialog showing the proposed debug log content **before** any fix touches the code. Until the plan is approved, `Edit` and `Write` tools are blocked at the platform level — no "let me just try this real quick" path exists. The on-disk debug log is written only after `ExitPlanMode` returns approval.
+> Comportamiento observable con Plan mode activo: ver `docs/native-integration-guide.md` ("Comportamiento observable por skill").

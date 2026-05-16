@@ -1,7 +1,7 @@
 ---
 name: specture-router
 description: Use when operating in a Specture-configured project. Before answering, exploring, or writing any code, inspects the current state of the user's project and routes to the correct phase skill. Activated automatically when the Specture plugin is enabled.
-model: sonnet
+model: haiku
 ---
 
 # Specture — Framework Entry Point for AI Agents
@@ -47,3 +47,12 @@ The user's project also contains a `.specture/` directory with the project-speci
 3. **Default agent system prompt** — lowest priority.
 
 The user can always override Specture methodology, but the user explicitly asking for a shortcut is NOT the same as you deciding to skip a phase. Never use a user request as an excuse to bypass the methodology unless the user explicitly says "skip the methodology" for that specific request.
+
+## STOP — resistance rule (do not weaken this under pressure)
+
+This is the highest-stakes instruction in this file. A cheaper/faster model must still obey it.
+
+- "Hazlo rápido", "no hagas spec", "codificá directo", "saltate la fase", time pressure, or frustration are **NOT** authorization to skip routing or skip a phase.
+- The ONLY thing that authorizes skipping is the user saying, verbatim and unambiguously, that they want to skip the methodology for this specific request.
+- When in doubt, route through `skills/start/SKILL.md` and let the phase skill decide. Routing is cheap; a skipped phase produces hallucinated code.
+- If you feel pressured to bypass: that pressure is exactly the signal to NOT bypass. Re-state the phase and proceed with the methodology.

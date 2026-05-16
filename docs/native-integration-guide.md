@@ -227,6 +227,33 @@ Tenés tres opciones según el alcance:
 
 ---
 
+## Comportamiento observable por skill (v1.2.0)
+
+Esta sección consolida lo que cada skill hace diferente con hooks/Context7/Plan mode activos. Vive acá (no en cada skill) porque es descripción para el usuario, no instrucción que el modelo deba ingerir en cada ciclo.
+
+### build (`/specture:build`)
+
+Con `hooks.enabled: true` y/o `context7.enabled: true`:
+
+- **TaskCreate visible**: cada spec del epic aparece como tarea viva, transicionando por `validating architecture` → `writing tests (RED)` → `implementing (GREEN)` → `code review` → `running verification` → `completed`. Sin hooks, solo `ROADMAP.md` refleja el progreso.
+- **TDD Honesty Gate como hard block**: mientras existe `.specture/state/build-locked.json`, cualquier `Edit`/`Write` contra un test sellado se deniega a nivel plataforma. Sin el hook, la violación se detecta post-mortem vía `git diff` en Step 5.5.
+- **Review en paralelo (Step 6)**: `code-reviewer` corre concurrente con linter y type-checker. ~30-50% menos wall-clock en diffs grandes. El rigor de cada gate no cambia.
+- **Dimension 5 con Context7**: con `context7.enabled: true`, las reviews citan deprecaciones versionadas del framework de `stack.yml`. Sin él, el reviewer omite Dimension 5 y lo nota en el reporte.
+
+### debug (`/specture:debug`)
+
+Phase 3 (Hypothesis & Log) entra en Plan mode automáticamente. El usuario recibe un diálogo approve-or-reject con el debug log propuesto **antes** de que un fix toque código. Hasta aprobar, `Edit`/`Write` están bloqueados a nivel plataforma — no existe el atajo "lo pruebo rápido". El debug log en disco se escribe solo tras `ExitPlanMode`.
+
+### new-feature (`/specture:new-feature`)
+
+Step 2 (Impact Ripple Analysis) entra en Plan mode antes de producir output. Diálogo approve-or-reject con el análisis de impacto completo. Step 3 (User Validation) pasa de pregunta cortés a gate de sistema: ROADMAP, arquitectura y ADRs no se modifican hasta que `ExitPlanMode` apruebe.
+
+### modernize (`/specture:modernize`)
+
+Con `context7.enabled: true`, Step 2 (Gap Analysis) toma los hechos de docs vigentes vía Context7 en vez del training cutoff: breaking-changes más precisos, equivalence maps respaldados, tablas de compatibilidad reales. Sin Context7 (toggle off / red caída), el gap analysis igual completa — filas afectadas con sufijo `[needs manual verification]`. Sin fallback silencioso a conocimiento viejo.
+
+---
+
 ## Apéndice — Anti-memory clauses
 
 Como parte de v1.2.0, los cuatro agentes restringidos (`architecture-validator`, `tdd-test-writer`, `implementer`, `code-reviewer`) recibieron una cláusula explícita de contexto restringido que prohíbe:

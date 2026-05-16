@@ -350,12 +350,4 @@ When all migration epics (except the cleanup epic) are `[x]`:
 | Mark epic `[x]` before characterization tests pass | Creates a false "safe" checkpoint that hides regressions |
 | Write characterization tests that test framework internals | Tests break on migration even when behavior is correct — characterize observable behavior, not implementation |
 
-## What the User Sees Differently with Context7 Active (v1.2.0)
-
-When `context7.enabled: true` in `.specture/conventions.md`, Step 2 (Gap Analysis) sources its facts from current documentation via the Context7 MCP server instead of relying on the model's training cutoff. The user sees:
-
-- More accurate breaking-change lists for the declared target version (including changes shipped after the model's training data).
-- Equivalence maps backed by current target-framework docs.
-- Library-compatibility tables that reflect the actual support matrix at migration time.
-
-When Context7 is unavailable (toggle off, network failure, MCP unreachable), the gap analysis still completes — affected rows are suffixed with `[needs manual verification]` so the user knows where to double-check before approving the migration ROADMAP. No silent fallback to stale knowledge.
+> Comportamiento observable con Context7 activo: ver `docs/native-integration-guide.md` ("Comportamiento observable por skill").

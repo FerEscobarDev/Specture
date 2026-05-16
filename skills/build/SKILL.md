@@ -182,41 +182,27 @@ Handle each status per the implementer's protocol.
 
 ## Step 5.5 — TDD Honesty Gate (mandatory, automated)
 
-Before dispatching the code-reviewer, the orchestrator runs the gate itself. This is a mechanical check — no agent involved.
+Before dispatching the code-reviewer, the orchestrator runs the gate itself — a mechanical check, no agent involved:
 
 ```
 git diff <RED_SHA>..<HEAD_SHA> -- <test-path-globs>
 ```
 
-**Interpretation**:
+- **Empty output** → ✅ Tests untouched. Proceed to Step 6.
+- **Non-empty output** → ❌ TDD violation. Do NOT proceed to review. You **MUST** read `docs/tdd-honesty-violations.md` and follow its classification + recovery procedure (it also covers the hook-active vs hook-inactive interpretation). Show the diff to the user verbatim before acting.
 
-- **Empty output** → ✅ Tests untouched between RED and HEAD. Proceed to Step 6.
-- **Non-empty output** → ❌ TDD violation. The implementer modified the sealed test contract. Do NOT proceed to review.
-
-**On violation, the orchestrator MUST**:
-
-1. Show the diff to the user verbatim. No paraphrasing.
-2. Classify the violation:
-   - **Test assertion weakened / removed / replaced**: this is the prototypical violation. Treat as `REJECTED_MAJOR`.
-   - **Test skipped (`it.skip`, `xit`, `@Disabled`, etc.)**: same severity.
-   - **Test renamed / moved**: same — even no-op renames break the contract identifier.
-   - **New test file added by implementer (not present at RED)**: investigate. May be legitimate (test helper) or a smokescreen.
-3. Options for recovery (escalate to user):
-   - **Revert the test changes** (`git checkout <RED_SHA> -- <test-paths>`) and re-dispatch the implementer with a stronger reminder.
-   - **If the implementer was right that the test was wrong** (rare but possible): revert, then re-run `tdd-test-writer` with the implementer's concern as input. Get a new RED commit. Restart Step 5 with the new `RED_SHA`.
-   - **Abort the spec entirely** if the violation suggests a fundamental spec/implementation mismatch.
-
-The gate exists because TDD violations are invisible if you only look at the implementation diff. Without this gate, the code-reviewer might APPROVE code whose tests were silently softened.
+This gate is non-negotiable: TDD violations are invisible if you only look at the implementation diff.
 
 ## Step 6 — Code Review (mandatory gate)
 
 Dispatch the `code-reviewer` agent (`agents/code-reviewer/AGENT.md`).
 
 **Context to pass**:
-- `RED_SHA` and `HEAD_SHA` (the code-reviewer's Dimension 4 uses these to verify TDD honesty independently — defense in depth even after Step 5.5).
-- The test path globs (so the reviewer can run the same `git diff` check).
+- `RED_SHA` and `HEAD_SHA` (for citing the reviewed range).
+- **The Step 5.5 gate result** (clean | violation + details). The reviewer's Dimension 4 consumes this instead of re-running the diff.
 - The `.spec.md`.
-- `.specture/stack.yml`, `.specture/conventions.md`, all ADRs.
+- `.specture/stack.yml`, `.specture/conventions.md`.
+- **Only the ADRs relevant to the module(s) the spec touches.** Safety rule: if you are unsure whether an ADR applies, include it — err toward inclusion, never toward omission. (Passing every ADR of a mature project is the bulk of this dispatch's cost and most are irrelevant to a given spec.)
 - The architecture sections relevant to the touched modules.
 
 **Parallelism (wall-clock optimization)**: the `code-reviewer` dispatch is independent of the linter and the type-checker — they all read the diff but produce orthogonal outputs. Launch them concurrently to compress wall-clock:
@@ -267,13 +253,12 @@ After all specs in the epic are APPROVED + verified:
 
 ## Step 9 — Context Reset Between Epics
 
-This is **non-negotiable**. Acumulated context across epics is the #1 source of degraded quality in AI development.
+This is **non-negotiable**. Accumulated context across epics is the #1 source of degraded quality in AI development.
 
 Announce to the user:
 > "Epic [N] completado. **Por favor, inicia una nueva conversación** antes de continuar con el siguiente epic. Si tu interfaz no permite limpiar el chat, dímelo y forzaremos un reset mental."
 
-If the user can't reset (or refuses): start the next epic with a hard reminder to yourself:
-> "RESET: ignoro toda conversación previa. Mi único contexto válido para el próximo epic es: el spec activo, los archivos que el spec referencia, y `.specture/`."
+If the user can't or won't reset: begin the next epic by prefixing your own context with a one-line reset reminder — only the active spec, the files it references, and `.specture/` are valid context; ignore all prior conversation.
 
 ## Anti-Patterns
 
@@ -293,11 +278,4 @@ If the user can't reset (or refuses): start the next epic with a hard reminder t
 
 If the ROADMAP reaches 100% `[x]`, route back to `skills/start/SKILL.md` which will offer the user options (audit, new feature, finalize).
 
-## What the User Sees Differently with Hooks/Context7 Active (v1.2.0)
-
-When `hooks.enabled: true` and/or `context7.enabled: true` in `.specture/conventions.md`:
-
-- **TaskCreate visible**: every spec of the epic shows up as a live task in the user's view, transitioning through `validating architecture` → `writing tests (RED)` → `implementing (GREEN)` → `code review` → `running verification` → `completed`. Without hooks, only `ROADMAP.md` reflects progress and the user has to read it manually.
-- **TDD Honesty Gate as hard block**: while `.specture/state/build-locked.json` exists, any `Edit`/`Write` against a sealed test path is denied at the platform level — the implementer cannot even start modifying a test. Without the hook, the violation is detected post-mortem via `git diff` in Step 5.5.
-- **Parallel review (Step 6)**: `code-reviewer` runs concurrently with the linter and type-checker. The user sees ~30–50% reduction in wall-clock for Step 6 on large diffs. The rigor of each gate is unchanged.
-- **Context7-backed Dimension 5**: when `context7.enabled: true`, reviews can cite version-specific deprecations from the framework declared in `stack.yml`. Without it, the reviewer skips Dimension 5 and notes it explicitly in the report.
+> Comportamiento observable con hooks/Context7 activos: ver `docs/native-integration-guide.md` ("Comportamiento observable por skill").

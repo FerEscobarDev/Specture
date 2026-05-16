@@ -107,6 +107,4 @@ Hand off to `skills/build/SKILL.md`.
 | Modify completed specs in-place without trace | Specs are immutable artifacts. If they change, it's a new spec or a deprecation. |
 | Decide architecture changes alone | If the new feature requires architectural change, the user must approve and an ADR must record it. |
 
-## What the User Sees Differently with Plan Mode (v1.2.0)
-
-Step 2 (Impact Ripple Analysis) now enters Plan mode before producing any output. The user gets an explicit approve-or-reject dialog with the full impact analysis (affected components, affected specs, affected ADRs, migration risks). Step 3 (User Validation) becomes a system-level gate instead of a polite question: ROADMAP, architecture and ADRs cannot be modified until `ExitPlanMode` returns approval.
+> Comportamiento observable con Plan mode activo: ver `docs/native-integration-guide.md` ("Comportamiento observable por skill").

@@ -179,56 +179,17 @@ Status rules:
 - ❌ Use mocks excessively (mock surface should be minimal — see `conventions.md`).
 - ❌ Touch existing tests for unrelated features.
 
-## Worked Example (illustrative — do NOT copy the language)
+## Worked Example (illustrative pattern — write real tests in the stack.yml framework, not this pseudocode)
 
-This shows the spec→test **pattern**. Write real tests in the framework declared
-in `stack.yml`, not in this pseudocode. The pseudocode is intentionally
-language-neutral so you focus on the mapping, not the syntax.
-
-**Input spec (excerpt):**
+Spec excerpt: `BR-1: email unique`; `AC-1: new valid email → create user, 201`; error: existing email → 409.
 
 ```
-## Contrato
-| Entradas | email: string |
-| Salidas (éxito) | created user, status 201 |
-| Salidas (error) | email already exists → 409 |
-
-## Reglas de Negocio
-- BR-1: el email debe ser único en el sistema.
-
-## Criterios de Aceptación
-- AC-1: con un email nuevo y válido, crea el usuario y responde 201.
+test "AC-1: new valid email creates user and returns 201":
+    given no user "a@x.com"; when register("a@x.com"); then 201 and body.email == "a@x.com"
+test "BR-1+: brand-new email succeeds":
+    given empty store; when register("new@x.com"); then 201
+test "BR-1-: existing email returns 409":
+    given user "dup@x.com" exists; when register("dup@x.com"); then 409 and no second user
 ```
 
-**Output tests (pseudo-structure):**
-
-```
-test "AC-1: a new valid email creates the user and returns 201":
-    given  no user with email "a@x.com"
-    when   register("a@x.com")
-    then   response.status == 201
-    and    response.body.email == "a@x.com"
-
-test "BR-1+: registering a brand-new email succeeds (uniqueness holds)":
-    given  empty user store
-    when   register("new@x.com")
-    then   response.status == 201
-
-test "BR-1-: registering an email that already exists returns 409":
-    given  a user already exists with email "dup@x.com"
-    when   register("dup@x.com")
-    then   response.status == 409
-    and    no second user was created
-```
-
-**Resulting COVERAGE_MAP:**
-
-```
-- AC-1 → test "AC-1: a new valid email creates the user and returns 201"
-- BR-1 → test+ "BR-1+: registering a brand-new email succeeds"
-       / test- "BR-1-: registering an email that already exists returns 409"
-```
-
-Note: 3 tests for 1 AC + 1 BR — within the proportionality ceiling. One assert
-focus per test, independent setup, descriptive names stating behavior. No
-exhaustive email-format matrix because the spec did not call one out.
+COVERAGE_MAP: `AC-1 → test1`; `BR-1 → test+ test2 / test- test3`. 3 tests for 1 AC + 1 BR (within the proportionality ceiling); one assert focus per test; no email-format matrix the spec didn't ask for.

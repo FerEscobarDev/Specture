@@ -17,6 +17,8 @@ Specture is a **state machine**. The state of the user's project is determined b
 
 Run these checks **in order**. Stop at the first match and invoke the indicated skill.
 
+> **Cost rule (mandatory):** routing is a filesystem state machine, not a comprehension task. **Never read full file contents for routing.** Use existence checks for Steps 1-3; read only the single `frontend.framework` field for Step 4; read only the epic checkbox lines for Step 5. Opening `stack.yml` or `business_requirements.md` in full here is wasted context.
+
 ### Step 1 — Setup detection
 
 Check whether `.specture/stack.yml` exists in the user's project root.
@@ -40,7 +42,7 @@ Check whether `docs/04-roadmap/ROADMAP.md` exists.
 
 ### Step 4 — UX detection (only if frontend exists)
 
-Read `.specture/stack.yml`. If `frontend.framework` is set and is not `none`/`null`:
+Read **only the `frontend.framework` field** of `.specture/stack.yml` (not the whole file). If it is set and not `none`/`null`:
 
 Check whether either `docs/03-ux-ui/navigation_map.md` or `docs/03-ux-ui/design_system.md` exists.
 
@@ -49,7 +51,7 @@ Check whether either `docs/03-ux-ui/navigation_map.md` or `docs/03-ux-ui/design_
 
 ### Step 5 — Iterative Build detection
 
-Read `docs/04-roadmap/ROADMAP.md` and look at the epic checkboxes.
+Read **only the epic checkbox lines** of `docs/04-roadmap/ROADMAP.md` (grep the `[ ]`/`[/]`/`[x]` markers — do not load the whole document).
 
 | State | Action |
 |-------|--------|
