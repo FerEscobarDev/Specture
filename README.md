@@ -428,6 +428,18 @@ Specture está en desarrollo activo. Para decisiones arquitectónicas internas, 
 
 ## Changelog
 
+### v1.4.0 — Agent-per-Epic Execution Mode
+
+**Motivación:** el informe de consumo mostró 41% del uso con contexto >150k. El orquestador inline acumula specs + tests + outputs + reviews a lo largo de todo el build loop.
+
+**Cambio (`skills/build/SKILL.md`):**
+- Nueva sección **Execution Mode Selection**: al iniciar el build loop el usuario elige modo. Default a Agentes por Epic con 4+ epics pendientes, Inline con 1-3.
+- **Modo: Agentes por Epic** — el chat principal es solo coordinador: lee checkboxes del ROADMAP, bloquea el epic, despacha un epic-agent fresco (sin heredar historial) que corre Steps 2-8, y procesa su reporte (DONE/BLOCKED/REJECTED_MAJOR) verificando contra el filesystem. El contexto del coordinador crece O(n_epics) en vez de O(trabajo total). Specs, tests, outputs y reviews quedan dentro de cada epic-agent y se descartan al terminar.
+- **Modo: Inline (The Loop)** — el comportamiento anterior, sin cambios, recomendado para 1-3 epics.
+- Reconciliado con features posteriores: el coordinador es dueño de la única tarea TaskCreate visible por epic; el epic-agent honra Dispatch Manifest, TDD Honesty Gate y todos los gates internamente.
+
+**Sin pérdida de gates.** Cada epic-agent corre el loop completo con todas las defensas. Solo cambia DÓNDE vive el contexto.
+
 ### v1.3.1 — Token Cost Optimization
 
 **Motivación:** el informe real de consumo (`docs/usage-cost-analysis.md`) mostró que el arranque/routing consumía costo accidental desproporcionado. Optimizaciones con afectación de calidad nula o mínima (`docs/token-optimization-report.md`).
