@@ -20,7 +20,7 @@ Specture lleva un proyecto **desde la idea hasta el código** en 5 fases consecu
 ```
 $SPECTURE_ROOT/
 ├── CLAUDE.md                          # Punto de entrada (modo @import manual)
-├── settings.json                      # Activa specture-router automáticamente
+├── settings.json                      # Registra el TDD Honesty Gate (PreToolUse)
 ├── .claude-plugin/
 │   └── plugin.json                    # Manifiesto del plugin
 ├── skills/
@@ -36,7 +36,7 @@ $SPECTURE_ROOT/
 │   ├── write-skill/SKILL.md
 │   └── modernize/SKILL.md
 ├── agents/
-│   ├── specture-router/AGENT.md       # Orquestador principal (reemplaza CLAUDE.md)
+│   ├── specture-router/AGENT.md       # Router (opt-in: se invoca con /specture:start)
 │   ├── architecture-validator/AGENT.md  # Valida planes contra .specture/
 │   ├── tdd-test-writer/AGENT.md         # Escribe tests desde el spec (sin ver código)
 │   ├── implementer/AGENT.md             # Implementa para pasar tests
@@ -209,9 +209,9 @@ Los agentes de Specture son subagentes con **contexto restringido** — cada uno
 ---
 
 #### `specture-router`
-**Orquestador principal del framework (se activa automáticamente).** Cuando el plugin está activo, este agente intercepta toda conversación en un proyecto Specture e invoca `skills/start/SKILL.md` antes de hacer cualquier otra cosa. Garantiza que el framework siempre opere desde el estado real del filesystem, no desde suposiciones del historial de chat.
+**Router del framework (opt-in, desde v1.5.0).** Cuando se lo invoca explícitamente, este agente inspecciona el estado real del filesystem e invoca `skills/start/SKILL.md` para enrutar a la fase correcta. **No intercepta** automáticamente las conversaciones: el routing dejó de ser automático y se activa solo a pedido.
 
-- **Se activa:** automáticamente con el plugin habilitado, o manualmente con `/specture:start`.
+- **Se activa:** invocando `/specture:start`, o cuando el usuario pide iniciar/continuar trabajo de Specture ("continuemos con el roadmap", "inicia el proyecto"). **Nunca automáticamente.**
 - **No escribe código** — solo enruta.
 
 ---
@@ -286,7 +286,6 @@ Specture v1.2.0 integra seis capacidades nativas de Claude Code para convertir l
 
 | Capacidad | Función |
 |-----------|---------|
-| Hook `SessionStart` | Recuerda al modelo invocar `start/SKILL.md` al inicio de cada sesión Specture. |
 | Hook `PreToolUse` (TDD Honesty Gate) | Bloquea mecánicamente edits a tests durante GREEN. |
 | `TaskCreate` | Lista en vivo de specs del epic activo durante `/specture:build`. |
 | `Context7` MCP | Docs vigentes para `code-reviewer` (Dimension 5: idiomaticity) y `modernize` (gap analysis). |
@@ -298,16 +297,20 @@ Specture v1.2.0 integra seis capacidades nativas de Claude Code para convertir l
 En `.specture/conventions.md` sección 10:
 
 ```markdown
-- **hooks.enabled**: true       # activa SessionStart + TDD Honesty Gate
-- **context7.enabled**: true    # activa Context7 en code-reviewer y modernize
+- **hooks.enabled**: true            # activa el TDD Honesty Gate (PreToolUse)
+- **context7.enabled**: true         # activa Context7 en code-reviewer y modernize
+- **build.max_parallel_epics**: 3    # tope de epic-agents concurrentes en el modo paralelo de build
 ```
 
-Sin esos toggles, los hooks shippean pero no actúan, y Context7 nunca se consulta.
+Sin esos toggles, los hooks shippean pero no actúan, y Context7 nunca se consulta. `build.max_parallel_epics` solo aplica al modo "Agentes por Epic en Paralelo (Olas)" (default 3; `1` = secuencial).
+
+> **Cambio en v1.5.0 — routing opt-in.** El antiguo hook `SessionStart` (auto-routing al abrir Claude Code) fue **deregistrado**. Ahora se entra a Specture **solo** invocando `/specture:start` (o pidiendo iniciar/continuar). `hooks.enabled` ya únicamente controla el TDD Honesty Gate.
 
 ### Lo que vas a ver distinto
 
-- Al abrir Claude Code en un proyecto Specture, el modelo arranca automáticamente con el routing del state machine (no improvisa primer paso).
-- Durante `/specture:build`, una lista visible trackea los specs del epic activo y su progreso por los 9 pasos del loop.
+- Al abrir Claude Code en un proyecto Specture **no pasa nada automáticamente**: invocá `/specture:start` (o decí "continuemos con el roadmap") para que el router detecte la fase y enrute.
+- Durante `/specture:build`, una lista visible trackea los specs del epic activo y su progreso por los pasos del loop.
+- Con el modo **Agentes por Epic en Paralelo (Olas)**, varios epics independientes se construyen concurrentemente en worktrees aislados y se integran de a uno con verificación completa.
 - Si algún agente intenta modificar un test durante GREEN, la edición se rechaza con un mensaje del TDD Honesty Gate explicando el contrato sellado.
 - Al pedir `/specture:debug` o `/specture:new-feature`, Claude entra automáticamente en Plan mode — el fix o el análisis se aprueba antes de tocar el codebase.
 - En reviews y migraciones, las findings pueden citar APIs vigentes para tu stack consultadas en tiempo real vía Context7.
@@ -328,7 +331,7 @@ La forma más simple. Un solo comando en cualquier conversación de Claude Code:
 /plugin install github:FerEscobarDev/Specture
 ```
 
-Una vez instalado, los slash commands `/specture:*` quedan disponibles en **todas** tus conversaciones. El agente `specture-router` se activa automáticamente cuando está habilitado.
+Una vez instalado, los slash commands `/specture:*` quedan disponibles en **todas** tus conversaciones. El routing es **opt-in**: Specture no intercepta nada hasta que invocas `/specture:start` (o pides iniciar/continuar el trabajo).
 
 **Inicializar Specture en un proyecto:**
 
@@ -338,7 +341,7 @@ Una vez instalado, los slash commands `/specture:*` quedan disponibles en **toda
 
 Specture detectará si el proyecto está vacío (Bootstrap), tiene código existente (Adopt), o ya tiene `.specture/` (Reconfigure), y te guiará.
 
-**Usar el router automático:**
+**Usar el router (invocación explícita):**
 
 ```
 /specture:start
@@ -387,9 +390,9 @@ En la raíz del proyecto que quieres usar con Specture, crea un archivo `CLAUDE.
 
 **4. Abrir Claude Code en el proyecto:**
 
-Al iniciar una conversación en ese directorio, Claude leerá el `CLAUDE.md` y cargará Specture automáticamente. Luego di:
+Al iniciar una conversación en ese directorio, Claude leerá el `CLAUDE.md` y tendrá Specture disponible. El routing es opt-in: no se activa solo. Para entrar, di:
 
-> "Configura Specture aquí."
+> "Configura Specture aquí." (o invoca `/specture:start`)
 
 ---
 
@@ -427,6 +430,24 @@ Specture está en desarrollo activo. Para decisiones arquitectónicas internas, 
 ---
 
 ## Changelog
+
+### v1.5.0 — Routing Opt-in + Parallel Epic Execution
+
+**Motivación:** (1) el routing automático en cada conversación era intrusivo y duplicado (agente `specture-router` + hook `SessionStart`); el usuario prefiere entrar a Specture explícitamente. (2) El modo Agentes por Epic (v1.4.0) corría los epics de a uno; un ROADMAP ancho con epics independientes desperdicia throughput.
+
+**Cambio 1 — Routing opt-in:**
+- `settings.json`: removida la clave `"agent": "specture-router"` y el bloque `SessionStart`. Se conserva el `PreToolUse` (TDD Honesty Gate).
+- `hooks/session-start.js` queda **deregistrado** (script dormido, no se borra, no se invoca).
+- El agente `specture-router` se conserva pero **solo se invoca explícitamente** (`/specture:start` o pidiendo iniciar/continuar). `CLAUDE.md`, `AGENT.md` y `setup` reformulados: el routing no corre en cada mensaje; la resistencia a "saltarse la fase" se mantiene una vez dentro de Specture.
+
+**Cambio 2 — Modo "Agentes por Epic en Paralelo (Olas)" (`skills/build/SKILL.md`):**
+- Tercer modo de ejecución. El coordinador computa el "ready set" (epics `[ ]` con dependencias `[x]`), despacha hasta `build.max_parallel_epics` epic-agents **concurrentes**, cada uno en un **git worktree aislado**.
+- **Gate de integración secuencial:** cada epic DONE se mergea de a uno al árbol principal y se corre la suite completa antes de marcar `[x]`. Conflictos o acoplamiento no declarado afloran aquí (→ `debug`), nunca se shippean en silencio.
+- Nuevo toggle `build.max_parallel_epics` (default 3; `1` = secuencial) en `conventions.md` sección 10.
+- `ROADMAP_TEMPLATE.md`: estado `[/]` múltiple permitido en modo paralelo + sintaxis parseable del campo `Dependencias`.
+- Sin pérdida de gates: cada epic-agent corre el loop completo (Dispatch Manifest, architecture-validator, RED commit, TDD Honesty Gate, code-reviewer) dentro de su worktree. Inline y secuencial **sin cambios funcionales**.
+
+**Archivos nuevos:** `docs/parallel-epic-design.md`. Addendum en `docs/agent-per-epic-design.md`.
 
 ### v1.4.0 — Agent-per-Epic Execution Mode
 
