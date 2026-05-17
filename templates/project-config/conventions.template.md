@@ -77,7 +77,8 @@
 
 > Toggles opt-in para las capacidades nativas de Claude Code que Specture integra. Por defecto todos quedan en `false`: Specture funciona como en v1.1.0 (skill-based, sin hooks, sin MCP externo). Activá lo que quieras usar.
 
-- **hooks.enabled**: [true | false]      # activa el SessionStart hook (auto-routing) y el TDD Honesty Gate (bloqueo mecánico de edits a tests durante GREEN)
+- **hooks.enabled**: [true | false]      # activa el TDD Honesty Gate (bloqueo mecánico de edits a tests durante GREEN). Nota: desde v1.5.0 el routing NO es automático — se entra a Specture invocando `/specture:start`; el antiguo hook SessionStart fue deregistrado.
 - **context7.enabled**: [true | false]   # permite consultas a Context7 MCP en code-reviewer (Dimension 5: stack idiomaticity) y en modernize (gap analysis con docs vivas)
+- **build.max_parallel_epics**: 3         # tope de epic-agents concurrentes en el modo "Agentes por Epic en Paralelo (Olas)" de /specture:build. `1` = comportamiento secuencial. Default 3 si se omite.
 
-Cuando `hooks.enabled: false`, los scripts del plugin se cargan pero retornan sin actuar. Cuando `context7.enabled: false`, los agentes/skills que lo consultarían omiten esa fuente y marcan secciones afectadas como "needs manual verification" si aplica.
+Cuando `hooks.enabled: false`, los scripts del plugin se cargan pero retornan sin actuar. Cuando `context7.enabled: false`, los agentes/skills que lo consultarían omiten esa fuente y marcan secciones afectadas como "needs manual verification" si aplica. `build.max_parallel_epics` solo aplica al modo paralelo de build; los modos Inline y secuencial lo ignoran.

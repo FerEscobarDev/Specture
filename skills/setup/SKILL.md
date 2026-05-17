@@ -66,7 +66,9 @@ The user is starting from scratch. You will create the configuration through an 
    - `conventions.md` — naming, patterns, code style
    - `decisions/` — Architecture Decision Records
 
-   When working on this project, always start by invoking the Specture entry point.
+   To work with Specture on this project, invoke `/specture:start`
+   (plugin) or ask to "continuar con el roadmap" / "iniciar el proyecto".
+   Specture routing is opt-in — it does not run automatically.
    ```
 
 6. **Confirm `$SPECTURE_ROOT` is set** (only needed for @import manual setup; plugin users can skip):
@@ -74,7 +76,7 @@ The user is starting from scratch. You will create the configuration through an 
    - Si no: explica cómo configurarla en Windows (`setx SPECTURE_ROOT "C:\ruta\a\Specture"`), Mac/Linux (`export SPECTURE_ROOT=...` en `.zshrc`/`.bashrc`).
 
 7. **Suggest next step**:
-   > "Setup completo. Ahora puedes pasar a la Fase 1 (`discover`) para levantar requerimientos, o decirme 'continuemos' y te enrutaré automáticamente."
+   > "Setup completo. Cuando quieras avanzar, invoca `/specture:start` (o dime 'continuemos con el roadmap') y te enrutaré a la fase correcta — empezando por la Fase 1 (`discover`) para levantar requerimientos. El routing no es automático: se activa solo cuando lo pides."
 
 ---
 

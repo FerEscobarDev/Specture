@@ -20,14 +20,20 @@ Sin esa línea (o con `false`), cada hook llama a `lib/specture-guard.js`, recib
 
 ## Hooks incluidos
 
-### `session-start.js`
+### `session-start.js` — DEREGISTRADO (legacy, no se invoca)
+
+> **Desde v1.5.0 este hook ya NO está registrado en `settings.json`.** El routing
+> dejó de ser automático: ahora se entra a Specture **solo** invocando
+> explícitamente `/specture:start` (o pidiendo iniciar/continuar). El script se
+> conserva dormido por reversibilidad histórica, pero Claude Code nunca lo
+> ejecuta. No lo registres de nuevo salvo que quieras restaurar el auto-routing.
 
 | | |
 |---|---|
-| Evento | `SessionStart` |
-| Disparador | Al abrir Claude Code en un directorio |
-| Acción | Si el cwd contiene `.specture/stack.yml` y `hooks.enabled: true`, inyecta un `additionalContext` al modelo recordando invocar `skills/start/SKILL.md`. |
-| Reemplaza | El paso "primero invocá `/specture:start`" que el usuario tenía que hacer manualmente al inicio de cada sesión. |
+| Evento | `SessionStart` (sin registrar) |
+| Estado | Inactivo — no figura en `settings.json` |
+| Acción histórica | Inyectaba un `additionalContext` recordando invocar `skills/start/SKILL.md` al inicio de cada sesión Specture. |
+| Reemplazado por | Invocación explícita de `/specture:start` por parte del usuario. |
 
 ### `pre-tool-use-tdd-gate.js`
 
@@ -59,6 +65,8 @@ Sin esa línea (o con `false`), cada hook llama a `lib/specture-guard.js`, recib
 | `locked_at` | string (ISO-8601) | Timestamp del momento del sellado. Útil para auditar. |
 
 **Lifecycle**: `skills/build/SKILL.md` escribe el archivo en Step 4 (después del RED commit), y lo borra en Step 8 (después de marcar el epic `[x]`). Si querés desbloquear edits de tests legítimamente durante un epic en curso, borrá el archivo a mano y aceptá que el TDD contract se rompió — el `git diff` del Step 5.5 va a detectarlo igual.
+
+**Modo paralelo (Olas, v1.5.0)**: cuando `build/SKILL.md` corre en *Agentes por Epic en Paralelo*, cada epic-agent vive en su propio git worktree. El hook se ejecuta con el cwd dentro de ese worktree y `findProjectRoot` resuelve a la raíz del worktree, por lo que cada epic-agent lee/escribe **su propio** `.specture/state/build-locked.json` sin colisionar con los demás. El árbol principal del coordinador no tiene `build-locked.json` (el coordinador no escribe tests). El nombre de archivo único es seguro **por worktree** — no se requiere indexarlo por epic.
 
 ---
 

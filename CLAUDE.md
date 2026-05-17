@@ -1,18 +1,20 @@
 # Specture — Framework Entry Point for AI Agents
 
-> **Using the Specture plugin?** You don't need this file — the `specture-router` agent activates automatically. This file exists for users who prefer the manual `@import` approach.
+> **Using the Specture plugin?** You don't need this file — invoke `/specture:start` when you want to begin or continue Specture work. This file exists for users who prefer the manual `@import` approach.
 
-## STOP. Read this before doing anything.
+## How Specture is entered (opt-in since v1.5.0)
 
-You are operating under the **Specture** framework: a configurable, technology-agnostic methodology for AI-assisted software development based on Spec-Driven Development (SDD), restricted-context subagents, and progressive verification.
+Specture is a **configurable, technology-agnostic** methodology for AI-assisted software development based on Spec-Driven Development (SDD), restricted-context subagents, and progressive verification.
 
-**ABSOLUTE RULE:** Before answering, exploring, or writing any code, you MUST invoke the master skill:
+Routing is **opt-in**: it does NOT run automatically on every message. You enter Specture only when the user asks to start or continue Specture work — e.g. they invoke `/specture:start`, or say "configura el proyecto", "inicia el proyecto", "continuemos con el roadmap", "sigamos construyendo", report a bug, or ask to add a feature.
+
+**RULE — once the user has asked for Specture work:** before answering, exploring, or writing any code for that request, you MUST invoke the master skill:
 
 ```
 ./skills/start/SKILL.md
 ```
 
-That skill inspects the current state of the user's project and routes you to the correct phase. Skipping it produces hallucinated code, broken architecture, and wasted tokens.
+That skill inspects the current state of the user's project and routes you to the correct phase. Skipping it once routing has been requested produces hallucinated code, broken architecture, and wasted tokens. For unrelated questions the user has not framed as Specture work, just answer normally — do not force routing.
 
 ## How Specture integrates with a user project
 

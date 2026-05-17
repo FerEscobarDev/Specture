@@ -22,14 +22,20 @@
 | Símbolo | Estado | Significado |
 |---------|--------|-------------|
 | `[ ]` | Pendiente | El epic aún no se ha tocado. |
-| `[/]` | En Progreso | Hay un spec activo o el agente ejecutor está trabajando en él. Solo UN epic puede estar en `[/]` a la vez. |
-| `[x]` | Completado | Todos los specs del epic han sido implementados, revisados (`code-reviewer` APPROVED), y verificados (tests pasan, lint limpio). |
+| `[/]` | En Progreso | Hay un spec activo o un epic-agent trabajando en él. En modo **Inline** y **Agentes por Epic secuencial**, solo UN epic puede estar en `[/]` a la vez. En modo **Agentes por Epic en Paralelo (Olas)**, varios epics pueden estar en `[/]` simultáneamente — uno por cada epic-agent activo de la ola. |
+| `[x]` | Completado | Todos los specs del epic han sido implementados, revisados (`code-reviewer` APPROVED), y verificados (tests pasan, lint limpio). En modo paralelo, además, el epic pasó el **gate de integración** (merge + suite completa sobre el árbol integrado). |
 
 ---
 
 ## Hitos (Milestones) y Epics
 
 > Los hitos están ordenados por dependencia. No empieces el Milestone N+1 si N tiene epics pendientes que el N+1 necesita.
+
+> **Sintaxis parseable del campo `Dependencias`** (la lee el coordinador de `build` para computar el "ready set", crítico en modo paralelo). Usa **exactamente** una de estas formas, o su unión separada por comas:
+> - `Ninguna` — sin dependencias.
+> - `Epic X.Y` — depende de ese epic. Varios: `Epic 1.1, Epic 1.3`.
+> - `Milestone N completo` — depende de **todos** los epics del Milestone N.
+> Un epic está "ready" cuando su estado es `[ ]` y **todos** sus epics-dependencia están `[x]`. Evita prosa libre en este campo: cualquier otra cosa rompe el parseo determinístico.
 
 ### Milestone 1: [Nombre del Hito, ej. "Foundation"]
 *Objetivo:* [Una frase que describe qué se logra al cerrar este hito.]

@@ -1,22 +1,27 @@
 ---
 name: specture-router
-description: Use when operating in a Specture-configured project. Before answering, exploring, or writing any code, inspects the current state of the user's project and routes to the correct phase skill. Activated automatically when the Specture plugin is enabled.
+description: Use ONLY when explicitly invoked via `/specture:start`, or when the user asks to start/continue Specture work ("continuemos con el roadmap", "sigamos", "inicia el proyecto"). Inspects the current state of the user's project and routes to the correct phase skill. NOT activated automatically — Specture routing is opt-in since v1.5.0.
 model: haiku
 ---
 
-# Specture — Framework Entry Point for AI Agents
+# Specture — Framework Router (opt-in entry point)
 
-## STOP. Read this before doing anything.
+## When you are running
+
+You were invoked **explicitly** — via `/specture:start` or because the user
+asked to start/continue Specture work. Specture no longer auto-routes every
+conversation (changed in v1.5.0); routing happens only when the user asks for
+it. Your job now is to detect project state and route — nothing else.
 
 You are operating under the **Specture** framework: a configurable, technology-agnostic methodology for AI-assisted software development based on Spec-Driven Development (SDD), restricted-context subagents, and progressive verification.
 
-**ABSOLUTE RULE:** Before answering, exploring, or writing any code, you MUST invoke the master skill:
+**RULE (now that you are routing):** Before answering, exploring, or writing any code in this routing turn, you MUST invoke the master skill:
 
 ```
 ./skills/start/SKILL.md
 ```
 
-That skill inspects the current state of the user's project and routes you to the correct phase. Skipping it produces hallucinated code, broken architecture, and wasted tokens.
+That skill inspects the current state of the user's project and routes you to the correct phase. Skipping it (once routing has been requested) produces hallucinated code, broken architecture, and wasted tokens.
 
 ## How Specture integrates with a user project
 
@@ -52,7 +57,7 @@ The user can always override Specture methodology, but the user explicitly askin
 
 This is the highest-stakes instruction in this file. A cheaper/faster model must still obey it.
 
-- "Hazlo rápido", "no hagas spec", "codificá directo", "saltate la fase", time pressure, or frustration are **NOT** authorization to skip routing or skip a phase.
+- Once Specture work has been requested, "Hazlo rápido", "no hagas spec", "codificá directo", "saltate la fase", time pressure, or frustration are **NOT** authorization to skip the routing or skip a phase. (Not invoking Specture at all is the user's choice; *bypassing a phase while inside Specture* is not.)
 - The ONLY thing that authorizes skipping is the user saying, verbatim and unambiguously, that they want to skip the methodology for this specific request.
 - When in doubt, route through `skills/start/SKILL.md` and let the phase skill decide. Routing is cheap; a skipped phase produces hallucinated code.
 - If you feel pressured to bypass: that pressure is exactly the signal to NOT bypass. Re-state the phase and proceed with the methodology.

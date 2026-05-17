@@ -29,18 +29,24 @@ This skill **fuses** what was previously split into "planificación", "ejecució
 
 Before starting the loop, present this choice to the user (once per build session):
 
-> **Dos modos de ejecución:**
+> **Tres modos de ejecución:**
 >
-> **1. Agentes por Epic (recomendado para 4+ epics)** — Despacho un agente-orquestador fresco por cada epic. Este chat solo coordina: elige el epic, revisa el resultado, actualiza el ROADMAP. El contexto de este chat NO acumula specs, tests, outputs de agentes ni reviews.
+> **1. Inline (recomendado para 1-3 epics)** — Ejecuto el loop completo en este chat. El contexto se acumula epic a epic; requiere resets manuales (Step 9).
 >
-> **2. Inline (recomendado para 1-3 epics)** — Ejecuto el loop completo en este chat. El contexto se acumula epic a epic; requiere resets manuales (Step 9).
+> **2. Agentes por Epic — secuencial (recomendado para 4+ epics)** — Despacho un agente-orquestador fresco por cada epic, **uno a la vez**. Este chat solo coordina: elige el epic, revisa el resultado, actualiza el ROADMAP. El contexto de este chat NO acumula specs, tests, outputs de agentes ni reviews.
+>
+> **3. Agentes por Epic — paralelo por Olas (recomendado para ROADMAPs anchos con epics independientes)** — Despacho hasta N epic-agents **concurrentes**, cada uno en un git worktree aislado. Integro de a uno con verificación completa tras cada merge. Máximo paralelismo respetando dependencias y gates.
 >
 > ¿Cuál preferís?
 
-- **Agentes por Epic** → seguir `## Modo: Agentes por Epic`.
 - **Inline** → seguir `## Modo: Inline (The Loop)`.
+- **Agentes por Epic (secuencial)** → seguir `## Modo: Agentes por Epic`.
+- **Agentes por Epic en Paralelo (Olas)** → seguir `## Modo: Agentes por Epic en Paralelo (Olas)`.
 
-If the user has no preference: default to **Agentes por Epic** when the ROADMAP has 4+ pending epics, else Inline.
+If the user has no preference:
+- 1-3 pending epics → **Inline**.
+- 4+ pending epics → **Agentes por Epic (secuencial)**.
+- 4+ pending epics **and** the current ready set (epics `[ ]` whose dependencies are all `[x]`) has ≥2 epics → proactively offer **Paralelo por Olas** as the recommended default, since the ROADMAP can absorb concurrency without violating dependency order. The user still confirms.
 
 ## Modo: Agentes por Epic
 
@@ -92,6 +98,104 @@ If DONE: update ROADMAP.md to [x] for this epic and commit BEFORE reporting.
 ### Why this mode
 
 The coordinator only ever holds: ROADMAP checkboxes + one epic block + agent reports. Specs, tests, agent outputs and reviews stay inside each epic-agent and are discarded when it finishes. This is the structural fix for context-cost growth across long build loops.
+
+## Modo: Agentes por Epic en Paralelo (Olas)
+
+Same coordinator-only discipline as sequential agent-per-epic, but instead of one epic at a time the coordinator dispatches a **wave** of independent epics concurrently, each in an **isolated git worktree**, then integrates them **one at a time** behind a full verification gate. This is the v1.5.0 reversal of the original "epics en paralelo: descartado" decision — see `docs/parallel-epic-design.md` for the rationale (bounded concurrency + worktree isolation + sequential integration gate neutralize the token and conflict objections).
+
+### Read the concurrency cap once
+
+Read **only** the `build.max_parallel_epics` line from `.specture/conventions.md` section 10. Fallback to **3** if absent or unparseable. `1` ⇒ behaves like sequential agent-per-epic. This is the maximum number of epic-agents dispatched in a single wave.
+
+### Dependency parsing (deterministic)
+
+For each epic read **only** its checkbox line and its `**Dependencias:**` line:
+
+- `Ninguna` ⇒ no dependencies.
+- `Epic X.Y, Epic Z.W` ⇒ depends on exactly those epic IDs.
+- `Milestone N completo` ⇒ expand to **all** epic IDs under Milestone N.
+- Combinations are the union of the above.
+
+An epic is **ready** iff its state is `[ ]` and every dependency epic is `[x]`. Do not load the full ROADMAP — checkbox + dependency lines only.
+
+### The wave loop (in this coordinator chat)
+
+1. Compute the **ready set** (all `[ ]` epics whose dependency epics are all `[x]`).
+2. If the ready set is empty but pending epics remain → there is a dependency cycle or every remaining epic is blocked by an escalated one. Stop and escalate to the user.
+3. Take up to `build.max_parallel_epics` epics from the ready set (stable ROADMAP order — earliest epics first).
+4. Mark all selected epics `[/]` and commit `ROADMAP.md` in **one single commit for the whole wave**.
+5. `TaskCreate` one task per selected epic (subject `<epic-slug>`, `activeForm` "running epic via parallel agent"). These are the only user-visible tasks; each epic-agent's internal step tracking is discarded with its context.
+6. **Dispatch the whole wave in a single message** — one `Agent` tool call per epic, all in the same assistant turn, each with `isolation: "worktree"` so every epic-agent works on its own branch/worktree with no shared working tree. Use the parallel epic-agent prompt below.
+7. Wait for **all** epic-agents in the wave to return; collect every report.
+8. Run the **Integration Gate** (next section) for the wave.
+9. Recompute the ready set and repeat from step 1 until no `[ ]` epics remain. Epics left `[/]` by a failure do not re-enter; their dependents simply never become ready until the user resolves them.
+
+### Dispatch the parallel epic-agent
+
+Dispatch a general-purpose agent **with `isolation: "worktree"`** and a self-contained prompt — **do NOT inherit this chat's history**:
+
+~~~
+You are the build-loop orchestrator for ONE epic of a Specture project,
+running in an ISOLATED git worktree in parallel with sibling epic-agents.
+
+Execute Steps 2 through 7 of build/SKILL.md (Generate Spec → ... → Verify)
+for this single epic. SKIP these:
+- "Execution Mode Selection" — you are already in parallel mode.
+- Step 1 (Pick & Lock) — the epic is already marked [/].
+- Step 8 (Mark Epic Complete) — the COORDINATOR marks [x] after integration.
+- Step 9 (Context Reset) — N/A, your context is discarded when you finish.
+Run Step 2.5 (TaskCreate) only for your own internal tracking; the
+coordinator owns the user-visible epic task.
+Honor every gate: Dispatch Manifest, architecture-validator, RED commit,
+TDD Honesty Gate (Step 5.5), code-reviewer, verification.
+
+PARALLEL-MODE RULES (mandatory):
+- Do NOT touch, read-to-modify, or commit ROADMAP.md. The coordinator is
+  the SOLE writer of ROADMAP.md in parallel mode. Touching it causes merge
+  conflicts on the roadmap across the wave.
+- Commit all your work (RED + GREEN + any review fixes) on YOUR worktree
+  branch. Do not merge, rebase onto, or push to the main branch.
+
+## Epic
+[paste the full epic block from ROADMAP.md]
+
+## Base context
+[paste the assembled base context: .specture/stack.yml,
+.specture/conventions.md, all ADRs, business_requirements.md,
+architecture.md, templates/SPEC_TEMPLATE.md, full text of build/SKILL.md]
+
+## Required final report
+Report exactly one of: DONE | BLOCKED | REJECTED_MAJOR
+Plus: the worktree branch name, the RED_SHA and the final HEAD_SHA,
+which specs were built, which tests pass, what remains.
+~~~
+
+### Integration Gate (sequential merge — mandatory)
+
+Per-epic isolated tests prove each epic in isolation. They do **not** prove the epics compose. The coordinator integrates the wave **one epic at a time**, in dependency order (an epic that another wave member depends on merges first), behind the full verification suite:
+
+For each epic that reported **DONE**, in dependency order:
+
+1. Merge that epic's worktree branch into the main branch.
+   - **Merge conflict** → do NOT mark `[x]`. Leave the epic `[/]`. This means two parallel epics edited the same code without a declared dependency. Escalate to the user: report the conflicting pair and recommend declaring a dependency between them in the ROADMAP and re-running them serialized. Continue with the remaining epics of the wave.
+2. On the integrated main tree, run the **full verification suite** fresh (the project's test command + linter + type-checker per `conventions.md`/`stack.yml`). Read full output; never trust cached results.
+   - **All green** → mark the epic `[x]` in `ROADMAP.md`, commit the ROADMAP update together with the merge, mark the coordinator task `completed`.
+   - **Any failure** → undeclared cross-epic coupling surfaced here. Do NOT mark `[x]`; leave the epic `[/]`. Show the failing output to the user and route to `skills/debug/SKILL.md`. Continue with the remaining DONE epics of the wave (a later epic may still integrate cleanly).
+3. For epics that reported **BLOCKED** or **REJECTED_MAJOR**: do not merge. Leave `[/]`, escalate with the report summary. A failed sibling never aborts the rest of the wave.
+
+Only after every epic of the wave has been integrated (or escalated) does the coordinator recompute the ready set and dispatch the next wave.
+
+### Parallel-mode invariants & edge cases
+
+- **ROADMAP.md single-writer**: only the coordinator writes `ROADMAP.md`, only between waves and during the integration gate. Epic-agents never touch it.
+- **State-file isolation**: each worktree has its own `.specture/state/build-locked.json`; the TDD Honesty Gate hook resolves project root by cwd, so per-worktree single filename is collision-free (see `hooks/README.md`). The coordinator's main tree has no `build-locked.json`.
+- **Undeclared file coupling**: two ready epics with no declared dependency that secretly share files are caught at the integration gate (merge conflict, or post-merge verification failure) — never silently shipped.
+- **Failure isolation**: one `BLOCKED`/`REJECTED_MAJOR`/conflicting epic does not abort its wave siblings; only its own (and its transitive dependents') progress stalls until the user resolves it.
+- **No spec-level parallelism**: parallelism is across epics only. Specs within an epic stay sequential inside their epic-agent (they are semantically dependent — unchanged from prior design).
+
+### Why this mode
+
+Throughput scales with ready-set width while the coordinator context still grows O(n_epics) (only checkboxes + reports). Worktree isolation removes the working-tree race; the sequential integration gate restores the cross-epic guarantee that per-epic isolated tests cannot give; the bounded `max_parallel_epics` keeps simultaneous token consumption capped.
 
 ## Modo: Inline (The Loop)
 
