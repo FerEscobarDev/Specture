@@ -28,7 +28,7 @@ La solución: al inicio del build loop, ofrecer al usuario la elección explíci
 ## Alternativas descartadas
 
 - **Specs en paralelo dentro del epic**: los specs del mismo epic son semánticamente dependientes (Spec 1 define el modelo, Spec 2 construye el servicio, Spec 3 expone el API). Correrlos en paralelo genera implementaciones que no encajan aunque pasen sus tests individualmente. Descartado.
-- **Epics en paralelo con worktrees**: viable técnicamente pero los epics suelen ser suficientemente grandes como para agotar el límite de tokens si se corren dos al mismo tiempo. Descartado.
+- **Epics en paralelo con worktrees**: viable técnicamente pero los epics suelen ser suficientemente grandes como para agotar el límite de tokens si se corren dos al mismo tiempo. Descartado. **(REVERTIDO en v1.5.0 — ver addendum abajo y `docs/parallel-epic-design.md`.)**
 
 ## Implementación
 
@@ -56,3 +56,14 @@ Mismo loop de Steps 1-9 sin cambios funcionales, con una nota de que el contexto
 3. Verificar que el modo inline funciona exactamente igual (solo cambió el nombre de la sección y se agregó una nota).
 4. Verificar que el prompt del epic-agent incluye las tres instrucciones de omisión (mode selection, Step 1, Step 9).
 5. **Reconciliación post-plan:** confirmar que el coordinador posee la tarea TaskCreate visible y que el epic-agent honra Dispatch Manifest + TDD Honesty Gate.
+
+---
+
+## Addendum v1.5.0 — Paralelo revertido del "descartado"
+
+La objeción original al paralelismo era doble: **(a)** agotamiento de tokens al correr dos epics grandes a la vez, y **(b)** implícitamente, conflictos de working tree / git. v1.5.0 las neutraliza, no las ignora:
+
+- **(a) Token budget** → tope configurable `build.max_parallel_epics` (default 3, `1` = secuencial). El coordinador sigue O(n_epics) en contexto (solo checkboxes + reportes); el consumo simultáneo queda acotado por diseño, no librado al azar.
+- **(b) Conflictos** → cada epic-agent corre en un **git worktree aislado** (`isolation: "worktree"`); no comparten working tree. El coordinador es único escritor de `ROADMAP.md`. Un **gate de integración secuencial** mergea de a un epic y corre la suite completa antes de marcar `[x]`: el acoplamiento no declarado entre epics paralelos aflora ahí (conflicto de merge o fallo post-merge → `debug`), nunca se shippea en silencio.
+
+La decisión "specs en paralelo dentro del epic: descartado" **se mantiene** — los specs de un mismo epic siguen siendo semánticamente dependientes. El paralelismo de v1.5.0 es estrictamente **a nivel epic**. Diseño completo: `docs/parallel-epic-design.md`. Implementación: sección "Modo: Agentes por Epic en Paralelo (Olas)" en `skills/build/SKILL.md`.

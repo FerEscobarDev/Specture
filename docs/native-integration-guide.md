@@ -1,6 +1,8 @@
 # Specture — Native Claude Code Integration Guide
 
-> Guía operativa para usar las capacidades nativas de Claude Code integradas en Specture v1.2.0: hooks, TaskCreate, Context7, Plan mode, background tasks, SessionStart.
+> **Cambio v1.5.0 — routing opt-in.** El hook `SessionStart` (auto-routing) fue **deregistrado**: ya no existe como capacidad. Se entra a Specture invocando explícitamente `/specture:start` (o pidiendo iniciar/continuar). `hooks.enabled` ahora solo controla el TDD Honesty Gate (`PreToolUse`). Las menciones a `SessionStart` más abajo se conservan como audit trail histórico.
+
+> Guía operativa para usar las capacidades nativas de Claude Code integradas en Specture: hooks (TDD Honesty Gate), TaskCreate, Context7, Plan mode, background tasks.
 >
 > Audiencia: usuarios de Specture que ya conocen los slash commands base (`/specture:setup`, `/specture:build`, etc.) y quieren entender qué cambia con las capacidades nativas activas.
 
@@ -12,8 +14,8 @@ Specture v1.2.0 delega a la plataforma seis funciones que antes vivían como con
 
 | Capacidad nativa | Función en Specture |
 |------------------|---------------------|
-| Hook `SessionStart` | Recuerda al modelo invocar `start/SKILL.md` al inicio de cada sesión, sin que el usuario lo tipee. |
 | Hook `PreToolUse` (TDD Honesty Gate) | Bloquea mecánicamente la edición de tests durante GREEN. |
+| ~~Hook `SessionStart`~~ | **Deregistrado en v1.5.0.** El routing es opt-in: invocá `/specture:start`. |
 | `TaskCreate` | Muestra al usuario una lista en vivo de los specs del epic activo en el build loop. |
 | `Context7` MCP | Provee docs vigentes para `code-reviewer` (Dimension 5) y `modernize` (gap analysis). |
 | `Plan mode` | Gate de aprobación obligatorio en `debug` y `new-feature` antes de tocar código. |
@@ -32,8 +34,9 @@ Editá `.specture/conventions.md` sección 10:
 ```markdown
 ## 10. Specture / Claude Code Integration
 
-- **hooks.enabled**: true       # activa SessionStart + TDD Honesty Gate
-- **context7.enabled**: true    # activa Context7 en code-reviewer y modernize
+- **hooks.enabled**: true            # activa el TDD Honesty Gate (PreToolUse). SessionStart ya no existe (v1.5.0).
+- **context7.enabled**: true         # activa Context7 en code-reviewer y modernize
+- **build.max_parallel_epics**: 3    # tope de epic-agents concurrentes en el modo paralelo de build
 ```
 
 Cualquier capacidad podés dejarla en `false` (o ausente) y el resto sigue funcionando. Con todos los toggles en `false`, Specture funciona exactamente como v1.1.0.
@@ -43,7 +46,7 @@ Cualquier capacidad podés dejarla en `false` (o ausente) y el resto sigue funci
 1. Confirmá que el plugin está instalado: `/plugin list` debe mostrar `specture` activo.
 2. Confirmá que `.specture/stack.yml` existe en la raíz del proyecto.
 3. Confirmá que `.specture/conventions.md` sección 10 tiene `hooks.enabled: true`.
-4. Cerrá y reabrí Claude Code en ese directorio: deberías ver una línea de `additionalContext` mencionando Specture al inicio.
+4. Probá el TDD Honesty Gate: durante un epic activo del build loop, intentá editar un archivo de test sellado — la edición debe rechazarse. (En v1.5.0 ya no hay `additionalContext` de routing al abrir la sesión: el routing se invoca con `/specture:start`.)
 
 Si no se dispara, ver `hooks/README.md` sección Troubleshooting.
 
@@ -51,13 +54,9 @@ Si no se dispara, ver `hooks/README.md` sección Troubleshooting.
 
 ## 3. Hooks
 
-### 3.1 SessionStart — qué hace
+### 3.1 SessionStart — DEREGISTRADO (v1.5.0)
 
-Al abrir Claude Code en un proyecto Specture con hooks activos, el modelo recibe un fragmento de contexto adicional:
-
-> "Specture está activo en este proyecto. Antes de cualquier otra acción, invocá `skills/start/SKILL.md` para detectar la fase actual y enrutar al skill correcto."
-
-El usuario no ve este mensaje en su transcript (es contexto interno del modelo), pero sí ve el resultado: Claude responde su primera intervención usando el routing del state machine de Specture, no improvisando.
+> Histórico: hasta v1.4.0 este hook inyectaba un `additionalContext` al abrir Claude Code recordando invocar `skills/start/SKILL.md`. En v1.5.0 el routing pasó a ser **opt-in**: el hook fue deregistrado de `settings.json` y el script `hooks/session-start.js` quedó dormido. Para entrar a Specture ahora invocás `/specture:start` (o pedís iniciar/continuar el trabajo) y el router detecta la fase. El único hook activo es el `PreToolUse` (TDD Honesty Gate, abajo).
 
 ### 3.2 PreToolUse / TDD Honesty Gate — qué bloquea
 

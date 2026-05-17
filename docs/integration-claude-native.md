@@ -1,5 +1,7 @@
 # Reporte: Integración de Capacidades Nativas de Claude Code en Specture
 
+> **Revisión v1.5.0 (audit trail):** la recomendación de auto-routing vía hook `SessionStart` (secciones 3.7 y siguientes) fue **revertida**. La experiencia mostró que el auto-routing en cada conversación es intrusivo y duplica al agente `specture-router`. Decisión vigente: routing **opt-in** — se invoca explícitamente `/specture:start`. El hook `SessionStart` quedó deregistrado; solo el `PreToolUse` (TDD Honesty Gate) permanece activo. El resto del análisis se conserva como registro histórico de diseño.
+
 > Análisis de viabilidad e impacto de integrar las capacidades nativas de la plataforma Claude Code (auto-memory, hooks, TaskCreate, MCP, Plan mode, background tasks, SessionStart) en el framework Specture.
 >
 > Fecha: 2026-05-14
