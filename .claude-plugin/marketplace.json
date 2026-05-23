@@ -10,7 +10,7 @@
     {
       "name": "specture",
       "source": "./",
-      "description": "Spec-Driven Development framework for AI-assisted software development. 5 phases + 4 transversal skills, 4 restricted-context agents, zero code without a spec.",
+      "description": "Spec-Driven Development framework for AI-assisted software development. 5 phases + transversal skills, 5 restricted-context agents, an API contract as single source of truth for the backend/frontend interface, zero code without a spec.",
       "author": {
         "name": "Fernando Escobar",
         "email": "keishmen17@gmail.com"

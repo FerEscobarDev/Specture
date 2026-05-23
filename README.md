@@ -2,7 +2,7 @@
 
 > Una metodología de Vibe Coding para Claude Code basada en SDD (Spec-Driven Development), con configuración agnóstica al stack, agentes especializados con contexto restringido, y disciplina anti-alucinación.
 
-Specture lleva un proyecto **desde la idea hasta el código** en 5 fases consecutivas + 4 capacidades transversales, dispatchando 4 agentes funcionales por cada epic. No replica la estructura de un equipo humano: replica las **funciones cognitivas** que la IA hace mejor cuando se le restringe el contexto.
+Specture lleva un proyecto **desde la idea hasta el código** en 5 fases consecutivas + capacidades transversales, dispatchando agentes funcionales con contexto restringido. No replica la estructura de un equipo humano: replica las **funciones cognitivas** que la IA hace mejor cuando se le restringe el contexto. Desde v1.6.0 incluye un **contrato de API** como fuente única de verdad backend↔frontend, disciplina de diseño end-to-end (design system → showcase → aprobación → páginas), y herramientas para ingerir handoffs de diseño y auditar la sincronización back/front.
 
 ---
 
@@ -27,9 +27,11 @@ $SPECTURE_ROOT/
 │   ├── start/SKILL.md                 # Router: detecta el estado y enruta
 │   ├── setup/SKILL.md                 # Setup en 3 modos (bootstrap/adopt/reconfigure)
 │   ├── discover/SKILL.md              # Levantamiento socrático de negocio
-│   ├── architecture/SKILL.md          # Arquitectura + ROADMAP fusionados
-│   ├── ux-design/SKILL.md             # UX/UI con dual route
-│   ├── build/SKILL.md                 # Loop spec→test→code→review por epic
+│   ├── architecture/SKILL.md          # Arquitectura + contrato de API + ROADMAP
+│   ├── ux-design/SKILL.md             # UX/UI: nav map + design system (siempre)
+│   ├── build/SKILL.md                 # Loop spec→test→code→review + Modo Frontend
+│   ├── handoff-ingest/SKILL.md        # Convierte un handoff de diseño al stack
+│   ├── contract-sync-audit/SKILL.md   # Audita sync back/front en proyectos existentes
 │   ├── debug/SKILL.md
 │   ├── new-feature/SKILL.md
 │   ├── verify/SKILL.md
@@ -37,16 +39,19 @@ $SPECTURE_ROOT/
 │   └── modernize/SKILL.md
 ├── agents/
 │   ├── specture-router/AGENT.md       # Router (opt-in: se invoca con /specture:start)
-│   ├── architecture-validator/AGENT.md  # Valida planes contra .specture/
+│   ├── architecture-validator/AGENT.md  # Valida planes/contrato contra .specture/
 │   ├── tdd-test-writer/AGENT.md         # Escribe tests desde el spec (sin ver código)
-│   ├── implementer/AGENT.md             # Implementa para pasar tests
-│   └── code-reviewer/AGENT.md           # Review unificado (spec + arch + quality)
+│   ├── implementer/AGENT.md             # Implementa para pasar tests (backend/lógica)
+│   ├── ux-implementer/AGENT.md          # Implementa UI: tokens, a11y, cliente tipado
+│   └── code-reviewer/AGENT.md           # Review unificado (spec + arch + quality + front)
 ├── templates/
 │   ├── project-config/                # Plantillas de .specture/ del proyecto destino
 │   │   ├── stack.template.yml
 │   │   ├── conventions.template.md
 │   │   └── decisions/000-template.md
 │   ├── ARCHITECTURE_TEMPLATE.md
+│   ├── API_CONTRACT_TEMPLATE.md
+│   ├── api-contract.openapi.template.yaml
 │   ├── ROADMAP_TEMPLATE.md
 │   ├── SPEC_TEMPLATE.md
 │   ├── DESIGN_SYSTEM_TEMPLATE.md
@@ -63,8 +68,8 @@ $SPECTURE_ROOT/
 |---|-------|--------------|------------------|--------|
 | **0** | `setup` | `/specture:setup` | Sin `.specture/stack.yml` | `.specture/` poblado + `CLAUDE.md` del proyecto |
 | **1** | `discover` | `/specture:discover` | Sin `docs/01-requirements/business_requirements.md` | Reglas de negocio, actores, edge cases |
-| **2** | `architecture` | `/specture:architecture` | Sin `docs/04-roadmap/ROADMAP.md` | Arquitectura + ROADMAP de milestones/epics |
-| **3** | `ux-design` | `/specture:ux-design` | Frontend declarado + sin `docs/03-ux-ui/` | Mapa de navegación + design system o specs para IA externa |
+| **2** | `architecture` | `/specture:architecture` | Sin `docs/04-roadmap/ROADMAP.md` | Arquitectura + **contrato de API (OpenAPI + doc legible)** + ROADMAP de milestones/epics |
+| **3** | `ux-design` | `/specture:ux-design` | Frontend declarado + `docs/03-ux-ui/` incompleto | Mapa de navegación + **design system completo (siempre)** + (Ruta 1) specs para IA de diseño externa |
 | **4** | `build` | `/specture:build` | ROADMAP con epics `[ ]` o `[/]` | Código testeado, revisado, verificado |
 
 ## Capacidades Transversales
@@ -76,19 +81,22 @@ $SPECTURE_ROOT/
 | `verify` | `/specture:verify` | Antes de cualquier "completado", "fixed", "passing" |
 | `write-skill` | `/specture:write-skill` | Crear o modificar skills del framework |
 | `modernize` | `/specture:modernize` | Subir versión de una tecnología o migrar a otro stack |
+| `handoff-ingest` | `/specture:handoff-ingest` | Tienes un handoff de diseño (Claude Design/v0/Lovable) para convertir al stack |
+| `contract-sync-audit` | `/specture:contract-sync-audit` | Frontend y backend desincronizados en un proyecto existente |
 
 ---
 
-## Los 4 Agentes
+## Los 5 Agentes
 
-Specture **no** especializa por capa técnica (no hay "Frontend Agent" ni "Backend Agent" — esa es falsa especialización en IA). Especializa por **función cognitiva** con contexto restringido:
+Specture **no** especializa por capa técnica arbitraria (no hay un "Agente Backend" vs "Agente Frontend" partido por dónde vive el archivo — eso es falsa especialización). Especializa por **función cognitiva** con contexto restringido. `implementer` y `ux-implementer` no son "backend vs frontend por capa": son dos funciones cognitivas distintas — *hacer pasar tests de lógica* vs *renderizar con fidelidad al design system, accesibilidad y cliente tipado*. La calidad visual y la adherencia a tokens son una lente cognitiva que el implementer genérico (optimizado para TDD de lógica) no tiene.
 
 | Agente | Función | Contexto que recibe | Contexto que NO recibe |
 |--------|---------|---------------------|-------------------------|
-| `architecture-validator` | Validar que un plan/spec respeta stack y ADRs | Documento + `.specture/` | Código de implementación |
+| `architecture-validator` | Validar que plan/spec/**contrato** respeta stack, ADRs y el contrato de API | Documento + `.specture/` (+ contrato si aplica) | Código de implementación |
 | `tdd-test-writer` | Escribir tests desde el spec | Spec + business rules + testing framework | Código de implementación (anti-bias crítico) |
-| `implementer` | Hacer que los tests pasen | Spec + tests + archivos a tocar | Conversación entera, archivos no relevantes |
-| `code-reviewer` | Review unificado (spec + arch + quality) | Diff + spec + `.specture/` | Sugerir fixes (solo reporta) |
+| `implementer` | Hacer que los tests pasen (lógica/backend) | Spec + tests + archivos a tocar | Conversación entera, archivos no relevantes |
+| `ux-implementer` | Implementar UI con fidelidad al design system | Spec + design system + slice del contrato + tests + checklist de marca | URLs a mano, valores hardcodeados, código no relacionado |
+| `code-reviewer` | Review unificado (spec + arch + quality + TDD + **frontend**) | Diff + spec + `.specture/` (+ design system/contrato en epics de UI) | Sugerir fixes (solo reporta) |
 
 ---
 
@@ -125,22 +133,22 @@ Output: `docs/01-requirements/business_requirements.md` con reglas verificables 
 ---
 
 #### `/specture:architecture`
-**Diseña la arquitectura técnica y genera el ROADMAP.** Fusiona dos responsabilidades en una: produce `architecture.md` basado en el stack declarado en `stack.yml` (nunca inventa tecnología), y luego convierte esa arquitectura + los requerimientos en un `ROADMAP.md` de milestones y epics con dependencias explícitas. Valida el documento con el agente `architecture-validator` antes de finalizarlo.
+**Diseña la arquitectura técnica, el contrato de API y genera el ROADMAP.** Fusiona tres responsabilidades: (1) produce `architecture.md` basado en el stack declarado en `stack.yml` (nunca inventa tecnología); (2) produce el **contrato de API** — `api-contract.openapi.yaml` (fuente de verdad machine-readable) + `api-contract.md` (versión legible) — que es la única fuente de verdad de la interfaz backend↔frontend, eliminando que cada lado invente sus propias URLs y shapes; (3) convierte arquitectura + contrato + requerimientos en un `ROADMAP.md` de milestones/epics con dependencias explícitas, ordenando los epics de frontend tras los de backend que implementan las operaciones que consumen. Valida cada documento con el agente `architecture-validator`.
 
-Output: `docs/02-architecture/architecture.md` + `docs/04-roadmap/ROADMAP.md`.
+Output: `docs/02-architecture/architecture.md` + `docs/02-architecture/api-contract.openapi.yaml` (+ `.md`) + `docs/04-roadmap/ROADMAP.md`.
 
 > Úsalo cuando digas "diseñemos la arquitectura", "generemos el roadmap", o cuando `ROADMAP.md` no existe.
 
 ---
 
 #### `/specture:ux-design`
-**Define UX e información arquitectónica antes de escribir UI.** Solo se activa si el proyecto tiene frontend declarado en `stack.yml`. Ofrece dos rutas:
-- **Ruta 1 (Delegada)** — genera specs para una IA de diseño externa (v0, Lovable, Figma AI): produce el brief de marca, restricciones y mapa de navegación.
-- **Ruta 2 (Full Specture)** — construye el Design System internamente: tokens de color, tipografía, spacing, componentes base con variantes/estados/accesibilidad.
+**Define UX e información arquitectónica antes de escribir UI.** Solo se activa si el proyecto tiene frontend declarado en `stack.yml`. **Ambas rutas producen los mismos dos documentos** (`navigation_map.md` + `design_system.md` completo); la ruta solo decide *quién renderiza el design system a código*:
+- **Ruta 1 (Delegada)** — además genera `design_specs_for_ai.md`, un brief para una IA de diseño externa (Claude Design, v0, Lovable) que **exige entregar un design system** con todos los componentes reutilizables. El handoff que vuelva se convierte con `handoff-ingest`.
+- **Ruta 2 (Specture renderiza)** — el design system se codifica en los epics de frontend de la Fase 4 (tokens → componentes → página `/dev/design-system` → aprobación del usuario → páginas).
 
-No produce código en esta fase — solo especificación en Markdown.
+El mapa de navegación referencia las operaciones por `operationId` del contrato — no inventa URLs. No produce código en esta fase. Excepción Adopt-con-UI: el design system se documenta a partir del código existente en vez de diseñarse.
 
-Output: `docs/03-ux-ui/navigation_map.md` + (Ruta 2) `docs/03-ux-ui/design_system.md`.
+Output: `docs/03-ux-ui/navigation_map.md` + `docs/03-ux-ui/design_system.md` (+ Ruta 1: `design_specs_for_ai.md`).
 
 > Úsalo cuando el frontend esté declarado y `docs/03-ux-ui/` no exista.
 
@@ -148,6 +156,8 @@ Output: `docs/03-ux-ui/navigation_map.md` + (Ruta 2) `docs/03-ux-ui/design_syste
 
 #### `/specture:build`
 **Orquesta el loop de construcción spec → test → código → review por epic.** Es el skill más denso: toma el próximo epic del ROADMAP, genera su spec, lo despacha al `architecture-validator`, luego al `tdd-test-writer` (RED commit), luego al `implementer` (GREEN), y finalmente al `code-reviewer`. Cada agente recibe solo el contexto que necesita. Incluye un **TDD Honesty Gate** que verifica con `git diff` que el implementer no modificó los tests. Marca el epic como `[x]` solo cuando el reviewer aprueba y los tests pasan.
+
+**Modo Frontend (v1.6.0):** cuando el epic es de UI, despacha `ux-implementer` en vez del implementer genérico y aplica el orden obligatorio: el epic de **design system** se construye primero (tokens + componentes + ruta `/dev/design-system`) y pasa por un **gate de aprobación visual humana** (Claude puede capturar screenshots con Playwright; el usuario aprueba) antes de que se construya cualquier página. Las páginas consumen el backend solo a través del **cliente tipado generado del contrato**, en orden de dependencia de `operationId`.
 
 Output: código implementado, testeado, revisado, y ROADMAP actualizado.
 
@@ -202,6 +212,24 @@ Output: `docs/migration/gap_analysis.md` + milestone de migración en `ROADMAP.m
 
 ---
 
+#### `/specture:handoff-ingest`
+**Convierte un handoff de diseño en los artefactos del proyecto.** Optimizado para handoffs de **Claude Design** (un paquete con README de design system, archivo de tokens, prototipos por pantalla, ui_kit y a veces un `SKILL.md`). Mapea el handoff, **extrae los tokens de forma determinista** a `design_system.md`, convierte las reglas de marca del README en un `fidelity-checklist.md` verificable, y mapea cada pantalla a su ruta y a las operaciones del contrato (`handoff-mapping.md`). Detecta el modo de conversión: **copia literal** si el stack del handoff coincide con el destino, o **traducción por paridad visual** si difiere (preservando tokens y reglas, re-autorando componentes en el framework destino). No escribe código de producción — eso ocurre en la Fase 4 con `ux-implementer`, tras el gate de aprobación visual.
+
+Output: `docs/03-ux-ui/design_system.md` + `fidelity-checklist.md` + `handoff-mapping.md` + assets copiados.
+
+> Úsalo cuando tengas un handoff de diseño (Claude Design, v0, Lovable) que convertir a tu stack.
+
+---
+
+#### `/specture:contract-sync-audit`
+**Audita la sincronización entre frontend y backend en proyectos existentes.** Para cuando "el front espera cosas que el back no devuelve", URLs distintas, o 404 en llamadas que "deberían funcionar". Elige una **fuente canónica** (un contrato existente, el backend, el frontend, o un contrato reconciliado propuesto), extrae estáticamente las rutas del backend y las llamadas del frontend, las diffea (endpoint faltante, mismatch de URL/método/shape, endpoint huérfano, auth) y emite un reporte de reconciliación. **No aplica fixes automáticos** — propone los cambios contra la fuente canónica y enruta a `build`/`new-feature`/`debug`. Si no existía contrato, deja un `api-contract.openapi.yaml` propuesto.
+
+Output: `docs/02-architecture/contract-sync-report.md` (+ contrato propuesto si faltaba).
+
+> Úsalo cuando el frontend y el backend estén desincronizados en un proyecto que ya tiene este problema.
+
+---
+
 ### Agentes
 
 Los agentes de Specture son subagentes con **contexto restringido** — cada uno recibe exactamente los archivos que necesita, no la conversación completa. Esto previene drift y alucinación acumulada.
@@ -246,10 +274,20 @@ Los agentes de Specture son subagentes con **contexto restringido** — cada uno
 
 ---
 
-#### `code-reviewer`
-**Staff Engineer + Lead Reviewer en un solo pase.** Revisa el código implementado en tres dimensiones simultáneas: (1) conformidad con el spec, (2) conformidad con la arquitectura y ADRs, (3) calidad del código (naming, patrones, dead code, seguridad). No modifica código — produce un reporte estructurado.
+#### `ux-implementer`
+**Ingeniero de frontend con ojo de diseñador.** Contraparte de UI del `implementer`. Hace pasar los tests de lógica/contrato/a11y **y** es fiel al design system: cada color/espaciado/tipografía sale de tokens (cero hardcodes), accede al backend solo por el **cliente tipado generado del contrato** (cero URLs a mano), cumple WCAG AA y las reglas de marca. En el epic de design system construye tokens + componentes + la ruta `/dev/design-system`; la aprobación visual la decide el usuario (el orquestador corre ese gate). Honra el TDD Honesty Gate igual que el implementer.
 
-- **Contexto que recibe:** diff del implementer + spec + `.specture/` + output de tests + sección relevante de `architecture.md`.
+- **Contexto que recibe:** spec + `design_system.md` + slice del contrato (operationId + ruta del cliente tipado) + tests RED + archivos a tocar + checklist de fidelidad (si hubo handoff).
+- **Contexto que NO recibe:** URLs a mano, valores hardcodeados, código no relacionado, conversación entera.
+- **Output:** UI que pasa los tests, fiel a tokens/contrato/a11y, sin tocar los tests.
+- **Modelo:** Sonnet.
+
+---
+
+#### `code-reviewer`
+**Staff Engineer + Lead Reviewer en un solo pase.** Revisa el código implementado en cuatro dimensiones core simultáneas — (1) conformidad con el spec, (2) conformidad con arquitectura y ADRs, (3) calidad del código, (4) honestidad TDD — más dos opcionales: (5) idiomaticidad del stack vía Context7, y (6) **fidelidad de frontend** en epics de UI (adherencia a tokens, accesibilidad, adherencia al contrato, reglas de marca). No modifica código — produce un reporte estructurado.
+
+- **Contexto que recibe:** diff del implementer + spec + `.specture/` + output de tests + sección relevante de `architecture.md` (+ design system y slice del contrato en epics de UI).
 - **Output:** `APPROVED` | `REJECTED_MINOR — [lista de fixes]` | `REJECTED_MAJOR — [razón crítica]`.
 - **Modelo:** Opus (máxima precisión en review).
 
@@ -425,11 +463,36 @@ Para crear o modificar skills, leer primero `skills/write-skill/SKILL.md`.
 Specture está en desarrollo activo. Para decisiones arquitectónicas internas, ver:
 
 - [`docs/original-vision.md`](docs/original-vision.md) — Requisitos originales del framework.
-- [`REPORTE_ANALISIS_EXPERTO.md`](REPORTE_ANALISIS_EXPERTO.md) — Análisis comparativo que motivó la reescritura.
+- [`docs/ui-design-flow-analysis.md`](docs/ui-design-flow-analysis.md) — Análisis del flujo de UI y rediseño que motivó v1.6.0 (contrato de API + disciplina de frontend + herramientas de diseño).
 
 ---
 
 ## Changelog
+
+### v1.6.0 — API Contract + Frontend Discipline + Design Tooling
+
+**Motivación:** la experiencia de uso reveló dos fallas en el flujo de UI. (1) **Falla raíz:** no existía un contrato de API compartido; el frontend inventaba los endpoints que esperaba (en `navigation_map.md`) y el backend inventaba los que construía (en sus specs), sin nada que los reconciliara → el front esperaba URLs y formatos que el back nunca entregaba. (2) **Vacío estructural:** el loop de `build` estaba modelado para backend (TDD); para frontend no había agente especializado, ni gate de aprobación visual, ni paso de "design system primero". Análisis completo en `docs/ui-design-flow-analysis.md`.
+
+**Nivel 1 — Contrato de API (fuente única de verdad):**
+- `architecture/SKILL.md` gana una **Parte B (API Contract)** entre arquitectura y ROADMAP: genera `docs/02-architecture/api-contract.openapi.yaml` (OpenAPI 3.1, machine-readable) + `api-contract.md` (legible). Nuevas plantillas `API_CONTRACT_TEMPLATE.md` y `api-contract.openapi.template.yaml`.
+- El `navigation_map.md` y los specs referencian operaciones por `operationId` — **nadie inventa URLs ni shapes** fuera del contrato. `SPEC_TEMPLATE.md`, `DESIGN_SYSTEM_TEMPLATE.md` y `ARCHITECTURE_TEMPLATE.md` actualizados.
+- El ROADMAP ordena los epics de frontend tras los de backend que implementan las operaciones que consumen.
+- `architecture-validator` gana **Dimensión 6 (conformidad de contrato):** todo `operationId` citado existe; todo `operationId` traza a un epic; los specs no redefinen shapes divergentes.
+
+**Nivel 2 — Disciplina de frontend end-to-end:**
+- `ux-design/SKILL.md` **unifica las rutas:** ambas producen `navigation_map.md` + `design_system.md` completo; la ruta solo decide quién renderiza. La Ruta 1 añade `design_specs_for_ai.md` con **mandato explícito de crear el design system**. Excepción Adopt-con-UI (se documenta el design system existente).
+- `build/SKILL.md` gana **Modo Frontend:** orden obligatorio design system → ruta `/dev/design-system` → **gate de aprobación visual humana** → páginas. La calidad visual la aprueba el usuario, no los tests.
+- Nuevo agente **`ux-implementer`** (tokens, a11y, cliente tipado, reglas de marca). `code-reviewer` gana **Dimensión 6 (fidelidad de frontend).**
+
+**Nivel 3 — Herramientas de diseño:**
+- Nueva skill **`handoff-ingest`**: convierte un handoff de Claude Design al stack destino (extracción determinista de tokens, checklist de fidelidad, mapeo pantalla→ruta→contrato; copia literal si el stack coincide, paridad visual si difiere).
+- Nueva skill **`contract-sync-audit`**: audita la sincronización back/front en proyectos existentes (extrae rutas/llamadas, diffea, reporta y propone contra una fuente canónica; sin auto-fix).
+
+**Trazabilidad de endpoints desde la planificación:** `discover` ahora captura **actores no-humanos** (consumidores externos) y marca la **Exposición** de cada historia de usuario (`UI` / `API-externa` / `Interna`), consolidando una sección **Capacidades de Frontera** en `business_requirements.md`. Esa lista es el input determinista del contrato: la Parte B de `architecture` deriva el contrato de ahí y valida **cobertura bidireccional** (toda capacidad de frontera → ≥1 operación; toda operación → una capacidad/HU). `architecture-validator` Dimensión 6 hace cumplir esa cobertura. Esto define *qué endpoints se necesitan* desde la Fase 1, sin depender de que exista UI.
+
+**Otros:** `setup` detecta UI existente (`frontend.ui_defined`) y backends con API; `stack.yml` gana `frontend.ui_defined` y sección `api`; router y `CLAUDE.md` enrutan las skills nuevas.
+
+**Archivos nuevos:** `docs/ui-design-flow-analysis.md`, `skills/handoff-ingest/`, `skills/contract-sync-audit/`, `agents/ux-implementer/`, `templates/API_CONTRACT_TEMPLATE.md`, `templates/api-contract.openapi.template.yaml`.
 
 ### v1.5.0 — Routing Opt-in + Parallel Epic Execution
 
