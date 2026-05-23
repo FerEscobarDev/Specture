@@ -1,8 +1,9 @@
 # Design System y Navegación: [Nombre del Proyecto]
 
-> Esta plantilla cubre las DOS rutas de la Fase 3 (UX Design):
-> - **Ruta 1 (Delegada):** Solo se llenan §3 (Mapa de Navegación) y §4 (Specs para IA de Diseño). El Design System lo produce la IA externa.
-> - **Ruta 2 (Full Specture):** Se llenan todas las secciones; el Design System aquí descrito será codificado en los epics de frontend.
+> El Design System (§1-§3) y el Mapa de Navegación (§5) son **deliverables universales**: se llenan en **ambas rutas** de la Fase 3 (desde v1.6.0). La ruta solo decide quién renderiza el Design System a código:
+> - **Ruta 1 (Delegada):** además se llena §4 (Specs para IA de Diseño) — un brief que **exige** a la IA externa entregar un Design System. El handoff que vuelva se convierte con `handoff-ingest`.
+> - **Ruta 2 (Specture renderiza):** el Design System aquí descrito se codifica en los epics de frontend de la Fase 4.
+> Excepción Adopt-con-UI: el Design System se documenta a partir del código existente (reverse-engineering), no se diseña de cero.
 
 ## 1. Identidad de Marca
 
@@ -11,7 +12,7 @@
 - **Audiencia:** [perfil del usuario objetivo]
 - **Referencias visuales:** [URLs que el usuario provea — no inventar]
 
-## 2. Tokens del Design System (Solo Ruta 2)
+## 2. Tokens del Design System (Ambas rutas)
 
 > Los tokens son la fuente de verdad del estilo. La librería UI declarada en `.specture/stack.yml` (`frontend.ui_library`) los consumirá.
 
@@ -61,7 +62,7 @@
 - **Breakpoints:** `sm/md/lg/xl` → [valores]
 - **Z-index:** convención (ej. modal=1000, toast=2000, tooltip=3000)
 
-## 3. Especificación de Componentes Base (Solo Ruta 2)
+## 3. Especificación de Componentes Base (Ambas rutas)
 
 > Texto descriptivo, NO código. La implementación se hará en los epics de frontend del ROADMAP.
 
@@ -103,7 +104,7 @@
 - **Propósito:** [una frase]
 - **Elementos clave:** [header, sidebar, etc. — texto, no diseño]
 - **Historias de usuario que cubre:** [referencia a `business_requirements.md`]
-- **APIs que consume:** [referencia a `architecture.md`]
+- **Operaciones que consume:** [`operationId` de `docs/02-architecture/api-contract.md` — ej. `obtenerDisponibilidad`, `crearCita`. NO inventes URLs ni shapes aquí; si la pantalla necesita un dato que el contrato no expone, falta una operación en el contrato → escálalo a la Fase 2.]
 
 ### `/dashboard` — Dashboard
 *(repetir patrón)*

@@ -1,6 +1,6 @@
 ---
 name: build
-description: Use when `docs/04-roadmap/ROADMAP.md` exists and contains epics marked `[ ]` (pending) or `[/]` (in progress), or when the user says "construyamos", "sigamos con el roadmap", "implementemos el siguiente epic". Orchestrates a strict per-epic loop: spec → architecture validation → tests → implementation → review → verification → mark complete. Dispatches 4 specialized agents.
+description: Use when `docs/04-roadmap/ROADMAP.md` exists and contains epics marked `[ ]` (pending) or `[/]` (in progress), or when the user says "construyamos", "sigamos con el roadmap", "implementemos el siguiente epic". Orchestrates a strict per-epic loop: spec → architecture validation → tests → implementation → review → verification → mark complete. Dispatches specialized agents (tdd-test-writer, implementer or ux-implementer for UI, code-reviewer). Frontend epics add a design-system-first order and a human visual-approval gate.
 ---
 
 # 04 — Iterative Build (The Build Loop)
@@ -216,6 +216,48 @@ For each epic where state is [ ] or [/]:
   10. Context reset           → instruct user to clear chat / reset session before next epic
 ```
 
+## Frontend Epics — Design-System-First + Visual Approval Gate
+
+This section is **cross-cutting**: it applies inside any execution mode (Inline, Agentes por Epic, Paralelo) whenever the epic being built is a **frontend epic** (it touches UI and `stack.yml.frontend.framework` is set and not `none`). It does not replace Steps 1-9 — it specializes how they run for UI work, because TDD certifies logic, not look-and-feel.
+
+### Why frontend is different
+
+"Tests pass" never means "it looks and feels right". For frontend, behavior/logic is still tested (component logic, hooks, the typed-client wiring, accessibility assertions where the test framework supports them), but **visual quality is gated by a human, not by tests**. Trying to assert aesthetics in unit tests is wasted effort. So the discipline shifts from "RED→GREEN proves it" to "RED→GREEN proves the logic + the user approves the look".
+
+### Hard ordering (non-negotiable)
+
+Frontend epics must be built in this order — the ROADMAP should already encode it (see `architecture/SKILL.md` Part C, milestone order 7-8):
+
+1. **Design System Foundation epic** — tokens as code + base component library + the **`/dev/design-system` showcase route** (dev-only). Built FIRST.
+2. **Visual Approval Gate** — the user approves the showcase. **No page epic may start until this gate passes.**
+3. **Page epics** — one screen (or cluster) at a time, each built only **after** the backend epic implementing the `operationId`s it consumes is `[x]`.
+
+If a page epic becomes "ready" before the design-system epic is approved, it is **not** actually ready — treat the design-system approval as an implicit dependency of every page epic.
+
+### The Design System Foundation epic
+
+When the locked epic is the design-system foundation:
+
+1. **Generate the spec(s)** as usual (Step 2), sourced from `docs/03-ux-ui/design_system.md`. The spec covers: token definitions (color/type/spacing/radii/shadows in the stack's token mechanism), the base components the navigation map implies (with variants/states/a11y), and the dev showcase route.
+2. **Dispatch the `ux-implementer` agent** (`agents/ux-implementer/AGENT.md`), NOT the generic `implementer`. Pass it: the spec, `design_system.md`, the relevant tokens/brand rules, any failing tests (component logic / a11y), and — if a Claude Design handoff was ingested — the fidelity checklist from `handoff-ingest`.
+3. The agent builds tokens + components + a **`/dev/design-system` page** (guarded so it only mounts in development) that renders every component in every variant/state, the full token palette, and type/spacing scales.
+4. **Visual Approval Gate (mandatory human gate):**
+   - If Playwright MCP is available in the session, navigate to the running `/dev/design-system` route and capture screenshots so the user can review without leaving the chat. If it is not available, instruct the user how to run the app and open the route.
+   - Present the showcase to the user and ask explicitly: *"¿Apruebas el design system para construir las páginas sobre esta base, o quieres ajustes?"*
+   - **Do not mark the epic `[x]`, and do not start any page epic, until the user approves.** Approval is a human decision; Claude never self-certifies visual quality.
+   - Iterate on adjustments through the `ux-implementer` until approved.
+5. The standard gates still run on the logic/code: architecture-validator on the spec, RED/GREEN for any tested logic, TDD Honesty Gate, code-reviewer (with the frontend dimension), verification. The visual approval is **in addition to**, not instead of, these.
+
+### Page epics
+
+For each page/screen epic (after the design-system gate passed):
+
+- **Dispatch `ux-implementer`**, not the generic `implementer`.
+- The UI consumes the backend strictly through the **typed API client generated from `api-contract.openapi.yaml`** — never hand-written URLs. The spec declares which `operationId`s the page consumes (Step 2).
+- Tests (RED) cover the page's logic and contract binding: it calls the right operations, handles loading/empty/error states, enforces role-based visibility, and meets a11y assertions the framework can check. They do **not** assert pixel aesthetics.
+- The code-reviewer runs its frontend dimension (token adherence, a11y, contract adherence, brand-rule fidelity).
+- A lightweight visual check (screenshot via Playwright if available) is encouraged per page but the binding gate was the design-system approval; per-page screenshots are for catching regressions, surfaced to the user when notable.
+
 ## Step 1 — Pick & Lock the Epic
 
 - Read `ROADMAP.md`.
@@ -341,6 +383,8 @@ If any post-check fails, do NOT proceed to Step 5.
 
 Dispatch the `implementer` agent (`agents/implementer/AGENT.md`).
 
+> **Frontend epics:** dispatch `agents/ux-implementer/AGENT.md` instead, and follow "Frontend Epics — Design-System-First + Visual Approval Gate" above. The design-system epic adds the visual approval gate; page epics consume the typed API client generated from the contract. Everything else in this step (manifest, sealed tests, separate commits, status protocol) applies identically.
+
 **First assemble the Dispatch Manifest** (see "Dispatch Manifest" section above). Do not dispatch until every implementer item is checked.
 
 **Context to pass**:
@@ -378,6 +422,7 @@ Dispatch the `code-reviewer` agent (`agents/code-reviewer/AGENT.md`).
 - `.specture/stack.yml`, `.specture/conventions.md`.
 - **Only the ADRs relevant to the module(s) the spec touches.** Safety rule: if you are unsure whether an ADR applies, include it — err toward inclusion, never toward omission. (Passing every ADR of a mature project is the bulk of this dispatch's cost and most are irrelevant to a given spec.)
 - The architecture sections relevant to the touched modules.
+- **Frontend epics:** also pass `docs/03-ux-ui/design_system.md`, the relevant slice of `api-contract.md` (the `operationId`s the page consumes), and — if a handoff was ingested — the fidelity checklist. This activates the code-reviewer's **Dimension 6 (Frontend Fidelity)**: token adherence, accessibility, contract adherence, brand-rule fidelity.
 
 **Parallelism (wall-clock optimization)**: the `code-reviewer` dispatch is independent of the linter and the type-checker — they all read the diff but produce orthogonal outputs. Launch them concurrently to compress wall-clock:
 
