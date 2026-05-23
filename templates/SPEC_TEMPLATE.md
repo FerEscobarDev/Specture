@@ -8,7 +8,15 @@
 ## Fuera de Scope (NO testear, NO implementar)
 - [Lo que explícitamente NO entra en este spec]
 
+## Operaciones del Contrato de API (si el spec toca un boundary HTTP)
+> Referencia las operaciones por `operationId` de `docs/02-architecture/api-contract.md`. NO redefinas el shape aquí: el contrato es la fuente de verdad. Si necesitas un shape que no existe en el contrato, primero agrégalo al contrato (es un cambio de arquitectura), no lo inventes en el spec.
+- **Implementa** (spec de backend): `operationId` — `[obtenerDisponibilidad, crearCita]`
+- **Consume** (spec de frontend): `operationId` — `[obtenerDisponibilidad]` (vía cliente tipado generado, nunca URL escrita a mano)
+- **Sin boundary HTTP:** escribir "N/A — lógica interna".
+
 ## Contrato (machine-readable — identificadores en el idioma de conventions.md §8)
+> Para specs que tocan el API, esta tabla **resume** lo que ya define el contrato (no lo contradice). Para lógica interna sin boundary, es la definición completa.
+
 | Aspecto | Detalle |
 |---------|---------|
 | Entradas | `nombre`: tipo (restricción) |

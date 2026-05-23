@@ -1,0 +1,125 @@
+# Contrato de API — fuente de verdad machine-readable.
+# Generado en la Fase 2 (architecture) DESPUÉS de architecture.md y ANTES del ROADMAP.
+# Consumido por: specs de backend (implementan operationId), navigation_map y specs de
+# frontend (consumen operationId), y el generador de cliente tipado del frontend.
+#
+# Reglas:
+#  - Todo path lleva `operationId` único y estable (es el identificador que citan los specs).
+#  - Reusar shapes vía components/schemas — no repetir DTOs inline.
+#  - Un envelope de error único en components/schemas/Error.
+#  - Cambiar un operationId/método/path existente = breaking change → requiere ADR.
+#
+# Sustituir todos los [placeholders]. Borrar los ejemplos que no apliquen.
+
+openapi: 3.1.0
+
+info:
+  title: "[Nombre del Proyecto] API"
+  version: "0.1.0"
+  description: "Contrato de la interfaz backend↔frontend. Fuente de verdad."
+
+servers:
+  - url: "/api/v1"
+    description: "Base URL (ajustar a stack.yml / convenciones)."
+
+# --- Esquema(s) de seguridad ------------------------------------------------
+# Ajustar a la estrategia declarada en architecture.md §5.1.
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    # Envelope de error ÚNICO para todo el contrato.
+    Error:
+      type: object
+      required: [code, message]
+      properties:
+        code: { type: string, description: "Código de error de negocio estable." }
+        message: { type: string }
+        details: { type: object, additionalProperties: true }
+
+    # --- DTOs del dominio (ejemplo — reemplazar) ----------------------------
+    # NombreDTO:
+    #   type: object
+    #   required: [campoObligatorio]
+    #   properties:
+    #     campoObligatorio: { type: string }
+    #     campoOpcional: { type: integer, nullable: true }
+
+  responses:
+    # Respuestas de error reutilizables.
+    BadRequest:
+      description: Datos inválidos.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    Unauthorized:
+      description: No autenticado.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    NotFound:
+      description: Recurso no encontrado.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+
+# Seguridad por defecto (las operaciones públicas la sobreescriben con `security: []`).
+security:
+  - bearerAuth: []
+
+# --- Operaciones ------------------------------------------------------------
+paths:
+  # ----------------------------------------------------------------------- #
+  # EJEMPLO de operación pública (borrar y reemplazar por las reales).
+  # ----------------------------------------------------------------------- #
+  # /psicologos/{slug}/disponibilidad:
+  #   get:
+  #     operationId: obtenerDisponibilidad
+  #     summary: Bloques disponibles de un psicólogo.
+  #     security: []          # público
+  #     tags: [agenda]
+  #     parameters:
+  #       - { name: slug, in: path, required: true, schema: { type: string } }
+  #       - { name: desde, in: query, required: true, schema: { type: string, format: date } }
+  #       - { name: hasta, in: query, required: true, schema: { type: string, format: date } }
+  #     responses:
+  #       "200":
+  #         description: Lista de bloques.
+  #         content:
+  #           application/json:
+  #             schema:
+  #               type: array
+  #               items: { $ref: "#/components/schemas/Disponibilidad" }
+  #       "404": { $ref: "#/components/responses/NotFound" }
+  #
+  # ----------------------------------------------------------------------- #
+  # EJEMPLO de operación autenticada con body (borrar y reemplazar).
+  # ----------------------------------------------------------------------- #
+  # /citas:
+  #   post:
+  #     operationId: crearCita
+  #     summary: Crea una solicitud de cita.
+  #     security: []          # público en este ejemplo
+  #     tags: [citas]
+  #     requestBody:
+  #       required: true
+  #       content:
+  #         application/json:
+  #           schema: { $ref: "#/components/schemas/SolicitudCita" }
+  #     responses:
+  #       "201":
+  #         description: Cita creada.
+  #         content:
+  #           application/json:
+  #             schema: { $ref: "#/components/schemas/Cita" }
+  #       "409":
+  #         description: Bloque ya ocupado.
+  #         content:
+  #           application/json:
+  #             schema: { $ref: "#/components/schemas/Error" }
+  #       "422": { $ref: "#/components/responses/BadRequest" }
+  {}

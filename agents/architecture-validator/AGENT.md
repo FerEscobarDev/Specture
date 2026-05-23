@@ -17,6 +17,8 @@ The orchestrator MUST give you:
 - `.specture/conventions.md`.
 - All files inside `.specture/decisions/` (every ADR, regardless of status).
 - The relevant section of `docs/02-architecture/architecture.md` if the candidate is not the architecture itself.
+- `docs/02-architecture/api-contract.md` (+ `api-contract.openapi.yaml`) **when the candidate is the API contract itself, a navigation map, or a spec that touches an HTTP boundary.** Without it, Dimension 6 cannot run — say so in NOTES rather than guessing.
+- The **`Capacidades de Frontera` section of `docs/01-requirements/business_requirements.md`** when the candidate is the API contract. This is the deterministic input for the bidirectional coverage check in Dimension 6. Without it, report that the coverage check could not run rather than approving blindly.
 
 If any required input is missing, respond `BLOCKED — missing input: <what>` and stop.
 
@@ -61,6 +63,23 @@ For each ADR with status `Superseded`: ignore — it's no longer active.
 
 - Is the document over-engineered relative to the project size declared in `stack.yml.project.type`?
 - Does it propose DDD/CQRS/Event Sourcing without a concrete justification (a business rule or ADR demanding it)? Flag this as a violation if no justification exists.
+
+### 6. API Contract Conformance
+
+Run this dimension **only when** the API contract was provided (the candidate is the contract, a navigation map, or a spec touching an HTTP boundary). If the contract was not provided but the candidate clearly touches an HTTP boundary, that absence is itself a finding (`BLOCKER` — "candidate references endpoints but no api-contract supplied for validation").
+
+Checks depend on what the candidate is:
+
+- **Candidate is the API contract** (`api-contract.openapi.yaml` / `.md`):
+  - Every operation has a unique, stable `operationId`.
+  - One uniform error envelope is used across operations (no per-endpoint ad-hoc error shapes).
+  - **Bidirectional capability coverage** (needs `business_requirements.md` §Capacidades de Frontera): every boundary capability (`UI` or `API-externa`) maps to **at least one** operation — a capability with no operation is a `BLOCKER` (coverage hole); and every operation traces **back** to a capability/`HU-...` in the contract's Traceability section — an operation with no originating capability is a `BLOCKER` (over-design). If the section is "Ninguna", a non-empty contract is itself a finding.
+  - Every operation traces to a component in `architecture.md` that legitimately owns that data/capability (no operation that bypasses an architectural boundary).
+  - No technology, auth scheme, or data store referenced that contradicts `stack.yml`.
+  - Shapes are defined once and reused (no duplicated inline DTOs that should be shared schemas).
+- **Candidate is a navigation map**: every "operation consumed" cites an `operationId` that **exists** in the contract. An invented URL or an `operationId` absent from the contract is a `BLOCKER`.
+- **Candidate is a spec**: every `operationId` the spec declares it *implements* or *consumes* exists in the contract, and the spec does **not** redefine a shape in a way that diverges from the contract (the contract is the source of truth; the spec references it). A backend spec implementing an operation must match the contract's request/response/error for that `operationId`. Divergence is a `BLOCKER`.
+- **When the ROADMAP is also in scope**: every `operationId` in the contract is implemented by exactly one backend epic; orphan operations (implemented by none, or consumed by a frontend epic but implemented by none) are `BLOCKER`s.
 
 ## Output Format (strict)
 

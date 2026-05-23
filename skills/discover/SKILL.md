@@ -56,8 +56,12 @@ For every "happy path" the user describes, ask "¿qué pasa si…?":
 ## Topics to Cover (in this order)
 
 1. **Propósito del Sistema** — ¿qué problema resuelve, para quién, por qué ahora?
-2. **Actores / Usuarios** — ¿quiénes lo usan? Por cada actor: rol, objetivos, restricciones.
-3. **Historias de Usuario principales** — listado priorizado de capacidades visibles.
+2. **Actores / Usuarios** — ¿quiénes lo usan? Por cada actor: rol, objetivos, restricciones. **Incluye actores no-humanos** cuando apliquen: otro sistema, un integrador externo, una app construida por terceros, un job/cron. En proyectos sin UI propia, estos consumidores suelen ser los actores principales — pregunta explícitamente "¿quién o qué consume este sistema?".
+3. **Historias de Usuario principales** — listado priorizado de capacidades. Por cada capacidad, además de actor y objetivo, captura su **Exposición** (a quién se expone, en lenguaje de negocio — esto NO es definir endpoints ni tecnología, es identificar quién consume la capacidad):
+   - `UI` — la consume un usuario a través de la interfaz propia del sistema.
+   - `API-externa` — la consume un actor no-humano / externo (otro sistema, integrador, app de terceros).
+   - `Interna` — no cruza el límite del sistema (proceso interno, batch, regla automática).
+   Una capacidad puede ser `UI` **y** `API-externa` a la vez. Esta marca es la **lista determinista de capacidades-de-frontera** de la que la Fase 2 derivará el contrato de API.
 4. **Reglas de Negocio explícitas** — invariantes que el sistema debe garantizar (ej. "un usuario no puede tener dos suscripciones activas").
 5. **Casos límite** — qué pasa cuando las cosas salen mal.
 6. **Restricciones no funcionales del negocio** — privacidad, regulación, multi-tenancy, idiomas, zonas horarias. (NO performance/escalabilidad técnica — eso es Fase 2.)
@@ -74,8 +78,9 @@ Once you and the user agree the discovery is sufficient (the user explicitly say
 
 1. Generate `docs/01-requirements/business_requirements.md` with sections:
    - **Propósito**
-   - **Actores**
-   - **Historias de Usuario**
+   - **Actores** (humanos y no-humanos; marca cuáles son consumidores externos)
+   - **Historias de Usuario** — cada una con un ID estable (`HU-...`), su actor, y su **Exposición** (`UI` / `API-externa` / `Interna`)
+   - **Capacidades de Frontera** — subsección que consolida, como lista, las historias marcadas `UI` o `API-externa` con su consumidor. Es el input directo de la Fase 2 para el contrato de API: cada item aquí debe convertirse en ≥1 operación del contrato. (Si el proyecto no tiene ningún boundary —p.ej. una librería o un CLI puro— escribe "Ninguna" y dilo explícitamente.)
    - **Reglas de Negocio**
    - **Casos Límite**
    - **Restricciones No Funcionales (de Negocio)**
@@ -86,6 +91,9 @@ Once you and the user agree the discovery is sufficient (the user explicitly say
    - ¿Hay placeholders (TBD, TODO, "definir luego")? Si sí, vuelve a preguntar.
    - ¿Alguna regla de negocio se contradice con otra?
    - ¿Algún actor mencionado en historias no está en la lista de actores?
+   - ¿Toda historia de usuario tiene su marca de **Exposición** (`UI`/`API-externa`/`Interna`)?
+   - ¿Toda historia `UI` o `API-externa` aparece consolidada en **Capacidades de Frontera**?
+   - Si el sistema no tiene UI propia, ¿están capturados sus consumidores (actores no-humanos) y sus capacidades como `API-externa`? Un sistema que "no expone nada a nadie" casi siempre es discovery incompleto — vuelve a preguntar.
    - Corrige inline. No hace falta re-revisar.
 
 3. **Ask the user to validate**:
