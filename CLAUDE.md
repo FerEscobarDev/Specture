@@ -38,6 +38,8 @@ The user's project also contains a `.specture/` directory with the project-speci
 | "Hay un bug", "El test falla" | `./skills/debug/SKILL.md` |
 | "Quiero agregar una funcionalidad nueva" | `./skills/new-feature/SKILL.md` |
 | "Quiero migrar a X", "Sube la versión a Y", "Moderniza el stack" | `./skills/modernize/SKILL.md` |
+| "Tengo un handoff de diseño (Claude Design/v0/Lovable) para convertir" | `./skills/handoff-ingest/SKILL.md` |
+| "El frontend y el backend están desincronizados", "el front espera cosas que el back no devuelve" | `./skills/contract-sync-audit/SKILL.md` |
 
 ## Instruction priority
 

@@ -32,6 +32,12 @@ frontend:
   styling: "[e.g. tailwind | css-modules | styled-components | sass | none]"
   state_management: "[e.g. zustand | redux-toolkit | pinia | provider | none]"
   testing_framework: "[e.g. vitest | jest | playwright | cypress | none]"
+  ui_defined: false   # true when adopting a project that already ships a real UI → Phase 3 reverse-engineers the design system instead of authoring it.
+
+# --- API Contract (the single source of truth for the backend↔frontend interface)
+api:
+  style: "[e.g. rest | graphql | grpc | none]"   # rest → OpenAPI; graphql → SDL; grpc → .proto
+  contract_file: "docs/02-architecture/api-contract.openapi.yaml"   # machine-readable source of truth (REST default)
 
 # --- Architecture Pattern --------------------------------------------------
 architecture:

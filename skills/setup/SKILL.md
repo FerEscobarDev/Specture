@@ -110,6 +110,8 @@ The user has an existing codebase. You will **detect** the stack from files and 
    - Folder layout: `src/`, `app/`, `internal/`, `Modules/`, `domain/`, etc. → infer architecture pattern (layered, modular, hex, DDD).
    - Test folder layout → infer co-location convention.
    - Naming style of files (kebab-case vs PascalCase vs snake_case) → infer file naming convention.
+   - **Existing UI detection:** if the project already ships a frontend with real components/pages (not just scaffolding), set `frontend.ui_defined: true` in the draft `stack.yml`. This tells Phase 3 (`ux-design`) to **reverse-engineer** the design system from the existing code rather than author one from scratch (the "Adopt with UI defined" exception). If the frontend is only scaffolding, leave `ui_defined: false`.
+   - **API surface detection:** if the backend exposes HTTP endpoints, note whether a served OpenAPI/Swagger schema exists. Record it for a later `contract-sync-audit` if frontend/backend drift is suspected.
 
 4. **Build a draft `stack.yml`** in memory. For each field:
    - If detected with confidence → fill in.
@@ -136,7 +138,9 @@ The user has an existing codebase. You will **detect** the stack from files and 
 8. **Write all files** and generate the project `CLAUDE.md` (same as Bootstrap step 5). Also ensure `.specture/state/` is listed in `.gitignore` (same rule as Bootstrap step 4.5).
 
 9. **Suggest next step**:
-   - If the project already has features: offer to either (a) continue building with Specture for new features (`transversal-new-feature`), or (b) audit the existing code (full code review against the inferred conventions).
+   - If the project already has features: offer to either (a) continue building with Specture for new features (`new-feature`), or (b) audit the existing code (full code review against the inferred conventions).
+   - If the project has **both a frontend and a backend**, also offer (c) `contract-sync-audit` to reconcile their API interface — strongly recommend it if the user has mentioned frontend/backend mismatches.
+   - If `frontend.ui_defined: true`, mention that Phase 3 will document the existing design system rather than create a new one.
    - If the project is just scaffolding: offer to go to `discover` to formalize requirements.
 
 ---
