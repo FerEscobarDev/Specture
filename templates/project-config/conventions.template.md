@@ -80,5 +80,28 @@
 - **hooks.enabled**: [true | false]      # activa el TDD Honesty Gate (bloqueo mecánico de edits a tests durante GREEN). Nota: desde v1.5.0 el routing NO es automático — se entra a Specture invocando `/specture:start`; el antiguo hook SessionStart fue deregistrado.
 - **context7.enabled**: [true | false]   # permite consultas a Context7 MCP en code-reviewer (Dimension 5: stack idiomaticity) y en modernize (gap analysis con docs vivas)
 - **build.max_parallel_epics**: 3         # tope de epic-agents concurrentes en el modo "Agentes por Epic en Paralelo (Olas)" de /specture:build. `1` = comportamiento secuencial. Default 3 si se omite.
+- **docs_index.enabled**: [true | false]  # cuando `.specture/docs-index.yml` existe, el orquestador (build, architecture) resuelve hasta N entradas relevantes por dispatch y las pasa como contexto adicional a architecture-validator y code-reviewer. Default true cuando el archivo existe. Los agentes nunca leen el índice directamente.
+- **docs_index.max_entries_per_dispatch**: 3  # tope duro de docs pasadas a UN dispatch del orquestador. Más entradas = más contexto = más caro y menos enfocado. Subí solo si el promedio de hits relevantes por spec supera 3 (medible en `docs/.specture-meta/index-usage.jsonl`).
+- **learn.enabled**: [true | false]  # habilita los prompts opcionales de captura post-epic (build Step 8.5) y post-debug (debug Phase 4.5). Default false. Activá cuando el proyecto sea maduro y la documentación esté empezando a quedar atrás del código.
+- **learn.min_session_threshold_minutes**: 30  # umbral para invocaciones MANUALES de `/specture:learn` sin trigger automático. Si la sesión fue más corta, learn solo corre con --force. Default 30. Las invocaciones desde build/debug ignoran este umbral.
+- **learn.max_drafts_per_invocation**: 3  # tope duro de drafts propuestos en una invocación de learn. Mantenelo en 3 — bajarlo puede dejar capturas fuera, subirlo genera ruido. Default 3.
+- **learn.write_human_report**: [true | false]  # si true, además del log estructurado en learn-history.jsonl, learn escribe un reporte humano-legible usando templates/LEARN_OUTPUT_TEMPLATE.md. Default false. Útil si el equipo audita aprendizajes periódicamente.
 
-Cuando `hooks.enabled: false`, los scripts del plugin se cargan pero retornan sin actuar. Cuando `context7.enabled: false`, los agentes/skills que lo consultarían omiten esa fuente y marcan secciones afectadas como "needs manual verification" si aplica. `build.max_parallel_epics` solo aplica al modo paralelo de build; los modos Inline y secuencial lo ignoran.
+Cuando `hooks.enabled: false`, los scripts del plugin se cargan pero retornan sin actuar. Cuando `context7.enabled: false`, los agentes/skills que lo consultarían omiten esa fuente y marcan secciones afectadas como "needs manual verification" si aplica. `build.max_parallel_epics` solo aplica al modo paralelo de build; los modos Inline y secuencial lo ignoran. Cuando `docs_index.enabled: false`, el orquestador omite la resolución del índice — útil para debug aislado o si el índice está corrupto/obsoleto. Cuando `learn.enabled: false`, los prompts opcionales de captura no se activan; `/specture:learn` sigue siendo invocable manualmente con `--force`.
+
+## 11. Índice de Documentación
+
+> Solo aplica cuando el proyecto tiene documentación preexistente abundante (proyectos modo Adopt). En proyectos greenfield esta sección puede quedar marcada como "No aplica".
+
+- **Estado:** [No aplica | Activo | Skipped intencionalmente]
+- **Source of truth dir:** [carpeta donde vive la documentación del equipo — ej. `SGD.Docs/`, `Documentation/`, `docs/`]
+- **Index file:** `.specture/docs-index.yml` (con `<N>` entradas)
+- **Bridges generados:**
+  - `docs/01-requirements/business_requirements.md` [sí | no]
+  - `docs/02-architecture/architecture.md` [sí | no]
+  - `docs/03-ux-ui/navigation_map.md` [sí | no]
+- **Regla de actualización:** cuando se agregue, renombre o elimine un archivo en el source-of-truth dir, **actualizar la entrada correspondiente en `docs-index.yml`** (manualmente o invocando `/specture:setup-docs-bridge` para regenerar). Periódicamente correr `/specture:audit-knowledge` para detectar drift.
+- **Política de confidence:** entradas nuevas creadas por la IA nacen con `confidence: ai_categorized`. Promoverlas a `user_confirmed` cuando un humano valide la categorización + el `read_when`.
+- **ADRs Proposed pendientes:** si el setup detectó decisiones implícitas y generó ADRs con `Status: Proposed — awaiting team confirmation`, listar aquí los nombres para que el equipo no los olvide:
+  - [ ] `.specture/decisions/00X-<slug>.md` — pendiente confirmación del equipo
+  - [ ] `.specture/decisions/00Y-<slug>.md` — pendiente confirmación del equipo

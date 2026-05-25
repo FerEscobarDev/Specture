@@ -17,7 +17,7 @@ Specture is a **state machine**. The state of the user's project is determined b
 
 Run these checks **in order**. Stop at the first match and invoke the indicated skill.
 
-> **Cost rule (mandatory):** routing is a filesystem state machine, not a comprehension task. **Never read full file contents for routing.** Use existence checks for Steps 1-3; read only the single `frontend.framework` field for Step 4; read only the epic checkbox lines for Step 5. Opening `stack.yml` or `business_requirements.md` in full here is wasted context.
+> **Cost rule (mandatory):** routing is a filesystem state machine, not a comprehension task. **Never read full file contents for routing.** Use existence checks for Steps 1-3; read only the single `frontend.framework` field for Step 4; read only the epic checkbox lines for Step 5. For Step 2's docs-index fallback, grep for `tags:.*requirements` lines only — do NOT load the full index. Opening `stack.yml`, `business_requirements.md`, or `docs-index.yml` in full here is wasted context.
 
 ### Step 1 — Setup detection
 
@@ -30,8 +30,23 @@ Check whether `.specture/stack.yml` exists in the user's project root.
 
 Check whether `docs/01-requirements/business_requirements.md` exists.
 
-- **No** → invoke `./skills/discover/SKILL.md`. Stop.
 - **Yes** → continue to Step 3.
+- **No** → check the fallback path: does `.specture/docs-index.yml` exist AND does it contain at least one entry with the tag `requirements`? (Grep for lines matching `tags:.*requirements` — single pass, no full parse.)
+
+  - **Index exists with requirements entries** → the team already has requirements documented in a preexisting docs folder; do NOT route to `discover` (that would re-extract knowledge that already exists). Ask the user:
+
+    > "Detecté que el proyecto tiene documentación preexistente indexada (`.specture/docs-index.yml`) con `<N>` entradas categorizadas como `requirements`, pero no existe el archivo puente `docs/01-requirements/business_requirements.md`. Opciones:
+    >
+    > (a) Generar el puente automáticamente desde el índice (recomendado — invoca `setup-docs-bridge`).
+    > (b) Ir a `discover` para levantar requerimientos desde cero (descartando lo indexado).
+    > (c) Continuar sin bridge (no recomendado — algunas skills no encontrarán el archivo)."
+
+    Route based on the user's answer:
+    - `(a)` → invoke `./skills/setup-docs-bridge/SKILL.md` (bridge-only refresh: skip Phase 1 detection — the user has already accepted; resume from Phase 2 with the index's `source_of_truth_dir` as input). Stop.
+    - `(b)` → invoke `./skills/discover/SKILL.md`. Stop.
+    - `(c)` → continue to Step 3, but warn that downstream skills may fail their input checks.
+
+  - **No index OR index has no requirements entries** → invoke `./skills/discover/SKILL.md`. Stop. (Original behavior preserved.)
 
 ### Step 3 — Architecture & Plan detection
 

@@ -72,7 +72,30 @@ The log file on disk is written **after** the user approves the plan in `ExitPla
 
 - Document the resolution in the log (root cause confirmed + final fix description).
 - Verify no other tests broke.
+- Run **Phase 4.5 — Capture learnings (opt-in)** below before returning.
 - Return to the previous skill (`skills/build/SKILL.md`, `skills/architecture/SKILL.md`, etc.).
+
+### Phase 4.5 — Capture Learnings (opt-in, after confirmed root cause)
+
+Only when the hypothesis was confirmed AND the fix is committed. **Toggle gate**: read `learn.enabled` from `.specture/conventions.md` §10. If `false`, skip.
+
+A confirmed root cause is high-signal: by definition, the system did something the team did not expect. That delta between expectation and reality is often a learning that deserves to live beyond this debug log.
+
+**Prompt to user (default no)**:
+
+> "Causa raíz confirmada y fix commiteado. ¿La causa raíz aplica más allá de este bug puntual (ej. otro módulo podría caer en lo mismo)? Puedo correr `/specture:learn` para proponer un ADR (regla "no hacer X"), una entrada en `docs-index.yml` o un test caracterizador. Es opcional y no toca código. (s/N)"
+
+- **Sí** → invoke `./skills/learn/SKILL.md` passing:
+  - Trigger: `debug`
+  - Trigger ID: `<debug-log-filename>` (the YYYY-MM-DD-<slug>.md path)
+  - Debug log path (full content is small enough to pass as input)
+  - Fix commit SHA(s)
+
+  When `learn` returns, continue to Exit Criteria.
+
+- **No** (default) → continue to Exit Criteria.
+
+> **Why opt-in default-no**: most fixes are localized — a typo, a wrong variable, a missing null check. Forcing capture on every debug session generates noise. The user knows when a root cause was *generalizable* (e.g. "we always forget the tenant filter in this kind of query") and says yes then.
 
 #### If the hypothesis was wrong
 

@@ -50,7 +50,7 @@ The user is starting from scratch. You will create the configuration through an 
    - `templates/project-config/conventions.template.md` → `.specture/conventions.md`
    - `templates/project-config/decisions/000-template.md` → `.specture/decisions/001-initial-stack.md` (registra la decisión inicial del stack)
 
-4.5. **Add `.specture/state/` to `.gitignore`**. This directory holds runtime state used by Specture hooks (e.g. `build-locked.json`). It must never be committed. If a `.gitignore` does not exist, create one. If it exists and already ignores `.specture/state/`, skip.
+4.5. **Add `.specture/state/` and `docs/.specture-meta/` to `.gitignore`**. The first directory holds runtime state used by Specture hooks (e.g. `build-locked.json`); the second holds local telemetry (e.g. `index-usage.jsonl`, `learn-history.jsonl`) that is user-specific and must not be committed. If a `.gitignore` does not exist, create one with both entries. If it exists, add whichever entry is missing. Idempotent.
 
 5. **Generate the project's `CLAUDE.md`** in the user project root:
 
@@ -135,7 +135,26 @@ The user has an existing codebase. You will **detect** the stack from files and 
    - Any technical debt or inconsistency observed (e.g. "mix of camelCase and snake_case in test files — recommend standardizing on camelCase").
    - Status: `Accepted`.
 
-8. **Write all files** and generate the project `CLAUDE.md` (same as Bootstrap step 5). Also ensure `.specture/state/` is listed in `.gitignore` (same rule as Bootstrap step 4.5).
+8. **Write all files** and generate the project `CLAUDE.md` (same as Bootstrap step 5). Also ensure `.specture/state/` and `docs/.specture-meta/` are listed in `.gitignore` (same rule as Bootstrap step 4.5; `.specture-meta/` holds local telemetry that must not be committed).
+
+8.5. **Existing documentation detection (mandatory in Adopt mode)**.
+
+Scan for preexisting documentation folders that the team already maintains. Patterns:
+
+- `docs/`, `Documentation/`, `documentation/`, `documents/`, `wiki/`
+- `*.Docs/` (.NET convention — e.g. `SGD.Docs/`, `MyProject.Docs/`)
+- Any folder containing a `README.md` at its root AND ≥10 `.md` files (recursive count)
+
+For each candidate, count `.md` files recursively. If **at least one** candidate has **≥10 .md files**, the team almost certainly has knowledge that Specture should NOT re-extract from scratch via `discover`.
+
+Announce the finding and offer to bridge:
+
+> "Detecté `<carpeta>` con `<N>` archivos .md mantenidos por el equipo. Specture no debe re-extraer esa información — puedo generar un índice machine-readable (`.specture/docs-index.yml`) y archivos puente para que los agentes la lean de forma dirigida sin duplicar contenido. ¿Procedo? (S/n)"
+
+- **Sí** → invoke `./skills/setup-docs-bridge/SKILL.md` passing the detected folder as `source_of_truth_dir`. When that skill returns, continue with Step 9.
+- **No** → continue with Step 9. Add a one-line note in `.specture/conventions.md` Section 11 explaining the user opted out, so a future setup pass doesn't re-prompt.
+
+If no candidate folder reaches ≥10 .md files, skip 8.5 entirely and continue to Step 9.
 
 9. **Suggest next step**:
    - If the project already has features: offer to either (a) continue building with Specture for new features (`new-feature`), or (b) audit the existing code (full code review against the inferred conventions).

@@ -317,24 +317,67 @@ Before Step 4 (tdd-test-writer) and Step 5 (implementer), the orchestrator MUST 
 - [ ] `stack.yml`: testing_framework + language present
 - [ ] `conventions.md`: testing + naming + file-org + §8 (identifier language) present
 - [ ] Existing fixtures/helpers paths listed (so tests don't duplicate them)
+- [ ] Relevant docs from `docs-index.yml` resolved (see "Docs Index Resolution" below) — empty list is valid if the index does not exist or no entries match the spec
 
 **For implementer:**
 - [ ] Spec (same completeness as above)
 - [ ] RED test file contents + test path globs + `RED_SHA`
 - [ ] Spec's "Superficie de Código Existente" section carries the **exact signatures** of every existing symbol the implementation will call
 - [ ] `stack.yml` + `conventions.md` + all ADRs
+- [ ] Relevant docs from `docs-index.yml` resolved (see "Docs Index Resolution" below)
 
 If the orchestrator cannot fill an item, it resolves it BEFORE dispatch (read the file, extract the signature). Dispatching with an incomplete manifest is the #1 cause of `NEEDS_CONTEXT` round-trips — each one wastes a full agent cycle.
+
+## Docs Index Resolution (pre-flight, reusable)
+
+When `.specture/docs-index.yml` exists, the orchestrator MUST resolve relevant entries and pass the resulting documents as input to `architecture-validator` (Step 3) and `code-reviewer` (Step 6). Optionally also to `tdd-test-writer` and `implementer` if their dispatch manifest item resolves a non-empty list.
+
+> **Doctrine — preserve restricted-context principle**: the agents NEVER read `docs-index.yml` themselves. The orchestrator resolves the index and hands the agents the final list of documents as part of their input. This keeps agents cache-friendly, deterministic, and auditable.
+
+### Resolution algorithm
+
+1. **Check existence**: if `.specture/docs-index.yml` does not exist, the resolved list is **empty**. Continue without docs-index input. Do NOT block dispatch.
+
+2. **Check toggle**: if `.specture/conventions.md` Section 10 has `docs_index.enabled: false`, resolved list is empty. Continue without input.
+
+3. **Read cap**: read `docs_index.max_entries_per_dispatch` from `.specture/conventions.md` Section 10. Fallback to **3** if absent or unparseable. This is the hard maximum number of entries passed to a single agent dispatch.
+
+4. **Extract spec signals**: from the current spec, derive:
+   - **Tags**: union of (a) the touched module name(s), (b) the architectural component(s) cited, (c) `backend` / `frontend` / `mobile` derived from the spec's contract section, (d) any explicit `tags` field if the spec template includes one.
+   - **Concepts** (optional): any explicit concept slugs the spec author wrote.
+
+5. **Filter entries** in `docs-index.yml`:
+   - Drop entries with `superseded_by` set to a non-null value.
+   - Score each remaining entry by: `+2 per tag intersection`, `+3 per explicit concept match`, `+1 if confidence is user_confirmed`.
+   - Drop entries with score 0.
+
+6. **Rank and cap**: sort by score descending. Take top `max_entries_per_dispatch`. **Prefer `user_confirmed` over `ai_categorized`** when scores tie.
+
+7. **Read the resolved files**: for each surviving entry, read its `file` and prepare for dispatch. If the file does not exist (drift between index and disk), log a warning and skip that entry; the next `/specture:audit-knowledge` run will report the drift.
+
+8. **Log the resolution** to `docs/.specture-meta/index-usage.jsonl` (create the directory if absent, append-only, never block dispatch on log failure). One JSON object per line:
+
+   ```json
+   {"ts":"<ISO-8601>","skill":"build","step":"3|6","epic":"<slug>","spec":"<slug>","agent":"architecture-validator|code-reviewer","queried_tags":["..."],"queried_concepts":["..."],"resolved":[{"concept":"...","file":"...","confidence":"...","score":N}],"total_in_index":N}
+   ```
+
+### When the resolved list is empty
+
+- For `architecture-validator` and `code-reviewer`: dispatch normally. The agents already work correctly without docs-index input — it's strictly additive context.
+- The Dispatch Manifest item is satisfied by **"empty list — no matching entries"** (explicitly state this in the dispatch payload so the agent knows the resolver ran and found nothing, vs being silently dropped).
 
 ## Step 3 — Architecture Validation (mandatory gate)
 
 Dispatch the `architecture-validator` agent (`agents/architecture-validator/AGENT.md`).
+
+**Pre-flight**: run "Docs Index Resolution" (see section above) for this spec. Capture the resolved entries list (may be empty).
 
 **Context to pass (restricted)**:
 - The new `.spec.md` content.
 - `.specture/stack.yml`.
 - `.specture/decisions/` (all ADRs).
 - The relevant section of `architecture.md`.
+- **Resolved docs from `docs-index.yml`** (the list from pre-flight, including each entry's `concept`, `file`, `read_when`, `tags`, `confidence`, and the file's content). If the list is empty, pass the explicit marker `docs_index_resolved: []` so the agent knows the resolver ran. Treat `ai_categorized` entries as informational context — the validator only binds against `Accepted` ADRs, not against indexed docs.
 
 **Expected output**: `APPROVED` or `REJECTED` with a list of violations.
 
@@ -415,6 +458,8 @@ This gate is non-negotiable: TDD violations are invisible if you only look at th
 
 Dispatch the `code-reviewer` agent (`agents/code-reviewer/AGENT.md`).
 
+**Pre-flight**: run "Docs Index Resolution" (see section above) for this spec. Capture the resolved entries list (may be empty).
+
 **Context to pass**:
 - `RED_SHA` and `HEAD_SHA` (for citing the reviewed range).
 - **The Step 5.5 gate result** (clean | violation + details). The reviewer's Dimension 4 consumes this instead of re-running the diff.
@@ -422,6 +467,7 @@ Dispatch the `code-reviewer` agent (`agents/code-reviewer/AGENT.md`).
 - `.specture/stack.yml`, `.specture/conventions.md`.
 - **Only the ADRs relevant to the module(s) the spec touches.** Safety rule: if you are unsure whether an ADR applies, include it — err toward inclusion, never toward omission. (Passing every ADR of a mature project is the bulk of this dispatch's cost and most are irrelevant to a given spec.)
 - The architecture sections relevant to the touched modules.
+- **Resolved docs from `docs-index.yml`** (the list from pre-flight, including each entry's `concept`, `file`, `read_when`, `tags`, `confidence`, and the file's content). If the list is empty, pass `docs_index_resolved: []`. When an entry has `confidence: ai_categorized`, the reviewer should treat its content as informational and prefer findings rooted in `Accepted` ADRs / `conventions.md`; if a finding depends ONLY on an `ai_categorized` entry, note that in the review report.
 - **Frontend epics:** also pass `docs/03-ux-ui/design_system.md`, the relevant slice of `api-contract.md` (the `operationId`s the page consumes), and — if a handoff was ingested — the fidelity checklist. This activates the code-reviewer's **Dimension 6 (Frontend Fidelity)**: token adherence, accessibility, contract adherence, brand-rule fidelity.
 
 **Parallelism (wall-clock optimization)**: the `code-reviewer` dispatch is independent of the linter and the type-checker — they all read the diff but produce orthogonal outputs. Launch them concurrently to compress wall-clock:
@@ -469,6 +515,31 @@ After all specs in the epic are APPROVED + verified:
 - Update `ROADMAP.md`: change the epic from `[/]` to `[x]`.
 - Commit the ROADMAP update.
 - **Release the test contract**: delete `.specture/state/build-locked.json` if it exists. Without this, the next epic's edits to its own files could be blocked by stale test globs.
+
+## Step 8.5 — Capture Learnings (opt-in)
+
+Before context reset, offer to capture durable knowledge from this epic. This is the natural moment: the diff is fresh, the review is fresh, the user remembers what was discovered.
+
+**Toggle gate**: read `learn.enabled` from `.specture/conventions.md` §10. If `false` (or absent and the user hasn't explicitly enabled it), skip this step entirely.
+
+**Prompt to user (default no)**:
+
+> "Epic `<slug>` completado. ¿Querés correr `/specture:learn` para capturar aprendizajes (ADRs implícitos, entradas de docs-index, patches a conventions)? Es opcional y no toca código. (s/N)"
+
+- **Sí** → invoke `./skills/learn/SKILL.md` passing:
+  - Trigger: `epic`
+  - Trigger ID: `<epic-slug>`
+  - Review files: `docs/07-reviews/review-<epic-slug>-*.md`
+  - Epic block from `ROADMAP.md`
+  - Epic diff range: `git log --oneline <epic-start-sha>..HEAD`
+
+  When `learn` returns, continue with Step 9. Even if `learn` rejected all drafts, the result is logged to `learn-history.jsonl` — that's value.
+
+- **No** (default) → skip directly to Step 9.
+
+> **Why opt-in default-no**: Specture's value is in the build loop, not in documentation overhead. Most epics don't yield generalizable learnings worth durable capture. The user knows when a session produced "aha" moments — they say yes those times. Forcing learn on every epic would create exactly the noise problem the skill is designed to avoid.
+
+> **In `Agentes por Epic` modes (sequential or parallel)**: the epic-agent does NOT run Step 8.5. The coordinator runs it after marking the epic `[x]` (or after merge in parallel mode), with the epic-agent's report as additional input. This is consistent with the existing rule that only the coordinator marks `[x]`.
 
 ## Step 9 — Context Reset Between Epics
 

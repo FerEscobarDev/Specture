@@ -1,0 +1,92 @@
+# Specture — Documentation Index
+#
+# Catálogo machine-readable de la documentación del proyecto.
+# Permite a las skills (orquestadores) resolver de forma DETERMINISTA qué
+# documento(s) pasar a los agentes (architecture-validator, code-reviewer)
+# como contexto adicional, sin que los agentes tengan que listar carpetas
+# ni leer archivos a ciegas.
+#
+# Reglas de oro:
+#   1. La resolución vive en el ORQUESTADOR (skills/build, skills/architecture).
+#      Los agentes nunca leen este archivo directamente — preserva la doctrina
+#      de "contexto restringido por el orquestador".
+#   2. Una entrada apunta a UN archivo (no a una carpeta). Si un concepto
+#      vive en varios archivos, crea varias entradas con el mismo tag.
+#   3. Cuando agregues un doc nuevo al repo, agrega su entrada aquí. Existe
+#      /specture:audit-knowledge para detectar entradas huérfanas.
+#
+# Mantenido por: humanos del equipo (preferido) + /specture:learn (auto).
+# Las entradas creadas por la IA tienen `confidence: ai_categorized` —
+# promuévelas a `user_confirmed` cuando un humano valide.
+
+schema_version: 1
+last_updated: "YYYY-MM-DD"
+
+# Carpeta principal donde vive la documentación del equipo.
+# Puede ser cualquier ruta relativa al repo: "docs/", "SGD.Docs/",
+# "Documentation/", "wiki/", etc. Sirve como anclaje semántico — los paths
+# en `entries[].file` son relativos al repo, no a esta carpeta.
+source_of_truth_dir: "docs/"
+
+# Convenciones de tags (usa los que apliquen a tu proyecto):
+#   - Categoría: requirements | architecture | conventions | database |
+#                functionalities | tech-debt | roadmap | team |
+#                external-integration | security | testing
+#   - Dominio: backend | frontend | mobile | infra | data
+#   - Módulo: <nombre-del-módulo-en-tu-proyecto> (libre)
+#
+# El orquestador filtra por intersección de tags al resolver contexto para
+# un spec. Ej: spec menciona "backend" + "auth" → busca entries con tags
+# que contengan ambos.
+
+entries:
+  # ──────────────────────────────────────────────────────────────────────
+  # Ejemplo 1: doc de funcionalidad / flujo
+  # ──────────────────────────────────────────────────────────────────────
+  - concept: "ejemplo-flujo-radicacion"
+    file: "docs/funcionalidades/flujo-radicacion.md"
+    read_when: "feature en el módulo Correspondencia que toque radicación"
+    tags: [functionalities, backend, frontend, correspondencia]
+    related_code:
+      - "src/correspondencia/comandos/Radicar*"
+      - "src/frontend/correspondencia/radicacion/"
+    confidence: user_confirmed     # ai_categorized | user_confirmed
+    last_verified: "YYYY-MM-DD"    # cuándo se confirmó que `file` existe y `read_when` es válido
+    superseded_by: null            # null o <concept-slug> si fue reemplazado
+
+  # ──────────────────────────────────────────────────────────────────────
+  # Ejemplo 2: regla / convención de equipo
+  # ──────────────────────────────────────────────────────────────────────
+  - concept: "ejemplo-no-try-catch-controllers"
+    file: "docs/convenciones/error-handling.md"
+    read_when: "review o spec que toque controllers o exception handling"
+    tags: [conventions, backend, error-handling]
+    related_code: []
+    confidence: user_confirmed
+    last_verified: "YYYY-MM-DD"
+    superseded_by: null
+
+  # ──────────────────────────────────────────────────────────────────────
+  # Ejemplo 3: doc de arquitectura/infraestructura
+  # ──────────────────────────────────────────────────────────────────────
+  - concept: "ejemplo-multitenancy-per-request"
+    file: "docs/arquitectura/multitenancy.md"
+    read_when: "cualquier spec que toque acceso a datos o autorización"
+    tags: [architecture, security, multitenancy, backend]
+    related_code:
+      - "src/infra/middleware/TenantContext*"
+    confidence: user_confirmed
+    last_verified: "YYYY-MM-DD"
+    superseded_by: null
+
+  # ──────────────────────────────────────────────────────────────────────
+  # Ejemplo 4: entrada creada por la IA (status borrador)
+  # ──────────────────────────────────────────────────────────────────────
+  # - concept: "ejemplo-cache-strategy"
+  #   file: "docs/notas/cache-redis-decisions.md"
+  #   read_when: "specs que toquen caching o invalidación"
+  #   tags: [architecture, performance]
+  #   related_code: []
+  #   confidence: ai_categorized   # AÚN sin validar por humano
+  #   last_verified: "YYYY-MM-DD"  # fecha en que la IA la creó
+  #   superseded_by: null
