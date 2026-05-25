@@ -26,6 +26,7 @@ $SPECTURE_ROOT/
 ├── skills/
 │   ├── start/SKILL.md                 # Router: detecta el estado y enruta
 │   ├── setup/SKILL.md                 # Setup en 3 modos (bootstrap/adopt/reconfigure)
+│   ├── setup-docs-bridge/SKILL.md     # Sub-skill: integra docs preexistentes en proyectos Adopt (genera docs-index.yml + bridges + ADRs Proposed)
 │   ├── discover/SKILL.md              # Levantamiento socrático de negocio
 │   ├── architecture/SKILL.md          # Arquitectura + contrato de API + ROADMAP
 │   ├── ux-design/SKILL.md             # UX/UI: nav map + design system (siempre)
@@ -36,6 +37,8 @@ $SPECTURE_ROOT/
 │   ├── new-feature/SKILL.md
 │   ├── verify/SKILL.md
 │   ├── write-skill/SKILL.md
+│   ├── learn/SKILL.md                 # Captura post-sesión: ADRs Proposed + entradas docs-index + patches conventions
+│   ├── audit-knowledge/SKILL.md       # Auditoría periódica del docs-index.yml (orphans / duplicates / stale / uncovered)
 │   └── modernize/SKILL.md
 ├── agents/
 │   ├── specture-router/AGENT.md       # Router (opt-in: se invoca con /specture:start)
@@ -48,6 +51,7 @@ $SPECTURE_ROOT/
 │   ├── project-config/                # Plantillas de .specture/ del proyecto destino
 │   │   ├── stack.template.yml
 │   │   ├── conventions.template.md
+│   │   ├── docs-index.template.yml    # Catálogo machine-readable de docs preexistentes
 │   │   └── decisions/000-template.md
 │   ├── ARCHITECTURE_TEMPLATE.md
 │   ├── API_CONTRACT_TEMPLATE.md
@@ -55,7 +59,8 @@ $SPECTURE_ROOT/
 │   ├── ROADMAP_TEMPLATE.md
 │   ├── SPEC_TEMPLATE.md
 │   ├── DESIGN_SYSTEM_TEMPLATE.md
-│   └── DEBUG_LOG_TEMPLATE.md
+│   ├── DEBUG_LOG_TEMPLATE.md
+│   └── LEARN_OUTPUT_TEMPLATE.md       # Reporte humano-legible de /specture:learn (opt-in)
 └── docs/
     └── original-vision.md             # Visión y requisitos originales del framework
 ```
@@ -468,6 +473,40 @@ Specture está en desarrollo activo. Para decisiones arquitectónicas internas, 
 ---
 
 ## Changelog
+
+### v1.7.0 — Adoption con Docs Preexistentes + Captura Continua + Auditoría
+
+**Motivación:** el modo Adopt estaba optimizado para inferir el stack desde archivos de configuración, no para proyectos con documentación abundante preexistente. En esos proyectos `/specture:start` enrutaba ciego a `discover` aunque los requerimientos ya existieran en `SGD.Docs/`, `Documentation/`, `wiki/`. Los agentes (`architecture-validator`, `code-reviewer`) eran ciegos a esa documentación por diseño. Y el conocimiento descubierto durante una sesión se evaporaba al cerrar la conversación. Análisis completo en `docs/adoption-with-existing-docs.md` y `docs/continuous-knowledge-capture.md`. Guía end-to-end del flujo nuevo en `docs/adoption-and-learn-guide.md`.
+
+**Nivel 1 — Adoption con documentación preexistente:**
+- Nueva plantilla `templates/project-config/docs-index.template.yml` — catálogo machine-readable con schema v1 (campos `concept`, `file`, `read_when`, `tags`, `related_code`, `confidence`, `last_verified`, `superseded_by`).
+- Nuevo sub-skill **`setup-docs-bridge`**: detecta carpetas con ≥10 `.md`, categoriza heurísticamente (path + keywords) como **draft mostrado al usuario** (nunca aplicado en silencio), genera bridges en `docs/01-`, `docs/02-`, `docs/03-`, propone ADRs implícitos con `Status: Proposed — awaiting team confirmation`, escribe `.specture/docs-index.yml`. Invocable desde `setup` o standalone para refresh.
+- `setup/SKILL.md` (modo Adopt) gana **Step 8.5**: detecta carpetas de docs preexistentes y ofrece invocar `setup-docs-bridge`.
+- `start/SKILL.md` **Step 2 ampliado**: si `business_requirements.md` no existe pero `docs-index.yml` tiene entries con tag `requirements`, ofrece generar bridge desde índice en vez de enrutar a `discover`.
+
+**Nivel 2 — Resolución del índice en orquestadores (preserva contexto restringido):**
+- `build/SKILL.md` y `architecture/SKILL.md` ganan una sección reusable **"Docs Index Resolution"** que ejecuta el filtrado por tags/conceptos, ordena por score (prefiere `user_confirmed` sobre `ai_categorized`), aplica cap (`docs_index.max_entries_per_dispatch`, default 3) y pasa los docs resueltos como input adicional a los agentes. **Los agentes (`architecture-validator`, `code-reviewer`) jamás leen el índice directamente** — preserva caché, determinismo, paralelización.
+- Step 3 (architecture-validator dispatch), Step 6 (code-reviewer dispatch), y los Validation Gates de `architecture` (Part A y Part B) usan el resolver.
+- Log estructurado de cada resolución a `docs/.specture-meta/index-usage.jsonl` para medir selectividad.
+
+**Nivel 3 — Captura continua de conocimiento (`/specture:learn`):**
+- Nuevo skill transversal **`learn`** con 8 fases: relevance filter → gather evidence → cross-reference → drafts max 3 → Plan mode confirm → apply → log → report. Modos: `epic` / `debug` / `manual` / `--teach`. Hard token budget ~30K. **Nunca escribe a memoria personal de Claude** (`~/.claude/projects/*/memory/`) — los candidatos personales se listan al usuario para que él decida.
+- `build/SKILL.md` Step 8.5 nuevo: tras marcar epic `[x]`, prompt opt-in default-no para invocar `/learn` con el epic como input.
+- `debug/SKILL.md` Phase 4.5 nuevo: tras hipótesis confirmada y fix commiteado, prompt opt-in default-no para invocar `/learn` con el `DEBUG_LOG` como input.
+- Plantilla `LEARN_OUTPUT_TEMPLATE.md` para el reporte humano-legible opcional.
+
+**Nivel 4 — Auditoría periódica del índice (`/specture:audit-knowledge`):**
+- Nuevo skill transversal **`audit-knowledge`** (read-only). Detecta 4 tipos de drift: ORPHAN (HIGH), DUPLICATE_CANDIDATE (MEDIUM), STALE/VERY_STALE (LOW/MEDIUM), UNCOVERED (LOW), UNKNOWN_AGE (LOW). Genera `docs/.specture-meta/last-audit.md` (humano) + `audit-history.jsonl` (estructurado) + health score 0-100. **Nunca auto-corrige** — propone acciones, el usuario confirma.
+
+**Toggles nuevos en `conventions.md` §10:** `docs_index.enabled`, `docs_index.max_entries_per_dispatch`, `learn.enabled`, `learn.min_session_threshold_minutes`, `learn.max_drafts_per_invocation`, `learn.write_human_report`. Defaults conservadores (el framework no agrega fricción out-of-the-box).
+
+**Salvaguardas críticas:**
+- ADRs auto-generados (por `setup-docs-bridge` o `/learn`) nacen con `Status: Proposed — awaiting team confirmation`. El `architecture-validator` los ignora; solo bind contra `Accepted`. El equipo promueve manualmente cuando confirma.
+- Entradas auto-generadas en el índice nacen con `confidence: ai_categorized`. El humano las promueve a `user_confirmed` cuando valida.
+- Aprobación de `/learn` es **atómica vía Plan mode** (`EnterPlanMode` + `ExitPlanMode`) — el usuario aprueba o rechaza en bloque; para rechazar selectivo, re-invoca con exclusión.
+- Telemetría es **fail-open** — si la escritura a `docs/.specture-meta/*.jsonl` falla, la skill no se rompe.
+
+**Archivos nuevos:** `skills/setup-docs-bridge/`, `skills/learn/`, `skills/audit-knowledge/`, `templates/project-config/docs-index.template.yml`, `templates/LEARN_OUTPUT_TEMPLATE.md`, `docs/adoption-and-learn-guide.md`.
 
 ### v1.6.0 — API Contract + Frontend Discipline + Design Tooling
 
