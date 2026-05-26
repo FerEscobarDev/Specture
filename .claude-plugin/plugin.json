@@ -1,7 +1,7 @@
 {
   "name": "specture",
   "description": "Spec-Driven Development framework for AI-assisted software development",
-  "version": "1.7.0",
+  "version": "1.7.1",
   "author": {
     "name": "Fernando Escobar",
     "email": "keishmen17@gmail.com"

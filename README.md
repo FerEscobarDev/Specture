@@ -461,6 +461,16 @@ Specture está en desarrollo activo. Para decisiones arquitectónicas internas, 
 
 ## Changelog
 
+### v1.7.1 — README discoverability
+
+**Motivación:** las skills nuevas de v1.7.0 (`setup-docs-bridge`, `learn`, `audit-knowledge`) estaban listadas en el árbol de archivos pero no en la tabla de Capacidades Transversales ni en la referencia de Slash Commands, así que un lector nuevo del README no las descubría. Y la sección "Instalación y Uso" estaba al final, después de toda la teoría — friction innecesaria para alguien que solo quiere instalar.
+
+**Cambios (docs-only, sin cambio de comportamiento):**
+- Tres skills v1.7.0 agregadas a la tabla de Capacidades Transversales.
+- Tres entradas nuevas en la referencia de Slash Commands (`/specture:setup-docs-bridge`, `/specture:learn`, `/specture:audit-knowledge`) con descripción, output y línea de uso típico.
+- Sección "Instalación y Uso" movida al inicio del README, justo después del intro.
+- Intro extendido para mencionar v1.7.0 y la oferta de `setup-docs-bridge` desde `/specture:setup`.
+
 ### v1.7.0 — Adoption con Docs Preexistentes + Captura Continua + Auditoría
 
 **Motivación:** el modo Adopt estaba optimizado para inferir el stack desde archivos de configuración, no para proyectos con documentación abundante preexistente. En esos proyectos `/specture:start` enrutaba ciego a `discover` aunque los requerimientos ya existieran en `SGD.Docs/`, `Documentation/`, `wiki/`. Los agentes (`architecture-validator`, `code-reviewer`) eran ciegos a esa documentación por diseño. Y el conocimiento descubierto durante una sesión se evaporaba al cerrar la conversación. Análisis completo en `docs/adoption-with-existing-docs.md` y `docs/continuous-knowledge-capture.md`. Guía end-to-end del flujo nuevo en `docs/adoption-and-learn-guide.md`.
