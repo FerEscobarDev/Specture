@@ -2,7 +2,39 @@
 
 > Una metodología de Vibe Coding para Claude Code basada en SDD (Spec-Driven Development), con configuración agnóstica al stack, agentes especializados con contexto restringido, y disciplina anti-alucinación.
 
-Specture lleva un proyecto **desde la idea hasta el código** en 5 fases consecutivas + capacidades transversales, dispatchando agentes funcionales con contexto restringido. No replica la estructura de un equipo humano: replica las **funciones cognitivas** que la IA hace mejor cuando se le restringe el contexto. Desde v1.6.0 incluye un **contrato de API** como fuente única de verdad backend↔frontend, disciplina de diseño end-to-end (design system → showcase → aprobación → páginas), y herramientas para ingerir handoffs de diseño y auditar la sincronización back/front.
+Specture lleva un proyecto **desde la idea hasta el código** en 5 fases consecutivas + capacidades transversales, dispatchando agentes funcionales con contexto restringido. No replica la estructura de un equipo humano: replica las **funciones cognitivas** que la IA hace mejor cuando se le restringe el contexto. Desde v1.6.0 incluye un **contrato de API** como fuente única de verdad backend↔frontend, disciplina de diseño end-to-end (design system → showcase → aprobación → páginas), y herramientas para ingerir handoffs de diseño y auditar la sincronización back/front. Desde v1.7.0 integra documentación preexistente en proyectos Adopt sin duplicarla, captura conocimiento post-sesión con aprobación granular, y audita periódicamente el índice de docs.
+
+---
+
+## Instalación y Uso
+
+### Plugin Claude Code
+
+La forma más simple. Un solo comando en cualquier conversación de Claude Code:
+
+```
+/plugin add marketplace https://github.com/FerEscobarDev/Specture.git
+
+/plugin install specture@specture
+```
+
+Una vez instalado, los slash commands `/specture:*` quedan disponibles en **todas** tus conversaciones. El routing es **opt-in**: Specture no intercepta nada hasta que invocas `/specture:start` (o pides iniciar/continuar el trabajo).
+
+**Inicializar Specture en un proyecto:**
+
+```
+/specture:setup
+```
+
+Specture detectará si el proyecto está vacío (Bootstrap), tiene código existente (Adopt), o ya tiene `.specture/` (Reconfigure), y te guiará. En proyectos Adopt con documentación preexistente abundante, el setup ofrece invocar `/specture:setup-docs-bridge` para integrar esos docs sin duplicarlos.
+
+**Usar el router (invocación explícita):**
+
+```
+/specture:start
+```
+
+O simplemente di "continuemos con el roadmap" — el `specture-router` detecta el estado y enruta.
 
 ---
 
@@ -88,6 +120,9 @@ $SPECTURE_ROOT/
 | `modernize` | `/specture:modernize` | Subir versión de una tecnología o migrar a otro stack |
 | `handoff-ingest` | `/specture:handoff-ingest` | Tienes un handoff de diseño (Claude Design/v0/Lovable) para convertir al stack |
 | `contract-sync-audit` | `/specture:contract-sync-audit` | Frontend y backend desincronizados en un proyecto existente |
+| `setup-docs-bridge` | `/specture:setup-docs-bridge` | Proyecto Adopt con documentación preexistente abundante (≥10 .md). Genera `docs-index.yml` + bridges + ADRs Proposed |
+| `learn` | `/specture:learn` | Captura post-sesión opt-in (post-epic, post-debug, manual). Propone drafts de ADRs/índice/conventions con aprobación granular |
+| `audit-knowledge` | `/specture:audit-knowledge` | Auditoría periódica (1-3 meses) del `docs-index.yml`: detecta orphans, duplicates, stale, uncovered. Read-only |
 
 ---
 
@@ -235,6 +270,33 @@ Output: `docs/02-architecture/contract-sync-report.md` (+ contrato propuesto si 
 
 ---
 
+#### `/specture:setup-docs-bridge`
+**Integra documentación preexistente en proyectos Adopt sin duplicarla.** Sub-skill invocable desde `setup` (Step 8.5) o de forma independiente para refresh. Detecta carpetas con ≥10 archivos `.md` (`SGD.Docs/`, `Documentation/`, `wiki/`, `docs/`, `*.Docs/`), categoriza heurísticamente con path + keywords como **draft mostrado al usuario** (nunca aplicado en silencio), genera bridges referenciales en `docs/01-`, `docs/02-`, `docs/03-` que apuntan a los originales sin copiarlos, y propone ADRs implícitos con `Status: Proposed — awaiting team confirmation`. Escribe `.specture/docs-index.yml` (schema v1, machine-readable) que el orquestador consulta para resolver docs relevantes por epic. Nunca reorganiza ni duplica los docs originales.
+
+Output: `.specture/docs-index.yml` + bridges en `docs/0X-*/` + ADRs Proposed en `.specture/decisions/`.
+
+> Úsalo cuando un proyecto Adopt tenga una carpeta de docs preexistente que Specture deba reconocer sin tocar.
+
+---
+
+#### `/specture:learn`
+**Captura post-sesión opt-in del conocimiento descubierto.** Se activa al final de un epic (build Step 8.5), tras confirmar una causa raíz (debug Phase 4.5), manualmente, o con `--teach <concepto>`. Filtra relevancia, recolecta evidencia (commits, specs, debug logs), cross-referencia el `docs-index.yml`, y genera hasta **3 drafts** por invocación: nueva entrada al índice (`confidence: ai_categorized`), ADR `Status: Proposed`, patch a `conventions.md`, patch a un bridge, o test de characterization pendiente. El usuario **aprueba en bloque vía Plan mode** (atómico); para rechazar selectivo se re-invoca excluyendo. Hard token budget ~30K. **Nunca escribe a la memoria personal de Claude** — los candidatos personales se listan al usuario.
+
+Output: drafts aplicados al repo + log estructurado en `docs/.specture-meta/learn-history.jsonl` (+ reporte humano si `learn.write_human_report: true`).
+
+> Úsalo cuando termine un epic, se confirme un root cause, o quieras formalizar lo descubierto sin que se evapore.
+
+---
+
+#### `/specture:audit-knowledge`
+**Auditoría periódica del índice de documentación (read-only).** Detecta 4 tipos de drift sobre `.specture/docs-index.yml`: **ORPHAN** (entrada apunta a archivo inexistente, HIGH), **DUPLICATE_CANDIDATE** (entradas con tags + `read_when` similares, MEDIUM), **STALE/VERY_STALE** (`last_verified` >180/>365 días, LOW/MEDIUM), **UNCOVERED** (docs en el source-of-truth dir sin entrada en el índice, LOW), **UNKNOWN_AGE** (falta `last_verified`, LOW). Calcula un **health score 0-100** y emite reporte humano + log estructurado. **Nunca auto-corrige** — propone acciones (eliminar entrada, consolidar duplicados, refrescar `last_verified`, agregar al índice) y el usuario decide.
+
+Output: `docs/.specture-meta/last-audit.md` (humano) + `docs/.specture-meta/audit-history.jsonl` (estructurado).
+
+> Úsalo cada 1-3 meses en proyectos maduros, o cuando el índice parezca desfasado del repo.
+
+---
+
 ### Agentes
 
 Los agentes de Specture son subagentes con **contexto restringido** — cada uno recibe exactamente los archivos que necesita, no la conversación completa. Esto previene drift y alucinación acumulada.
@@ -361,81 +423,6 @@ Sin esos toggles, los hooks shippean pero no actúan, y Context7 nunca se consul
 ### Documentación detallada
 
 Ver [`docs/native-integration-guide.md`](docs/native-integration-guide.md) para la guía operativa completa: troubleshooting, edge cases, FAQ.
-
----
-
-## Instalación y Uso
-
-### Opción A — Plugin (recomendado)
-
-La forma más simple. Un solo comando en cualquier conversación de Claude Code:
-
-```
-/plugin install github:FerEscobarDev/Specture
-```
-
-Una vez instalado, los slash commands `/specture:*` quedan disponibles en **todas** tus conversaciones. El routing es **opt-in**: Specture no intercepta nada hasta que invocas `/specture:start` (o pides iniciar/continuar el trabajo).
-
-**Inicializar Specture en un proyecto:**
-
-```
-/specture:setup
-```
-
-Specture detectará si el proyecto está vacío (Bootstrap), tiene código existente (Adopt), o ya tiene `.specture/` (Reconfigure), y te guiará.
-
-**Usar el router (invocación explícita):**
-
-```
-/specture:start
-```
-
-O simplemente di "continuemos con el roadmap" — el `specture-router` detecta el estado y enruta.
-
----
-
-### Opción B — Manual con @import
-
-Para quienes no usan el plugin o prefieren control total.
-
-**1. Clonar el framework:**
-
-```bash
-git clone https://github.com/FerEscobarDev/Specture.git
-```
-
-Puedes ponerlo donde quieras: `~/dev/specture`, `C:\Proyectos\Specture`, etc.
-
-**2. Configurar `$SPECTURE_ROOT`:**
-
-**Windows (PowerShell, persistente):**
-```powershell
-setx SPECTURE_ROOT "C:\Proyectos\Specture"
-```
-
-**Mac/Linux (zsh/bash):**
-```bash
-echo 'export SPECTURE_ROOT="$HOME/dev/specture"' >> ~/.zshrc
-source ~/.zshrc
-```
-
-**3. Crear `CLAUDE.md` en el proyecto destino:**
-
-En la raíz del proyecto que quieres usar con Specture, crea un archivo `CLAUDE.md` con:
-
-```markdown
-# [Nombre de tu proyecto]
-
-@C:/Proyectos/Specture/CLAUDE.md
-```
-
-(Usa la ruta absoluta real de tu instalación — `$SPECTURE_ROOT` no se expande dentro de @imports.)
-
-**4. Abrir Claude Code en el proyecto:**
-
-Al iniciar una conversación en ese directorio, Claude leerá el `CLAUDE.md` y tendrá Specture disponible. El routing es opt-in: no se activa solo. Para entrar, di:
-
-> "Configura Specture aquí." (o invoca `/specture:start`)
 
 ---
 
