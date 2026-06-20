@@ -253,11 +253,28 @@ When `.specture/docs-index.yml` exists, the orchestrator MUST resolve relevant e
 - For `architecture-validator` and `code-reviewer`: dispatch normally. The agents already work correctly without docs-index input — it's strictly additive context.
 - The Dispatch Manifest item is satisfied by **"empty list — no matching entries"** (explicitly state this in the dispatch payload so the agent knows the resolver ran and found nothing, vs being silently dropped).
 
+## Current-State Resolution (pre-flight, reusable)
+
+When `docs/05-specs/_current/` exists, the orchestrator resolves the living-behavior file(s) for the component(s) the current spec touches and passes them to `architecture-validator` (Step 3) and `code-reviewer` (Step 6), so those agents see the **current behavior** of the component and can flag regressions or conflicts with what is already built.
+
+> **Doctrine — same as Docs Index Resolution**: the agents NEVER read the `_current/` directory themselves. The orchestrator resolves the relevant files and hands them over in the dispatch. Restricted context preserved.
+
+### Resolution algorithm
+
+1. **Check existence**: if `docs/05-specs/_current/` does not exist (no milestone has reconciled yet), the resolved list is **empty**. Continue; do NOT block dispatch.
+2. **Identify component(s)**: from the spec header's `Módulo` ref and the epic's "Componentes de arquitectura involucrados" — these are the `<component-slug>`s.
+3. **Resolve files**: for each component, read `docs/05-specs/_current/<component-slug>.md` if it exists. A missing file means that component has no reconciled behavior yet — skip it, not an error.
+4. **Cap**: pass only the files for the components the spec actually touches (usually 1-2), never the whole `_current/` directory.
+
+When empty, dispatch normally and pass `current_state_resolved: []` so the agent knows the resolver ran — it is strictly additive context.
+
 ## Step 3 — Architecture Validation (mandatory gate)
 
 Dispatch the `architecture-validator` agent (`agents/architecture-validator/AGENT.md`).
 
 **Pre-flight**: run "Docs Index Resolution" (see section above) for this spec. Capture the resolved entries list (may be empty).
+
+**Pre-flight 2**: run "Current-State Resolution" (see section above) for this spec's component(s). Capture the resolved `_current/` file(s) (may be empty).
 
 **Context to pass (restricted)**:
 - The new `.spec.md` content.
@@ -265,6 +282,7 @@ Dispatch the `architecture-validator` agent (`agents/architecture-validator/AGEN
 - `.specture/decisions/` (all ADRs).
 - The relevant section of `architecture.md`.
 - **Resolved docs from `docs-index.yml`** (the list from pre-flight, including each entry's `concept`, `file`, `read_when`, `tags`, `confidence`, and the file's content). If the list is empty, pass the explicit marker `docs_index_resolved: []` so the agent knows the resolver ran. Treat `ai_categorized` entries as informational context — the validator only binds against `Accepted` ADRs, not against indexed docs.
+- **Resolved `_current/` behavior** (from Current-State Resolution): the living-behavior file(s) for the component(s) this spec touches, so the validator can flag where the spec conflicts with or contradicts already-built behavior. If empty, pass `current_state_resolved: []`.
 
 **Expected output**: `APPROVED` or `REJECTED` with a list of violations.
 
@@ -347,6 +365,8 @@ Dispatch the `code-reviewer` agent (`agents/code-reviewer/AGENT.md`).
 
 **Pre-flight**: run "Docs Index Resolution" (see section above) for this spec. Capture the resolved entries list (may be empty).
 
+**Pre-flight 2**: run "Current-State Resolution" (see section above) for this spec's component(s). Capture the resolved `_current/` file(s) (may be empty).
+
 **Context to pass**:
 - `RED_SHA` and `HEAD_SHA` (for citing the reviewed range).
 - **The Step 5.5 gate result** (clean | violation + details). The reviewer's Dimension 4 consumes this instead of re-running the diff.
@@ -355,6 +375,7 @@ Dispatch the `code-reviewer` agent (`agents/code-reviewer/AGENT.md`).
 - **Only the ADRs relevant to the module(s) the spec touches.** Safety rule: if you are unsure whether an ADR applies, include it — err toward inclusion, never toward omission. (Passing every ADR of a mature project is the bulk of this dispatch's cost and most are irrelevant to a given spec.)
 - The architecture sections relevant to the touched modules.
 - **Resolved docs from `docs-index.yml`** (the list from pre-flight, including each entry's `concept`, `file`, `read_when`, `tags`, `confidence`, and the file's content). If the list is empty, pass `docs_index_resolved: []`. When an entry has `confidence: ai_categorized`, the reviewer should treat its content as informational and prefer findings rooted in `Accepted` ADRs / `conventions.md`; if a finding depends ONLY on an `ai_categorized` entry, note that in the review report.
+- **Resolved `_current/` behavior** (from Current-State Resolution): the living-behavior file(s) for the component(s) this spec touches, so the reviewer can flag regressions against already-built behavior. If empty, pass `current_state_resolved: []`.
 - **Frontend epics:** also pass `docs/03-ux-ui/design_system.md`, the relevant slice of `api-contract.md` (the `operationId`s the page consumes), and — if a handoff was ingested — the fidelity checklist. This activates the code-reviewer's **Dimension 6 (Frontend Fidelity)**: token adherence, accessibility, contract adherence, brand-rule fidelity.
 
 **Parallelism (wall-clock optimization)**: the `code-reviewer` dispatch is independent of the linter and the type-checker — they all read the diff but produce orthogonal outputs. Launch them concurrently to compress wall-clock:
@@ -420,13 +441,30 @@ Before context reset, offer to capture durable knowledge from this epic. This is
   - Epic block from `ROADMAP.md`
   - Epic diff range: `git log --oneline <epic-start-sha>..HEAD`
 
-  When `learn` returns, continue with Step 9. Even if `learn` rejected all drafts, the result is logged to `learn-history.jsonl` — that's value.
+  When `learn` returns, continue with Step 8.7. Even if `learn` rejected all drafts, the result is logged to `learn-history.jsonl` — that's value.
 
-- **No** (default) → skip directly to Step 9.
+- **No** (default) → skip directly to Step 8.7.
 
 > **Why opt-in default-no**: Specture's value is in the build loop, not in documentation overhead. Most epics don't yield generalizable learnings worth durable capture. The user knows when a session produced "aha" moments — they say yes those times. Forcing learn on every epic would create exactly the noise problem the skill is designed to avoid.
 
 > **Coordinator vs epic-agent**: the epic-agent does NOT run Step 8.5. The coordinator runs it after marking the epic `[x]`, with the epic-agent's report as additional input. This is consistent with the existing rule that only the coordinator marks `[x]`.
+
+## Step 8.7 — Milestone Reconciliation (when a milestone closes)
+
+Run by the **coordinator** (not the epic-agent), only when the epic just marked `[x]` was the **last** of its milestone. This is the reconciliation event: drain from intent (ROADMAP) → reconcile into reality (living behavior).
+
+1. **Detect milestone closure**: after marking the epic `[x]`, check whether **all** epics under its milestone are now `[x]` (read only that milestone's epic checkbox lines). If not, skip this step.
+2. **Touched components**: the union of "Componentes de arquitectura involucrados" across the milestone's epics.
+3. **Reconcile (incremental)**: for each touched component, update `docs/05-specs/_current/<component-slug>.md` from `templates/CURRENT_CAPABILITY_TEMPLATE.md`:
+   - Read the existing `_current/<component>.md` (if any) plus the milestone's specs that touch the component.
+   - Merge: add the new BR/AC/EC + contract behavior; move any behavior this milestone supersedes (same `operationId` or same rule subject) down to "Historial / supersesiones"; refresh "Specs de origen" and "Última reconciliación".
+   - If a supersession overlap is ambiguous, do a **full rebuild** of that component (re-read every spec listed in "Specs de origen" + the new ones).
+   - Create `docs/05-specs/_current/` lazily if absent. It is **tracked truth — never gitignored**.
+4. **Deferred ROADMAP collapse**: collapse to a tombstone any **closed** milestone that is no longer among the **~2 most-recent closed** milestones (fixed threshold, no toggle). Tombstone format + archived-dependency resolution: see `templates/ROADMAP_TEMPLATE.md`.
+5. **Commit**: `docs: reconcile <component(s)> + archive milestone <N>`.
+
+> **Why the coordinator**: reconciliation spans the whole milestone's specs (not one epic), so it lives in the coordinator, which transiently loads the milestone's specs. Epic-agents stay focused on their single epic.
+> **Backward-compat**: a project that has never reconciled simply has no `_current/` yet; the first milestone closure creates it. Collapse only fires once ≥3 milestones are closed (the ~2 most-recent stay expanded).
 
 ## Step 9 — Context Reset Between Epics
 

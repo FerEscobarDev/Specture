@@ -459,6 +459,21 @@ Specture está en desarrollo activo. Para decisiones arquitectónicas internas, 
 
 ## Changelog
 
+### v1.9.0 — Reconciliación: verdad viva + ROADMAP-como-cola
+
+**Motivación:** Specture no tenía ninguna **fuente de verdad viva del comportamiento** — los specs son inmutables y el contrato es append-only, así que "¿qué hace hoy el módulo X?" obligaba a replayear specs históricos (spec rot). Y el ROADMAP era un libro mayor que crecía sin techo (regla "nunca borres un epic completado"). Son el mismo problema: cerrar un milestone debe **drenar de la intención (ROADMAP) → reconciliar en la realidad (verdad viva)**. Diseño completo en `docs/reconciliation-design.md`.
+
+**Cambios:**
+- **Verdad viva por componente:** nuevo `docs/05-specs/_current/<component>.md` (plantilla `CURRENT_CAPABILITY_TEMPLATE.md`) — vista materializada *sobre* los specs inmutables que consolida BR/AC/EC + contrato en presente; lo superseded baja a "Historial". Es verdad trackeada (no se gitignorea); se crea lazy.
+- **Step 8.7 — Milestone Reconciliation** en `build/SKILL.md`: al cerrar un milestone, el **coordinador** reconcilia (incremental) los `_current/` de los componentes tocados.
+- **ROADMAP-como-cola (colapso diferido):** al cerrar un milestone se colapsa a **lápida** cualquier milestone que deje de estar entre los ~2 cerrados más recientes (umbral fijo, sin toggle). La lápida conserva los IDs de epic → el parser de dependencias los resuelve (`Epic X.Y` en lápida = `[x]` satisfecho; no hallado = typo → escala). Regla 3 del `ROADMAP_TEMPLATE` reescrita (archivar/reconciliar, no "nunca borrar").
+- **Current-State Resolution:** el orquestador inyecta el slice de `_current/` relevante al `architecture-validator` (Step 3) y al `code-reviewer` (Step 6) — clon de Docs Index Resolution; los agentes nunca leen el directorio. Ven el comportamiento vigente → atrapan regresiones.
+- **`new-feature`:** el Impact Ripple Analysis lee `_current/` (verdad viva) en vez de replayear specs históricos.
+
+**Backward-compat:** sin cambios requeridos. Un proyecto sin `_current/` lo crea en la primera reconciliación; el colapso a lápida recién aplica con ≥3 milestones cerrados.
+
+**Archivos nuevos:** `templates/CURRENT_CAPABILITY_TEMPLATE.md`, `docs/reconciliation-design.md`.
+
 ### v1.8.0 — Modo de ejecución único (Cola Secuencial)
 
 **Motivación:** `build/SKILL.md` cargaba **tres** modos de ejecución (Inline, Agentes por Epic secuencial, Agentes por Epic en Paralelo por Olas) — el archivo más pesado del hot path. En la práctica solo se quería **ejecutar de a una epic a la vez**, con la opción de **encolar N** y correrlas secuencialmente. El modo paralelo (worktrees + gate de integración) era superficie que complicaba el archivo crítico sin que la mayoría lo necesitara.

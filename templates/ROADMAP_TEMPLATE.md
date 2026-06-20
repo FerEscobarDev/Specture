@@ -23,7 +23,7 @@
 |---------|--------|-------------|
 | `[ ]` | Pendiente | El epic aún no se ha tocado. |
 | `[/]` | En Progreso | Hay un spec activo o un epic-agent trabajando en él. La ejecución es secuencial: solo UN epic puede estar en `[/]` a la vez. |
-| `[x]` | Completado | Todos los specs del epic han sido implementados, revisados (`code-reviewer` APPROVED), y verificados (tests pasan, lint limpio). En modo paralelo, además, el epic pasó el **gate de integración** (merge + suite completa sobre el árbol integrado). |
+| `[x]` | Completado | Todos los specs del epic han sido implementados, revisados (`code-reviewer` APPROVED), y verificados (tests pasan, lint limpio). |
 
 ---
 
@@ -66,5 +66,24 @@
 
 1. **Solo el orquestador (`skills/build/SKILL.md`)** modifica los checkboxes durante construcción.
 2. **Solo `skills/new-feature/SKILL.md`** agrega nuevos Milestones/Epics después de la planificación inicial.
-3. **NUNCA borres un epic ya completado.** Si una funcionalidad cambia, márcala con un nuevo epic que la sustituya y deja el anterior como `[x]` con una nota de superseded.
+3. **Al cerrar un milestone, reconcílialo y archívalo — no lo borres.** El coordinador de `build` (Step 8.7) consolida el comportamiento del milestone en `docs/05-specs/_current/<componente>.md` y, cuando el milestone deja de estar entre los ~2 cerrados más recientes, **colapsa su bloque a una lápida** (ver "Archivado a Lápida" abajo). Nunca borres la lápida ni los IDs de epic. La verdad de comportamiento vive en `_current/`; el historial completo, en git + los specs inmutables. Si una funcionalidad cambia, agrégala como **epic nuevo** (nunca edites un spec completado in-place).
 4. **Cuando agregues un epic nuevo**, declara explícitamente sus dependencias contra los epics existentes.
+
+---
+
+## Archivado a Lápida (milestones cerrados)
+
+Cuando el coordinador de `build` cierra un milestone (Step 8.7), lo reconcilia en `docs/05-specs/_current/` y, una vez que deja de estar entre los **~2 milestones cerrados más recientes**, **colapsa su bloque a una lápida**: conserva el heading, los IDs de epic con su `[x]`, y un puntero a los `_current/` relevantes; elimina los cuerpos verbosos de epic (Descripción, Reglas, Componentes, Operaciones, Specs).
+
+Formato de lápida:
+
+```
+### Milestone 3: Billing  ✅ archivado <fecha> · verdad viva → docs/05-specs/_current/{billing,payments}.md
+- [x] Epic 3.1, Epic 3.2, Epic 3.3   — detalle de comportamiento en el espejo de capacidad
+```
+
+**Resolución de dependencias contra lápidas** (la usa el parser de la cola de `build`): como la lápida conserva los IDs de epic,
+- `Epic X.Y` o `Milestone N completo` hallado en una lápida → estado `[x]` → **satisfecho** (las lápidas son cerradas por definición).
+- ID **no hallado en ningún lado** (ni activo ni lápida) → typo/desconocido → **escalar al usuario**, no asumir satisfecho.
+
+Los ~2 milestones cerrados más recientes se mantienen **expandidos** (detalle completo). En proyectos con < 3 milestones cerrados todavía no hay lápidas.

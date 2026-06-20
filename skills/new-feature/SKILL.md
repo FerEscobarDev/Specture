@@ -13,7 +13,7 @@ The project already exists (or has parts implemented). The user wants to add a f
 - `docs/01-requirements/business_requirements.md` — to align with existing rules.
 - `docs/02-architecture/architecture.md` — to know the boundaries.
 - `docs/04-roadmap/ROADMAP.md` — to know what's done and what's pending.
-- `docs/05-specs/` — completed specs (for impact analysis).
+- `docs/05-specs/_current/` — **living behavior per component** (primary input for impact analysis: reconciled, present-tense truth — not historical snapshots). Drill into the immutable `docs/05-specs/<epic>/` specs only when deep history is needed.
 
 ## Step 1 — Mini-Discovery for the New Feature
 
@@ -52,14 +52,14 @@ Output a list:
 - (new) AuditModule → required, doesn't exist yet
 ```
 
-### Spec impact (the ripple)
+### Behavior impact (the ripple)
 
-For each completed spec in `docs/05-specs/`:
-- Does the new feature change a business rule that this spec implemented?
-- Does it touch a file that this spec also touched?
-- Does it conflict with an acceptance criterion?
+Read `docs/05-specs/_current/<component>.md` for each component the feature touches — this is the **current behavior**, consolidated and present-tense, so you don't replay historical specs. For each touched component:
+- Does the feature change a business rule (BR) that is vigente there?
+- Does it conflict with a current acceptance criterion (AC) or the consolidated contract behavior?
+- Does it touch the same operations the component already implements?
 
-Cross-reference entities mentioned in the new feature against entities in completed specs. List the affected specs explicitly.
+Cross-reference entities mentioned in the feature against the vigente behavior in `_current/`. List the affected components and the specific BR/AC explicitly. If `_current/` does not exist yet (no milestone has reconciled), fall back to scanning `docs/05-specs/<epic>/` directly.
 
 ### ADR impact
 
@@ -71,7 +71,7 @@ Does this feature contradict any `Accepted` ADR? If yes, you must:
 
 A document `docs/05-specs/_impact-analysis-<feature-slug>.md` with:
 - Affected components.
-- Affected specs (likely needing modification or deprecation).
+- Affected components (the vigente behavior in `_current/` that ripples) + the immutable specs behind them.
 - Affected ADRs.
 - Migration risks (data shape changes, breaking API changes, breaking UI changes).
 
