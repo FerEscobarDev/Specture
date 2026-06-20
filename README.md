@@ -459,6 +459,20 @@ Specture está en desarrollo activo. Para decisiones arquitectónicas internas, 
 
 ## Changelog
 
+### v1.10.0 — Registro de reglas (invariantes + proceso)
+
+**Motivación:** no había forma de declarar **reglas de desarrollo que nunca cambian** (DTOs inmutables, naming de métodos, de dónde nace cada rama) y que llegaran a los agentes de contexto restringido — `CLAUDE.md` no los alcanza por diseño. Hallazgo clave: `conventions.md` **ya** llega al `implementer` y al `code-reviewer`, así que el camino lean es ponerlas ahí. Diseño completo en `docs/rules-registry-design.md`.
+
+**Cambios (lean — cero archivos/toggles nuevos):**
+- **`conventions.md` §12 Invariantes (R-*):** reglas de código/naming con ID, ámbito (tag) y severidad. Las **aplica** el `implementer`/`ux-implementer` (Iron Rule de honrar conventions extendida) y las **enforça** el `code-reviewer` con una nueva **Dimensión 7 (Project Invariants)** que cita la regla por ID con su severidad declarada.
+- **`conventions.md` §13 Workflow/Proceso (W-*):** reglas de rama/commit/PR que sigue el orquestador de `build`. Branching: al iniciar la sesión, `build` crea **una** rama según la regla (origen + nombre por tipo de trabajo) — granularidad por sesión, sin stacked-branches; **sin auto-merge** (lo sugiere al drenar la cola). `new-feature` señala work-type=feature.
+- **Sin perillas nuevas:** la **presencia** de reglas es el switch. Sin §12, la Dimensión 7 es no-op; sin reglas de rama en §13, `build` no crea ramas (comportamiento idéntico a v1.9.0).
+- `setup` puebla los stubs (Bootstrap pregunta; Adopt infiere la base de rama del git existente).
+
+**Backward-compat:** total. Proyectos sin §12/§13 se comportan exactamente como v1.9.0.
+
+**Diferido** (ver `docs/rules-registry-design.md` §5): `.specture/rules.yml` con routing selectivo, generación de lint, hook de rama mecánico, auto-merge/PR.
+
 ### v1.9.0 — Reconciliación: verdad viva + ROADMAP-como-cola
 
 **Motivación:** Specture no tenía ninguna **fuente de verdad viva del comportamiento** — los specs son inmutables y el contrato es append-only, así que "¿qué hace hoy el módulo X?" obligaba a replayear specs históricos (spec rot). Y el ROADMAP era un libro mayor que crecía sin techo (regla "nunca borres un epic completado"). Son el mismo problema: cerrar un milestone debe **drenar de la intención (ROADMAP) → reconciliar en la realidad (verdad viva)**. Diseño completo en `docs/reconciliation-design.md`.

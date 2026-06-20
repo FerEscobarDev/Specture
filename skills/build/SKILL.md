@@ -50,6 +50,17 @@ For each epic read **only** its checkbox line and its `**Dependencias:**` line:
 
 An epic is **ready** iff its state is `[ ]` and every dependency epic is `[x]`. Do not load the full ROADMAP — checkbox + dependency lines only.
 
+### Branching (W-*) — once per session, before the queue loop
+
+If `.specture/conventions.md` §13 (Workflow/Proceso) defines branch rules, create the working branch **once** before processing the queue:
+
+1. **Work type**: default `feature`/epic; `hotfix`/bug if the user said so or this came from a bug/debug flow.
+2. **Read the matching `W-*` row**: its base branch and name template. Fill `<slug>` from the work identifier available (the feature name if via `new-feature`, the milestone if the batch sits within one, else the first queued epic's slug).
+3. **Create the branch** from the base (e.g. `git switch -c feature/<slug> develop`). If already on an appropriate branch, confirm and reuse it — don't create a second.
+4. All queued epics commit to this **one** branch in dependency order (no per-epic branches → no stacked-branch problem).
+
+**If §13 defines no branch rules, skip this entirely — create no branch** (default behavior). Specture **never auto-merges**.
+
 ### The queue loop (in this coordinator chat)
 
 1. Read **only the epic checkbox + `Dependencias` lines** of `ROADMAP.md` (not the whole doc).
@@ -61,7 +72,7 @@ An epic is **ready** iff its state is `[ ]` and every dependency epic is `[x]`. 
    2. Set that epic's task `in_progress`.
    3. Assemble the **base context** (`.specture/stack.yml`, `.specture/conventions.md`, all ADRs, `docs/01-requirements/business_requirements.md`, `docs/02-architecture/architecture.md`, `templates/SPEC_TEMPLATE.md`, and the full text of this `build/SKILL.md`) and dispatch one fresh **epic-agent** (below). Wait for its report.
    4. Process the report (below) before starting the next epic.
-6. **Stop when the queue drains** (N epics processed) or a report escalates. Do not pull epics beyond N.
+6. **Stop when the queue drains** (N epics processed) or a report escalates. Do not pull epics beyond N. If a session branch was created (§13), announce it now and suggest the merge/PR per `W-4` — Specture does not merge for you.
 
 ### Dispatch the epic-agent
 

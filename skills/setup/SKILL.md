@@ -39,6 +39,7 @@ The user is starting from scratch. You will create the configuration through an 
    - Si tiene frontend: framework, librería UI, estilos.
    - Patrón arquitectónico (sugiere uno apropiado al stack y deja al usuario validar).
    - Convenciones de naming, organización por feature/layer, patrones permitidos/prohibidos.
+   - **Invariantes (§12, opcional):** reglas que nunca cambian (ej. "DTOs inmutables", naming de métodos). **Workflow (§13, opcional):** de dónde nace cada rama por tipo de trabajo, formato de commit. Si el usuario no tiene reglas claras, deja las filas de ejemplo del template para editar luego — sin reglas, ambas secciones son no-op (ni enforcement de invariantes ni creación de ramas).
 
 3. **Validate coherence** before writing files. Examples of incoherence to flag:
    - Stack móvil (Flutter) + ORM relacional como EF Core.
@@ -128,6 +129,7 @@ The user has an existing codebase. You will **detect** the stack from files and 
    - Naming conventions actually in use.
    - Patterns observed (Result type? Exceptions? DI? Repositories?).
    - Test style.
+   - **§12 Invariantes / §13 Workflow:** leave the template's example rows for the user to confirm or replace — don't invent invariants. For §13 branching, **infer the base branch from git**: if a `develop` branch exists, suggest feature→`develop`; otherwise feature→`main`. Empty §12/§13 = no-op (no invariant enforcement, no auto-branching).
    - Show the inferred conventions to the user for validation.
 
 7. **Generate `decisions/001-adopted-stack.md`** documenting:

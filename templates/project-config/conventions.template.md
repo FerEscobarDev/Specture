@@ -103,3 +103,28 @@ Cuando `hooks.enabled: false`, los scripts del plugin se cargan pero retornan si
 - **ADRs Proposed pendientes:** si el setup detectó decisiones implícitas y generó ADRs con `Status: Proposed — awaiting team confirmation`, listar aquí los nombres para que el equipo no los olvide:
   - [ ] `.specture/decisions/00X-<slug>.md` — pendiente confirmación del equipo
   - [ ] `.specture/decisions/00Y-<slug>.md` — pendiente confirmación del equipo
+
+## 12. Invariantes del Proyecto (R-*)
+
+> Reglas que **nunca cambian** y aplican en todo el proyecto. Las **aplica** el `implementer`/`ux-implementer` al escribir código; las **enforça** el `code-reviewer` (Dimensión 7), citándolas por ID. Para patrones de más alto nivel usá §3 (allow-list) / §4 (deny-list). Si no hay reglas aquí, la Dimensión 7 del reviewer no encuentra nada (no-op) — comportamiento por defecto.
+
+| ID  | Ámbito (tag) | Regla | Cómo verificar | Severidad | Racional / ADR |
+|-----|--------------|-------|----------------|-----------|----------------|
+| R-1 | dto, domain  | [ej. Los DTOs son inmutables: sin setters, campos readonly/final] | [ej. sin setters públicos ni mutación post-construcción] | BLOCKER | [ej. DDD — ADR-00X] |
+| R-2 | naming       | [ej. Métodos de consulta = sustantivo; comandos = verbo imperativo] | [ej. nombres de métodos nuevos] | IMPORTANT | §1 Naming |
+
+## 13. Workflow / Proceso (W-*)
+
+> Reglas de flujo que **sigue el orquestador de `build`**. No son reglas de código. El `build` crea la rama según estas reglas (**sin auto-merge**); el `implementer` honra el formato de commit. **Sin reglas de rama aquí, `build` NO crea ramas** (comportamiento por defecto).
+
+### Branching — de dónde nace cada rama
+| ID  | Tipo de trabajo | Rama base | Nombre |
+|-----|-----------------|-----------|--------|
+| W-1 | feature / epic  | [ej. `develop`] | [ej. `feature/<slug>`] |
+| W-2 | hotfix / bug    | [ej. `main`]    | [ej. `hotfix/<slug>`] |
+
+### Commits
+- W-3: [ej. Conventional Commits; el cuerpo cita el spec (`Spec: docs/05-specs/...`)].
+
+### Pull Requests
+- W-4: [ej. base de PR = `develop` (features) · `main` (hotfix)]. Specture no crea ni mergea el PR — lo **sugiere** al cerrar la sesión de build.
