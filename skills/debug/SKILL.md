@@ -77,21 +77,21 @@ The log file on disk is written **after** the user approves the plan in `ExitPla
 
 ### Phase 4.5 — Capture Learnings (opt-in, after confirmed root cause)
 
-Only when the hypothesis was confirmed AND the fix is committed. **Toggle gate**: read `learn.enabled` from `.specture/conventions.md` §10. If `false`, skip.
+Only when the hypothesis was confirmed AND the fix is committed. **Toggle gate**: read `knowledge.enabled` from `.specture/conventions.md` §10 (or the active `specture.profile`). If `false`, skip.
 
 A confirmed root cause is high-signal: by definition, the system did something the team did not expect. That delta between expectation and reality is often a learning that deserves to live beyond this debug log.
 
 **Prompt to user (default no)**:
 
-> "Causa raíz confirmada y fix commiteado. ¿La causa raíz aplica más allá de este bug puntual (ej. otro módulo podría caer en lo mismo)? Puedo correr `/specture:learn` para proponer un ADR (regla "no hacer X"), una entrada en `docs-index.yml` o un test caracterizador. Es opcional y no toca código. (s/N)"
+> "Causa raíz confirmada y fix commiteado. ¿La causa raíz aplica más allá de este bug puntual (ej. otro módulo podría caer en lo mismo)? Puedo correr `/specture:knowledge` (capture) para proponer un ADR (regla "no hacer X"), una entrada en `docs-index.yml` o un test caracterizador. Es opcional y no toca código. (s/N)"
 
-- **Sí** → invoke `./skills/learn/SKILL.md` passing:
+- **Sí** → invoke `./skills/knowledge/SKILL.md` in `capture` mode passing:
   - Trigger: `debug`
   - Trigger ID: `<debug-log-filename>` (the YYYY-MM-DD-<slug>.md path)
   - Debug log path (full content is small enough to pass as input)
   - Fix commit SHA(s)
 
-  When `learn` returns, continue to Exit Criteria.
+  When `knowledge` returns, continue to Exit Criteria.
 
 - **No** (default) → continue to Exit Criteria.
 

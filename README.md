@@ -69,8 +69,9 @@ $SPECTURE_ROOT/
 │   ├── new-feature/SKILL.md
 │   ├── verify/SKILL.md
 │   ├── write-skill/SKILL.md
-│   ├── learn/SKILL.md                 # Captura post-sesión: ADRs Proposed + entradas docs-index + patches conventions
-│   ├── audit-knowledge/SKILL.md       # Auditoría periódica del docs-index.yml (orphans / duplicates / stale / uncovered)
+│   ├── knowledge/SKILL.md             # Higiene de conocimiento — modos capture (ex-learn) + audit (ex-audit-knowledge)
+│   ├── learn/SKILL.md                 # Alias → knowledge (capture), backward-compat
+│   ├── audit-knowledge/SKILL.md       # Alias → knowledge (audit), backward-compat
 │   └── modernize/SKILL.md
 ├── agents/
 │   ├── specture-router/AGENT.md       # Router (opt-in: se invoca con /specture:start)
@@ -92,7 +93,7 @@ $SPECTURE_ROOT/
 │   ├── SPEC_TEMPLATE.md
 │   ├── DESIGN_SYSTEM_TEMPLATE.md
 │   ├── DEBUG_LOG_TEMPLATE.md
-│   └── LEARN_OUTPUT_TEMPLATE.md       # Reporte humano-legible de /specture:learn (opt-in)
+│   └── LEARN_OUTPUT_TEMPLATE.md       # Reporte humano-legible de knowledge capture (opt-in, a pedido)
 └── docs/
     └── original-vision.md             # Visión y requisitos originales del framework
 ```
@@ -121,8 +122,8 @@ $SPECTURE_ROOT/
 | `handoff-ingest` | `/specture:handoff-ingest` | Tienes un handoff de diseño (Claude Design/v0/Lovable) para convertir al stack |
 | `contract-sync-audit` | `/specture:contract-sync-audit` | Frontend y backend desincronizados en un proyecto existente |
 | `setup-docs-bridge` | `/specture:setup-docs-bridge` | Proyecto Adopt con documentación preexistente abundante (≥10 .md). Genera `docs-index.yml` + bridges + ADRs Proposed |
-| `learn` | `/specture:learn` | Captura post-sesión opt-in (post-epic, post-debug, manual). Propone drafts de ADRs/índice/conventions con aprobación granular |
-| `audit-knowledge` | `/specture:audit-knowledge` | Auditoría periódica (1-3 meses) del `docs-index.yml`: detecta orphans, duplicates, stale, uncovered. Read-only |
+| `knowledge` (capture) | `/specture:knowledge` · alias `/specture:learn` | Captura post-sesión opt-in (post-epic, post-debug, manual). Propone drafts de ADRs/índice/conventions con aprobación granular |
+| `knowledge` (audit) | `/specture:knowledge audit` · alias `/specture:audit-knowledge` | Auditoría periódica (1-3 meses) del `docs-index.yml`: detecta orphans, duplicates, stale, uncovered. Read-only |
 
 ---
 
@@ -279,21 +280,14 @@ Output: `.specture/docs-index.yml` + bridges en `docs/0X-*/` + ADRs Proposed en 
 
 ---
 
-#### `/specture:learn`
-**Captura post-sesión opt-in del conocimiento descubierto.** Se activa al final de un epic (build Step 8.5), tras confirmar una causa raíz (debug Phase 4.5), manualmente, o con `--teach <concepto>`. Filtra relevancia, recolecta evidencia (commits, specs, debug logs), cross-referencia el `docs-index.yml`, y genera hasta **3 drafts** por invocación: nueva entrada al índice (`confidence: ai_categorized`), ADR `Status: Proposed`, patch a `conventions.md`, patch a un bridge, o test de characterization pendiente. El usuario **aprueba en bloque vía Plan mode** (atómico); para rechazar selectivo se re-invoca excluyendo. Hard token budget ~30K. **Nunca escribe a la memoria personal de Claude** — los candidatos personales se listan al usuario.
+#### `/specture:knowledge` (modos `capture` | `audit`)
+**Higiene de conocimiento del proyecto, unificada en una skill con dos modos** (v1.11.0). Los aliases `/specture:learn` → `capture` y `/specture:audit-knowledge` → `audit` siguen funcionando.
 
-Output: drafts aplicados al repo + log estructurado en `docs/.specture-meta/learn-history.jsonl` (+ reporte humano si `learn.write_human_report: true`).
+**Modo `capture`** (ex-`/specture:learn`): captura post-sesión opt-in del conocimiento descubierto. Se activa al final de un epic (build Step 8.5), tras confirmar una causa raíz (debug Phase 4.5), manualmente, o con `--teach <concepto>`. Filtra relevancia, recolecta evidencia, cross-referencia el `docs-index.yml`, y genera hasta **3 drafts** por invocación (entrada de índice `ai_categorized`, ADR `Status: Proposed`, patch a `conventions.md`/bridge, o test de characterization pendiente). El usuario **aprueba en bloque vía Plan mode**. Hard token budget ~30K. **Nunca escribe a la memoria personal de Claude.** Gate: `knowledge.enabled` (§10). Output: drafts + log en `docs/.specture-meta/learn-history.jsonl`.
 
-> Úsalo cuando termine un epic, se confirme un root cause, o quieras formalizar lo descubierto sin que se evapore.
+**Modo `audit`** (ex-`/specture:audit-knowledge`): auditoría periódica read-only del `docs-index.yml`. Detecta **ORPHAN** (HIGH), **DUPLICATE_CANDIDATE** (MEDIUM), **STALE/VERY_STALE** (LOW/MEDIUM), **UNCOVERED** (LOW), **UNKNOWN_AGE** (LOW); calcula un **health score 0-100**. **Nunca auto-corrige** — propone acciones y el usuario decide. Output: `docs/.specture-meta/last-audit.md` + `audit-history.jsonl`.
 
----
-
-#### `/specture:audit-knowledge`
-**Auditoría periódica del índice de documentación (read-only).** Detecta 4 tipos de drift sobre `.specture/docs-index.yml`: **ORPHAN** (entrada apunta a archivo inexistente, HIGH), **DUPLICATE_CANDIDATE** (entradas con tags + `read_when` similares, MEDIUM), **STALE/VERY_STALE** (`last_verified` >180/>365 días, LOW/MEDIUM), **UNCOVERED** (docs en el source-of-truth dir sin entrada en el índice, LOW), **UNKNOWN_AGE** (falta `last_verified`, LOW). Calcula un **health score 0-100** y emite reporte humano + log estructurado. **Nunca auto-corrige** — propone acciones (eliminar entrada, consolidar duplicados, refrescar `last_verified`, agregar al índice) y el usuario decide.
-
-Output: `docs/.specture-meta/last-audit.md` (humano) + `docs/.specture-meta/audit-history.jsonl` (estructurado).
-
-> Úsalo cada 1-3 meses en proyectos maduros, o cuando el índice parezca desfasado del repo.
+> Úsalo (capture) cuando termine un epic / se confirme un root cause / quieras formalizar lo descubierto; (audit) cada 1-3 meses o cuando el índice parezca desfasado.
 
 ---
 
@@ -458,6 +452,18 @@ Specture está en desarrollo activo. Para decisiones arquitectónicas internas, 
 ---
 
 ## Changelog
+
+### v1.11.0 — Consolidación + perfiles (aligeramiento)
+
+**Motivación:** tras los recortes de la Fase 1 (build 571→455), el peso restante era **superficie conceptual** (cantidad de skills y toggles). Diseño completo en `docs/lightening-design.md`. Cierra el plan de 4 fases.
+
+**Cambios:**
+- **`learn` + `audit-knowledge` → una skill `knowledge`** con modos `capture` (ex-learn) y `audit` (ex-audit-knowledge); el preámbulo/doctrina compartido se escribe una sola vez. Los comandos viejos `/specture:learn` y `/specture:audit-knowledge` se conservan como **alias** (stubs que redirigen). `handoff-ingest` y `contract-sync-audit` **no** se fusionan (falsa consolidación: trabajos distintos). 16→15 skills.
+- **Perfiles de toggles (§10):** nuevo `specture.profile: lean | full | custom` — un knob para el caso común (`lean` apaga la tríada v1.7.0; `full` la enciende; sin definir = backward-compat). `learn.enabled` → `knowledge.enabled`. Podados los 3 sub-toggles finos de learn (`min_session_threshold_minutes`, `max_drafts_per_invocation`, `write_human_report`) a defaults fijos (30 / 3 / false).
+- Callers internos (build Step 8.5, debug Phase 4.5) apuntan a `knowledge` capture; `setup` puebla el perfil.
+- **Fix:** corregido un join accidental de las líneas `context7`/`docs_index` en §10 del template (introducido al quitar `max_parallel_epics` en v1.8.0).
+
+**Backward-compat:** total. Los aliases viejos funcionan; sin `specture.profile` el comportamiento es idéntico a v1.10.0.
 
 ### v1.10.0 — Registro de reglas (invariantes + proceso)
 

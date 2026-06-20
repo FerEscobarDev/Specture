@@ -251,7 +251,7 @@ When `.specture/docs-index.yml` exists, the orchestrator MUST resolve relevant e
 
 6. **Rank and cap**: sort by score descending. Take top `max_entries_per_dispatch`. **Prefer `user_confirmed` over `ai_categorized`** when scores tie.
 
-7. **Read the resolved files**: for each surviving entry, read its `file` and prepare for dispatch. If the file does not exist (drift between index and disk), log a warning and skip that entry; the next `/specture:audit-knowledge` run will report the drift.
+7. **Read the resolved files**: for each surviving entry, read its `file` and prepare for dispatch. If the file does not exist (drift between index and disk), log a warning and skip that entry; the next `knowledge` audit run will report the drift.
 
 8. **Log the resolution** to `docs/.specture-meta/index-usage.jsonl` (create the directory if absent, append-only, never block dispatch on log failure). One JSON object per line:
 
@@ -439,20 +439,20 @@ After all specs in the epic are APPROVED + verified:
 
 Before context reset, offer to capture durable knowledge from this epic. This is the natural moment: the diff is fresh, the review is fresh, the user remembers what was discovered.
 
-**Toggle gate**: read `learn.enabled` from `.specture/conventions.md` §10. If `false` (or absent and the user hasn't explicitly enabled it), skip this step entirely.
+**Toggle gate**: read `knowledge.enabled` from `.specture/conventions.md` §10 (or the active `specture.profile`). If `false` (or absent and the user hasn't explicitly enabled it), skip this step entirely.
 
 **Prompt to user (default no)**:
 
-> "Epic `<slug>` completado. ¿Querés correr `/specture:learn` para capturar aprendizajes (ADRs implícitos, entradas de docs-index, patches a conventions)? Es opcional y no toca código. (s/N)"
+> "Epic `<slug>` completado. ¿Querés correr `/specture:knowledge` (capture) para capturar aprendizajes (ADRs implícitos, entradas de docs-index, patches a conventions)? Es opcional y no toca código. (s/N)"
 
-- **Sí** → invoke `./skills/learn/SKILL.md` passing:
+- **Sí** → invoke `./skills/knowledge/SKILL.md` in `capture` mode passing:
   - Trigger: `epic`
   - Trigger ID: `<epic-slug>`
   - Review files: `docs/07-reviews/review-<epic-slug>-*.md`
   - Epic block from `ROADMAP.md`
   - Epic diff range: `git log --oneline <epic-start-sha>..HEAD`
 
-  When `learn` returns, continue with Step 8.7. Even if `learn` rejected all drafts, the result is logged to `learn-history.jsonl` — that's value.
+  When `knowledge` returns, continue with Step 8.7. Even if it rejected all drafts, the result is logged to `learn-history.jsonl` — that's value.
 
 - **No** (default) → skip directly to Step 8.7.
 

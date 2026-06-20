@@ -1,8 +1,8 @@
 # Learn Output — [Trigger] / [ID]
 
-> Reporte generado por `/specture:learn`. Captura aprendizajes aplicados, rechazados y diferidos en esta invocación.
+> Reporte generado por `knowledge` (modo capture; alias `/specture:learn`). Captura aprendizajes aplicados, rechazados y diferidos en esta invocación.
 >
-> Archivo opcional: el log estructurado vive en `docs/.specture-meta/learn-history.jsonl`. Este reporte humano-legible se genera solo cuando `learn.write_human_report: true` en `conventions.md` §10, o cuando el usuario pidió explícitamente "déjame el reporte".
+> Archivo opcional: el log estructurado vive en `docs/.specture-meta/learn-history.jsonl`. Este reporte humano-legible lo genera `knowledge` capture **solo a pedido** del usuario ("déjame el reporte"). El toggle `learn.write_human_report` se eliminó en v1.11.0.
 
 ## Resumen
 

@@ -40,6 +40,7 @@ The user is starting from scratch. You will create the configuration through an 
    - Patrón arquitectónico (sugiere uno apropiado al stack y deja al usuario validar).
    - Convenciones de naming, organización por feature/layer, patrones permitidos/prohibidos.
    - **Invariantes (§12, opcional):** reglas que nunca cambian (ej. "DTOs inmutables", naming de métodos). **Workflow (§13, opcional):** de dónde nace cada rama por tipo de trabajo, formato de commit. Si el usuario no tiene reglas claras, deja las filas de ejemplo del template para editar luego — sin reglas, ambas secciones son no-op (ni enforcement de invariantes ni creación de ramas).
+   - **Perfil de capacidades (§10 `specture.profile`):** `lean` (huella mínima — hooks on, docs-index/knowledge/context7 off), `full` (todo on), o `custom`. Si el usuario no opina, dejalo sin definir = comportamiento conservador por defecto.
 
 3. **Validate coherence** before writing files. Examples of incoherence to flag:
    - Stack móvil (Flutter) + ORM relacional como EF Core.

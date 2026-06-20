@@ -4,6 +4,8 @@
 >
 > **Disponible desde:** v1.7.0
 >
+> **Nota v1.11.0:** las skills `learn` y `audit-knowledge` se unificaron en `knowledge` (modos `capture`/`audit`); los comandos viejos siguen funcionando como alias. El toggle `learn.enabled` pasó a `knowledge.enabled`, y los sub-toggles `learn.min_session_threshold_minutes` / `learn.max_drafts_per_invocation` / `learn.write_human_report` se eliminaron (defaults fijos: 30 min / 3 drafts / sin reporte). Esta guía conserva la nomenclatura v1.7.0 por contexto histórico.
+>
 > **Documentos hermanos:**
 > - [`adoption-with-existing-docs.md`](./adoption-with-existing-docs.md) — propuesta original y motivación.
 > - [`continuous-knowledge-capture.md`](./continuous-knowledge-capture.md) — propuesta original de `/specture:learn`.
