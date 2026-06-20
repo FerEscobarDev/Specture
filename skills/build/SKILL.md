@@ -25,40 +25,43 @@ This skill **fuses** what was previously split into "planificación", "ejecució
 - `docs/02-architecture/architecture.md` — boundaries.
 - `docs/04-roadmap/ROADMAP.md` — what to build next.
 
-## Execution Mode Selection
+## Execution Model — Sequential Queue
 
-Before starting the loop, present this choice to the user (once per build session):
+There is **one** execution model. This chat is **coordinator only**: it does NOT generate specs, dispatch the 4 workers, or run tests. It builds a queue of epics and dispatches **one fresh epic-agent at a time** (concurrency = 1), processing each report before starting the next. The coordinator's context stays O(n_epics) (only checkboxes + reports), never O(total work) — specs, tests, agent outputs and reviews live inside each epic-agent and are discarded when it finishes.
 
-> **Tres modos de ejecución:**
->
-> **1. Inline (recomendado para 1-3 epics)** — Ejecuto el loop completo en este chat. El contexto se acumula epic a epic; requiere resets manuales (Step 9).
->
-> **2. Agentes por Epic — secuencial (recomendado para 4+ epics)** — Despacho un agente-orquestador fresco por cada epic, **uno a la vez**. Este chat solo coordina: elige el epic, revisa el resultado, actualiza el ROADMAP. El contexto de este chat NO acumula specs, tests, outputs de agentes ni reviews.
->
-> **3. Agentes por Epic — paralelo por Olas (recomendado para ROADMAPs anchos con epics independientes)** — Despacho hasta N epic-agents **concurrentes**, cada uno en un git worktree aislado. Integro de a uno con verificación completa tras cada merge. Máximo paralelismo respetando dependencias y gates.
->
-> ¿Cuál preferís?
+### How many epics to run (batch size N)
 
-- **Inline** → seguir `## Modo: Inline (The Loop)`.
-- **Agentes por Epic (secuencial)** → seguir `## Modo: Agentes por Epic`.
-- **Agentes por Epic en Paralelo (Olas)** → seguir `## Modo: Agentes por Epic en Paralelo (Olas)`.
+Read **N** from the user's request at the start of the session:
 
-If the user has no preference:
-- 1-3 pending epics → **Inline**.
-- 4+ pending epics → **Agentes por Epic (secuencial)**.
-- 4+ pending epics **and** the current ready set (epics `[ ]` whose dependencies are all `[x]`) has ≥2 epics → proactively offer **Paralelo por Olas** as the recommended default, since the ROADMAP can absorb concurrency without violating dependency order. The user still confirms.
+- A number ("ejecuta 3", "construí 2 epics") → **N = that number**.
+- No number ("construyamos", "sigamos con el roadmap", "el siguiente") → **N = 1**.
+- "todas" / "todo el roadmap" / "hasta terminar" → **N = all pending epics**.
 
-## Modo: Agentes por Epic
+N bounds the session: the coordinator builds a queue of up to N ready epics and **stops when the queue drains** — it does NOT spill over into the rest of the ROADMAP.
 
-This chat is **coordinator only**. It does NOT generate specs, dispatch the 4 workers, or run tests — it dispatches one fresh **epic-agent** per epic and processes its report. The coordinator's context grows O(n_epics) instead of O(total work).
+### Dependency parsing (deterministic)
 
-### Per epic (in this coordinator chat)
+For each epic read **only** its checkbox line and its `**Dependencias:**` line:
 
-1. Read **only the epic checkbox lines** of `ROADMAP.md` (not the whole doc).
-2. Find the first epic `[ ]` whose dependencies are all `[x]`.
-3. Mark it `[/]` in `ROADMAP.md`; commit.
-4. `TaskCreate` **one** task for the epic (subject `<epic-slug>`, `activeForm` "running epic via fresh agent"). This is the only user-visible task in this mode — the epic-agent's internal step tracking is discarded with its context.
-5. Assemble the **base context** to hand to the epic-agent: `.specture/stack.yml`, `.specture/conventions.md`, all ADRs, `docs/01-requirements/business_requirements.md`, `docs/02-architecture/architecture.md`, `templates/SPEC_TEMPLATE.md`, and the full text of this `build/SKILL.md`.
+- `Ninguna` ⇒ no dependencies.
+- `Epic X.Y, Epic Z.W` ⇒ depends on exactly those epic IDs.
+- `Milestone N completo` ⇒ expand to **all** epic IDs under Milestone N.
+- Combinations are the union of the above.
+
+An epic is **ready** iff its state is `[ ]` and every dependency epic is `[x]`. Do not load the full ROADMAP — checkbox + dependency lines only.
+
+### The queue loop (in this coordinator chat)
+
+1. Read **only the epic checkbox + `Dependencias` lines** of `ROADMAP.md` (not the whole doc).
+2. Build the **queue**: walk the ROADMAP in stable order (earliest epics first) and collect the first **N** epics that will be runnable in dependency order — an epic whose only unmet dependency is an earlier queue member is eligible (it simply runs after it).
+3. If no epic is ready and none can be made ready within the queue → dependency cycle, or everything is blocked by an escalated epic. Stop and escalate to the user.
+4. `TaskCreate` **one task per queued epic** (subject `<epic-slug>`, `activeForm` "queued"). This is the visible queue; each epic-agent's internal step tracking is discarded with its context.
+5. **Process the queue one epic at a time** (never concurrently). For each epic, in order:
+   1. Mark the epic `[/]` in `ROADMAP.md`; commit. Only ONE epic is `[/]` at any moment.
+   2. Set that epic's task `in_progress`.
+   3. Assemble the **base context** (`.specture/stack.yml`, `.specture/conventions.md`, all ADRs, `docs/01-requirements/business_requirements.md`, `docs/02-architecture/architecture.md`, `templates/SPEC_TEMPLATE.md`, and the full text of this `build/SKILL.md`) and dispatch one fresh **epic-agent** (below). Wait for its report.
+   4. Process the report (below) before starting the next epic.
+6. **Stop when the queue drains** (N epics processed) or a report escalates. Do not pull epics beyond N.
 
 ### Dispatch the epic-agent
 
@@ -69,7 +72,7 @@ You are the build-loop orchestrator for ONE epic of a Specture project.
 
 Execute Steps 2 through 8 of build/SKILL.md (Generate Spec → ... → Verify)
 for this single epic. SKIP these:
-- "Execution Mode Selection" — you are already in Agentes-por-Epic mode.
+- "Execution Model" — you build exactly this one epic.
 - Step 1 (Pick & Lock) — the epic is already marked [/].
 - Step 9 (Context Reset) — N/A, your context is discarded when you finish.
 Run Step 2.5 (TaskCreate) only for your own internal tracking; the
@@ -91,134 +94,18 @@ If DONE: update ROADMAP.md to [x] for this epic and commit BEFORE reporting.
 
 ### Coordinator processes the report
 
-- **DONE** → verify the epic is `[x]` in `ROADMAP.md` and the commit landed (don't trust the report — `git log`/read the checkbox). Mark the coordinator task `completed`. Continue with the next epic.
+- **DONE** → verify the epic is `[x]` in `ROADMAP.md` and the commit landed (don't trust the report — `git log`/read the checkbox). Mark that epic's task `completed`. Continue with the next queued epic.
 - **BLOCKED** / **REJECTED_MAJOR** → escalate to the user with the report summary before continuing. Do not auto-retry.
 - **BLOCKED: insufficient context** → the epic is too large for one agent. Escalate to the user to consider splitting it before re-dispatching.
 
-### Why this mode
+### Why this model
 
-The coordinator only ever holds: ROADMAP checkboxes + one epic block + agent reports. Specs, tests, agent outputs and reviews stay inside each epic-agent and are discarded when it finishes. This is the structural fix for context-cost growth across long build loops.
+The coordinator only ever holds: ROADMAP checkboxes + the queued epic blocks + agent reports. Specs, tests, agent outputs and reviews stay inside each epic-agent and are discarded when it finishes. One epic runs at a time in fresh isolated context, so quality never degrades from accumulation — and the bounded batch size N lets the user run a defined set ("ejecuta 3") without committing to the whole ROADMAP.
 
-## Modo: Agentes por Epic en Paralelo (Olas)
-
-Same coordinator-only discipline as sequential agent-per-epic, but instead of one epic at a time the coordinator dispatches a **wave** of independent epics concurrently, each in an **isolated git worktree**, then integrates them **one at a time** behind a full verification gate. This is the v1.5.0 reversal of the original "epics en paralelo: descartado" decision — see `docs/parallel-epic-design.md` for the rationale (bounded concurrency + worktree isolation + sequential integration gate neutralize the token and conflict objections).
-
-### Read the concurrency cap once
-
-Read **only** the `build.max_parallel_epics` line from `.specture/conventions.md` section 10. Fallback to **3** if absent or unparseable. `1` ⇒ behaves like sequential agent-per-epic. This is the maximum number of epic-agents dispatched in a single wave.
-
-### Dependency parsing (deterministic)
-
-For each epic read **only** its checkbox line and its `**Dependencias:**` line:
-
-- `Ninguna` ⇒ no dependencies.
-- `Epic X.Y, Epic Z.W` ⇒ depends on exactly those epic IDs.
-- `Milestone N completo` ⇒ expand to **all** epic IDs under Milestone N.
-- Combinations are the union of the above.
-
-An epic is **ready** iff its state is `[ ]` and every dependency epic is `[x]`. Do not load the full ROADMAP — checkbox + dependency lines only.
-
-### The wave loop (in this coordinator chat)
-
-1. Compute the **ready set** (all `[ ]` epics whose dependency epics are all `[x]`).
-2. If the ready set is empty but pending epics remain → there is a dependency cycle or every remaining epic is blocked by an escalated one. Stop and escalate to the user.
-3. Take up to `build.max_parallel_epics` epics from the ready set (stable ROADMAP order — earliest epics first).
-4. Mark all selected epics `[/]` and commit `ROADMAP.md` in **one single commit for the whole wave**.
-5. `TaskCreate` one task per selected epic (subject `<epic-slug>`, `activeForm` "running epic via parallel agent"). These are the only user-visible tasks; each epic-agent's internal step tracking is discarded with its context.
-6. **Dispatch the whole wave in a single message** — one `Agent` tool call per epic, all in the same assistant turn, each with `isolation: "worktree"` so every epic-agent works on its own branch/worktree with no shared working tree. Use the parallel epic-agent prompt below.
-7. Wait for **all** epic-agents in the wave to return; collect every report.
-8. Run the **Integration Gate** (next section) for the wave.
-9. Recompute the ready set and repeat from step 1 until no `[ ]` epics remain. Epics left `[/]` by a failure do not re-enter; their dependents simply never become ready until the user resolves them.
-
-### Dispatch the parallel epic-agent
-
-Dispatch a general-purpose agent **with `isolation: "worktree"`** and a self-contained prompt — **do NOT inherit this chat's history**:
-
-~~~
-You are the build-loop orchestrator for ONE epic of a Specture project,
-running in an ISOLATED git worktree in parallel with sibling epic-agents.
-
-Execute Steps 2 through 7 of build/SKILL.md (Generate Spec → ... → Verify)
-for this single epic. SKIP these:
-- "Execution Mode Selection" — you are already in parallel mode.
-- Step 1 (Pick & Lock) — the epic is already marked [/].
-- Step 8 (Mark Epic Complete) — the COORDINATOR marks [x] after integration.
-- Step 9 (Context Reset) — N/A, your context is discarded when you finish.
-Run Step 2.5 (TaskCreate) only for your own internal tracking; the
-coordinator owns the user-visible epic task.
-Honor every gate: Dispatch Manifest, architecture-validator, RED commit,
-TDD Honesty Gate (Step 5.5), code-reviewer, verification.
-
-PARALLEL-MODE RULES (mandatory):
-- Do NOT touch, read-to-modify, or commit ROADMAP.md. The coordinator is
-  the SOLE writer of ROADMAP.md in parallel mode. Touching it causes merge
-  conflicts on the roadmap across the wave.
-- Commit all your work (RED + GREEN + any review fixes) on YOUR worktree
-  branch. Do not merge, rebase onto, or push to the main branch.
-
-## Epic
-[paste the full epic block from ROADMAP.md]
-
-## Base context
-[paste the assembled base context: .specture/stack.yml,
-.specture/conventions.md, all ADRs, business_requirements.md,
-architecture.md, templates/SPEC_TEMPLATE.md, full text of build/SKILL.md]
-
-## Required final report
-Report exactly one of: DONE | BLOCKED | REJECTED_MAJOR
-Plus: the worktree branch name, the RED_SHA and the final HEAD_SHA,
-which specs were built, which tests pass, what remains.
-~~~
-
-### Integration Gate (sequential merge — mandatory)
-
-Per-epic isolated tests prove each epic in isolation. They do **not** prove the epics compose. The coordinator integrates the wave **one epic at a time**, in dependency order (an epic that another wave member depends on merges first), behind the full verification suite:
-
-For each epic that reported **DONE**, in dependency order:
-
-1. Merge that epic's worktree branch into the main branch.
-   - **Merge conflict** → do NOT mark `[x]`. Leave the epic `[/]`. This means two parallel epics edited the same code without a declared dependency. Escalate to the user: report the conflicting pair and recommend declaring a dependency between them in the ROADMAP and re-running them serialized. Continue with the remaining epics of the wave.
-2. On the integrated main tree, run the **full verification suite** fresh (the project's test command + linter + type-checker per `conventions.md`/`stack.yml`). Read full output; never trust cached results.
-   - **All green** → mark the epic `[x]` in `ROADMAP.md`, commit the ROADMAP update together with the merge, mark the coordinator task `completed`.
-   - **Any failure** → undeclared cross-epic coupling surfaced here. Do NOT mark `[x]`; leave the epic `[/]`. Show the failing output to the user and route to `skills/debug/SKILL.md`. Continue with the remaining DONE epics of the wave (a later epic may still integrate cleanly).
-3. For epics that reported **BLOCKED** or **REJECTED_MAJOR**: do not merge. Leave `[/]`, escalate with the report summary. A failed sibling never aborts the rest of the wave.
-
-Only after every epic of the wave has been integrated (or escalated) does the coordinator recompute the ready set and dispatch the next wave.
-
-### Parallel-mode invariants & edge cases
-
-- **ROADMAP.md single-writer**: only the coordinator writes `ROADMAP.md`, only between waves and during the integration gate. Epic-agents never touch it.
-- **State-file isolation**: each worktree has its own `.specture/state/build-locked.json`; the TDD Honesty Gate hook resolves project root by cwd, so per-worktree single filename is collision-free (see `hooks/README.md`). The coordinator's main tree has no `build-locked.json`.
-- **Undeclared file coupling**: two ready epics with no declared dependency that secretly share files are caught at the integration gate (merge conflict, or post-merge verification failure) — never silently shipped.
-- **Failure isolation**: one `BLOCKED`/`REJECTED_MAJOR`/conflicting epic does not abort its wave siblings; only its own (and its transitive dependents') progress stalls until the user resolves it.
-- **No spec-level parallelism**: parallelism is across epics only. Specs within an epic stay sequential inside their epic-agent (they are semantically dependent — unchanged from prior design).
-
-### Why this mode
-
-Throughput scales with ready-set width while the coordinator context still grows O(n_epics) (only checkboxes + reports). Worktree isolation removes the working-tree race; the sequential integration gate restores the cross-epic guarantee that per-epic isolated tests cannot give; the bounded `max_parallel_epics` keeps simultaneous token consumption capped.
-
-## Modo: Inline (The Loop)
-
-> **Inline mode.** Context accumulates in this chat as epics progress. Recommended only for 1-3 epics. For larger ROADMAPs use **Agentes por Epic** (above). Steps 1-9 run in this chat; Step 9 (Context Reset) is the mitigation for the accumulation this mode causes.
-
-```
-For each epic where state is [ ] or [/]:
-   1. Lock the epic           → mark as [/]
-   2. Generate spec(s)        → SPEC_TEMPLATE.md → docs/05-specs/<epic>/<task>.spec.md
-   3. Validate architecture   → dispatch architecture-validator (REQUIRED)
-   4. Write tests             → dispatch tdd-test-writer; agent commits RED → capture RED_SHA
-   5. Implement               → dispatch implementer (separate commits, MUST NOT touch tests)
- 5.5. TDD Honesty Gate        → git diff RED_SHA..HEAD -- <test-globs> MUST be empty
-   6. Review                  → dispatch code-reviewer (REQUIRED, 4 dimensions inc. TDD Honesty)
-   7. If REJECTED             → loop back to step 5 (max 3 iterations, then escalate)
-   8. Verify                  → run tests fresh, see them pass, see no warnings
-   9. Mark epic as [x]        → update ROADMAP.md
-  10. Context reset           → instruct user to clear chat / reset session before next epic
-```
 
 ## Frontend Epics — Design-System-First + Visual Approval Gate
 
-This section is **cross-cutting**: it applies inside any execution mode (Inline, Agentes por Epic, Paralelo) whenever the epic being built is a **frontend epic** (it touches UI and `stack.yml.frontend.framework` is set and not `none`). It does not replace Steps 1-9 — it specializes how they run for UI work, because TDD certifies logic, not look-and-feel.
+This section is **cross-cutting**: it applies within the sequential-queue model whenever the epic being built is a **frontend epic** (it touches UI and `stack.yml.frontend.framework` is set and not `none`). It does not replace Steps 1-9 — it specializes how they run for UI work, because TDD certifies logic, not look-and-feel.
 
 ### Why frontend is different
 
@@ -539,16 +426,13 @@ Before context reset, offer to capture durable knowledge from this epic. This is
 
 > **Why opt-in default-no**: Specture's value is in the build loop, not in documentation overhead. Most epics don't yield generalizable learnings worth durable capture. The user knows when a session produced "aha" moments — they say yes those times. Forcing learn on every epic would create exactly the noise problem the skill is designed to avoid.
 
-> **In `Agentes por Epic` modes (sequential or parallel)**: the epic-agent does NOT run Step 8.5. The coordinator runs it after marking the epic `[x]` (or after merge in parallel mode), with the epic-agent's report as additional input. This is consistent with the existing rule that only the coordinator marks `[x]`.
+> **Coordinator vs epic-agent**: the epic-agent does NOT run Step 8.5. The coordinator runs it after marking the epic `[x]`, with the epic-agent's report as additional input. This is consistent with the existing rule that only the coordinator marks `[x]`.
 
 ## Step 9 — Context Reset Between Epics
 
-This is **non-negotiable**. Accumulated context across epics is the #1 source of degraded quality in AI development.
+In the sequential-queue model this is **automatic**: each epic runs in a fresh epic-agent whose context is discarded when it finishes, and the coordinator only ever holds checkboxes + queued epic blocks + reports (O(n_epics)). There is no cross-epic accumulation to clear — the structural isolation **is** the reset.
 
-Announce to the user:
-> "Epic [N] completado. **Por favor, inicia una nueva conversación** antes de continuar con el siguiente epic. Si tu interfaz no permite limpiar el chat, dímelo y forzaremos un reset mental."
-
-If the user can't or won't reset: begin the next epic by prefixing your own context with a one-line reset reminder — only the active spec, the files it references, and `.specture/` are valid context; ignore all prior conversation.
+For a very large batch (high N) processed in a single coordinator session, the user may optionally start a fresh coordinator session between batches to keep the coordinator lean. No manual reset is needed between individual epics.
 
 ## Anti-Patterns
 

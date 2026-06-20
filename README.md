@@ -13,7 +13,7 @@ Specture lleva un proyecto **desde la idea hasta el código** en 5 fases consecu
 La forma más simple. Un solo comando en cualquier conversación de Claude Code:
 
 ```
-/plugin add marketplace https://github.com/FerEscobarDev/Specture.git
+/plugin marketplace add https://github.com/FerEscobarDev/Specture.git
 
 /plugin install specture@specture
 ```
@@ -403,11 +403,9 @@ En `.specture/conventions.md` sección 10:
 
 ```markdown
 - **hooks.enabled**: true            # activa el TDD Honesty Gate (PreToolUse)
-- **context7.enabled**: true         # activa Context7 en code-reviewer y modernize
-- **build.max_parallel_epics**: 3    # tope de epic-agents concurrentes en el modo paralelo de build
-```
+- **context7.enabled**: true         # activa Context7 en code-reviewer y modernize```
 
-Sin esos toggles, los hooks shippean pero no actúan, y Context7 nunca se consulta. `build.max_parallel_epics` solo aplica al modo "Agentes por Epic en Paralelo (Olas)" (default 3; `1` = secuencial).
+Sin esos toggles, los hooks shippean pero no actúan, y Context7 nunca se consulta.
 
 > **Cambio en v1.5.0 — routing opt-in.** El antiguo hook `SessionStart` (auto-routing al abrir Claude Code) fue **deregistrado**. Ahora se entra a Specture **solo** invocando `/specture:start` (o pidiendo iniciar/continuar). `hooks.enabled` ya únicamente controla el TDD Honesty Gate.
 
@@ -415,7 +413,7 @@ Sin esos toggles, los hooks shippean pero no actúan, y Context7 nunca se consul
 
 - Al abrir Claude Code en un proyecto Specture **no pasa nada automáticamente**: invocá `/specture:start` (o decí "continuemos con el roadmap") para que el router detecte la fase y enrute.
 - Durante `/specture:build`, una lista visible trackea los specs del epic activo y su progreso por los pasos del loop.
-- Con el modo **Agentes por Epic en Paralelo (Olas)**, varios epics independientes se construyen concurrentemente en worktrees aislados y se integran de a uno con verificación completa.
+- La ejecución del build es **secuencial**: el coordinador encola hasta N epics (decís "ejecuta 3"; sin número corre 1) y los construye **de a uno**, cada uno en un epic-agent de contexto aislado, parando al agotar la cola.
 - Si algún agente intenta modificar un test durante GREEN, la edición se rechaza con un mensaje del TDD Honesty Gate explicando el contrato sellado.
 - Al pedir `/specture:debug` o `/specture:new-feature`, Claude entra automáticamente en Plan mode — el fix o el análisis se aprueba antes de tocar el codebase.
 - En reviews y migraciones, las findings pueden citar APIs vigentes para tu stack consultadas en tiempo real vía Context7.
@@ -460,6 +458,20 @@ Specture está en desarrollo activo. Para decisiones arquitectónicas internas, 
 ---
 
 ## Changelog
+
+### v1.8.0 — Modo de ejecución único (Cola Secuencial)
+
+**Motivación:** `build/SKILL.md` cargaba **tres** modos de ejecución (Inline, Agentes por Epic secuencial, Agentes por Epic en Paralelo por Olas) — el archivo más pesado del hot path. En la práctica solo se quería **ejecutar de a una epic a la vez**, con la opción de **encolar N** y correrlas secuencialmente. El modo paralelo (worktrees + gate de integración) era superficie que complicaba el archivo crítico sin que la mayoría lo necesitara.
+
+**Cambios (cambio de comportamiento):**
+- **Un solo modo de ejecución: "Sequential Queue".** El coordinador computa los próximos **N** epics ready en orden de dependencia, los despacha **de a uno** (un epic-agent aislado por vez, concurrencia = 1) y **para al agotar la cola**. N por invocación: un número ("ejecuta 3") → N; sin número → **1**; "todas" → todos los pendientes.
+- **Cola visible:** un `TaskCreate` por epic encolado.
+- **Eliminados:** el modo **Inline** (batchear inline reintroduce la acumulación de contexto que el modo agente-por-epic resolvió) y el modo **Paralelo por Olas** (worktrees, ready-set concurrente, gate de integración). `build/SKILL.md` pasa de 571 a ~430 líneas.
+- **Removido el toggle `build.max_parallel_epics`** de `conventions.md` §10. El Step 9 (reset de contexto entre epics) es ahora **automático** — cada epic corre en contexto aislado que se descarta al terminar.
+- `ROADMAP_TEMPLATE.md`: la convención de estado vuelve a "solo UN epic en `[/]` a la vez"; la sintaxis de dependencias ahora alimenta la **cola** en orden de dependencia.
+- **Docs:** `docs/parallel-epic-design.md` eliminado; `docs/agent-per-epic-design.md` actualizado para describir el modo único. La concurrencia **intra-epic** (review + linter + type-check en paralelo, suite en background) **se conserva** — no es paralelismo a nivel epic.
+
+**Migración:** sin cambios requeridos en proyectos existentes salvo limpiar `build.max_parallel_epics` (opcional; se ignora, y `setup` modo *reconfigure* lo remueve). El comportamiento "de a una" es idéntico al viejo modo secuencial; lo nuevo es poder encolar N.
 
 ### v1.7.1 — README discoverability
 

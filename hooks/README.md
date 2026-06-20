@@ -66,8 +66,6 @@ Sin esa línea (o con `false`), cada hook llama a `lib/specture-guard.js`, recib
 
 **Lifecycle**: `skills/build/SKILL.md` escribe el archivo en Step 4 (después del RED commit), y lo borra en Step 8 (después de marcar el epic `[x]`). Si querés desbloquear edits de tests legítimamente durante un epic en curso, borrá el archivo a mano y aceptá que el TDD contract se rompió — el `git diff` del Step 5.5 va a detectarlo igual.
 
-**Modo paralelo (Olas, v1.5.0)**: cuando `build/SKILL.md` corre en *Agentes por Epic en Paralelo*, cada epic-agent vive en su propio git worktree. El hook se ejecuta con el cwd dentro de ese worktree y `findProjectRoot` resuelve a la raíz del worktree, por lo que cada epic-agent lee/escribe **su propio** `.specture/state/build-locked.json` sin colisionar con los demás. El árbol principal del coordinador no tiene `build-locked.json` (el coordinador no escribe tests). El nombre de archivo único es seguro **por worktree** — no se requiere indexarlo por epic.
-
 ---
 
 ## Exit codes y decisiones

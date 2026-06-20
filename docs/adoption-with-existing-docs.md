@@ -116,7 +116,7 @@ Cada uno tiene Context, Decision, Consequences, References. Captura decisiones I
 Agregamos:
 
 - Seccion 9 (idioma del codigo — espanol).
-- Seccion 10 (toggles Specture: hooks, context7, max_parallel_epics).
+- Seccion 10 (toggles Specture: hooks, context7).
 - Seccion 11 (indice de docs apuntando al `docs-index.yml`).
 - Seccion 12 (organizacion de archivos por modulo backend y feature React).
 

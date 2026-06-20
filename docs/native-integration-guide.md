@@ -36,7 +36,6 @@ Editá `.specture/conventions.md` sección 10:
 
 - **hooks.enabled**: true            # activa el TDD Honesty Gate (PreToolUse). SessionStart ya no existe (v1.5.0).
 - **context7.enabled**: true         # activa Context7 en code-reviewer y modernize
-- **build.max_parallel_epics**: 3    # tope de epic-agents concurrentes en el modo paralelo de build
 ```
 
 Cualquier capacidad podés dejarla en `false` (o ausente) y el resto sigue funcionando. Con todos los toggles en `false`, Specture funciona exactamente como v1.1.0.
