@@ -173,6 +173,8 @@ For the chosen epic, decompose into 1-3 specs. Each spec must be:
 
 Use `templates/SPEC_TEMPLATE.md`. Write to `docs/05-specs/<epic-slug>/<task-slug>.spec.md`.
 
+**Anclaje de paths a la carpeta raíz del componente.** Al rellenar "Superficie de Código Existente", los paths de archivos **nuevos** deben colgar de la carpeta raíz del componente del epic: léela del campo "Carpeta raíz" del componente en `architecture.md` (respaldada por `stack.yml.structure`). Ej. componente backend con carpeta `mi_app_api` → un servicio nuevo va en `mi_app_api/...`. Es una regla de **prefijo**, no un algoritmo nuevo de selección de archivos; si la carpeta raíz es "n/a" (`flat`/`custom` o componente no desplegable), usa el layout del proyecto como hoy.
+
 ### Spec self-review
 
 Before passing the spec to the validator, check against the `SPEC_TEMPLATE.md` slots:

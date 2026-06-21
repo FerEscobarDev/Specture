@@ -453,6 +453,19 @@ Specture está en desarrollo activo. Para decisiones arquitectónicas internas, 
 
 ## Changelog
 
+### v1.12.0 — Naming de carpetas raíz por tipo de proyecto
+
+**Motivación:** Specture no prescribía layout de código fuente — los componentes en `architecture.md` solo tenían un *slug* sin ruta, y los paths de archivos los rellenaba el orquestador a mano, dejando el naming de carpetas inconsistente entre proyectos. Esta versión introduce una convención **configurable** de carpetas raíz por app, derivada del nombre del proyecto, que se adapta al tipo de proyecto (api sola, web+api, suite completa…).
+
+**Cambios:**
+- **`stack.yml` nuevo `project.slug` + bloque `structure`:** `root_layout: by-app-suffix | flat | custom` y un mapa `apps` (api/web/app/landing → `{slug}_api`, `{slug}_web`, `{slug}_app`, `{slug}_landing`). Fuente de verdad que leen `architecture` y `build`.
+- **`conventions.md` §2.1 "Estructura de Carpetas Raíz (apps)":** versión legible de la convención, con la tabla de mapeo rol→carpeta.
+- **`setup` (Modo A / bootstrap):** deriva el `slug` en snake_case desde el nombre (lo confirma con el usuario) y escribe `structure` con **solo las apps que apliquen**. Modo Adopt deja `root_layout: custom` por defecto (no impone el patrón sobre código existente); Reconfigure puede añadir el bloque si falta.
+- **`architecture`:** cada componente de app declara su "Carpeta raíz" resuelta desde `structure`; los componentes lógicos internos llevan "n/a".
+- **`build` (Step 2):** los paths de archivos nuevos del spec se anclan a la carpeta raíz del componente del epic.
+
+**Alcance:** solo convención + aplicación (setup/architecture/build). El enforcement automático (validator/code-reviewer) queda como fase futura. **Backward-compat:** total — proyectos existentes (sin bloque `structure` o con `root_layout: flat/custom`) no se ven afectados.
+
 ### v1.11.0 — Consolidación + perfiles (aligeramiento)
 
 **Motivación:** tras los recortes de la Fase 1 (build 571→455), el peso restante era **superficie conceptual** (cantidad de skills y toggles). Diseño completo en `docs/lightening-design.md`. Cierra el plan de 4 fases.

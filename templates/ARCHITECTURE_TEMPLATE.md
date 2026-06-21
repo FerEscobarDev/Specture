@@ -20,6 +20,7 @@
 
 ### 2.1 [Nombre del Componente / Módulo]
 - **Responsabilidad:** [Qué hace, en una frase.]
+- **Carpeta raíz:** [resuelta desde `stack.yml.structure` sustituyendo `{slug}` — ej. `mi_app_api`; "n/a" si el componente no es una app desplegable (lógica interna), o si `root_layout` no es `by-app-suffix`.]
 - **Entradas:** [De qué otros componentes / actores recibe llamadas o eventos.]
 - **Salidas:** [A qué otros componentes / actores emite llamadas o eventos.]
 - **Datos que posee:** [Tablas / colecciones / agregados que son su responsabilidad exclusiva.]

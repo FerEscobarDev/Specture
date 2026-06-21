@@ -38,6 +38,7 @@ The user is starting from scratch. You will create the configuration through an 
    - Framework backend, ORM/driver de base de datos, base de datos.
    - Si tiene frontend: framework, librería UI, estilos.
    - Patrón arquitectónico (sugiere uno apropiado al stack y deja al usuario validar).
+   - **Apps del proyecto (estructura de carpetas raíz):** qué apps tendrá — backend/API, web público, app/SPA/móvil, landing. Determina qué entradas de `structure.apps` quedan en `stack.yml` (ver paso 4).
    - Convenciones de naming, organización por feature/layer, patrones permitidos/prohibidos.
    - **Invariantes (§12, opcional):** reglas que nunca cambian (ej. "DTOs inmutables", naming de métodos). **Workflow (§13, opcional):** de dónde nace cada rama por tipo de trabajo, formato de commit. Si el usuario no tiene reglas claras, deja las filas de ejemplo del template para editar luego — sin reglas, ambas secciones son no-op (ni enforcement de invariantes ni creación de ramas).
    - **Perfil de capacidades (§10 `specture.profile`):** `lean` (huella mínima — hooks on, docs-index/knowledge/context7 off), `full` (todo on), o `custom`. Si el usuario no opina, dejalo sin definir = comportamiento conservador por defecto.
@@ -51,6 +52,10 @@ The user is starting from scratch. You will create the configuration through an 
    - `templates/project-config/stack.template.yml` → `.specture/stack.yml`
    - `templates/project-config/conventions.template.md` → `.specture/conventions.md`
    - `templates/project-config/decisions/000-template.md` → `.specture/decisions/001-initial-stack.md` (registra la decisión inicial del stack)
+
+   **Al poblar `stack.yml`:**
+   - **Deriva `project.slug`** desde `project.name`: minúsculas, espacios y guiones → `_`, elimina cualquier carácter fuera de `[a-z0-9_]`, colapsa `_` repetidos y recorta `_` de los extremos. Ej. "Mi Proyecto-X" → `mi_proyecto_x`. **Muéstraselo al usuario para confirmar** antes de escribir.
+   - **Rellena `structure`** con `root_layout: by-app-suffix` por defecto y, en `structure.apps`, deja **solo las entradas de las apps que el usuario describió** (paso 2) — comenta o borra las demás. Para CLI/librería sin apps desplegables, usa `root_layout: flat` y omite `apps`.
 
 4.5. **Add `.specture/state/` and `docs/.specture-meta/` to `.gitignore`**. The first directory holds runtime state used by Specture hooks (e.g. `build-locked.json`); the second holds local telemetry (e.g. `index-usage.jsonl`, `learn-history.jsonl`) that is user-specific and must not be committed. If a `.gitignore` does not exist, create one with both entries. If it exists, add whichever entry is missing. Idempotent.
 
@@ -119,6 +124,7 @@ The user has an existing codebase. You will **detect** the stack from files and 
    - If detected with confidence → fill in.
    - If detected but ambiguous → fill in with a comment `# detected but please confirm`.
    - If not detectable → leave as `unknown` and prepare a question.
+   - **`project.slug` y `structure`:** deriva el `slug` igual que en Bootstrap (paso 4). Para `structure`, en modo Adopt la convención de carpetas nueva NO se impone sobre código existente: por defecto deja `root_layout: custom` (refleja el layout que ya tiene el proyecto). Solo si el usuario pide explícitamente adoptar el patrón `by-app-suffix`, mapea las carpetas raíz existentes a `structure.apps`.
 
 5. **Show the draft to the user** in chunks (don't dump the whole YAML at once):
    > "Esto es lo que detecté:
@@ -178,6 +184,7 @@ The user already has `.specture/`. They want to update something.
 2. **Ask what they want to change**:
    - Stack (e.g. switching from REST to GraphQL, adding Redis, swapping ORM)?
    - Conventions (e.g. tightening test coverage, banning a pattern)?
+   - Estructura de carpetas raíz (`structure` en `stack.yml`): cambiar `root_layout`, añadir/quitar apps en `structure.apps`. Si el `stack.yml` existente no tiene el bloque `structure` (proyecto previo a esta convención), ofrécelo: deriva `project.slug` y agrega `structure` con las apps que el usuario confirme.
    - Recording a new architectural decision (ADR)?
 
 3. **Critical rule — never silently break ADRs**: if the change supersedes an existing ADR, you MUST:

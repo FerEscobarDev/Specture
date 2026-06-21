@@ -37,6 +37,7 @@
 - **EC-1:** [caso] → [resultado esperado]
 
 ## Superficie de Código Existente (para el implementer — lo llena el orquestador en Step 2)
+> Los `<path>` de archivos nuevos se anclan a la **carpeta raíz del componente** del epic (campo "Carpeta raíz" en `architecture.md`, respaldado por `stack.yml.structure`). Si es "n/a" (`root_layout` flat/custom o componente no desplegable), usar el layout del proyecto.
 - Llama a: `<símbolo existente>` en `<path>` — firma: `[...]`
 - Crea: `<símbolo nuevo>` en `<path>`
 - Fixtures disponibles: `<path>` (no duplicar)

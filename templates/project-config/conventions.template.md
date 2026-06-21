@@ -21,6 +21,22 @@
   [Pegar aquí un árbol de carpetas representativo del proyecto]
   ```
 
+## 2.1 Estructura de Carpetas Raíz (apps)
+
+> Cómo se nombran las carpetas raíz de cada app del proyecto. La **fuente de verdad operativa** es `stack.yml.structure` (la leen `architecture` y `build`); esta sección es la versión legible para humanos. Aplica cuando `structure.root_layout: by-app-suffix`; con `flat`/`custom` esta convención no rige.
+
+- **Prefijo:** `project.slug` (snake_case lowercase, derivado del nombre en `/setup`).
+- **Patrón:** `{slug}_<rol>`. Solo existen las carpetas de los roles que el proyecto realmente tenga.
+
+| Rol del componente | Carpeta raíz | Se crea si… |
+|--------------------|--------------|-------------|
+| Backend / API | `{slug}_api` | hay backend |
+| Frontend web público (SSR / sitio marketing-app) | `{slug}_web` | existe ese componente |
+| App autenticada / SPA / móvil | `{slug}_app` | existe ese componente |
+| Landing de marketing | `{slug}_landing` | existe ese componente |
+
+> Ej. con `project.slug: mi_app` y backend + web: `mi_app_api/`, `mi_app_web/`. Cada componente de app en `architecture.md` declara su carpeta resuelta en el campo "Carpeta raíz"; los componentes lógicos internos (no desplegables) llevan "n/a".
+
 ## 3. Patrones Permitidos (Allow-list)
 
 - [ej. Repository pattern para acceso a datos]

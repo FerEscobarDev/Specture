@@ -6,6 +6,7 @@
 # --- Identity --------------------------------------------------------------
 project:
   name: "[Project Name]"
+  slug: "[project_name]"   # snake_case lowercase — prefijo de las carpetas raíz (ver `structure`). Derivado de `name` en /setup.
   type: "[web | api | mobile | desktop | cli | library | hybrid]"
   description: "[One-line description of what this project does]"
 
@@ -46,6 +47,21 @@ architecture:
   uses_ddd: false
   uses_cqrs: false
   uses_event_driven: false
+
+# --- Structure (layout de carpetas raíz por app) ---------------------------
+# Convención de naming de las carpetas raíz del proyecto. Fuente de verdad que
+# leen `architecture` (asigna "Carpeta raíz" a cada componente) y `build`
+# (ancla los paths de los specs). `{slug}` se sustituye por `project.slug`.
+structure:
+  root_layout: by-app-suffix   # by-app-suffix | flat | custom
+  # `by-app-suffix`: una carpeta raíz por app, prefijada con el slug + sufijo de rol.
+  # `flat` / `custom`: desactivan el patrón (CLI, librerías, o layouts a medida).
+  # Lista SOLO las apps que el proyecto tenga — comenta o borra las demás.
+  apps:
+    api:     "{slug}_api"       # backend / API
+    web:     "{slug}_web"       # frontend web público (SSR / sitio marketing-app)
+    app:     "{slug}_app"       # SPA / app autenticada / móvil
+    landing: "{slug}_landing"   # landing de marketing
 
 # --- DevOps & Deployment ---------------------------------------------------
 devops:
