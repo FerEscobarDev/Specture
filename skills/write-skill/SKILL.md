@@ -1,6 +1,6 @@
 ---
 name: write-skill
-description: Use when the user wants to create a new Specture skill, modify an existing one, write a custom agent, or extend the framework. Enforces TDD-for-documentation: every skill must be tested with pressure scenarios before it ships.
+description: 'Use when the user wants to create a new Specture skill, modify an existing one, write a custom agent, or extend the framework. Enforces TDD-for-documentation: every skill must be tested with pressure scenarios before it ships.'
 ---
 
 # Transversal — Writing Skills

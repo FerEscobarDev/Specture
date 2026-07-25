@@ -1,6 +1,6 @@
 ---
 name: knowledge
-description: Use to keep the project's knowledge healthy — TWO modes. `capture` (alias `/specture:learn`): at the end of a non-trivial session — after an epic closes, a root cause is confirmed, a feature is roadmapped, or on demand — turn ephemeral discoveries into durable artifacts (docs-index entries, ADR drafts, conventions patches, bridge docs); max 3 drafts, granular approval. `audit` (alias `/specture:audit-knowledge`): periodically (every 1-3 months) detect docs-index drift (orphans, stale, duplicates, uncovered) and report — read-only. Never writes Claude's personal memory.
+description: 'Use to keep the project''s knowledge healthy — TWO modes. `capture` (alias `/specture:learn`): at the end of a non-trivial session — after an epic closes, a root cause is confirmed, a feature is roadmapped, or on demand — turn ephemeral discoveries into durable artifacts (docs-index entries, ADR drafts, conventions patches, bridge docs); max 3 drafts, granular approval. `audit` (alias `/specture:audit-knowledge`): periodically (every 1-3 months) detect docs-index drift (orphans, stale, duplicates, uncovered) and report — read-only. Never writes Claude''s personal memory.'
 ---
 
 # Transversal — Knowledge Hygiene (capture + audit)

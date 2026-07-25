@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "hooks": {
+    "PreToolUse": [
+      {
+        "type": "command",
+        "matcher": "Edit|Write|NotebookEdit",
+        "bash": "node \"${PLUGIN_ROOT}/hooks/copilot-pre-tool-use-tdd-gate.js\"",
+        "powershell": "node \"${PLUGIN_ROOT}/hooks/copilot-pre-tool-use-tdd-gate.js\"",
+        "timeoutSec": 10
+      }
+    ]
+  }
+}

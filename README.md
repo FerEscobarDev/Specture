@@ -36,6 +36,21 @@ Specture detectará si el proyecto está vacío (Bootstrap), tiene código exist
 
 O simplemente di "continuemos con el roadmap" — el `specture-router` detecta el estado y enruta.
 
+### Plugin GitHub Copilot CLI
+
+Specture también puede cargarse como plugin de Copilot CLI, sin reemplazar ni
+alterar el plugin de Claude Code:
+
+```
+copilot plugin marketplace add FerEscobarDev/Specture
+copilot plugin install specture@specture
+```
+
+En Copilot, seleccioná el agente `specture:specture-router` desde `/agent`
+para iniciar o continuar trabajo Specture. El router carga el skill `start` y
+conserva el routing opt-in. La guía de instalación, compatibilidad y del TDD
+Honesty Gate está en [`docs/copilot-cli-plugin.md`](docs/copilot-cli-plugin.md).
+
 ---
 
 ## Filosofía

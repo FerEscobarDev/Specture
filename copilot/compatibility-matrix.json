@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "claudeSource": "1.12.0",
+  "skills": [
+    "architecture",
+    "audit-knowledge",
+    "build",
+    "contract-sync-audit",
+    "debug",
+    "discover",
+    "handoff-ingest",
+    "knowledge",
+    "learn",
+    "modernize",
+    "new-feature",
+    "setup",
+    "setup-docs-bridge",
+    "start",
+    "ux-design",
+    "verify",
+    "write-skill"
+  ],
+  "agents": [
+    "architecture-validator",
+    "code-reviewer",
+    "implementer",
+    "specture-router",
+    "tdd-test-writer",
+    "ux-implementer"
+  ],
+  "gates": [
+    "filesystem-state-routing",
+    "architecture-validation",
+    "red-commit",
+    "tdd-honesty",
+    "independent-review",
+    "fresh-verification",
+    "human-approval"
+  ],
+  "platformAdaptations": {
+    "agentFiles": "copilot/agents/*.agent.md",
+    "hooks": "hooks.json",
+    "tasks": "Copilot task tracking is advisory; ROADMAP.md remains authoritative.",
+    "approval": "Use Copilot plan workflow and explicit user approval before write operations.",
+    "memory": "Restricted agents must not use persistent memory as evidence."
+  }
+}
