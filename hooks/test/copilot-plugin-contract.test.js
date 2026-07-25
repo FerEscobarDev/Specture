@@ -28,6 +28,9 @@ test("keeps Copilot and Claude manifest metadata synchronized", () => {
   assert.equal(copilotMarketplace.name, copilotPlugin.name);
   assert.equal(copilotMarketplace.metadata.version, copilotPlugin.version);
   assert.equal(copilotMarketplace.plugins[0].version, copilotPlugin.version);
+  assert.equal(copilotPlugin.skills, "skills/");
+  assert.equal(copilotPlugin.agents, "agents/");
+  assert.equal(copilotPlugin.hooks, "hooks.json");
 });
 
 test("provides a Copilot profile for every Claude specialist", () => {

@@ -38,18 +38,102 @@ O simplemente di "continuemos con el roadmap" — el `specture-router` detecta e
 
 ### Plugin GitHub Copilot CLI
 
-Specture también puede cargarse como plugin de Copilot CLI, sin reemplazar ni
-alterar el plugin de Claude Code:
+Specture es compatible como plugin de **GitHub Copilot CLI**, funcionando en paralelo sin alterar ni reemplazar la integración de Claude Code o Antigravity. Puedes instalarlo de las siguientes maneras:
 
-```
-copilot plugin marketplace add FerEscobarDev/Specture
+#### Opción 1: Instalación Directa / Marketplace (Recomendado)
+Añade la fuente del marketplace de Specture e instala el plugin:
+
+```bash
+copilot plugin marketplace add https://github.com/FerEscobarDev/Specture.git
 copilot plugin install specture@specture
 ```
 
-En Copilot, seleccioná el agente `specture:specture-router` desde `/agent`
-para iniciar o continuar trabajo Specture. El router carga el skill `start` y
-conserva el routing opt-in. La guía de instalación, compatibilidad y del TDD
-Honesty Gate está en [`docs/copilot-cli-plugin.md`](docs/copilot-cli-plugin.md).
+O instala directamente especificando la URL del repositorio:
+
+```bash
+copilot plugin install https://github.com/FerEscobarDev/Specture.git
+```
+
+#### Opción 2: Carga para Desarrollo Local (`--plugin-dir`)
+Si estás desarrollando o probando modificaciones locales de Specture, inicia Copilot CLI indicando el directorio del plugin:
+
+- **Linux / macOS**:
+  ```bash
+  copilot --plugin-dir /ruta/a/Specture
+  ```
+- **Windows (PowerShell/CMD)**:
+  ```powershell
+  copilot --plugin-dir C:\Proyectos\VibeCoding
+  ```
+
+#### Cómo usar Specture en Copilot CLI
+1. En la sesión de Copilot CLI, selecciona el agente de enrutamiento ejecutando:
+   ```bash
+   /agent specture:specture-router
+   ```
+2. Una vez seleccionado, pide iniciar o continuar el trabajo (*"inicia el proyecto"*, *"continuemos con el roadmap"*).
+3. El router cargará la habilidad `start` e inspeccionará el estado del sistema de archivos para dirigir la sesión a la fase correspondiente.
+
+Para más información sobre la arquitectura y la matriz de compatibilidad de Copilot CLI, consulta la guía dedicada en [`docs/copilot-cli-plugin.md`](docs/copilot-cli-plugin.md).
+
+---
+
+### Plugin Google Antigravity CLI (`agy`)
+
+Specture es nativamente compatible como plugin en **Google Antigravity CLI (`agy`)** y en el entorno de Antigravity IDE. Puedes instalarlo con un solo comando usando la URL del repositorio o mediante clonado:
+
+#### Opción 1: Instalación Directa por CLI (Igual que en Claude Code)
+Ejecuta directamente el comando de instalación de plugins de Antigravity especificando la URL del repositorio de GitHub:
+
+```bash
+agy plugin add https://github.com/FerEscobarDev/Specture.git
+```
+*(O simplemente `/plugin add https://github.com/FerEscobarDev/Specture.git` dentro de la sesión de `agy`)*.
+
+#### Opción 2: Instalación Global por Git Clone
+Si prefieres clonar manualmente en la carpeta de plugins globales de Antigravity:
+
+- **Linux / macOS (Bash/Zsh)**:
+  ```bash
+  git clone https://github.com/FerEscobarDev/Specture.git ~/.gemini/config/plugins/specture
+  ```
+- **Windows (PowerShell)**:
+  ```powershell
+  git clone https://github.com/FerEscobarDev/Specture.git "$env:USERPROFILE\.gemini\config\plugins\specture"
+  ```
+- **Windows (CMD)**:
+  ```cmd
+  git clone https://github.com/FerEscobarDev/Specture.git %USERPROFILE%\.gemini\config\plugins\specture
+  ```
+
+#### Opción 3: Enlace Local (Modo Desarrollo)
+Si ya clonaste Specture localmente en tu equipo y deseas usarlo o modificarlo en tiempo real:
+
+1. Abre tu terminal en la carpeta clonada de Specture y ejecuta:
+   ```bash
+   agy plugin link ./
+   ```
+2. O especifica la ruta absoluta desde cualquier ubicación:
+   ```bash
+   agy plugin link C:\Proyectos\VibeCoding
+   ```
+
+#### Cómo usar Specture en Antigravity CLI
+Una vez instalado o enlazado el plugin:
+
+1. Abre la terminal en el proyecto que deseas desarrollar e inicia Antigravity:
+   ```bash
+   agy
+   ```
+2. Ejecuta el comando slash principal para iniciar el router:
+   ```bash
+   /specture:start
+   ```
+   *(También puedes escribir en el chat frases como `"configura el proyecto"`, `"inicia el proyecto"` o `"continuemos con el roadmap"`)*.
+
+3. Specture inspeccionará la raíz de tu proyecto e iniciará la fase adecuada (`setup`, `discover`, `architecture`, `ux-design` o `build`).
+
+Para más detalles sobre la integración de hooks y TDD Honesty Gate en Antigravity, consulta la guía dedicada en [`docs/antigravity-cli-plugin.md`](docs/antigravity-cli-plugin.md).
 
 ---
 

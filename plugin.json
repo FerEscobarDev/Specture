@@ -10,7 +10,7 @@
   "repository": "https://github.com/FerEscobarDev/Specture",
   "license": "MIT",
   "keywords": ["sdd", "spec-driven", "tdd", "methodology", "ai-assisted"],
-  "agents": "copilot/agents/",
+  "agents": "agents/",
   "skills": "skills/",
   "hooks": "hooks.json"
 }

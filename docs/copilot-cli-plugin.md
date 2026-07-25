@@ -1,66 +1,80 @@
-# Specture for GitHub Copilot CLI
+# Specture para GitHub Copilot CLI
 
-Specture ships a Copilot CLI plugin alongside its Claude Code plugin. The
-clients use separate manifests and agent profiles, while sharing Specture's
-state machine, `.specture/` configuration, specs, ROADMAP, templates, and TDD
-discipline.
+Specture ofrece soporte nativo como plugin para **GitHub Copilot CLI**, operando en paralelo con las integraciones de **Claude Code** y **Google Antigravity CLI (`agy`)**.
 
-## Prerequisites
+Todas las plataformas comparten la máquina de estados de Specture, la configuración `.specture/`, las especificaciones (specs), el `ROADMAP.md`, las plantillas y la disciplina de TDD Honesty Gate.
 
-- GitHub Copilot CLI with plugin support.
-- Node.js available on `PATH` for the opt-in TDD Honesty Gate.
-- PowerShell 7+ on Windows when the gate is enabled.
+---
 
-## Installation
+## Prerrequisitos
 
-After adding the Specture marketplace:
+- GitHub Copilot CLI con soporte para plugins habilitado.
+- Node.js disponible en `PATH` para el TDD Honesty Gate.
+- PowerShell 7+ en Windows o Bash en macOS/Linux.
+
+---
+
+## Instalación
+
+### Opción 1: Instalación desde Marketplace o Repositorio (Recomendado)
+
+Añade la fuente del marketplace de Specture e instala el plugin:
 
 ```shell
-copilot plugin marketplace add FerEscobarDev/Specture
+copilot plugin marketplace add https://github.com/FerEscobarDev/Specture.git
 copilot plugin install specture@specture
 ```
 
-For development, start Copilot with the repository as a local plugin source:
+O bien instala directamente indicando la URL del repositorio de GitHub:
 
 ```shell
-copilot --plugin-dir <path-to-Specture>
+copilot plugin install https://github.com/FerEscobarDev/Specture.git
 ```
 
-The `copilot plugin install` command in some CLI releases accepts only
-marketplace, GitHub repository, or URL specifications. Use `--plugin-dir` for
-unpublished local changes in those releases.
+### Opción 2: Desarrollo y Carga Local (`--plugin-dir`)
 
-## Using Specture
+Para desarrollo local o pruebas sin publicar, inicia Copilot indicando el directorio fuente de Specture:
 
-Select `specture:specture-router` through `/agent` when starting or resuming
-Specture work, then ask to start or continue. The router loads the `start`
-skill and routes by filesystem state. Specture remains opt-in.
+```shell
+copilot --plugin-dir /ruta/a/Specture
+```
 
-Skills retain their existing names (`start`, `setup`, `build`, `debug`, and
-so on). Copilot may infer the relevant skill from a direct request. Explicitly
-name the skill or router when deterministic routing is important.
+En Windows (PowerShell):
 
-## Compatibility guarantees
+```powershell
+copilot --plugin-dir C:\Proyectos\VibeCoding
+```
 
-- Claude Code artifacts under `.claude-plugin/`, `agents/`, `skills/`,
-  `settings.json`, and its original hook remain untouched.
-- Copilot agents live in `copilot/agents/` and use the `.agent.md` format.
-- The TDD Honesty Gate is declared in root `hooks.json` and executes the
-  Copilot-specific wrapper. It uses the same `.specture/state/build-locked.json`
-  state and `hooks.enabled` opt-in as Claude.
-- `ROADMAP.md` remains the cross-session source of truth. Copilot task
-  tracking is visibility only.
+---
 
-## Hook behavior
+## Uso de Specture en Copilot CLI
 
-Copilot command `preToolUse` hooks fail closed when a command exits with an
-error. Specture's wrapper catches evaluation failures and exits successfully
-without a decision, preserving the framework's deliberate fail-open recovery
-policy. The build-loop `git diff` gate remains defense in depth.
+1. **Seleccionar el Agente Router**:
+   Selecciona el agente `specture:specture-router` mediante el comando slash `/agent`:
+   ```shell
+   /agent specture:specture-router
+   ```
 
-## Troubleshooting
+2. **Iniciar o continuar trabajo**:
+   Una vez activado el agente, pide iniciar o continuar el trabajo (*"inicia el proyecto"*, *"continuemos con el roadmap"*). El router cargará la habilidad `start` e inspeccionará el sistema de archivos para dirigir la sesión a la fase adecuada.
 
-Use `/env` to confirm the plugin, its agents, skills, and hooks are loaded.
-If an identically named project or personal agent/skill is present, Copilot's
-first-found precedence can hide Specture's plugin component. Rename or remove
-the higher-precedence component before retrying.
+3. **Invocación directa de Habilidades**:
+   Las habilidades mantienen sus nombres estándar (`start`, `setup`, `discover`, `architecture`, `ux-design`, `build`, `debug`, `knowledge`). Copilot puede inferir la habilidad requerida o puedes nombrarla explícitamente.
+
+---
+
+## TDD Honesty Gate en Copilot CLI
+
+Specture declara sus hooks en `hooks.json` usando el evento `PreToolUse`. Durante la fase TDD RED, los archivos de test sellados quedan bloqueados mecánicamente contra escrituras accidental o prematuras.
+
+Los hooks de Copilot CLI operan con manejo de excepciones para fallar de forma abierta (*fail open*) en caso de errores no evaluables, manteniendo la verificación en `git diff` como defensa en profundidad.
+
+---
+
+## Garantías de Compatibilidad y Aislamiento
+
+- **Claude Code**: Utiliza `.claude-plugin/plugin.json`, `agents/` y `skills/`.
+- **Copilot CLI**: Utiliza `.github/plugin/marketplace.json`, `copilot/agents/` y `hooks.json`.
+- **Antigravity CLI**: Utiliza `plugin.json`, `agents/`, `skills/` y `hooks.json`.
+
+Ninguna plataforma interfiere con la otra, compartiendo la misma fuente de verdad en `.specture/` y `ROADMAP.md`.
