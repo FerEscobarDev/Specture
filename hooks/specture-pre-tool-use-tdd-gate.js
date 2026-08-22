@@ -88,7 +88,7 @@ try {
   const payload = readHookPayload();
   const toolInput = payload.tool_input || {};
   const targetPath =
-    toolInput.file_path || toolInput.notebook_path || toolInput.path;
+    toolInput.file_path || toolInput.notebook_path || toolInput.path || toolInput.TargetFile;
   if (typeof targetPath !== "string" || targetPath.length === 0) allow();
 
   const relativePath = relativize(targetPath, result.projectRoot);

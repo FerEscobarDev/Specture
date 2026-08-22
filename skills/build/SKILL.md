@@ -25,6 +25,12 @@ This skill **fuses** what was previously split into "planificación", "ejecució
 - `docs/02-architecture/architecture.md` — boundaries.
 - `docs/04-roadmap/ROADMAP.md` — what to build next.
 
+## Cross-Platform Subagent Initialization (Mandatory)
+
+Before proceeding, you must ensure specialized agents are registered in your environment. Check your available tools:
+- **If you have the `define_subagent` tool (Antigravity CLI):** You MUST dynamically register the subagents before doing anything else. Read the `name`, `description`, and content (`system_prompt`) of the `AGENT.md` files located in the `agents/` directory (for `architecture-validator`, `tdd-test-writer`, `implementer`, `ux-implementer`, and `code-reviewer`), and call `define_subagent` for each one to make them available to this session.
+- **If you do NOT have the `define_subagent` tool (Claude Code):** The agents are already statically registered by the system. You may proceed directly.
+
 ## Execution Model — Sequential Queue
 
 There is **one** execution model. This chat is **coordinator only**: it does NOT generate specs, dispatch the 4 workers, or run tests. It builds a queue of epics and dispatches **one fresh epic-agent at a time** (concurrency = 1), processing each report before starting the next. The coordinator's context stays O(n_epics) (only checkboxes + reports), never O(total work) — specs, tests, agent outputs and reviews live inside each epic-agent and are discarded when it finishes.

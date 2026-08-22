@@ -4,7 +4,7 @@
     "PreToolUse": [
       {
         "type": "command",
-        "matcher": "Edit|Write|NotebookEdit",
+        "matcher": "Edit|Write|NotebookEdit|write_to_file|replace_file_content",
         "bash": "node \"${PLUGIN_ROOT}/hooks/specture-pre-tool-use-tdd-gate.js\"",
         "powershell": "node \"${PLUGIN_ROOT}/hooks/specture-pre-tool-use-tdd-gate.js\"",
         "timeoutSec": 10
