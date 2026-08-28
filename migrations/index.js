@@ -7,10 +7,24 @@
 //     ownerSkill        (content only) }
 //
 // `ctx` comes from hooks/lib/doctor/project.js createContext().
-// The catalog is filled in the migrations commit; an empty catalog is valid.
+// Adding a migration = adding a file here. Keep ids as `<since-minor>-<slug>`.
 
 const semver = require("../hooks/lib/doctor/semver");
 
-const catalog = [];
+const catalog = [
+  require("./1.2-state-gitignore"),
+  require("./1.6-boundary-capabilities"),
+  require("./1.6-contract-companion"),
+  require("./1.7-meta-gitignore"),
+  require("./1.8-drop-parallel-toggle"),
+  require("./1.9-dependencies-syntax"),
+  require("./1.9-current-state-init"),
+  require("./1.9-tombstones"),
+  require("./1.10-rules-sections"),
+  require("./1.11-profile-and-knowledge"),
+  require("./1.12-structure-block"),
+  require("./1.15-settings-file"),
+  require("./1.15-schema-version")
+];
 
 module.exports = catalog.sort((a, b) => semver.compare(a.since, b.since) || a.id.localeCompare(b.id));

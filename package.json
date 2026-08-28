@@ -9,6 +9,9 @@
   "scripts": {
     "test": "node --test",
     "bump": "node scripts/bump-version.js",
-    "check:release": "node scripts/bump-version.js --check"
+    "check:release": "node scripts/bump-version.js --check",
+    "schema:sync": "node scripts/schema-manifest.js",
+    "schema:check": "node scripts/schema-manifest.js --check",
+    "doctor": "node scripts/doctor.js"
   }
 }

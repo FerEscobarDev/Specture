@@ -28,10 +28,12 @@ function runDoctor(projectRoot, ...extra) {
   return { status: result.status, stdout: result.stdout, stderr: result.stderr, json: result.stdout ? JSON.parse(result.stdout) : null };
 }
 
+// A project exactly as `setup` leaves it at the installed plugin version: no migration pending.
 const CLEAN = {
-  ".specture/stack.yml": 'project:\n  name: "Demo"\napi:\n  style: "rest"\n  contract_file: "docs/02-architecture/api-contract.openapi.yaml"\n',
+  ".gitignore": ".specture/state/\ndocs/.specture-meta/\n",
+  ".specture/stack.yml": 'project:\n  name: "Demo"\n  slug: "demo"\napi:\n  style: "rest"\n  contract_file: "docs/02-architecture/api-contract.openapi.yaml"\nstructure:\n  root_layout: custom\n',
   ".specture/settings.yml": `schema_version: ${pluginVersion}\nprofile: custom\nhooks.enabled: true\n`,
-  ".specture/conventions.md": "# Convenciones\n\n## 10. Specture\n\n> ver settings.yml\n",
+  ".specture/conventions.md": "# Convenciones\n\n## 10. Specture\n\n> ver settings.yml\n\n## 12. Invariantes del Proyecto (R-*)\n\n| ID | Regla |\n|----|-------|\n\n## 13. Workflow / Proceso (W-*)\n\n- W-3: Conventional Commits\n",
   ".specture/decisions/001-initial-stack.md": "# ADR-001\n\n## Status\n\nAccepted\n",
   "docs/04-roadmap/ROADMAP.md": "# ROADMAP\n\n### Milestone 1: Foundation\n\n- [ ] **Epic 1.1:** Scaffold\n  - **Dependencias:** Ninguna\n"
 };
