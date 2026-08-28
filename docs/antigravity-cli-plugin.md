@@ -83,6 +83,19 @@ El hook opera bajo una política **fail-open** en caso de errores inesperados, m
 
 ---
 
+## Doctor: diagnóstico y migraciones de esquema (v1.15.0+)
+
+Mismo script que en Claude Code y Copilot (`scripts/doctor.js`, Node ≥ 22), invocado por el skill `doctor` con la raíz del plugin de Antigravity:
+
+```shell
+node "${PLUGIN_ROOT}/scripts/doctor.js" check           # solo lectura
+node "${PLUGIN_ROOT}/scripts/doctor.js" migrate --apply  # migraciones mecánicas
+```
+
+Las migraciones asistidas se aprueban en el chat antes de escribir; las de contenido solo se registran con su skill dueño. `/specture:start` corre `check --brief` como Step 0 y avisa si hay migraciones pendientes (no bloquea). La configuración del framework está en `.specture/settings.yml`.
+
+---
+
 ## Compatibilidad Triple
 
 - **Claude Code**: Utiliza `.claude-plugin/plugin.json`, `agents/` y `skills/`.

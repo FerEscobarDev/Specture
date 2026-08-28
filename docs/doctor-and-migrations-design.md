@@ -1,4 +1,13 @@
-> **Estado: PROPUESTA — 2026-08-28. Decisiones abiertas en §7; NO implementado.**
+> **Estado: IMPLEMENTADO en v1.15.0 (2026-08-28).** Decisiones de §7 cerradas por el usuario
+> el mismo día: A1 `settings.yml` · A2 `start` solo avisa · A3 catálogo completo, content
+> solo agendado · A4 snippet de CI documentado (README, "Configuración por Proyecto") ·
+> A5 doctor antes del gate. Implementación: `scripts/doctor.js`, `hooks/lib/doctor/`,
+> `hooks/lib/settings.js`, `migrations/`, `skills/doctor/SKILL.md`. Diferencias respecto a
+> este diseño: el catálogo se ordena por `since` con orden declarado en empates; el gate de
+> release es un **manifest de hashes** (`migrations/schema-manifest.json`) en vez de un diff
+> por commit; `--verify <id>` es el único camino que registra una migración asistida como
+> aplicada. Se conserva como audit trail del diseño.
+>
 > Origen: el usuario, tras `docs/psikora-scale-review.md`, observó que `specture:doctor`
 > podría además **validar que la estructura Specture del proyecto cumple con la versión
 > instalada del plugin** — porque Psikora se configuró antes de `_current/`, §12/§13,

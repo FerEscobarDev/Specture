@@ -67,13 +67,16 @@ flowchart TB
 
 ### 1.2 Router de estado (`start`) — máquina de estados
 
-El router corre cinco chequeos **en orden** y se detiene en el primero que falle, enrutando a la
-fase dueña. **Regla de costo:** nunca lee archivos completos — usa chequeos de existencia, `grep`
-de una línea y la lectura de un solo campo. Confía en el filesystem por encima de la memoria.
+El router corre un chequeo de esquema (Step 0, desde v1.15.0) y cinco chequeos de fase **en
+orden**, y se detiene en el primero que falle, enrutando a la fase dueña. **Regla de costo:** nunca
+lee archivos completos — usa chequeos de existencia, `grep` de una línea, la lectura de un solo
+campo y una llamada al script del doctor. Confía en el filesystem por encima de la memoria.
 
 ```mermaid
 flowchart TD
-    Start(["/specture:start o 'continuemos con el roadmap'"]) --> S1{"Step 1<br/>.specture/stack.yml<br/>¿existe?"}
+    Start(["/specture:start o 'continuemos con el roadmap'"]) --> S0{"Step 0<br/>doctor check --brief<br/>¿migraciones pendientes?"}
+    S0 -->|"sí: avisa y ofrece<br/>/specture:doctor migrate (no bloquea)"| S1
+    S0 -->|"no / sin node"| S1{"Step 1<br/>.specture/stack.yml<br/>¿existe?"}
     S1 -->|No| SETUP[["→ setup · Fase 0"]]
     S1 -->|Sí| S2{"Step 2<br/>business_requirements.md<br/>¿existe?"}
     S2 -->|No| S2b{"¿docs-index.yml con<br/>entradas tag 'requirements'?"}

@@ -71,6 +71,21 @@ Los hooks de Copilot CLI operan con manejo de excepciones para fallar de forma a
 
 ---
 
+## Doctor: diagnóstico y migraciones de esquema (v1.15.0+)
+
+El doctor es un script de Node (≥ 22) que funciona igual en las tres plataformas; el skill `doctor` lo invoca con la variable de raíz del plugin de cada CLI:
+
+```shell
+node "${PLUGIN_ROOT}/scripts/doctor.js" check          # solo lectura: corpus + estado + drift de esquema
+node "${PLUGIN_ROOT}/scripts/doctor.js" migrate --apply # aplica las migraciones mecánicas
+```
+
+En Copilot CLI las migraciones **asistidas** (las que reescriben `business_requirements.md`, el ROADMAP o `stack.yml`) se presentan como propuesta cerrada en el chat y se aplican solo con tu aprobación explícita — equivalente al Plan mode de Claude Code. Las de **contenido** nunca se aplican automáticamente. La configuración del framework vive en `.specture/settings.yml` (perfil, toggles, `schema_version`); los hooks la leen de ahí, con fallback a `conventions.md` §10 en proyectos anteriores a v1.15.0.
+
+Para correrlo en la CI del proyecto, ver el snippet en el README (sección "Configuración por Proyecto").
+
+---
+
 ## Garantías de Compatibilidad y Aislamiento
 
 - **Claude Code**: Utiliza `.claude-plugin/plugin.json`, `agents/` y `skills/`.

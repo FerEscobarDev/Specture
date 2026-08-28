@@ -29,16 +29,16 @@ El principio core de Specture — **contexto restringido por agente** — se man
 
 ### 2.1 Opt-in granular por capacidad
 
-Editá `.specture/conventions.md` sección 10:
+Editá `.specture/settings.yml` (v1.15.0+ — lo crea `/specture:setup`; es el archivo **del framework** dentro de `.specture/`):
 
-```markdown
-## 10. Specture / Claude Code Integration
-
-- **hooks.enabled**: true            # activa el TDD Honesty Gate (PreToolUse). SessionStart ya no existe (v1.5.0).
-- **context7.enabled**: true         # activa Context7 en code-reviewer y modernize
+```yaml
+schema_version: 1.15.0       # versión del esquema de proyecto; la avanza /specture:doctor migrate
+profile: custom              # lean | full | custom
+hooks.enabled: true          # activa el TDD Honesty Gate (PreToolUse). SessionStart ya no existe (v1.5.0).
+context7.enabled: true       # activa Context7 en code-reviewer y modernize
 ```
 
-Cualquier capacidad podés dejarla en `false` (o ausente) y el resto sigue funcionando. Con todos los toggles en `false`, Specture funciona exactamente como v1.1.0.
+Cualquier capacidad podés dejarla en `false` (o ausente) y el resto sigue funcionando. Con todos los toggles en `false`, Specture funciona exactamente como v1.1.0. Proyectos creados antes de v1.15.0 tienen los toggles en `conventions.md` §10; `hooks/lib/settings.js` los lee de ahí como fallback hasta que `/specture:doctor migrate` los mueva (migración `1.15-settings-file`).
 
 ### 2.2 Cómo verificar que un hook está activo
 

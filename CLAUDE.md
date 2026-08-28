@@ -26,7 +26,7 @@ The user's project (the one being built) lives in a different directory and cont
 
 `$SPECTURE_ROOT` is an environment variable pointing to this repository's root, set by the user during setup. Never hardcode absolute paths inside skills, agents or templates — always use `$SPECTURE_ROOT` or paths relative to it.
 
-The user's project also contains a `.specture/` directory with the project-specific configuration (`stack.yml`, `conventions.md`, `decisions/`). All skills and agents read those files before generating anything.
+The user's project also contains a `.specture/` directory with the project-specific configuration (`stack.yml`, `conventions.md`, `decisions/`) plus the framework-owned `settings.yml` (`schema_version`, profile, toggles — written by `setup`, migrated by `doctor`). All skills and agents read those files before generating anything.
 
 ## Quick command reference
 

@@ -25,11 +25,18 @@
 3. Agregar al `README.md`, al inicio de `## Changelog`, la entrada
    `### vX.Y.Z — <título>` con **Motivación / Cambios / Backward-compat** (mismo formato
    que las anteriores). El texto tras ` — ` es el título del GitHub Release.
-4. `npm run check:release` — falla si los manifiestos no coinciden o falta la entrada.
-5. Commit `chore(release): vX.Y.Z` (junto con los docs de la versión), `git push origin
+4. **Si la release cambia el esquema del proyecto** — cualquier archivo de
+   `templates/project-config/`, `ROADMAP_TEMPLATE.md`, `SPEC_TEMPLATE.md`,
+   `MIGRATION_SPEC_TEMPLATE.md`, `CURRENT_CAPABILITY_TEMPLATE.md`, o la sección
+   "Required Inputs" de un skill —: decidí si hace falta una migración
+   (`migrations/<since>-<slug>.js`, registrada en `migrations/index.js`, con su test en
+   `migrations/test/catalog.test.js`) y corré `npm run schema:sync`. `npm test` falla mientras
+   `migrations/schema-manifest.json` esté desactualizado: ese es el gate.
+5. `npm run check:release` — falla si los manifiestos no coinciden o falta la entrada.
+6. Commit `chore(release): vX.Y.Z` (junto con los docs de la versión), `git push origin
    master` y **esperar la CI verde** (`gh run watch`). No cortar el tag sobre CI roja.
-6. `git tag -a vX.Y.Z -m "vX.Y.Z — <título>"` y `git push origin vX.Y.Z`.
-7. `release.yml` corre tests + contrato y **crea (o actualiza) el GitHub Release** con
+7. `git tag -a vX.Y.Z -m "vX.Y.Z — <título>"` y `git push origin vX.Y.Z`.
+8. `release.yml` corre tests + contrato y **crea (o actualiza) el GitHub Release** con
    título = encabezado del changelog y notas = su cuerpo. Verificar con
    `gh release view vX.Y.Z`.
 
@@ -43,6 +50,8 @@
 - **`hooks/test/release-contract.test.js`** (corre en ambos): manifiestos iguales, entrada
   de changelog presente, cada comando de hook en `settings.json`/`hooks.json` apunta a un
   script existente, `--check` en 0.
+- **`migrations/test/*.test.js`**: catálogo (pending → apply → done, idempotente), invariante
+  setup ↔ migraciones, manifest de esquema sincronizado.
 
 ## Reglas
 
@@ -55,9 +64,13 @@
 - **El changelog de una versión publicada solo se toca por erratas.** Para regenerar las
   notas de un Release ya creado:
   `node scripts/bump-version.js --notes X.Y.Z > notes.md && gh release edit vX.Y.Z --title "$(node scripts/bump-version.js --title X.Y.Z)" --notes-file notes.md`.
-- **Un cambio en `templates/project-config/**`, `SPEC_TEMPLATE.md`, `ROADMAP_TEMPLATE.md`
-  o en los "Required Inputs" de un skill es cambio de esquema del proyecto** → minor, y
-  (desde M1) con entrada en `migrations/`.
+- **Un cambio en `templates/project-config/**`, los templates de ROADMAP/SPEC/MIGRATION/
+  CURRENT o en los "Required Inputs" de un skill es cambio de esquema del proyecto** → minor,
+  con migración en `migrations/` cuando un proyecto existente necesite algo para seguir
+  funcionando igual, y siempre con `npm run schema:sync` (el test
+  `migrations/test/schema-manifest.test.js` lo exige). La regla complementaria: un proyecto
+  recién creado desde los templates **nunca** tiene migraciones pendientes
+  (`migrations/test/setup-invariant.test.js`).
 
 ## Comandos útiles
 

@@ -161,13 +161,19 @@ $SPECTURE_ROOT/
 ├── .github/workflows/                 # ci.yml (tests ubuntu/windows × node 22/24) · release.yml (GitHub Release desde el changelog)
 ├── package.json                       # Tooling del repo (no del plugin): npm test · bump · check:release
 ├── scripts/bump-version.js            # Sincroniza la versión en los 4 manifiestos; --check · --title · --notes
+├── scripts/doctor.js                  # CLI del doctor: check · migrate · sync (también usable desde la CI de un proyecto)
+├── scripts/schema-manifest.js         # Hash de los archivos que definen el esquema del proyecto (gate de release)
+├── migrations/                        # Catálogo de migraciones <since>-<slug>.js + schema-manifest.json + tests
 ├── hooks/
 │   ├── README.md                      # Cómo funcionan, schema de build-locked.json, troubleshooting
 │   ├── pre-tool-use-tdd-gate.js       # TDD Honesty Gate (Claude Code)
 │   ├── specture-pre-tool-use-tdd-gate.js  # TDD Honesty Gate (Copilot / Antigravity; hooks.json)
 │   ├── copilot-pre-tool-use-tdd-gate.js   # Shim de compatibilidad → specture-pre-tool-use-tdd-gate.js
 │   ├── lib/specture-guard.js          # Guard compartido (opt-in por hooks.enabled)
-│   └── test/                          # Tests de contrato del plugin y del hook
+│   ├── lib/settings.js                # Lector de .specture/settings.yml (fallback a conventions §10, perfiles)
+│   ├── lib/seal.js                    # Sello del contrato de tests (schema v2 por spec, v1 legacy, sello huérfano)
+│   ├── lib/doctor/                    # Chequeos del doctor: corpus · estado · drift · migrate
+│   └── test/                          # Tests de contrato del plugin, hooks, settings y doctor
 ├── copilot/
 │   ├── agents/*.agent.md              # Espejos de los agentes para Copilot CLI
 │   └── compatibility-matrix.json      # Paridad skills/agentes/gates por plataforma
@@ -188,7 +194,8 @@ $SPECTURE_ROOT/
 │   ├── knowledge/SKILL.md             # Higiene de conocimiento — modos capture (ex-learn) + audit (ex-audit-knowledge)
 │   ├── learn/SKILL.md                 # Alias → knowledge (capture), backward-compat
 │   ├── audit-knowledge/SKILL.md       # Alias → knowledge (audit), backward-compat
-│   └── modernize/SKILL.md
+│   ├── modernize/SKILL.md
+│   └── doctor/SKILL.md                # Diagnóstico del corpus + migraciones de esquema (check · migrate · sync)
 ├── agents/
 │   ├── specture-router/AGENT.md       # Router (opt-in: se invoca con /specture:start)
 │   ├── architecture-validator/AGENT.md  # Valida planes/contrato contra .specture/
@@ -199,6 +206,7 @@ $SPECTURE_ROOT/
 ├── templates/
 │   ├── project-config/                # Plantillas de .specture/ del proyecto destino
 │   │   ├── stack.template.yml
+│   │   ├── settings.template.yml      # schema_version + perfil + toggles (archivo del framework)
 │   │   ├── conventions.template.md
 │   │   ├── docs-index.template.yml    # Catálogo machine-readable de docs preexistentes
 │   │   └── decisions/000-template.md
@@ -243,6 +251,7 @@ $SPECTURE_ROOT/
 | `setup-docs-bridge` | `/specture:setup-docs-bridge` | Proyecto Adopt con documentación preexistente abundante (≥10 .md). Genera `docs-index.yml` + bridges + ADRs Proposed |
 | `knowledge` (capture) | `/specture:knowledge` · alias `/specture:learn` | Captura post-sesión opt-in (post-epic, post-debug, manual). Propone drafts de ADRs/índice/conventions con aprobación granular |
 | `knowledge` (audit) | `/specture:knowledge audit` · alias `/specture:audit-knowledge` | Auditoría periódica (1-3 meses) del `docs-index.yml`: detecta orphans, duplicates, stale, uncovered. Read-only |
+| `doctor` | `/specture:doctor` · `check` \| `migrate` \| `sync` | Después de actualizar el plugin, cuando `start` avisa migraciones pendientes, o para lintear el corpus (rutas rotas, ADRs duplicados, reviews sin veredicto, sello huérfano). `check` es solo lectura; `migrate` aplica las migraciones mecánicas y lleva las asistidas a Plan mode |
 
 ---
 
@@ -411,6 +420,13 @@ Output: `.specture/docs-index.yml` + bridges en `docs/0X-*/` + ADRs Proposed en 
 
 ---
 
+#### `/specture:doctor` (modos `check` | `migrate` | `sync`)
+**Diagnóstico mecánico del proyecto y migraciones de esquema.** Specture versiona el plugin; el doctor versiona el **proyecto**. `check` (solo lectura) lintea el corpus documental — rutas citadas que no existen, placeholders `...`, ADRs con número duplicado o sin `Status`, reviews sin veredicto, specs sin `AC/BR/EC` o sobre 300 líneas, citas por número de línea a documentos vivos —, revisa el estado — sello `build-locked.json` huérfano, más de un epic `[/]`, `_current/` ausente con milestones cerrados, `docs-index.yml` vs toggle, residuos de worktrees — y compara `schema_version` (`.specture/settings.yml`) con la versión del plugin para listar las migraciones pendientes por tipo. `migrate` aplica las **mecánicas** (idempotentes, verificadas, registradas en `.specture/migrations.log`), lleva las **asistidas** a Plan mode y registra las de **contenido** con su skill dueño; `sync` = mecánicas + check (para CI). Nunca commitea; nunca toca specs cerrados, reviews ni debug logs.
+
+> Úsalo después de actualizar el plugin, cuando `/specture:start` avise migraciones pendientes, o cuando sospeches referencias rotas. Catálogo de migraciones: `migrations/`; detalle: `skills/doctor/SKILL.md` y `docs/doctor-and-migrations-design.md`.
+
+---
+
 ### Agentes
 
 Los agentes de Specture son subagentes con **contexto restringido** — cada uno recibe exactamente los archivos que necesita, no la conversación completa. Esto previene drift y alucinación acumulada.
@@ -484,6 +500,8 @@ Cada proyecto que use Specture tiene una carpeta `.specture/`:
 ├── .specture/
 │   ├── stack.yml              # Stack tecnológico (fuente de verdad)
 │   ├── conventions.md         # Naming, patrones, estilo
+│   ├── settings.yml           # Del framework: schema_version, perfil, toggles (lo escribe setup, lo migra doctor)
+│   ├── migrations.log         # Registro append-only de migraciones aplicadas / diferidas
 │   └── decisions/             # ADRs versionados, nunca borrados
 └── docs/
     ├── 01-requirements/
@@ -496,6 +514,27 @@ Cada proyecto que use Specture tiene una carpeta `.specture/`:
 ```
 
 `stack.yml` es **leído por todos los skills y agentes** antes de generar nada. Cambia el stack → cambian las decisiones, sin tocar el framework.
+
+`settings.yml` (desde v1.15.0) es el único archivo **del framework** dentro de `.specture/`: `schema_version` (la versión del esquema de proyecto que el plugin espera), `profile` (`lean | full | custom`) y los toggles (`hooks.enabled`, `context7.enabled`, `docs_index.*`, `knowledge.enabled`). Lo escribe `/specture:setup`; cuando actualizás el plugin, `/specture:start` compara `schema_version` con la versión instalada y, si hay migraciones pendientes, ofrece `/specture:doctor migrate`. Proyectos creados antes de v1.15.0 conservan los toggles en `conventions.md` §10 — se siguen leyendo hasta que el doctor los mueva.
+
+**Doctor en la CI del proyecto (opcional):** un job que clona el plugin a la versión instalada y corre el chequeo — falla en `ERROR` (rutas rotas, ADR duplicado, sello huérfano):
+
+```yaml
+# .github/workflows/specture-doctor.yml
+name: Specture doctor
+on: [push, pull_request]
+jobs:
+  doctor:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: git clone --depth 1 --branch v1.15.0 https://github.com/FerEscobarDev/Specture.git .specture-plugin
+      - run: node .specture-plugin/scripts/doctor.js check --project .
+```
+
+Pineá el tag a la versión del plugin que usás y agregá `.specture-plugin/` a tu `.gitignore` por si corrés el job localmente.
 
 ---
 
@@ -513,13 +552,15 @@ Specture v1.2.0 integra seis capacidades nativas de Claude Code para convertir l
 
 ### Cómo activar
 
-En `.specture/conventions.md` sección 10:
+En `.specture/settings.yml` (v1.15.0+; `/specture:setup` lo crea):
 
-```markdown
-- **hooks.enabled**: true            # activa el TDD Honesty Gate (PreToolUse)
-- **context7.enabled**: true         # activa Context7 en code-reviewer y modernize```
+```yaml
+profile: custom              # o lean | full, que fijan los toggles de abajo
+hooks.enabled: true          # activa el TDD Honesty Gate (PreToolUse)
+context7.enabled: true       # activa Context7 en code-reviewer y modernize
+```
 
-Sin esos toggles, los hooks shippean pero no actúan, y Context7 nunca se consulta.
+Sin esos toggles, los hooks shippean pero no actúan, y Context7 nunca se consulta. Proyectos anteriores a v1.15.0 los tienen en `conventions.md` §10 (`- **hooks.enabled**: true`); el framework los sigue leyendo ahí hasta que `/specture:doctor migrate` los mueva a `settings.yml`.
 
 > **Cambio en v1.5.0 — routing opt-in.** El antiguo hook `SessionStart` (auto-routing al abrir Claude Code) fue **deregistrado**. Ahora se entra a Specture **solo** invocando `/specture:start` (o pidiendo iniciar/continuar). `hooks.enabled` ya únicamente controla el TDD Honesty Gate.
 
