@@ -158,6 +158,9 @@ $SPECTURE_ROOT/
 │   ├── plugin.json                    # Manifiesto del plugin — Claude Code
 │   └── marketplace.json               # Marketplace — Claude Code
 ├── .github/plugin/marketplace.json    # Marketplace — Copilot CLI
+├── .github/workflows/                 # ci.yml (tests ubuntu/windows × node 22/24) · release.yml (GitHub Release desde el changelog)
+├── package.json                       # Tooling del repo (no del plugin): npm test · bump · check:release
+├── scripts/bump-version.js            # Sincroniza la versión en los 4 manifiestos; --check · --title · --notes
 ├── hooks/
 │   ├── README.md                      # Cómo funcionan, schema de build-locked.json, troubleshooting
 │   ├── pre-tool-use-tdd-gate.js       # TDD Honesty Gate (Claude Code)
@@ -210,6 +213,7 @@ $SPECTURE_ROOT/
 └── docs/
     ├── original-vision.md             # Visión y requisitos originales del framework
     ├── framework-roadmap.md           # Roadmap consolidado del framework (checklist priorizado)
+    ├── release-process.md             # Cómo se versiona y publica el plugin (4 manifiestos, CI, Release)
     └── *-design.md · *-review.md · *-report.md · guías por plataforma
 ```
 
@@ -553,6 +557,8 @@ Ver [`docs/native-integration-guide.md`](docs/native-integration-guide.md) para 
 - **Cero hardcoding tecnológico.** Cualquier mención de stack se lee de `.specture/stack.yml`.
 - **Agentes con contexto restringido.** Nunca pasarles la conversación entera ni archivos que no necesiten.
 - **Limpieza de contexto explícita entre epics.** El acumulado mata calidad.
+- **Anclas estables, no números de línea.** Código se cita `file:line` a un SHA fijo o `file::symbol`; documentos vivos (specs, ROADMAP, conventions, ADRs) solo por ID o encabezado.
+- **Release verificado.** Cuatro manifiestos con la misma versión, entrada de changelog obligatoria, CI en Ubuntu y Windows, GitHub Release generado desde el changelog — ver `docs/release-process.md`.
 
 Para crear o modificar skills, leer primero `skills/write-skill/SKILL.md`.
 
@@ -568,6 +574,18 @@ Specture está en desarrollo activo. Para decisiones arquitectónicas internas, 
 ---
 
 ## Changelog
+
+### v1.14.1 — Higiene: CI, release verificado, anclas y reglas de escritura
+
+**Motivación:** v1.14.0 se publicó con tres manifiestos desincronizados (en 1.13.0), sin entrada de changelog y con el test de contrato en rojo — nada lo verificaba. Y la revisión a escala sobre un proyecto real (`docs/psikora-scale-review.md`) mostró dos hábitos que el framework premiaba y que fabrican errores: citar documentos vivos por número de línea, y reviewers/agentes concurrentes escribiendo sobre el mismo checkout. Es la Milestone 0 de `docs/framework-roadmap.md`.
+
+**Cambios:**
+- **CI y contrato de release:** `package.json` (`npm test` = `node --test`), `scripts/bump-version.js` (escribe la versión en los cuatro manifiestos; `--check`, `--title`, `--notes`), `hooks/test/release-contract.test.js`, `.github/workflows/ci.yml` (ubuntu/windows × node 22/24) y `release.yml` (publica el GitHub Release desde el changelog). Proceso en `docs/release-process.md`. Changelog de v1.13.0 y v1.14.0 reconstruido.
+- **Política de anclas** (`code-reviewer`, `architecture-validator`, `contract-sync-audit`, `write-skill`): el código se cita `file:line` a `HEAD_SHA` o `file::symbol`; los documentos vivos solo por ID estable o encabezado, nunca `doc.md:NNN`.
+- **Reglas de escritura para reviewers y agentes concurrentes** (`build` Anti-Patterns, `code-reviewer`): sin `git add -A` ni `--amend` durante un epic; sin `git checkout` para deshacer mutaciones (snapshot previo + `git hash-object`); un solo agente escribiendo por checkout; el reviewer escribe únicamente su reporte.
+- **Limpieza:** `start` sin "Context Hygiene Rule"; `build` Step 1 solo-coordinador y Step 2.5 sin tabla; `hooks/session-start.js` eliminado; `required_test_coverage_percent` fuera del template; README con los 6 agentes y el árbol completo; `antigravity_plugin_plan.md` → `docs/`.
+
+**Backward-compat:** total. Ningún cambio en `.specture/` de los proyectos; un `stack.yml` que aún tenga `required_test_coverage_percent` no rompe nada.
 
 ### v1.14.0 — Compatibilidad híbrida Antigravity CLI
 

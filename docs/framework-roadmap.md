@@ -31,7 +31,7 @@ Estado: `[ ]` pendiente · `[/]` en curso · `[x]` hecho.
 las instrucciones del hot path no contengan texto obsoleto ni reglas que fabrican
 errores.*
 
-- [ ] **1. CI + sincronización de versiones + changelog obligatorio (G1)**
+- [x] **1. CI + sincronización de versiones + changelog obligatorio (G1)** · hecho 2026-08-28, v1.14.1 (`package.json`, `scripts/bump-version.js`, `hooks/test/release-contract.test.js`, `.github/workflows/{ci,release}.yml`, `docs/release-process.md`)
   El test `hooks/test/copilot-plugin-contract.test.js` falla en HEAD (`1.14.0 !== 1.13.0`):
   `plugin.json` = 1.14.0, `.claude-plugin/plugin.json` / `.github/plugin/marketplace.json` /
   `copilot/compatibility-matrix.json` = 1.13.0; README sin changelog v1.13/v1.14; sin
@@ -41,7 +41,7 @@ errores.*
   que exige `### v<versión actual>` en el README.
   `Fuente: gate-review G1` · `Esfuerzo: horas` · `Depende de: —`
 
-- [ ] **2. Limpieza de texto obsoleto y config muerta (G10, G11, G12)**
+- [x] **2. Limpieza de texto obsoleto y config muerta (G10, G11, G12)** · hecho 2026-08-28, `a3906c4` (`required_test_coverage_percent` eliminado, no cableado)
   `start/SKILL.md:102-104` "Context Hygiene Rule" (pre-v1.8.0, el modelo secuencial lo
   hizo automático); `build/SKILL.md` Step 1 (`:165-170`) y Step 2.5 (`:197-214`) con
   residuos de los 3 modos; `hooks/session-start.js` muerto desde v1.5.0;
@@ -50,7 +50,7 @@ errores.*
   `copilot/`, `hooks.json`; `antigravity_plugin_plan.md` suelto en la raíz → `docs/`.
   `Fuente: gate-review G10-G12` · `Esfuerzo: horas` · `Depende de: —`
 
-- [ ] **3. Política de anclas: prohibido `doc.md:NNN` hacia documentos vivos (N4)**
+- [x] **3. Política de anclas: prohibido `doc.md:NNN` hacia documentos vivos (N4)** · hecho 2026-08-28, `c05315a` (la verificación mecánica queda para el ítem 5)
   Código: `path@SHA:línea` o `path::símbolo`. Documentos vivos (ROADMAP, specs, mapping,
   ledger, conventions): **solo** ID estable (`AC-n`, `RN-nnn`, `ADR-nnn §título`,
   `operationId`, ancla de encabezado). Cambiar la instrucción "Cite file:line" de
@@ -60,7 +60,7 @@ errores.*
   documentación nueva.
   `Fuente: psikora-review N4, retrospectiva P-1` · `Esfuerzo: trivial` · `Depende de: —`
 
-- [ ] **4. Reglas de escritura para reviewers y agentes concurrentes (N9)**
+- [x] **4. Reglas de escritura para reviewers y agentes concurrentes (N9)** · hecho 2026-08-28, `d0d2d54`
   Anti-patterns nuevos en `build`: un reviewer solo escribe **su** archivo en
   `docs/07-reviews/`; nunca `git add -A` ni `--amend`; validación por mutación solo con
   snapshot previo a scratch y restauración byte a byte (`git hash-object`), nunca
