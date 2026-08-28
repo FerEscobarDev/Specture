@@ -27,4 +27,6 @@ const catalog = [
   require("./1.15-schema-version")
 ];
 
-module.exports = catalog.sort((a, b) => semver.compare(a.since, b.since) || a.id.localeCompare(b.id));
+// Stable sort by `since` only: entries that share a version keep their declared
+// order (e.g. 1.15-settings-file must run before 1.15-schema-version).
+module.exports = catalog.sort((a, b) => semver.compare(a.since, b.since));

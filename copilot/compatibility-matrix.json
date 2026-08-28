@@ -8,6 +8,7 @@
     "contract-sync-audit",
     "debug",
     "discover",
+    "doctor",
     "handoff-ingest",
     "knowledge",
     "learn",
@@ -35,7 +36,8 @@
     "tdd-honesty",
     "independent-review",
     "fresh-verification",
-    "human-approval"
+    "human-approval",
+    "schema-drift"
   ],
   "platformAdaptations": {
     "agentFiles": "copilot/agents/*.agent.md",

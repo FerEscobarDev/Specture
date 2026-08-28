@@ -24,6 +24,20 @@ function inferSchemaVersion(ctx) {
   return below.length > 0 ? below[below.length - 1] : BASELINE;
 }
 
+// Writes (or replaces) the schema_version line. Returns false when settings.yml is missing.
+function setSchemaVersion(ctx, version) {
+  const text = ctx.read(SETTINGS);
+  if (text === null) return false;
+  const eol = eolOf(text);
+  const all = lines(text);
+  const idx = all.findIndex((l) => /^schema_version\s*:/.test(l));
+  const line = `schema_version: ${version}   # Specture project schema (= plugin version at setup / last migration)`;
+  if (idx === -1) all.unshift(line);
+  else all[idx] = line;
+  ctx.write(SETTINGS, all.join(eol));
+  return true;
+}
+
 module.exports = {
   id: "1.15-schema-version",
   since: "1.15.0",
@@ -36,20 +50,14 @@ module.exports = {
     return "done";
   },
   apply(ctx) {
-    const text = ctx.read(SETTINGS);
-    if (text === null) return { notes: ["settings.yml does not exist yet — run 1.15-settings-file first"] };
     const version = inferSchemaVersion(ctx);
-    const eol = eolOf(text);
-    const all = lines(text);
-    const idx = all.findIndex((l) => /^schema_version\s*:/.test(l));
-    const line = `schema_version: ${version}   # Specture project schema (= plugin version at setup / last migration)`;
-    if (idx === -1) all.unshift(line);
-    else all[idx] = line;
-    ctx.write(SETTINGS, all.join(eol));
+    if (!setSchemaVersion(ctx, version)) return { notes: ["settings.yml does not exist yet — run 1.15-settings-file first"] };
     return { notes: [`schema_version set to ${version}`] };
   },
   verify(ctx) {
     return this.detect(ctx) === "done";
   },
-  inferSchemaVersion
+  inferSchemaVersion,
+  setSchemaVersion,
+  currentSchema
 };
