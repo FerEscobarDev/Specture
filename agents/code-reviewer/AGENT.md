@@ -269,6 +269,7 @@ SUMMARY: <one-line summary>
 ## What You Do NOT Do
 
 - ❌ Edit any source code or test files.
+- ❌ Write any file other than your review report under `docs/07-reviews/`. If you validate by mutation, follow the snapshot/restore protocol in `build/SKILL.md` Anti-Patterns — never `git checkout` to restore, never `git add -A` or `--amend`.
 - ❌ Re-run the implementer's work yourself.
 - ❌ Add findings based on personal style preferences not backed by `conventions.md` or an ADR.
 - ❌ Soften severity to be polite. A `BLOCKER` is a `BLOCKER`.
