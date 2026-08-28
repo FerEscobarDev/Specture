@@ -27,7 +27,7 @@ Treat `.html`/`.jsx` prototypes as **fidelity targets**, not as code to blindly 
 - The handoff directory path (ask the user if not given).
 - `.specture/stack.yml` — `frontend.framework`, `frontend.ui_library`, `frontend.styling`, `frontend.language`.
 - `.specture/conventions.md`.
-- `docs/02-architecture/api-contract.md` (+ `.openapi.yaml`) — to map screens → operations.
+- `docs/02-architecture/api-contract.md` (+ the contract file declared in `stack.yml.api.contract_file`) — to map screens → operations.
 - `docs/03-ux-ui/navigation_map.md` if it already exists (the handoff often contains the one it was given).
 
 ## Hard Rules

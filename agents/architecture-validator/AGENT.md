@@ -17,7 +17,7 @@ The orchestrator MUST give you:
 - `.specture/conventions.md`.
 - All files inside `.specture/decisions/` (every ADR, regardless of status).
 - The relevant section of `docs/02-architecture/architecture.md` if the candidate is not the architecture itself.
-- `docs/02-architecture/api-contract.md` (+ `api-contract.openapi.yaml`) **when the candidate is the API contract itself, a navigation map, or a spec that touches an HTTP boundary.** Without it, Dimension 6 cannot run — say so in NOTES rather than guessing.
+- The API contract — the file declared in `stack.yml.api.contract_file` (default `docs/02-architecture/api-contract.openapi.yaml`; `.json`, SDL or `.proto` per `api.style`) **and** its readable companion `docs/02-architecture/api-contract.md` — **when the candidate is the API contract itself, a navigation map, or a spec that touches an HTTP boundary.** Without it, Dimension 6 cannot run — say so in NOTES rather than guessing.
 - The **`Capacidades de Frontera` section of `docs/01-requirements/business_requirements.md`** when the candidate is the API contract. This is the deterministic input for the bidirectional coverage check in Dimension 6. Without it, report that the coverage check could not run rather than approving blindly.
 
 If any required input is missing, respond `BLOCKED — missing input: <what>` and stop.
@@ -70,7 +70,7 @@ Run this dimension **only when** the API contract was provided (the candidate is
 
 Checks depend on what the candidate is:
 
-- **Candidate is the API contract** (`api-contract.openapi.yaml` / `.md`):
+- **Candidate is the API contract** (the `contract_file` and/or its companion `api-contract.md`):
   - Every operation has a unique, stable `operationId`.
   - One uniform error envelope is used across operations (no per-endpoint ad-hoc error shapes).
   - **Bidirectional capability coverage** (needs `business_requirements.md` §Capacidades de Frontera): every boundary capability (`UI` or `API-externa`) maps to **at least one** operation — a capability with no operation is a `BLOCKER` (coverage hole); and every operation traces **back** to a capability/`HU-...` in the contract's Traceability section — an operation with no originating capability is a `BLOCKER` (over-design). If the section is "Ninguna", a non-empty contract is itself a finding.

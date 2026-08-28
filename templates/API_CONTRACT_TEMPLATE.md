@@ -1,6 +1,6 @@
 # Contrato de API: [Nombre del Proyecto]
 
-> **Fuente de verdad machine-readable:** `docs/02-architecture/api-contract.openapi.yaml`.
+> **Fuente de verdad machine-readable:** el archivo declarado en `stack.yml.api.contract_file` (por defecto `docs/02-architecture/api-contract.openapi.yaml`).
 > Este documento es la versión legible del mismo contrato. **Si discrepan, gana el `.openapi.yaml`.**
 >
 > Este contrato es la **única fuente de verdad de la interfaz backend↔frontend**. Tanto los specs de backend (que *implementan* operaciones) como el mapa de navegación y los specs de frontend (que *consumen* operaciones) referencian las operaciones por su `operationId`. Nadie reinventa URLs, métodos ni shapes fuera de aquí.
@@ -68,4 +68,4 @@
 
 ---
 
-*Mantener sincronizado con `api-contract.openapi.yaml`. Prosa de negocio en español; identificadores y nombres de operación en el idioma de `conventions.md` §8.*
+*Mantener sincronizado con el archivo de `stack.yml.api.contract_file`. Prosa de negocio en español; identificadores y nombres de operación en el idioma de `conventions.md` §8.*

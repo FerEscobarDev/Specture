@@ -30,7 +30,7 @@ If the user already has a design handoff (e.g. from Claude Design — a package 
 - `.specture/conventions.md`.
 - `docs/01-requirements/business_requirements.md` — actors and main user stories.
 - `docs/02-architecture/architecture.md` — to know the components and boundaries the UI sits behind.
-- `docs/02-architecture/api-contract.md` (+ `api-contract.openapi.yaml`) — **the source of truth for what the UI consumes.** The navigation map references operations by `operationId`; it never invents URLs or response shapes. If a screen needs data no operation exposes, that's a gap to escalate back to Phase 2 (a missing operation), not something to invent here.
+- The API contract — the file declared in `stack.yml.api.contract_file` (default `docs/02-architecture/api-contract.openapi.yaml`) + its readable companion `docs/02-architecture/api-contract.md` — **the source of truth for what the UI consumes.** The navigation map references operations by `operationId`; it never invents URLs or response shapes. If a screen needs data no operation exposes, that's a gap to escalate back to Phase 2 (a missing operation), not something to invent here.
 
 ## Hard Rules
 

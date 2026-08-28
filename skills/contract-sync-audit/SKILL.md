@@ -17,14 +17,14 @@ You are an **integration auditor**. The project already has both a backend and a
 
 - `.specture/stack.yml` — `backend.framework`, `frontend.framework`, languages. Drives how routes/calls are extracted.
 - `.specture/conventions.md`.
-- `docs/02-architecture/api-contract.openapi.yaml` (+ `.md`) **if it exists** — the natural canonical source.
+- The contract file declared in `stack.yml.api.contract_file` (default `docs/02-architecture/api-contract.openapi.yaml`; `.json`, SDL or `.proto` per `api.style`) + its companion `docs/02-architecture/api-contract.md`, **if they exist** — the natural canonical source.
 - Read access to the backend route definitions and the frontend API-calling code.
 
 ## Step 0 — Choose the canonical source
 
 Before diffing, decide what "correct" means:
 
-1. **An existing `api-contract.openapi.yaml`** → it is canonical. Both sides are audited against it.
+1. **An existing contract file (`stack.yml.api.contract_file`)** → it is canonical. Both sides are audited against it.
 2. **No contract, backend is authoritative** (common when the backend is stable and the frontend drifted) → extract a contract from the backend; the frontend is audited against it.
 3. **No contract, frontend is authoritative** (the UI defines the desired interface) → the backend is audited against the frontend's expectations.
 4. **No contract, neither is fully right** → produce a *proposed reconciled* contract and audit both sides against it.
@@ -78,7 +78,7 @@ Write `docs/02-architecture/contract-sync-report.md`:
 - **Audited commit** (`git rev-parse HEAD`) — every `file:line` below is read at that SHA.
 - A table of findings: category, frontend evidence (`file:line @<sha>`), backend evidence (`file:line @<sha>`), and the **proposed change** stated against the canonical source ("change the frontend call to `GET /api/v1/...`" or "add backend endpoint `...` returning `...`").
 - A **coverage summary**: N endpoints, N matched, N mismatched, N orphan, N unresolved.
-- If no contract existed, attach a **proposed `api-contract.openapi.yaml`** (from `$SPECTURE_ROOT/templates/api-contract.openapi.template.yaml`) reflecting the canonical interface, so the project gains the source of truth it was missing.
+- If no contract existed, attach a **proposed contract file** at the path `stack.yml.api.contract_file` declares (default `api-contract.openapi.yaml`, from `$SPECTURE_ROOT/templates/api-contract.openapi.template.yaml`) reflecting the canonical interface, so the project gains the source of truth it was missing.
 
 ## Step 5 — Route the fixes (do NOT auto-apply)
 
@@ -91,7 +91,7 @@ This skill reports; it does not edit application code. Based on the findings:
 ## Step 6 — Hand-off
 
 Announce in Spanish:
-> "Auditoría de sincronización lista en `docs/02-architecture/contract-sync-report.md`. Fuente canónica: **[contrato existente / backend / frontend / contrato reconciliado propuesto]**. Resumen: [N matched, N mismatched, N orphan, N unresolved]. [Si generé contrato: 'Dejé un `api-contract.openapi.yaml` propuesto como nueva fuente de verdad.'] Los cambios propuestos NO se aplicaron — cada uno necesita su spec. ¿Quieres que enrute los arreglos a `build`/`new-feature`, o revisas el reporte primero?"
+> "Auditoría de sincronización lista en `docs/02-architecture/contract-sync-report.md`. Fuente canónica: **[contrato existente / backend / frontend / contrato reconciliado propuesto]**. Resumen: [N matched, N mismatched, N orphan, N unresolved]. [Si generé contrato: 'Dejé un contrato propuesto en la ruta de `stack.yml.api.contract_file` como nueva fuente de verdad.'] Los cambios propuestos NO se aplicaron — cada uno necesita su spec. ¿Quieres que enrute los arreglos a `build`/`new-feature`, o revisas el reporte primero?"
 
 Wait for the user. Do not auto-apply changes.
 

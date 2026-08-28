@@ -172,7 +172,7 @@ When the locked epic is the design-system foundation:
 For each page/screen epic (after the design-system gate passed):
 
 - **Dispatch `ux-implementer`**, not the generic `implementer`.
-- The UI consumes the backend strictly through the **typed API client generated from `api-contract.openapi.yaml`** — never hand-written URLs. The spec declares which `operationId`s the page consumes (Step 2).
+- The UI consumes the backend strictly through the **typed API client generated from the contract file (`stack.yml.api.contract_file`)** — never hand-written URLs. The spec declares which `operationId`s the page consumes (Step 2).
 - Tests (RED) cover the page's logic and contract binding: it calls the right operations, handles loading/empty/error states, enforces role-based visibility, and meets a11y assertions the framework can check. They do **not** assert pixel aesthetics.
 - The code-reviewer runs its frontend dimension (token adherence, a11y, contract adherence, brand-rule fidelity).
 - A lightweight visual check (screenshot via Playwright if available) is encouraged per page but the binding gate was the design-system approval; per-page screenshots are for catching regressions, surfaced to the user when notable.

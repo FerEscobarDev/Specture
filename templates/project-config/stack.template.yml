@@ -38,7 +38,9 @@ frontend:
 # --- API Contract (the single source of truth for the backend↔frontend interface)
 api:
   style: "[e.g. rest | graphql | grpc | none]"   # rest → OpenAPI; graphql → SDL; grpc → .proto
-  contract_file: "docs/02-architecture/api-contract.openapi.yaml"   # machine-readable source of truth (REST default)
+  contract_file: "docs/02-architecture/api-contract.openapi.yaml"   # machine-readable source of truth (REST default; .json / SDL / .proto per style)
+  # Every skill and agent reads the contract path from here — never from a hardcoded name.
+  # The readable companion is ALWAYS docs/02-architecture/api-contract.md (fixed name).
 
 # --- Architecture Pattern --------------------------------------------------
 architecture:

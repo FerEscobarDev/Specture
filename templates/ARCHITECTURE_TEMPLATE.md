@@ -35,7 +35,7 @@
 |--------|---------|-----------|--------------------|-------|
 | [Componente A] | [Componente B] | [HTTP / función / evento de dominio] | [sync/async] | [Reglas de retry, idempotencia, etc.] |
 
-> **Detalle a nivel de endpoint:** esta tabla describe la comunicación a nivel **componente**. El contrato endpoint-por-endpoint (paths, métodos, request/response/error, `operationId`) vive en `docs/02-architecture/api-contract.openapi.yaml` (+ `api-contract.md`), que es la fuente de verdad de la interfaz backend↔frontend. No dupliques endpoints aquí.
+> **Detalle a nivel de endpoint:** esta tabla describe la comunicación a nivel **componente**. El contrato endpoint-por-endpoint (paths, métodos, request/response/error, `operationId`) vive en el archivo declarado en `stack.yml.api.contract_file` (por defecto `docs/02-architecture/api-contract.openapi.yaml`) + su compañero legible `api-contract.md`, que es la fuente de verdad de la interfaz backend↔frontend. No dupliques endpoints aquí.
 
 ## 4. Modelo de Datos Inicial
 
