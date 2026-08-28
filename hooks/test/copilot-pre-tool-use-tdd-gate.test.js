@@ -79,6 +79,22 @@ test("allows a non-test file during a sealed build", () => {
   assert.equal(result.stdout, "");
 });
 
+test("denies under the v2 multi-spec schema and fails open on a stale seal", () => {
+  const projectRoot = createProject({
+    state: { epic: "accounts", specs: [{ slug: "02-api", red_sha: "bbb222", test_paths: ["tests/api/**/*.test.js"] }] }
+  });
+  fs.mkdirSync(path.join(projectRoot, "docs", "04-roadmap"), { recursive: true });
+  fs.writeFileSync(path.join(projectRoot, "docs", "04-roadmap", "ROADMAP.md"), "- [/] **Epic 1.1:** accounts\n");
+  const denied = runHook(projectRoot, path.join(projectRoot, "tests", "api", "x.test.js"));
+  assert.match(JSON.parse(denied.stdout).permissionDecisionReason, /spec 02-api.*bbb222/);
+
+  fs.writeFileSync(path.join(projectRoot, "docs", "04-roadmap", "ROADMAP.md"), "- [x] **Epic 1.1:** accounts\n");
+  const stale = runHook(projectRoot, path.join(projectRoot, "tests", "api", "x.test.js"));
+  assert.equal(stale.status, 0);
+  assert.equal(stale.stdout, "", "allowed");
+  assert.match(stale.stderr, /stale seal/);
+});
+
 test("fails open when hooks are disabled or state is corrupt", () => {
   const disabledProject = createProject({
     enabled: false,

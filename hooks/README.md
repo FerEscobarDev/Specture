@@ -40,23 +40,32 @@ Proyectos creados antes de v1.15.0 pueden tener el toggle en `.specture/conventi
 
 ## Schema: `.specture/state/build-locked.json`
 
+**v2 (v1.15.0+) — una entrada por spec del epic:**
+
 ```json
 {
   "epic": "<epic-slug>",
-  "red_sha": "<SHA del RED commit>",
-  "test_paths": ["**/*.test.ts", "tests/**/*.py"],
-  "locked_at": "2026-05-14T18:32:00Z"
+  "sealed_at": "2026-08-28T18:32:00Z",
+  "specs": [
+    { "slug": "01-model", "red_sha": "<SHA del RED commit>", "test_paths": ["tests/model/**/*.test.ts"] },
+    { "slug": "02-api",   "red_sha": "<SHA del RED commit>", "test_paths": ["tests/api/**/*.test.ts"] }
+  ]
 }
 ```
 
 | Campo | Tipo | Significado |
 |-------|------|-------------|
 | `epic` | string | Slug del epic activo (se usa en el mensaje de rechazo del hook). |
-| `red_sha` | string | SHA del commit donde `tdd-test-writer` selló los tests. Solo informativo aquí; el orchestrator lo usa para el `git diff` de defense-in-depth. |
-| `test_paths` | string[] | Lista de globs (formato de `conventions.md` testing) que el hook intentará matchear contra cada `file_path` editado. |
-| `locked_at` | string (ISO-8601) | Timestamp del momento del sellado. Útil para auditar. |
+| `sealed_at` | string (ISO-8601) | Momento del primer sellado. |
+| `specs[].slug` | string | Slug del spec (`<task-slug>`). |
+| `specs[].red_sha` | string | SHA del commit donde `tdd-test-writer` selló los tests de **ese** spec. El orchestrator lo usa para el `git diff` de defense-in-depth. |
+| `specs[].test_paths` | string[] | Globs (formato de `conventions.md` testing) que el hook matchea contra cada `file_path` editado. |
 
-**Lifecycle**: `skills/build/SKILL.md` escribe el archivo en Step 4 (después del RED commit), y lo borra en Step 8 (después de marcar el epic `[x]`). Si querés desbloquear edits de tests legítimamente durante un epic en curso, borrá el archivo a mano y aceptá que el TDD contract se rompió — el `git diff` del Step 5.5 va a detectarlo igual.
+**v1 (legacy, sigue aceptado):** `{ "epic", "red_sha", "test_paths": [...], "locked_at" }`. Los hooks leen la **unión** de `test_paths` (v1) y `specs[].test_paths` (v2); no hace falta migrar un sello en curso (el archivo es transitorio y gitignoreado). La lógica compartida vive en `lib/seal.js`.
+
+**Lifecycle**: `skills/build/SKILL.md` **agrega** la entrada del spec en Step 4 (después de cada RED commit). Lo borra el **coordinador** al procesar el `DONE` del epic (queue loop 5.4) — y también el epic-agent en Step 8, por si acaso; ninguno confía en el otro. Si querés desbloquear edits de tests legítimamente durante un epic en curso, borrá el archivo a mano y aceptá que el TDD contract se rompió — el `git diff` del Step 5.5 va a detectarlo igual.
+
+**Sello huérfano**: si `docs/04-roadmap/ROADMAP.md` existe y **ningún** epic está `[/]`, el sello sobrevivió a su epic. Los hooks entonces **permiten** la edición (Claude Code: `permissionDecision: "allow"` con la razón; Copilot/Antigravity: razón por stderr) — un archivo olvidado nunca bloquea trabajo ajeno — y `/specture:doctor check` lo reporta como ERROR (`seal-stale`).
 
 ---
 

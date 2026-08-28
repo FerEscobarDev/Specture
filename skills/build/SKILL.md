@@ -126,7 +126,7 @@ If DONE: update ROADMAP.md to [x] for this epic and commit BEFORE reporting.
 
 ### Coordinator processes the report
 
-- **DONE** → verify the epic is `[x]` in `ROADMAP.md` and the commit landed (don't trust the report — `git log`/read the checkbox). Mark that epic's task `completed`. Continue with the next queued epic.
+- **DONE** → verify the epic is `[x]` in `ROADMAP.md` and the commit landed (don't trust the report — `git log`/read the checkbox). **Release the seal yourself**: delete `.specture/state/build-locked.json` if it still exists and confirm it is gone — do not rely on the epic-agent's Step 8 (a leftover seal blocks the next epic's tests; the hook only fails open on it once no epic is `[/]`). Mark that epic's task `completed`. Continue with the next queued epic.
 - **BLOCKED** / **REJECTED_MAJOR** → escalate to the user with the report summary before continuing. Do not auto-retry.
 - **BLOCKED: insufficient context** → the epic is too large for one agent. Escalate to the user to consider splitting it before re-dispatching.
 
@@ -334,16 +334,17 @@ Dispatch the `tdd-test-writer` agent (`agents/tdd-test-writer/AGENT.md`).
    The commit MUST contain only test files (paths matching `conventions.md` test globs). If the commit touches any production code, abort — re-dispatch `tdd-test-writer` with a clear instruction to commit tests in isolation.
 3. **Capture `RED_SHA`** for use in Step 5.5 and Step 6. This is now the immutable reference point for the test contract.
 4. **Capture the test path globs** from `conventions.md` (e.g. `**/*.test.ts`, `tests/**/*.py`). Both Step 5.5 and the code-reviewer need them.
-5. **Seal the test contract via state file** (enables the TDD Honesty Gate hook). Write `.specture/state/build-locked.json`:
+5. **Seal the test contract via state file** (enables the TDD Honesty Gate hook). **Append this spec's entry** to `.specture/state/build-locked.json` — create the file on the epic's first spec, keep the entries of earlier specs, never overwrite a sibling's `red_sha`:
    ```json
    {
      "epic": "<epic-slug>",
-     "red_sha": "<RED_SHA>",
-     "test_paths": ["<glob1>", "<glob2>"],
-     "locked_at": "<ISO-8601 timestamp>"
+     "sealed_at": "<ISO-8601 of the first seal>",
+     "specs": [
+       { "slug": "<task-slug>", "red_sha": "<RED_SHA>", "test_paths": ["<glob1>", "<glob2>"] }
+     ]
    }
    ```
-   If the user opted in to hooks (`hooks.enabled: true` in `.specture/settings.yml` — or in `conventions.md` §10 for projects not yet migrated), `hooks/pre-tool-use-tdd-gate.js` will use this file to deny any Edit/Write that targets a sealed test path until the epic is marked complete. The orchestrator-side `git diff` check in Step 5.5 still runs as defense-in-depth.
+   (Schema in `hooks/README.md`; the legacy single-`red_sha` form is still read.) If the user opted in to hooks (`hooks.enabled: true` in `.specture/settings.yml` — or in `conventions.md` §10 for projects not yet migrated), `hooks/pre-tool-use-tdd-gate.js` will use this file to deny any Edit/Write that targets a sealed test path until the coordinator releases the seal. The orchestrator-side `git diff` check in Step 5.5 still runs as defense-in-depth.
 
 If any post-check fails, do NOT proceed to Step 5.
 
@@ -442,7 +443,7 @@ After all specs in the epic are APPROVED + verified:
 
 - Update `ROADMAP.md`: change the epic from `[/]` to `[x]`.
 - Commit the ROADMAP update.
-- **Release the test contract**: delete `.specture/state/build-locked.json` if it exists. Without this, the next epic's edits to its own files could be blocked by stale test globs.
+- **Release the test contract**: delete `.specture/state/build-locked.json` if it exists. Without this, the next epic's edits to its own files could be blocked by stale test globs. (The coordinator deletes it again when it processes your `DONE` — belt and braces; neither side trusts the other.)
 
 ## Step 8.5 — Capture Learnings (opt-in)
 
