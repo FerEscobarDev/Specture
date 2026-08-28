@@ -1,0 +1,14 @@
+{
+  "name": "specture",
+  "private": true,
+  "description": "Tooling for the Specture plugin repository: tests, version sync and release checks. The plugin version lives in the manifests (see scripts/bump-version.js), not here.",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "test": "node --test",
+    "bump": "node scripts/bump-version.js",
+    "check:release": "node scripts/bump-version.js --check"
+  }
+}
