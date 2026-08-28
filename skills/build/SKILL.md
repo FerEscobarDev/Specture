@@ -164,10 +164,7 @@ For each page/screen epic (after the design-system gate passed):
 
 ## Step 1 — Pick & Lock the Epic
 
-- Read `ROADMAP.md`.
-- Find the first epic with state `[ ]` whose dependencies are all `[x]`. (Don't break dependency order.)
-- If multiple epics with state `[/]` exist, that's a stale state — ask the user which one to continue.
-- Update the chosen epic to `[/]`. Commit `ROADMAP.md`.
+Done by the **coordinator** in the queue loop (5.1): when an epic-agent starts, its epic is already `[/]` and committed. Epic-agents never run this step. If more than one epic is `[/]`, that is a stale state — the coordinator asks the user which one to continue before dispatching anything.
 
 ## Step 2 — Generate Spec(s)
 
@@ -198,18 +195,7 @@ Before passing the spec to the validator, check against the `SPEC_TEMPLATE.md` s
 
 After the specs for the epic are generated (Step 2), create one `TaskCreate` per spec so the user has live visibility into the loop. Subject format: `<epic-slug> / <task-slug>` with a brief description summarizing what the spec implements. Start each task as `pending`.
 
-The lifecycle of each task mirrors the orchestrator's progress through the remaining steps for that spec:
-
-| Internal step | Task status / `activeForm` |
-|---------------|----------------------------|
-| Step 3 — architecture-validator dispatch | `in_progress` — "validating architecture" |
-| Step 4 — tdd-test-writer dispatch | `in_progress` — "writing tests (RED)" |
-| Step 5 — implementer dispatch | `in_progress` — "implementing (GREEN)" |
-| Step 5.5 — TDD Honesty Gate | `in_progress` — "verifying TDD honesty" |
-| Step 6 — code-reviewer dispatch | `in_progress` — "code review" |
-| Step 7 — verify (fresh test run + lint) | `in_progress` — "running verification" |
-| Step 8 — epic marked [x] | `completed` |
-| Any `REJECTED_MAJOR` / `BLOCKED` | `in_progress` with an `activeForm` that surfaces the blocker (e.g. "blocked: spec ambiguity") |
+Advance each task's `activeForm` as the spec moves through Steps 3-8: `validating architecture` → `writing tests (RED)` → `implementing (GREEN)` → `verifying TDD honesty` → `code review` → `running verification` → `completed`. On `REJECTED_MAJOR` / `BLOCKED` keep the task `in_progress` with an `activeForm` that names the blocker (e.g. "blocked: spec ambiguity"). Full step↔state mapping: `docs/native-integration-guide.md` §4.1.
 
 **Rule of authority**: `ROADMAP.md` is the source of truth across conversations. TaskCreate is **intra-conversation visibility only** — when the user closes the session, the tasks disappear. If ROADMAP and TaskCreate diverge for any reason, ROADMAP wins. Never mark an epic `[x]` in ROADMAP based on TaskCreate state; mark tasks completed only after the ROADMAP update lands.
 

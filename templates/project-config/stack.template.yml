@@ -74,7 +74,6 @@ quality:
   linter: "[e.g. eslint | ruff | dotnet-format | golangci-lint | none]"
   formatter: "[e.g. prettier | black | dotnet-format | gofmt | none]"
   type_checker: "[e.g. tsc | mypy | none]"
-  required_test_coverage_percent: 0  # 0 = not enforced
 
 # --- Conventions Pointer ---------------------------------------------------
 conventions_file: ".specture/conventions.md"

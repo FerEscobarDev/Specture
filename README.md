@@ -151,9 +151,23 @@ Para más detalles sobre la integración de hooks y TDD Honesty Gate en Antigrav
 ```
 $SPECTURE_ROOT/
 ├── CLAUDE.md                          # Punto de entrada (modo @import manual)
-├── settings.json                      # Registra el TDD Honesty Gate (PreToolUse)
+├── settings.json                      # Registra el TDD Honesty Gate (PreToolUse) — Claude Code
+├── hooks.json                         # Registro de hooks — Copilot CLI / Antigravity CLI
+├── plugin.json                        # Manifiesto del plugin — Copilot CLI / Antigravity CLI
 ├── .claude-plugin/
-│   └── plugin.json                    # Manifiesto del plugin
+│   ├── plugin.json                    # Manifiesto del plugin — Claude Code
+│   └── marketplace.json               # Marketplace — Claude Code
+├── .github/plugin/marketplace.json    # Marketplace — Copilot CLI
+├── hooks/
+│   ├── README.md                      # Cómo funcionan, schema de build-locked.json, troubleshooting
+│   ├── pre-tool-use-tdd-gate.js       # TDD Honesty Gate (Claude Code)
+│   ├── specture-pre-tool-use-tdd-gate.js  # TDD Honesty Gate (Copilot / Antigravity; hooks.json)
+│   ├── copilot-pre-tool-use-tdd-gate.js   # Shim de compatibilidad → specture-pre-tool-use-tdd-gate.js
+│   ├── lib/specture-guard.js          # Guard compartido (opt-in por hooks.enabled)
+│   └── test/                          # Tests de contrato del plugin y del hook
+├── copilot/
+│   ├── agents/*.agent.md              # Espejos de los agentes para Copilot CLI
+│   └── compatibility-matrix.json      # Paridad skills/agentes/gates por plataforma
 ├── skills/
 │   ├── start/SKILL.md                 # Router: detecta el estado y enruta
 │   ├── setup/SKILL.md                 # Setup en 3 modos (bootstrap/adopt/reconfigure)
@@ -194,7 +208,9 @@ $SPECTURE_ROOT/
 │   ├── DEBUG_LOG_TEMPLATE.md
 │   └── LEARN_OUTPUT_TEMPLATE.md       # Reporte humano-legible de knowledge capture (opt-in, a pedido)
 └── docs/
-    └── original-vision.md             # Visión y requisitos originales del framework
+    ├── original-vision.md             # Visión y requisitos originales del framework
+    ├── framework-roadmap.md           # Roadmap consolidado del framework (checklist priorizado)
+    └── *-design.md · *-review.md · *-report.md · guías por plataforma
 ```
 
 ---
@@ -226,12 +242,13 @@ $SPECTURE_ROOT/
 
 ---
 
-## Los 5 Agentes
+## Los 6 Agentes
 
-Specture **no** especializa por capa técnica arbitraria (no hay un "Agente Backend" vs "Agente Frontend" partido por dónde vive el archivo — eso es falsa especialización). Especializa por **función cognitiva** con contexto restringido. `implementer` y `ux-implementer` no son "backend vs frontend por capa": son dos funciones cognitivas distintas — *hacer pasar tests de lógica* vs *renderizar con fidelidad al design system, accesibilidad y cliente tipado*. La calidad visual y la adherencia a tokens son una lente cognitiva que el implementer genérico (optimizado para TDD de lógica) no tiene.
+Specture **no** especializa por capa técnica arbitraria (no hay un "Agente Backend" vs "Agente Frontend" partido por dónde vive el archivo — eso es falsa especialización). Especializa por **función cognitiva** con contexto restringido. `implementer` y `ux-implementer` no son "backend vs frontend por capa": son dos funciones cognitivas distintas — *hacer pasar tests de lógica* vs *renderizar con fidelidad al design system, accesibilidad y cliente tipado*. La calidad visual y la adherencia a tokens son una lente cognitiva que el implementer genérico (optimizado para TDD de lógica) no tiene. El sexto, `specture-router`, no construye nada: solo detecta la fase (opt-in, vía `/specture:start`).
 
 | Agente | Función | Contexto que recibe | Contexto que NO recibe |
 |--------|---------|---------------------|-------------------------|
+| `specture-router` | Detectar la fase del proyecto y enrutar (opt-in) | Existencia de archivos clave + checkboxes del ROADMAP | Contenido de los documentos, historial de chat |
 | `architecture-validator` | Validar que plan/spec/**contrato** respeta stack, ADRs y el contrato de API | Documento + `.specture/` (+ contrato si aplica) | Código de implementación |
 | `tdd-test-writer` | Escribir tests desde el spec | Spec + business rules + testing framework | Código de implementación (anti-bias crítico) |
 | `implementer` | Hacer que los tests pasen (lógica/backend) | Spec + tests + archivos a tocar | Conversación entera, archivos no relevantes |

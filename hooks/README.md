@@ -20,20 +20,12 @@ Sin esa línea (o con `false`), cada hook llama a `lib/specture-guard.js`, recib
 
 ## Hooks incluidos
 
-### `session-start.js` — DEREGISTRADO (legacy, no se invoca)
+### `session-start.js` — eliminado en v1.14.1
 
-> **Desde v1.5.0 este hook ya NO está registrado en `settings.json`.** El routing
-> dejó de ser automático: ahora se entra a Specture **solo** invocando
-> explícitamente `/specture:start` (o pidiendo iniciar/continuar). El script se
-> conserva dormido por reversibilidad histórica, pero Claude Code nunca lo
-> ejecuta. No lo registres de nuevo salvo que quieras restaurar el auto-routing.
-
-| | |
-|---|---|
-| Evento | `SessionStart` (sin registrar) |
-| Estado | Inactivo — no figura en `settings.json` |
-| Acción histórica | Inyectaba un `additionalContext` recordando invocar `skills/start/SKILL.md` al inicio de cada sesión Specture. |
-| Reemplazado por | Invocación explícita de `/specture:start` por parte del usuario. |
+> Deregistrado desde v1.5.0 (el routing es opt-in: se entra con `/specture:start`) y
+> **eliminado del repo en v1.14.1**. No hay ningún hook `SessionStart` registrado. Si
+> alguna vez querés restaurar el auto-routing, el script histórico está en git
+> (`git show v1.14.0:hooks/session-start.js`).
 
 ### `pre-tool-use-tdd-gate.js`
 
@@ -114,5 +106,5 @@ Si querés agregar tu propio hook siguiendo el patrón:
 | El hook nunca se dispara aunque `hooks.enabled: true` | El plugin no está instalado, o `${CLAUDE_PLUGIN_ROOT}` no resuelve. Verificá `claude /plugin list`. |
 | El TDD Gate no bloquea aunque estoy en build loop | `.specture/state/build-locked.json` no existe o sus `test_paths` no matchean. Comprobá con `cat .specture/state/build-locked.json`. |
 | El TDD Gate bloquea archivos que no son tests | Algún glob en `test_paths` es demasiado amplio. Revisá la línea de testing en `conventions.md`. |
-| SessionStart muestra el mensaje en proyectos no-Specture | `.specture/` heredado de un proyecto padre. `findProjectRoot` sube en el árbol; chequeá. |
+| El TDD Gate actúa en un proyecto que no es Specture | `.specture/` heredado de un directorio padre. `findProjectRoot` sube en el árbol; chequeá. |
 | `hooks.enabled: true` pero `specture-guard` devuelve inactivo | El regex matchea con `**hooks.enabled**:` literal — confirmá formato exacto en conventions.md sección 10. |

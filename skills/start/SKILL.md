@@ -99,10 +99,6 @@ If you find yourself thinking any of the following, you are violating Specture d
 | "El test falló, voy a cambiar el test para que pase" | Iron Law: zero fixes without root cause. Invoke `debug/SKILL.md`. |
 | "Sé qué fase tocaría aunque no haya verificado los archivos" | Trust the filesystem, not your memory. Run the routing algorithm. |
 
-## Context Hygiene Rule
-
-When transitioning between phases (especially between specs in iterative-build), you MUST mentally reset. If your interface allows clearing chat history, do it. If not, force yourself to ignore prior conversation and treat the next spec/file as the only valid context. Do NOT pull information from memory of earlier work unless it is explicitly referenced in the current spec.
-
 ## After You Route
 
 Announce to the user (in Spanish, since the user-facing language is Spanish):
