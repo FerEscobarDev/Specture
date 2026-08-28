@@ -71,6 +71,7 @@ If `REJECTED`, fix the architecture document and re-dispatch. Do NOT proceed to 
 ### Rules
 
 - **The `Capacidades de Frontera` section of `business_requirements.md` is the deterministic input.** Every capability listed there (the user stories marked `UI` or `API-externa` in discovery) must become **at least one** operation in the contract. This is the forward derivation; do not invent operations that trace to no capability, and do not drop a boundary capability.
+  - **If the section does not exist** (requirements discovered before v1.6.0): print *⚠ Specture: `Capacidades de Frontera` no inicializadas — corré `/specture:doctor`* and derive the section **with the user** before writing the contract (migration `1.6-boundary-capabilities`, assisted). Never derive operations from prose alone — that is how a contract ends up describing 0 % of the real surface.
 - **One stable identifier per operation.** Every operation gets an `operationId` that never changes once an epic consumes it. Renaming it later is a breaking change requiring an ADR.
 - **No shapes invented downstream.** The request/response/error shapes live here as `components/schemas`. Specs (backend and frontend) and the navigation map *reference* `operationId`s — they never redefine a shape.
 - **One error envelope** for the whole contract.

@@ -25,6 +25,21 @@ This skill **fuses** what was previously split into "planificación", "ejecució
 - `docs/02-architecture/architecture.md` — boundaries.
 - `docs/04-roadmap/ROADMAP.md` — what to build next.
 
+## Preconditions (what degrades when an artifact is missing)
+
+| Artifact | If missing |
+|---|---|
+| `docs/05-specs/_current/` (once ≥ 1 milestone is closed) | Current-State Resolution passes `[]` — validator and reviewer never see the component's current behaviour; Step 8.7 has nothing to merge into. |
+| `.specture/docs-index.yml` with `docs_index.enabled` | Docs Index Resolution passes `[]`. |
+| The contract file (`stack.yml.api.contract_file`) + its readable companion `docs/02-architecture/api-contract.md` | Validator Dimension 6 cannot run; frontend epics cannot slice the contract. |
+| `.specture/settings.yml` | Toggles are read from the legacy `conventions.md` §10; if absent there too, defaults apply (hooks off, knowledge off). |
+
+**Zero silent fallbacks.** Every resolver below keeps its fallback behaviour, but the **first** time in a session it returns empty because the artifact is missing, print one line and continue:
+
+> ⚠ Specture: `<artefacto>` no inicializado — corré `/specture:doctor`
+
+`/specture:doctor check` reports all of these mechanically; `migrate` initialises what can be initialised.
+
 ## Cross-Platform Subagent Initialization (Mandatory)
 
 Before proceeding, you must ensure specialized agents are registered in your environment. Check your available tools:
@@ -228,7 +243,7 @@ When `.specture/docs-index.yml` exists, the orchestrator MUST resolve relevant e
 
 ### Resolution algorithm
 
-1. **Check existence**: if `.specture/docs-index.yml` does not exist, the resolved list is **empty**. Continue without docs-index input. Do NOT block dispatch.
+1. **Check existence**: if `.specture/docs-index.yml` does not exist, the resolved list is **empty**. Continue without docs-index input. Do NOT block dispatch. (No notice needed: the index is optional — only Adopt projects with external docs have one.)
 
 2. **Check toggle**: if `docs_index.enabled` is `false` in `.specture/settings.yml` (or in `conventions.md` §10 for projects not yet migrated), resolved list is empty. Continue without input.
 
@@ -266,7 +281,7 @@ When `docs/05-specs/_current/` exists, the orchestrator resolves the living-beha
 
 ### Resolution algorithm
 
-1. **Check existence**: if `docs/05-specs/_current/` does not exist (no milestone has reconciled yet), the resolved list is **empty**. Continue; do NOT block dispatch.
+1. **Check existence**: if `docs/05-specs/_current/` does not exist (no milestone has reconciled yet), the resolved list is **empty**. Continue; do NOT block dispatch. If the ROADMAP already has closed milestones, this is a missing initialisation, not a young project — print once: *⚠ Specture: `docs/05-specs/_current/` no inicializado — corré `/specture:doctor`* (migration `1.9-current-state-init`).
 2. **Identify component(s)**: from the spec header's `Módulo` ref and the epic's "Componentes de arquitectura involucrados" — these are the `<component-slug>`s.
 3. **Resolve files**: for each component, read `docs/05-specs/_current/<component-slug>.md` if it exists. A missing file means that component has no reconciled behavior yet — skip it, not an error.
 4. **Cap**: pass only the files for the components the spec actually touches (usually 1-2), never the whole `_current/` directory.
@@ -464,7 +479,7 @@ Run by the **coordinator** (not the epic-agent), only when the epic just marked 
    - Read the existing `_current/<component>.md` (if any) plus the milestone's specs that touch the component.
    - Merge: add the new BR/AC/EC + contract behavior; move any behavior this milestone supersedes (same `operationId` or same rule subject) down to "Historial / supersesiones"; refresh "Specs de origen" and "Última reconciliación".
    - If a supersession overlap is ambiguous, do a **full rebuild** of that component (re-read every spec listed in "Specs de origen" + the new ones).
-   - Create `docs/05-specs/_current/` lazily if absent. It is **tracked truth — never gitignored**.
+   - Create `docs/05-specs/_current/` lazily if absent. It is **tracked truth — never gitignored**. If other milestones were already closed **before** `_current/` existed, reconcile only this milestone's components and print once: *⚠ Specture: `_current/` no cubre los milestones cerrados antes — corré `/specture:doctor`* (the backfill is a content migration owned by `knowledge reconcile`; never consolidate every past spec here).
 4. **Deferred ROADMAP collapse**: collapse to a tombstone any **closed** milestone that is no longer among the **~2 most-recent closed** milestones (fixed threshold, no toggle). Tombstone format + archived-dependency resolution: see `templates/ROADMAP_TEMPLATE.md`.
 5. **Commit**: `docs: reconcile <component(s)> + archive milestone <N>`.
 

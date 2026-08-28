@@ -59,7 +59,7 @@ Read `docs/05-specs/_current/<component>.md` for each component the feature touc
 - Does it conflict with a current acceptance criterion (AC) or the consolidated contract behavior?
 - Does it touch the same operations the component already implements?
 
-Cross-reference entities mentioned in the feature against the vigente behavior in `_current/`. List the affected components and the specific BR/AC explicitly. If `_current/` does not exist yet (no milestone has reconciled), fall back to scanning `docs/05-specs/<epic>/` directly.
+Cross-reference entities mentioned in the feature against the vigente behavior in `_current/`. List the affected components and the specific BR/AC explicitly. If `_current/` does not exist yet (no milestone has reconciled), fall back to scanning `docs/05-specs/<epic>/` directly — and, when the ROADMAP already has closed milestones, print once: *⚠ Specture: `docs/05-specs/_current/` no inicializado — el impacto se deriva de specs históricos; corré `/specture:doctor`*. The fallback re-derives truth from history on every feature; the living-behaviour file is the fix, not more analysis.
 
 ### ADR impact
 

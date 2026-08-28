@@ -19,6 +19,15 @@ Run these checks **in order**. Stop at the first match and invoke the indicated 
 
 > **Cost rule (mandatory):** routing is a filesystem state machine, not a comprehension task. **Never read full file contents for routing.** Use existence checks for Steps 1-3; read only the single `frontend.framework` field for Step 4; read only the epic checkbox lines for Step 5. For Step 2's docs-index fallback, grep for `tags:.*requirements` lines only — do NOT load the full index. Opening `stack.yml`, `business_requirements.md`, or `docs-index.yml` in full here is wasted context.
 
+### Step 0 — Schema drift (one script call, read-only)
+
+Run `node "${CLAUDE_PLUGIN_ROOT}/scripts/doctor.js" check --brief` (Copilot / Antigravity: `${PLUGIN_ROOT}`; manual `@import` setups: `$SPECTURE_ROOT`). It prints one line and loads no document into your context. Skip it only when `.specture/stack.yml` does not exist (Step 1 will route to `setup`).
+
+- **Pending migrations** → announce in Spanish **before** routing: *"Hay N migraciones pendientes (M mecánicas, K asistidas, C de contenido). ¿Corro `/specture:doctor migrate` antes de enrutar?"* Do **not** block: if the user declines or does not answer, continue to Step 1 — the warning stays in the transcript.
+- **ERROR findings** (stale seal, duplicate ADR, broken paths) → one line naming them; they do not change the routing.
+- **No Node ≥ 22** → one line, *"doctor no disponible (requiere Node ≥ 22)"*, then Step 1. Never re-implement the checks by hand.
+- Nothing pending and no ERROR → say nothing; go to Step 1.
+
 ### Step 1 — Setup detection
 
 Check whether `.specture/stack.yml` exists in the user's project root.
