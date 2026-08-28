@@ -1,0 +1,56 @@
+name: Release
+
+# Publishes (or updates) the GitHub Release for a pushed `v*` tag.
+# Notes come from the README changelog section `### v<version> — <title>`
+# (extracted by scripts/bump-version.js), so the changelog is the single
+# source of release notes. Runs its own checks so a bad tag never publishes.
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    name: publish GitHub Release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Tests
+        run: npm test
+
+      - name: Release contract
+        run: |
+          node scripts/bump-version.js --check
+          TAG="${GITHUB_REF_NAME#v}"
+          VERSION="$(node -p "require('./plugin.json').version")"
+          if [ "$TAG" != "$VERSION" ]; then
+            echo "::error::tag v$TAG does not match plugin.json version $VERSION"
+            exit 1
+          fi
+
+      - name: Release notes from the README changelog
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          node scripts/bump-version.js --title "$VERSION" > title.txt
+          node scripts/bump-version.js --notes "$VERSION" > notes.md
+          echo "Title: $(cat title.txt)"
+
+      - name: Create or update the GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TITLE="$(cat title.txt)"
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release edit "$GITHUB_REF_NAME" --title "$TITLE" --notes-file notes.md
+          else
+            gh release create "$GITHUB_REF_NAME" --title "$TITLE" --notes-file notes.md --verify-tag
+          fi
