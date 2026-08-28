@@ -24,10 +24,9 @@ test("keeps Copilot and Claude manifest metadata synchronized", () => {
   const copilotMarketplace = readJson(".github/plugin/marketplace.json");
 
   assert.equal(copilotPlugin.name, claudePlugin.name);
-  assert.equal(copilotPlugin.version, claudePlugin.version);
   assert.equal(copilotMarketplace.name, copilotPlugin.name);
-  assert.equal(copilotMarketplace.metadata.version, copilotPlugin.version);
-  assert.equal(copilotMarketplace.plugins[0].version, copilotPlugin.version);
+  assert.equal(copilotMarketplace.plugins[0].name, copilotPlugin.name);
+  // Version agreement across all four manifests is asserted in release-contract.test.js.
   assert.equal(copilotPlugin.skills, "skills/");
   assert.equal(copilotPlugin.agents, "agents/");
   assert.equal(copilotPlugin.hooks, "hooks.json");
