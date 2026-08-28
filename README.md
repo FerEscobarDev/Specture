@@ -569,6 +569,32 @@ Specture está en desarrollo activo. Para decisiones arquitectónicas internas, 
 
 ## Changelog
 
+### v1.14.0 — Compatibilidad híbrida Antigravity CLI
+
+**Motivación:** Google Antigravity CLI (`agy`) usa nombres de herramientas de escritura y campos de payload distintos a los de Claude Code / Copilot, y registra subagentes dinámicamente. El plugin de v1.13.0 se instalaba pero el TDD Honesty Gate no interceptaba sus escrituras ni los agentes quedaban disponibles.
+
+**Cambios:**
+- **`hooks.json`:** el matcher del `PreToolUse` cubre también `write_to_file|replace_file_content`; el hook unificado lee además `tool_input.TargetFile`.
+- **`build/SKILL.md` — "Cross-Platform Subagent Initialization":** si la sesión expone `define_subagent` (Antigravity), el orquestador registra los cinco agentes desde `agents/*/AGENT.md` antes de despachar; en Claude Code ya están registrados estáticamente.
+- `plugin.json` a 1.14.0.
+
+**Nota de release:** los otros tres manifiestos (`.claude-plugin/plugin.json`, `.github/plugin/marketplace.json`, `copilot/compatibility-matrix.json`) quedaron en 1.13.0 y este changelog no se escribió en su momento — corregido en v1.14.1, que agrega el contrato de release que lo impide.
+
+**Backward-compat:** total.
+
+### v1.13.0 — Plugin GitHub Copilot CLI (y base para Antigravity)
+
+**Motivación:** Specture solo existía como plugin de Claude Code. Usuarios de GitHub Copilot CLI no podían instalarlo, y sus agentes y hooks no tenían formato en esa plataforma.
+
+**Cambios:**
+- **Manifiesto y marketplace para Copilot CLI:** `plugin.json` (raíz) + `.github/plugin/marketplace.json` — `copilot plugin marketplace add …` / `copilot plugin install specture@specture`.
+- **`copilot/agents/*.agent.md`:** seis espejos (validator, reviewer, implementer, router, test-writer, ux-implementer) en el formato de agentes de Copilot. **`copilot/compatibility-matrix.json`** declara la paridad de skills, agentes y gates por plataforma (`claudeSource` = versión del plugin que los espejos siguen).
+- **TDD Honesty Gate para CLIs no-Claude:** `hooks.json` registra `hooks/specture-pre-tool-use-tdd-gate.js` (hook unificado, fail-open); `copilot-pre-tool-use-tdd-gate.js` queda como shim de compatibilidad.
+- **Tests de contrato en `hooks/test/`:** manifiestos sincronizados, un espejo por agente, todas las skills en la matriz, descripciones con `: ` entrecomilladas; el hook deniega un test sellado, permite el resto y falla abierto con estado corrupto.
+- **Docs:** `docs/copilot-cli-plugin.md`, `docs/antigravity-cli-plugin.md` (instalación, uso, gate), `docs/execution-flows.md` (diagramas Mermaid de todos los flujos), README con instalación para las tres plataformas.
+
+**Backward-compat:** total — Claude Code no cambia.
+
 ### v1.12.0 — Naming de carpetas raíz por tipo de proyecto
 
 **Motivación:** Specture no prescribía layout de código fuente — los componentes en `architecture.md` solo tenían un *slug* sin ruta, y los paths de archivos los rellenaba el orquestador a mano, dejando el naming de carpetas inconsistente entre proyectos. Esta versión introduce una convención **configurable** de carpetas raíz por app, derivada del nombre del proyecto, que se adapta al tipo de proyecto (api sola, web+api, suite completa…).
