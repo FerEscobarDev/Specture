@@ -3,9 +3,9 @@
 > `spec-planning-gate-design.md` (diseño del gate, D1-D21), `spec-planning-gate-review.md`
 > (revisión: C-1…C-9, M1-M7, G1-G12), `psikora-scale-review.md` (N1-N10) y
 > `doctor-and-migrations-design.md` (doctor, catálogo de migraciones, principios). Cada
-> ítem cita su fuente; las definiciones son las de origen, no reinterpretaciones. Ningún
-> ítem está implementado. Las **decisiones abiertas** que condicionan el orden están en el
-> Apéndice A. **Solo contiene ajustes del framework**: las acciones sobre el proyecto
+> ítem cita su fuente; las definiciones son las de origen, no reinterpretaciones. Estado:
+> **M0 hecho (v1.14.1) · M1 hecho (v1.15.0)**, ambos el 2026-08-28. Las **decisiones** que
+> condicionan el orden están en el Apéndice A (A1-A5 cerradas; A6-A7 abiertas). **Solo contiene ajustes del framework**: las acciones sobre el proyecto
 > Psikora viven en su propio repo (`C:\Proyectos\Psikora\PLAN-SANEAMIENTO-SPECTURE-2026-08-28.md`).
 
 # Roadmap del framework Specture — v1.14.1 → v1.19
@@ -79,7 +79,7 @@ migración, que ningún fallback sea silencioso, y que el corpus documental teng
 verificador mecánico. Sin esto, cada feature siguiente llega "a medias" a los proyectos
 existentes.*
 
-- [ ] **5. `doctor check` — lint mecánico del corpus + drift de esquema + estado (N5)**
+- [x] **5. `doctor check` — lint mecánico del corpus + drift de esquema + estado (N5)** · hecho 2026-08-28, v1.15.0 (`scripts/doctor.js`, `hooks/lib/doctor/`)
   Modo por defecto, solo lectura, node (misma infraestructura que los hooks), corre en CI
   y en el Step 0 de `start`. **(a) Lint del corpus:** rutas `docs/**` y
   `.specture/decisions/**` citadas que no existen; paths con `...` sin rellenar; ADRs con
@@ -94,7 +94,7 @@ existentes.*
   del reviewer son sobre prosa: está haciendo de linter.
   `Fuente: psikora-review N5, doctor §4.1` · `Esfuerzo: bajo (1-2 días)` · `Depende de: —`
 
-- [ ] **6. `schema_version` + `.specture/settings.yml` + `migrations.log` (N8, doctor §3/§4.5)**
+- [x] **6. `schema_version` + `.specture/settings.yml` + `migrations.log` (N8, doctor §3/§4.5)** · hecho 2026-08-28, v1.15.0 — A1 = `settings.yml` (`hooks/lib/settings.js`, `settings.template.yml`)
   El proyecto gana versión de esquema, escrita por `setup` (`= plugin.version`) y avanzada
   por cada migración aplicada. Nuevo `.specture/settings.yml` (dueño = framework):
   `schema_version`, los toggles hoy en `conventions.md` §10 y el perfil — `stack.yml` y
@@ -106,7 +106,7 @@ existentes.*
   `stack.yml.specture.*`.*
   `Fuente: doctor §3.1/§3.7/§4.5, psikora-review N8` · `Esfuerzo: bajo` · `Depende de: —`
 
-- [ ] **7. Catálogo de migraciones `migrations/<version>-<slug>.js` (doctor §4.2)**
+- [x] **7. Catálogo de migraciones `migrations/<version>-<slug>.js` (doctor §4.2)** · hecho 2026-08-28, v1.15.0 — 13 entradas; A3 = catálogo completo, content solo agendado
   Cada migración: `id`, `since`, `kind: mechanical|assisted|content`,
   `detect(projectRoot) → pending|done|n/a` (predicado sobre el filesystem — reconoce lo
   migrado a mano, idempotente), `apply()` (mechanical) o `plan()` (assisted → Plan mode),
@@ -125,7 +125,7 @@ existentes.*
   reviews ni debug logs.
   `Fuente: doctor §3.2/§3.3/§3.5/§4.2` · `Esfuerzo: medio` · `Depende de: 6`
 
-- [ ] **8. `doctor migrate` y `doctor sync` (doctor §4.1)**
+- [x] **8. `doctor migrate` y `doctor sync` (doctor §4.1)** · hecho 2026-08-28, v1.15.0 — A4 = snippet de CI documentado en README (`hooks/lib/doctor/migrate.js`, `skills/doctor/SKILL.md`)
   `migrate`: aplica pendientes — `mechanical` directo con `git diff` mostrado; `assisted`
   vía Plan mode (un plan con todos los deltas, aprobación atómica, como `knowledge
   capture`); `content` → lista con dueño y skill destino, **no aplica**. Avanza
@@ -134,7 +134,7 @@ existentes.*
   A4: `doctor sync` como job de CI (falla en ERROR, avisa en WARNING).*
   `Fuente: doctor §4.1` · `Esfuerzo: bajo` · `Depende de: 5, 7`
 
-- [ ] **9. Step 0 en `start` + precondiciones declaradas por skill + "cero no-op silencioso" (doctor §3.4/§4.3/§4.4)**
+- [x] **9. Step 0 en `start` + precondiciones declaradas por skill + "cero no-op silencioso" (doctor §3.4/§4.3/§4.4)** · hecho 2026-08-28, v1.15.0 — A2 = solo avisa (`start`, `build`, `architecture`, `new-feature`)
   `start` lee `schema_version` (un campo); si `< plugin.version` anuncia *"Hay N
   migraciones pendientes (M mecánicas, K asistidas, C de contenido). ¿Corro
   `/specture:doctor migrate` antes de enrutar?"* — **no bloquea**, salvo precondición dura
@@ -147,7 +147,7 @@ existentes.*
   avisar vs bloquear.*
   `Fuente: doctor §3.4, §4.3, §4.4` · `Esfuerzo: bajo-medio (toca build, architecture, validator, reviewer, new-feature)` · `Depende de: 6`
 
-- [ ] **10. Skills leen `stack.yml.api.contract_file` en vez de nombres fijos (N8)**
+- [x] **10. Skills leen `stack.yml.api.contract_file` en vez de nombres fijos (N8)** · hecho 2026-08-28, v1.15.0 (`0b4a652`)
   Los skills citan `api-contract.md` y `api-contract.openapi.yaml`; Psikora declara
   `api-contract.openapi.json` sin compañero `.md` → 2 rutas rotas y, más grave, el validator
   nunca tuvo el input de la Dimensión 6 (el contrato describía el 0 % de las respuestas
@@ -155,7 +155,7 @@ existentes.*
   derivan el compañero legible (o lo declaran opcional).
   `Fuente: psikora-review N8 / §2.8` · `Esfuerzo: bajo` · `Depende de: —`
 
-- [ ] **11. Sello multi-spec y liberación verificada por el coordinador (N7)**
+- [x] **11. Sello multi-spec y liberación verificada por el coordinador (N7)** · hecho 2026-08-28, v1.15.0 (`hooks/lib/seal.js`, `e607925`)
   Schema `build-locked.json` con `specs: [{slug, red_sha, test_paths}]` (hoy un solo
   `red_sha` por epic; Psikora inventó `red_sha_spec_01`, `red_fix_note`). El hook **falla
   abierto con aviso** si el epic sellado no está `[/]` en el ROADMAP (grep de una línea).
@@ -165,7 +165,7 @@ existentes.*
   migración (cambio de schema).
   `Fuente: psikora-review N7 / §2.7` · `Esfuerzo: bajo` · `Depende de: 7`
 
-- [ ] **12. Verificación del doctor: fixtures por versión, invariante setup↔migraciones, gate de release (doctor §6)**
+- [x] **12. Verificación del doctor: fixtures por versión, invariante setup↔migraciones, gate de release (doctor §6)** · hecho 2026-08-28, v1.15.0 — fixtures construidos en runtime (no `.js` bajo `test/`), `schema-manifest.json` como gate; aceptación real sobre Psikora (solo lectura): 7 migraciones pendientes, sello huérfano, `ADR-012` duplicado, 9 rutas rotas en docs vivos, 55 reviews sin veredicto
   (1) `migrations/test/fixtures/<version>/` con `.specture/` + `docs/` mínimos "como los
   dejaba `setup` en esa versión": `migrate` desde cada fixture llega al esquema actual;
   todas las `detect()` devuelven `done` después; correr dos veces no cambia nada.
@@ -581,7 +581,11 @@ teniendo verdad viva, reglas cortas y paridad entre plataformas.*
 
 ---
 
-## Apéndice A — Decisiones abiertas que condicionan el orden
+## Apéndice A — Decisiones que condicionan el orden
+
+> **A1-A5 cerradas el 2026-08-28** (la recomendación fue aceptada en las cinco; ver
+> `docs/doctor-and-migrations-design.md`). **A6 y A7 siguen abiertas** — se deciden con
+> datos de la etapa 1 del gate (M3).
 
 | # | Decisión | Opciones | Recomendación | Bloquea |
 |---|---|---|---|---|

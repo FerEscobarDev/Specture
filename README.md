@@ -616,6 +616,25 @@ Specture está en desarrollo activo. Para decisiones arquitectónicas internas, 
 
 ## Changelog
 
+### v1.15.0 — Doctor: diagnóstico del corpus + migraciones de esquema del proyecto
+
+**Motivación:** Specture versionaba el plugin pero no el proyecto. Cada release definía "backward-compat" como *"sin X, comportamiento anterior"* — un no-op silencioso: el proyecto actualizaba el plugin y nunca recibía la feature, o la recibía a medias cuando un skill aguas abajo la asumía (lápidas apuntando a un `_current/` inexistente, validator sin contrato legible, reviewer sin comportamiento vigente). Un proyecto real migró a mano tres veces y seguía sin v1.6, v1.7 y v1.9. Es la Milestone 1 de `docs/framework-roadmap.md`; diseño en `docs/doctor-and-migrations-design.md`.
+
+**Cambios:**
+- **`.specture/settings.yml`** (archivo del framework): `schema_version`, `profile` y los toggles que vivían en `conventions.md` §10. `hooks/lib/settings.js` lo lee con fallback al §10 viejo hasta migrar; `setup` lo escribe; el §10 del template queda como puntero.
+- **`/specture:doctor`** (`scripts/doctor.js`, Node ≥ 22): `check` — lint del corpus (rutas citadas inexistentes, placeholders `...`, ADRs duplicados o sin Status, reviews sin veredicto, specs sin IDs o > 300 líneas, citas por número de línea), estado (sello huérfano, > 1 `[/]`, `_current/` ausente, docs-index vs toggle, residuos de worktrees) y drift de esquema; `migrate` — aplica las migraciones mecánicas (idempotentes, verificadas, registradas en `.specture/migrations.log`), lleva las asistidas a Plan mode (`--plan`, `--verify`) y difiere las de contenido con su dueño; `sync` para CI. Nunca commitea.
+- **Catálogo de migraciones `migrations/`** (13): gitignore de `state/` y `.specture-meta/`, Capacidades de Frontera y compañero del contrato (asistidas), retiro de `max_parallel_epics`, sintaxis de `Dependencias` (asistida), backfill de `_current/` (contenido, diferida), lápidas por script preservando IDs, §12/§13, perfil + `knowledge.enabled`, bloque `structure` (asistida), `settings.yml`, `schema_version`.
+- **Gate de release por esquema:** `migrations/schema-manifest.json` + `npm run schema:sync` — cambiar `templates/project-config/**`, los templates de ROADMAP/SPEC/MIGRATION/CURRENT o los "Required Inputs" de un skill sin regenerarlo rompe `npm test`. Invariante: un proyecto recién creado desde los templates no tiene migraciones pendientes.
+- **`start` Step 0:** `doctor check --brief`; anuncia migraciones pendientes y ofrece `migrate` — nunca bloquea.
+- **Cero no-op silencioso:** `build` (tabla de precondiciones; Current-State Resolution y Step 8.7), `architecture` Part B y `new-feature` avisan una vez por sesión cuando falta un artefacto (`⚠ Specture: … — corré /specture:doctor`).
+- **Contrato por `stack.yml.api.contract_file`:** ningún skill, agente ni template nombra el archivo machine-readable por extensión fija; el compañero legible es siempre `docs/02-architecture/api-contract.md`.
+- **Sello multi-spec:** `build-locked.json` v2 (`specs: [{slug, red_sha, test_paths}]`, v1 aceptado); sello huérfano → los hooks permiten con aviso; el coordinador libera el sello al procesar `DONE`. Lógica compartida en `hooks/lib/seal.js`.
+- Tests: 53 (settings, doctor check/migrate, catálogo, invariante setup↔migraciones, manifest, hooks v1/v2/sello huérfano).
+
+**Migración para proyectos existentes:** `/specture:doctor migrate`. Las mecánicas se aplican solas; las asistidas se aprueban en Plan mode; `1.9-current-state-init` queda diferida a `knowledge reconcile` (ítem 38 del roadmap).
+
+**Backward-compat:** los proyectos sin migrar funcionan como en v1.14.1 (toggles leídos de §10, sello v1 aceptado) — pero ahora lo dicen.
+
 ### v1.14.1 — Higiene: CI, release verificado, anclas y reglas de escritura
 
 **Motivación:** v1.14.0 se publicó con tres manifiestos desincronizados (en 1.13.0), sin entrada de changelog y con el test de contrato en rojo — nada lo verificaba. Y la revisión a escala sobre un proyecto real (`docs/psikora-scale-review.md`) mostró dos hábitos que el framework premiaba y que fabrican errores: citar documentos vivos por número de línea, y reviewers/agentes concurrentes escribiendo sobre el mismo checkout. Es la Milestone 0 de `docs/framework-roadmap.md`.
