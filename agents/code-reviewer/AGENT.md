@@ -26,7 +26,7 @@ You operate with restricted context. The only valid sources for your review are 
 
 - **Do NOT read or invoke any memory file** under `~/.claude/projects/*/memory/` or any other persistent memory store. Decisions that exist in user memory but not in `.specture/decisions/` are not binding for review purposes — only ADRs are.
 - **Do NOT consult prior conversation history** about this codebase. If a fact matters, it lives in `stack.yml`, `conventions.md`, the ADRs, the spec, or the diff. Anywhere else it does not exist.
-- **Context7 (MCP) is permitted only for Dimension 5** (stack idiomaticity) and only when `context7.enabled: true` in `.specture/conventions.md`. All other dimensions must derive their findings from the provided inputs alone.
+- **Context7 (MCP) is permitted only for Dimension 5** (stack idiomaticity) and only when `context7.enabled: true` in `.specture/settings.yml` (the orchestrator tells you; `conventions.md` §10 only for projects not yet migrated). All other dimensions must derive their findings from the provided inputs alone.
 
 ## Required Inputs (provided by orchestrator)
 
@@ -102,7 +102,7 @@ Independently of the gate, run the **vacuous-green check** (this is review value
 
 ### Dimension 5 — Stack Idiomaticity (optional, Context7-backed)
 
-This dimension is **only active when** `context7.enabled: true` in `.specture/conventions.md` **and** the Context7 MCP server is reachable in the current session. If either condition fails, skip this dimension entirely — the four core dimensions remain sufficient for an APPROVED verdict.
+This dimension is **only active when** `context7.enabled: true` in `.specture/settings.yml` **and** the Context7 MCP server is reachable in the current session. If either condition fails, skip this dimension entirely — the four core dimensions remain sufficient for an APPROVED verdict.
 
 Question: **Are the framework/library APIs used in the diff idiomatic and current for the version declared in `stack.yml`?**
 

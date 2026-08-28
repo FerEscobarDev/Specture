@@ -8,13 +8,13 @@ Audiencia de este documento: usuarios que quieren entender, debuggear o extender
 
 ## Activación
 
-Los hooks shippean **inactivos** dentro del plugin. Para encenderlos en un proyecto, en `.specture/conventions.md` sección 10:
+Los hooks shippean **inactivos** dentro del plugin. Para encenderlos en un proyecto, en `.specture/settings.yml` (v1.15.0+):
 
-```markdown
-- **hooks.enabled**: true
+```yaml
+hooks.enabled: true      # o profile: lean | full, que lo encienden
 ```
 
-Sin esa línea (o con `false`), cada hook llama a `lib/specture-guard.js`, recibe `{ active: false }` y sale con exit 0 inmediatamente. El plugin no toca nada.
+Proyectos creados antes de v1.15.0 pueden tener el toggle en `.specture/conventions.md` §10 (`- **hooks.enabled**: true`); `lib/settings.js` lo lee de ahí como fallback hasta que `/specture:doctor migrate` lo mueva. Sin el toggle (o con `false`), cada hook llama a `lib/specture-guard.js`, recibe `{ active: false }` y sale con exit 0 inmediatamente. El plugin no toca nada.
 
 ---
 
@@ -94,8 +94,14 @@ Si querés agregar tu propio hook siguiendo el patrón:
 
 - `guard(options)` → `{ active, projectRoot, reason }`. Decide si actuar.
 - `findProjectRoot(cwd)` → string | null. Sube en el árbol buscando `.specture/stack.yml`.
-- `readConventionsToggle(projectRoot, key)` → boolean. Lee `- **<key>**: true|false` de `conventions.md`.
+- `readConventionsToggle(projectRoot, key)` → boolean. Lee `- **<key>**: true|false` de `conventions.md` (legacy; `guard()` ya usa `lib/settings.js`).
 - `readHookPayload()` → object. Parsea el JSON del stdin.
+
+`lib/settings.js` exporta:
+
+- `readSettings(projectRoot)` → `{ source, path, schemaVersion, values, raw }`. Lee `.specture/settings.yml`; si no existe, cae al bloque §10 de `conventions.md`; expande el perfil (`lean`/`full`/`custom`) y aplica defaults.
+- `readToggle(projectRoot, key)` → valor efectivo de un toggle.
+- `parseSettingsYaml(text)` / `serializeSettings(values, { schemaVersion })` — el subset plano de YAML que usa `settings.yml`.
 
 ---
 
@@ -107,4 +113,4 @@ Si querés agregar tu propio hook siguiendo el patrón:
 | El TDD Gate no bloquea aunque estoy en build loop | `.specture/state/build-locked.json` no existe o sus `test_paths` no matchean. Comprobá con `cat .specture/state/build-locked.json`. |
 | El TDD Gate bloquea archivos que no son tests | Algún glob en `test_paths` es demasiado amplio. Revisá la línea de testing en `conventions.md`. |
 | El TDD Gate actúa en un proyecto que no es Specture | `.specture/` heredado de un directorio padre. `findProjectRoot` sube en el árbol; chequeá. |
-| `hooks.enabled: true` pero `specture-guard` devuelve inactivo | El regex matchea con `**hooks.enabled**:` literal — confirmá formato exacto en conventions.md sección 10. |
+| `hooks.enabled: true` pero `specture-guard` devuelve inactivo | Revisá `.specture/settings.yml` (`hooks.enabled: true` sin comillas ni corchetes, o `profile: lean|full`). En proyectos sin migrar, el bloque de `conventions.md` §10 exige el formato `- **hooks.enabled**: true`. Si existe `settings.yml`, `conventions.md` se ignora. |

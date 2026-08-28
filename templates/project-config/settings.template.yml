@@ -1,0 +1,18 @@
+# Specture — Project Settings
+# Owner: the framework. Written by `/specture:setup`; advanced by `/specture:doctor migrate`.
+# Flat `key: value` file (no nesting). Read by hooks, skills and the doctor.
+# Projects created before v1.15.0 keep these toggles in conventions.md §10 — the framework
+# still reads them there until `/specture:doctor migrate` moves them here.
+
+schema_version: "[X.Y.Z]"   # Specture project schema (= plugin version at setup / last migration). /setup fills it.
+
+profile: custom             # lean | full | custom
+                            # lean   = hooks on, context7/docs_index/knowledge off (minimal footprint)
+                            # full   = everything on
+                            # custom = the individual toggles below
+
+hooks.enabled: false                      # TDD Honesty Gate (PreToolUse deny on sealed tests)
+context7.enabled: false                   # Context7 MCP in code-reviewer (Dimension 5) and modernize (gap analysis)
+docs_index.enabled: true                  # Docs Index Resolution when .specture/docs-index.yml exists; agents never read the index
+docs_index.max_entries_per_dispatch: 3    # hard cap of indexed docs passed to ONE agent dispatch
+knowledge.enabled: false                  # opt-in knowledge-capture prompts (build Step 8.5, debug Phase 4.5)

@@ -41,7 +41,7 @@ The user is starting from scratch. You will create the configuration through an 
    - **Apps del proyecto (estructura de carpetas raíz):** qué apps tendrá — backend/API, web público, app/SPA/móvil, landing. Determina qué entradas de `structure.apps` quedan en `stack.yml` (ver paso 4).
    - Convenciones de naming, organización por feature/layer, patrones permitidos/prohibidos.
    - **Invariantes (§12, opcional):** reglas que nunca cambian (ej. "DTOs inmutables", naming de métodos). **Workflow (§13, opcional):** de dónde nace cada rama por tipo de trabajo, formato de commit. Si el usuario no tiene reglas claras, deja las filas de ejemplo del template para editar luego — sin reglas, ambas secciones son no-op (ni enforcement de invariantes ni creación de ramas).
-   - **Perfil de capacidades (§10 `specture.profile`):** `lean` (huella mínima — hooks on, docs-index/knowledge/context7 off), `full` (todo on), o `custom`. Si el usuario no opina, dejalo sin definir = comportamiento conservador por defecto.
+   - **Perfil de capacidades (`.specture/settings.yml` → `profile`):** `lean` (huella mínima — hooks on, docs-index/knowledge/context7 off), `full` (todo on), o `custom` + toggles individuales. Si el usuario no opina, `custom` con los defaults del template (comportamiento conservador).
 
 3. **Validate coherence** before writing files. Examples of incoherence to flag:
    - Stack móvil (Flutter) + ORM relacional como EF Core.
@@ -52,6 +52,7 @@ The user is starting from scratch. You will create the configuration through an 
    - `templates/project-config/stack.template.yml` → `.specture/stack.yml`
    - `templates/project-config/conventions.template.md` → `.specture/conventions.md`
    - `templates/project-config/decisions/000-template.md` → `.specture/decisions/001-initial-stack.md` (registra la decisión inicial del stack)
+   - `templates/project-config/settings.template.yml` → `.specture/settings.yml` — el archivo **del framework**: `schema_version` = la versión del plugin instalado (leé `version` de `${CLAUDE_PLUGIN_ROOT}/plugin.json`, o de `$SPECTURE_ROOT/plugin.json` en setup manual; nunca dejes el placeholder `[X.Y.Z]`), `profile` y toggles según lo que respondió el usuario. Los toggles **no** van en `conventions.md` §10 (esa sección es solo un puntero desde v1.15.0).
 
    **Al poblar `stack.yml`:**
    - **Deriva `project.slug`** desde `project.name`: minúsculas, espacios y guiones → `_`, elimina cualquier carácter fuera de `[a-z0-9_]`, colapsa `_` repetidos y recorta `_` de los extremos. Ej. "Mi Proyecto-X" → `mi_proyecto_x`. **Muéstraselo al usuario para confirmar** antes de escribir.
@@ -144,7 +145,7 @@ The user has an existing codebase. You will **detect** the stack from files and 
    - Any technical debt or inconsistency observed (e.g. "mix of camelCase and snake_case in test files — recommend standardizing on camelCase").
    - Status: `Accepted`.
 
-8. **Write all files** and generate the project `CLAUDE.md` (same as Bootstrap step 5). Also ensure `.specture/state/` and `docs/.specture-meta/` are listed in `.gitignore` (same rule as Bootstrap step 4.5; `.specture-meta/` holds local telemetry that must not be committed).
+8. **Write all files** — including `.specture/settings.yml` with `schema_version` = plugin version (same as Bootstrap step 4) — and generate the project `CLAUDE.md` (same as Bootstrap step 5). Also ensure `.specture/state/` and `docs/.specture-meta/` are listed in `.gitignore` (same rule as Bootstrap step 4.5; `.specture-meta/` holds local telemetry that must not be committed).
 
 8.5. **Existing documentation detection (mandatory in Adopt mode)**.
 
@@ -186,6 +187,7 @@ The user already has `.specture/`. They want to update something.
    - Conventions (e.g. tightening test coverage, banning a pattern)?
    - Estructura de carpetas raíz (`structure` en `stack.yml`): cambiar `root_layout`, añadir/quitar apps en `structure.apps`. Si el `stack.yml` existente no tiene el bloque `structure` (proyecto previo a esta convención), ofrécelo: deriva `project.slug` y agrega `structure` con las apps que el usuario confirme.
    - Recording a new architectural decision (ADR)?
+   - Perfil o toggles de Specture (`.specture/settings.yml`: `profile`, `hooks.enabled`, `context7.enabled`, `docs_index.*`, `knowledge.enabled`)? Si el proyecto aún tiene los toggles en `conventions.md` §10 (creado antes de v1.15.0), no los edites ahí: corré `/specture:doctor migrate`, que los mueve a `settings.yml`.
 
 3. **Critical rule — never silently break ADRs**: if the change supersedes an existing ADR, you MUST:
    - Create a new ADR file `NNN-...md` with `Status: Supersedes ADR-NNN`.
@@ -206,6 +208,7 @@ Before reporting setup complete, confirm:
 
 - [ ] `.specture/stack.yml` exists and is valid YAML.
 - [ ] `.specture/conventions.md` exists and has all sections filled (no remaining `[placeholder]` text).
+- [ ] `.specture/settings.yml` exists, `schema_version` equals the installed plugin version (no `[X.Y.Z]` placeholder), and no toggles were written to `conventions.md` §10.
 - [ ] At least one ADR exists in `.specture/decisions/`.
 - [ ] User project's root `CLAUDE.md` exists and references `$SPECTURE_ROOT/CLAUDE.md` (or user has Specture plugin installed).
 - [ ] `$SPECTURE_ROOT` is set in the user's environment (or user confirmed using the plugin).

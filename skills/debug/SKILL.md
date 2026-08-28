@@ -77,7 +77,7 @@ The log file on disk is written **after** the user approves the plan in `ExitPla
 
 ### Phase 4.5 — Capture Learnings (opt-in, after confirmed root cause)
 
-Only when the hypothesis was confirmed AND the fix is committed. **Toggle gate**: read `knowledge.enabled` from `.specture/conventions.md` §10 (or the active `specture.profile`). If `false`, skip.
+Only when the hypothesis was confirmed AND the fix is committed. **Toggle gate**: read `knowledge.enabled` from `.specture/settings.yml` (the `profile` expands it; `conventions.md` §10 only for projects not yet migrated). If `false`, skip.
 
 A confirmed root cause is high-signal: by definition, the system did something the team did not expect. That delta between expectation and reality is often a learning that deserves to live beyond this debug log.
 

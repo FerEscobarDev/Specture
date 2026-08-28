@@ -230,9 +230,9 @@ When `.specture/docs-index.yml` exists, the orchestrator MUST resolve relevant e
 
 1. **Check existence**: if `.specture/docs-index.yml` does not exist, the resolved list is **empty**. Continue without docs-index input. Do NOT block dispatch.
 
-2. **Check toggle**: if `.specture/conventions.md` Section 10 has `docs_index.enabled: false`, resolved list is empty. Continue without input.
+2. **Check toggle**: if `docs_index.enabled` is `false` in `.specture/settings.yml` (or in `conventions.md` §10 for projects not yet migrated), resolved list is empty. Continue without input.
 
-3. **Read cap**: read `docs_index.max_entries_per_dispatch` from `.specture/conventions.md` Section 10. Fallback to **3** if absent or unparseable. This is the hard maximum number of entries passed to a single agent dispatch.
+3. **Read cap**: read `docs_index.max_entries_per_dispatch` from `.specture/settings.yml` (fallback: `conventions.md` §10). Fallback to **3** if absent or unparseable. This is the hard maximum number of entries passed to a single agent dispatch.
 
 4. **Extract spec signals**: from the current spec, derive:
    - **Tags**: union of (a) the touched module name(s), (b) the architectural component(s) cited, (c) `backend` / `frontend` / `mobile` derived from the spec's contract section, (d) any explicit `tags` field if the spec template includes one.
@@ -328,7 +328,7 @@ Dispatch the `tdd-test-writer` agent (`agents/tdd-test-writer/AGENT.md`).
      "locked_at": "<ISO-8601 timestamp>"
    }
    ```
-   If the user opted in to hooks (`hooks.enabled: true` in `.specture/conventions.md`), `hooks/pre-tool-use-tdd-gate.js` will use this file to deny any Edit/Write that targets a sealed test path until the epic is marked complete. The orchestrator-side `git diff` check in Step 5.5 still runs as defense-in-depth.
+   If the user opted in to hooks (`hooks.enabled: true` in `.specture/settings.yml` — or in `conventions.md` §10 for projects not yet migrated), `hooks/pre-tool-use-tdd-gate.js` will use this file to deny any Edit/Write that targets a sealed test path until the epic is marked complete. The orchestrator-side `git diff` check in Step 5.5 still runs as defense-in-depth.
 
 If any post-check fails, do NOT proceed to Step 5.
 
@@ -433,7 +433,7 @@ After all specs in the epic are APPROVED + verified:
 
 Before context reset, offer to capture durable knowledge from this epic. This is the natural moment: the diff is fresh, the review is fresh, the user remembers what was discovered.
 
-**Toggle gate**: read `knowledge.enabled` from `.specture/conventions.md` §10 (or the active `specture.profile`). If `false` (or absent and the user hasn't explicitly enabled it), skip this step entirely.
+**Toggle gate**: read `knowledge.enabled` from `.specture/settings.yml` (the `profile` expands it; `conventions.md` §10 only for projects not yet migrated). If `false` (or absent and the user hasn't explicitly enabled it), skip this step entirely.
 
 **Prompt to user (default no)**:
 

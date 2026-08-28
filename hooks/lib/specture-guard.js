@@ -3,13 +3,16 @@
 // Every Specture hook script calls `guard()` first. It decides whether the
 // hook should act based on two conditions:
 //   1. The current working directory is a Specture project (.specture/stack.yml exists).
-//   2. The project's .specture/conventions.md declares hooks.enabled: true.
+//   2. The project's settings declare hooks.enabled: true — read from
+//      .specture/settings.yml (v1.15.0+) or, for projects not yet migrated,
+//      from the legacy conventions.md §10 block (see lib/settings.js).
 //
 // When either check fails, hooks exit silently (code 0) so non-Specture
 // projects and projects that have not opted in are unaffected.
 
 const fs = require("fs");
 const path = require("path");
+const { readToggle } = require("./settings");
 
 function findProjectRoot(startDir) {
   let dir = path.resolve(startDir);
@@ -48,7 +51,7 @@ function guard(options = {}) {
     return { active: false, projectRoot: null, reason: "not-a-specture-project" };
   }
 
-  const enabled = readConventionsToggle(projectRoot, toggleKey);
+  const enabled = readToggle(projectRoot, toggleKey) === true;
   if (!enabled) {
     return { active: false, projectRoot, reason: "opt-in-disabled" };
   }

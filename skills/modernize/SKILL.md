@@ -52,7 +52,7 @@ Produce `docs/migration/gap_analysis.md` using the structure below. Do NOT propo
 
 ### Sourcing the facts: Context7 (when available)
 
-Migration knowledge depends on **current** documentation, not on the model's training cutoff. If `context7.enabled: true` in `.specture/conventions.md` AND the Context7 MCP server is reachable in this session, use it as the primary source for:
+Migration knowledge depends on **current** documentation, not on the model's training cutoff. If `context7.enabled: true` in `.specture/settings.yml` (or in `conventions.md` §10 for projects not yet migrated) AND the Context7 MCP server is reachable in this session, use it as the primary source for:
 
 - **Source stack**: confirm which APIs are deprecated in the declared version range and in what release they are scheduled for removal.
 - **Target stack**: confirm which APIs are vigent in the declared target version, the recommended replacements for deprecated/removed APIs, and the supported package/runtime version matrix.

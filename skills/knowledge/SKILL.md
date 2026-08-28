@@ -51,8 +51,8 @@ You are a **Documentation Curator**. Convert ephemeral session knowledge into du
 ## Required Inputs
 
 - `.specture/stack.yml` (must exist — if not, route to `setup/SKILL.md`).
-- `.specture/conventions.md` §10: read the `knowledge.enabled` toggle.
-  - If `knowledge.enabled: false` → respond *"knowledge está desactivado en `conventions.md` §10 (o el perfil activo lo apaga). Para correr una sola vez sin tocar config, llamame con `--force`."* and stop unless `--force` was passed.
+- `.specture/settings.yml`: read the `knowledge.enabled` toggle (`conventions.md` §10 only for projects not yet migrated).
+  - If `knowledge.enabled: false` → respond *"knowledge está desactivado en `.specture/settings.yml` (o el perfil activo lo apaga). Para correr una sola vez sin tocar config, llamame con `--force`."* and stop unless `--force` was passed.
 - Detect the **trigger source** from the invocation (epic / debug / manual / teach).
 
 ## Phase 0 — Relevance Filter (skip if `--force` or `--teach`)

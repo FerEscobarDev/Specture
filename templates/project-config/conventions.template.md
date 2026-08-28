@@ -91,19 +91,9 @@
 
 ## 10. Specture / Claude Code Integration
 
-> Configuración de las capacidades nativas de Claude Code que Specture integra. Usá un **perfil** para el caso común, o `custom` + los toggles individuales para control fino. Sin `specture.profile` definido valen los defaults individuales de abajo (comportamiento de v1.1.0 — backward-compat).
-
-- **specture.profile**: [lean | full | custom]   # atajo. `lean` = hooks ON, context7/docs_index/knowledge OFF (huella mínima). `full` = todo ON. `custom` = lee los toggles individuales de abajo. Sin definir = como `custom` con los defaults de abajo.
-
-- **hooks.enabled**: [true | false]      # activa el TDD Honesty Gate (bloqueo mecánico de edits a tests durante GREEN). Nota: desde v1.5.0 el routing NO es automático — se entra a Specture invocando `/specture:start`; el antiguo hook SessionStart fue deregistrado.
-- **context7.enabled**: [true | false]   # permite consultas a Context7 MCP en code-reviewer (Dimension 5: stack idiomaticity) y en modernize (gap analysis con docs vivas).
-- **docs_index.enabled**: [true | false]  # cuando `.specture/docs-index.yml` existe, el orquestador (build, architecture) resuelve hasta N entradas relevantes por dispatch y las pasa como contexto adicional a architecture-validator y code-reviewer. Default true cuando el archivo existe. Los agentes nunca leen el índice directamente.
-- **docs_index.max_entries_per_dispatch**: 3  # tope duro de docs pasadas a UN dispatch del orquestador. Más entradas = más contexto = más caro y menos enfocado. Subí solo si el promedio de hits relevantes por spec supera 3 (medible en `docs/.specture-meta/index-usage.jsonl`).
-- **knowledge.enabled**: [true | false]  # habilita los prompts opcionales de la skill `knowledge` (modo capture) post-epic (build Step 8.5) y post-debug (debug Phase 4.5). Default false. Activá cuando el proyecto sea maduro y la documentación empiece a quedar atrás del código. (Era `learn.enabled` hasta v1.10.0.)
-
-> Los sub-toggles finos de captura (`min_session_threshold_minutes`, `max_drafts_per_invocation`, `write_human_report`) se eliminaron en v1.11.0 — la skill `knowledge` usa defaults fijos (30 min, 3 drafts, sin reporte humano por defecto).
-
-Cuando `hooks.enabled: false`, los scripts del plugin se cargan pero retornan sin actuar. Cuando `context7.enabled: false`, los agentes/skills que lo consultarían omiten esa fuente y marcan secciones afectadas como "needs manual verification" si aplica. Cuando `docs_index.enabled: false`, el orquestador omite la resolución del índice — útil para debug aislado o si el índice está corrupto/obsoleto. Cuando `knowledge.enabled: false`, los prompts opcionales de captura no se activan; `/specture:knowledge` (o el alias `/specture:learn`) sigue siendo invocable manualmente con `--force`.
+> **Desde v1.15.0 la configuración del framework vive en `.specture/settings.yml`** (perfil `lean | full | custom`, toggles `hooks.enabled`, `context7.enabled`, `docs_index.enabled`, `docs_index.max_entries_per_dispatch`, `knowledge.enabled`, y `schema_version`). Es un archivo del framework: lo escribe `/specture:setup` y lo migra `/specture:doctor`. Esta sección es solo un **puntero** — no declares toggles aquí.
+>
+> Proyectos creados antes de v1.15.0 pueden conservar aquí el bloque viejo de toggles (`- **hooks.enabled**: true`, …); el framework lo sigue leyendo hasta que `/specture:doctor migrate` lo mueva a `settings.yml`.
 
 ## 11. Índice de Documentación
 
