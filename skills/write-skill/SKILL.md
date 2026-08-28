@@ -153,6 +153,7 @@ Even without a formal test harness, you can manually pressure-test a skill:
 - ❌ Narrative storytelling ("In session 2025-X-Y we found…") — skills are reusable references, not war stories
 - ❌ Frontmatter `description` that explains workflow (CSO killer)
 - ❌ Hardcoded absolute paths (use `$SPECTURE_ROOT` or relative)
+- ❌ Line-number citations into living documents (specs, ROADMAP, conventions, ADRs) — cite stable IDs or headings; `file:line` only for code pinned to a SHA
 
 ## After Writing a Skill
 

@@ -68,14 +68,15 @@ Produce findings in these categories:
 | **Auth mismatch** | Frontend sends/omits auth differently than the endpoint requires. |
 | **Unresolved** | Path or shape couldn't be statically determined — needs manual confirmation. |
 
-Each finding cites `file:line` on **both** sides where possible.
+Each finding cites `file:line` on **both** sides where possible, pinned to the audited commit (`file:line @<sha>`) so the citation stays valid after the code moves. Record the audited SHA (`git rev-parse HEAD`) in the report header.
 
 ## Step 4 — Emit the reconciliation report
 
 Write `docs/02-architecture/contract-sync-report.md`:
 
 - **Canonical source** chosen (Step 0) and why.
-- A table of findings: category, frontend evidence (`file:line`), backend evidence (`file:line`), and the **proposed change** stated against the canonical source ("change the frontend call to `GET /api/v1/...`" or "add backend endpoint `...` returning `...`").
+- **Audited commit** (`git rev-parse HEAD`) — every `file:line` below is read at that SHA.
+- A table of findings: category, frontend evidence (`file:line @<sha>`), backend evidence (`file:line @<sha>`), and the **proposed change** stated against the canonical source ("change the frontend call to `GET /api/v1/...`" or "add backend endpoint `...` returning `...`").
 - A **coverage summary**: N endpoints, N matched, N mismatched, N orphan, N unresolved.
 - If no contract existed, attach a **proposed `api-contract.openapi.yaml`** (from `$SPECTURE_ROOT/templates/api-contract.openapi.template.yaml`) reflecting the canonical interface, so the project gains the source of truth it was missing.
 

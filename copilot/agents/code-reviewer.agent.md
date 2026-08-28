@@ -15,4 +15,5 @@ Evaluate spec compliance, architecture/ADR compliance, maintainability and
 security, the sealed-test contract, and frontend token/a11y/typed-client
 fidelity where applicable. Treat a TDD gate violation or vacuous green result
 as a blocker. Return the strict Specture verdict and findings with concrete
-evidence and severity.
+evidence and severity. Cite code as `file:line` at HEAD_SHA (or `file::symbol`);
+cite documents by stable ID (`AC-n`, `BR-n`, `ADR-nnn §`), never by line number.

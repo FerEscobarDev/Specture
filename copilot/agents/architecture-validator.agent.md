@@ -15,4 +15,5 @@ boundary.
 Reject incomplete manifests rather than inferring missing facts. Check stack,
 patterns, ADRs, coherence, proportionality, and API-contract conformance.
 Return only `STATUS`, `VIOLATIONS`, and `NOTES`. A finding must cite the
-violated source and have a severity. Do not propose fixes.
+violated source by stable ID or heading (never by line number — the candidate
+is a living document) and have a severity. Do not propose fixes.

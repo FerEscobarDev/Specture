@@ -163,6 +163,11 @@ Invariants are project law that recurs across every epic; §3/§4 cover higher-l
 - `REJECTED_MINOR` — `BLOCKER` findings exist but they're localized fixes (1-3 specific things to change). The same implementer can fix them in a follow-up loop.
 - `REJECTED_MAJOR` — `BLOCKER` findings indicate a fundamental issue (architecture mismatch, spec misunderstanding, broken core contract). Fix is non-trivial; orchestrator should consider re-spec, ADR change, or fresh implementation context.
 
+## Citation Anchors (mandatory)
+
+- **Code under review** (`git diff <RED_SHA>..<HEAD_SHA>`): `path:line` is valid because the range is fixed — every `Location:` is read at `HEAD_SHA`. `path::symbol` is the stable alternative.
+- **Living documents** (the spec, `ROADMAP.md`, `conventions.md`, `business_requirements.md`, `architecture.md`, ADRs, mappings, ledgers): **never** `doc.md:NNN`. Cite the stable ID or heading — `AC-n`, `BR-n`, `EC-n`, `RN-*`, `R-*`, `W-*`, `ADR-nnn §<title>`, an `operationId`, or the heading text. Line numbers in living documents rot as sibling specs edit them; an ID does not.
+
 ## Output Format (strict)
 
 You MUST write the review to a file at `docs/07-reviews/review-<epic-slug>-<task-slug>-YYYY-MM-DD.md` in this exact format:
@@ -187,7 +192,7 @@ You MUST write the review to a file at `docs/07-reviews/review-<epic-slug>-<task
 - Result: <empty | non-empty + list of files touched>
 - Findings:
   - [SEVERITY] <finding>
-    - Location: <file:line>
+    - Location: <file:line @HEAD_SHA | file::symbol>
     - Why: <citation>
     - Suggested fix: <concrete description>
 
@@ -196,8 +201,8 @@ You MUST write the review to a file at `docs/07-reviews/review-<epic-slug>-<task
 ## Spec Compliance
 
 - [SEVERITY] <finding>
-  - Location: <file:line>
-  - Why: <citation of spec section>
+  - Location: <file:line @HEAD_SHA | file::symbol>
+  - Why: <spec ID — AC-n / BR-n / EC-n — or the heading text; never a line number>
   - Suggested fix: <concrete description, NOT code>
 
 (Or "All acceptance criteria met. No findings.")
@@ -205,14 +210,14 @@ You MUST write the review to a file at `docs/07-reviews/review-<epic-slug>-<task
 ## Architecture Compliance
 
 - [SEVERITY] <finding>
-  - Location: <file:line>
+  - Location: <file:line @HEAD_SHA | file::symbol>
   - Why: <citation of stack.yml field, conventions section, or ADR-NNN>
   - Suggested fix: <concrete description>
 
 ## Code Quality
 
 - [SEVERITY] <finding>
-  - Location: <file:line>
+  - Location: <file:line @HEAD_SHA | file::symbol>
   - Why: <citation of conventions section or general principle>
   - Suggested fix: <concrete description>
 
@@ -221,7 +226,7 @@ You MUST write the review to a file at `docs/07-reviews/review-<epic-slug>-<task
 (Only when Dimension 5 ran. Otherwise write: "Skipped — context7.enabled is false or Context7 unreachable.")
 
 - [SEVERITY] <finding>
-  - Location: <file:line>
+  - Location: <file:line @HEAD_SHA | file::symbol>
   - Library / API: <name + version cited from stack.yml>
   - Why: <citation of Context7 doc snippet, including the version it refers to>
   - Suggested fix: <concrete description>
@@ -231,7 +236,7 @@ You MUST write the review to a file at `docs/07-reviews/review-<epic-slug>-<task
 (Only when Dimension 6 ran — frontend epic with design system + contract provided. Otherwise write: "Skipped — backend-only spec.")
 
 - [SEVERITY] <finding>
-  - Location: <file:line>
+  - Location: <file:line @HEAD_SHA | file::symbol>
   - Why: <citation of design_system.md token/rule, api-contract operationId, or WCAG criterion>
   - Suggested fix: <concrete description, NOT code>
 
@@ -240,7 +245,7 @@ You MUST write the review to a file at `docs/07-reviews/review-<epic-slug>-<task
 (Only when Dimension 7 ran — conventions §12 has `R-*` rules in scope. Otherwise write: "Skipped — no project invariants in scope.")
 
 - [SEVERITY] <finding>
-  - Location: <file:line>
+  - Location: <file:line @HEAD_SHA | file::symbol>
   - Why: <cite the rule by ID, e.g. `R-1` (DTOs inmutables) from conventions §12>
   - Suggested fix: <concrete description, NOT code>
 
@@ -271,4 +276,4 @@ SUMMARY: <one-line summary>
 
 ## Tone
 
-Direct, technical, specific. Cite file:line. Cite the rule violated. No fluff.
+Direct, technical, specific. Cite code as `file:line` at `HEAD_SHA` (or `file::symbol`); cite documents by stable ID or heading. Cite the rule violated. No fluff.
