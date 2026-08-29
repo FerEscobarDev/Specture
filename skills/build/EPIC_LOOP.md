@@ -7,14 +7,19 @@ You never see the coordinator's queue, and your context is discarded when you fi
 
 Ground rules:
 
-- Execute **Steps 2 through 8** below, in order, for this single epic.
-- The specialized subagents (`architecture-validator`, `tdd-test-writer`, `implementer`,
-  `ux-implementer`, `code-reviewer`) are already registered by the coordinator — dispatch
-  them by name with the restricted context each step defines.
+- Execute **Steps 4 through 8** below, in order, for this single epic. The specs were
+  already authored by `spec-planner` and validated by `architecture-validator` under the
+  coordinator's Spec Planning Gate — you receive them sealed, with their `SPEC_SHA` and
+  the verbatim `APPROVED` verdict. **Never regenerate or edit a spec.** If a spec turns
+  out to be unexecutable, report `BLOCKED: spec <AC-n/BR-n/EC-n>` with the affected ID.
+- The specialized subagents (`tdd-test-writer`, `implementer`, `ux-implementer`,
+  `code-reviewer`) are already registered by the coordinator — dispatch them by name with
+  the restricted context each step defines.
 - Do not touch `ROADMAP.md` except Step 8's `[/]` → `[x]` flip for **your** epic. Never
   pick, unlock, or modify another epic.
 - When you finish, report exactly one of `DONE | BLOCKED | REJECTED_MAJOR` in the shape the
-  dispatch prompt defines.
+  dispatch prompt defines (`BLOCKED: spec <ID>` is the sub-form for an unexecutable spec —
+  the coordinator runs the spec-correction loop).
 
 ## Frontend Epics — execution (design-system epic and page epics)
 
@@ -27,7 +32,7 @@ was already enforced by the coordinator — your job is the per-epic execution b
 
 When the locked epic is the design-system foundation:
 
-1. **Generate the spec(s)** as usual (Step 2), sourced from `docs/03-ux-ui/design_system.md`. The spec covers: token definitions (color/type/spacing/radii/shadows in the stack's token mechanism), the base components the navigation map implies (with variants/states/a11y), and the dev showcase route.
+1. **The spec(s) were already planned by the gate**, sourced from `docs/03-ux-ui/design_system.md`. They cover: token definitions (color/type/spacing/radii/shadows in the stack's token mechanism), the base components the navigation map implies (with variants/states/a11y), and the dev showcase route.
 2. **Dispatch the `ux-implementer` agent** (`agents/ux-implementer/AGENT.md`), NOT the generic `implementer`. Pass it: the spec, `design_system.md`, the relevant tokens/brand rules, any failing tests (component logic / a11y), and — if a Claude Design handoff was ingested — the fidelity checklist from `handoff-ingest`.
 3. The agent builds tokens + components + a **`/dev/design-system` page** (guarded so it only mounts in development) that renders every component in every variant/state, the full token palette, and type/spacing scales.
 4. **Visual Approval Gate (mandatory human gate):**
@@ -42,43 +47,10 @@ When the locked epic is the design-system foundation:
 For each page/screen epic (after the design-system gate passed):
 
 - **Dispatch `ux-implementer`**, not the generic `implementer`.
-- The UI consumes the backend strictly through the **typed API client generated from the contract file (`stack.yml.api.contract_file`)** — never hand-written URLs. The spec declares which `operationId`s the page consumes (Step 2).
+- The UI consumes the backend strictly through the **typed API client generated from the contract file (`stack.yml.api.contract_file`)** — never hand-written URLs. The spec declares which `operationId`s the page consumes (declared by the `spec-planner`).
 - Tests (RED) cover the page's logic and contract binding: it calls the right operations, handles loading/empty/error states, enforces role-based visibility, and meets a11y assertions the framework can check. They do **not** assert pixel aesthetics.
 - The code-reviewer runs its frontend dimension (token adherence, a11y, contract adherence, brand-rule fidelity).
 - A lightweight visual check (screenshot via Playwright if available) is encouraged per page but the binding gate was the design-system approval; per-page screenshots are for catching regressions, surfaced to the user when notable.
-
-## Step 2 — Generate Spec(s)
-
-For the chosen epic, decompose into 1-3 specs. Each spec must be:
-
-- **Granular**: implementable in 1-3 commits, ~1 AI session.
-- **Code-free**: zero code examples, zero language-specific snippets. Only rules, contracts, and test descriptions.
-- **Self-contained**: contains all the info the implementer needs without re-reading the requirements doc.
-
-Use `templates/SPEC_TEMPLATE.md`. Write to `docs/05-specs/<epic-slug>/<task-slug>.spec.md`.
-
-**Anclaje de paths a la carpeta raíz del componente.** Al rellenar "Superficie de Código Existente", los paths de archivos **nuevos** deben colgar de la carpeta raíz del componente del epic: léela del campo "Carpeta raíz" del componente en `architecture.md` (respaldada por `stack.yml.structure`). Ej. componente backend con carpeta `mi_app_api` → un servicio nuevo va en `mi_app_api/...`. Es una regla de **prefijo**, no un algoritmo nuevo de selección de archivos; si la carpeta raíz es "n/a" (`flat`/`custom` o componente no desplegable), usa el layout del proyecto como hoy.
-
-### Spec self-review
-
-Before passing the spec to the validator, check against the `SPEC_TEMPLATE.md` slots:
-
-- [ ] Every template slot filled — no `[placeholder]`, no `TBD`, no "fill in later".
-- [ ] Every AC / BR / EC has a stable ID (`AC-1`, `BR-1`, `EC-1`...).
-- [ ] Contract table complete: entradas, salidas (éxito), salidas (error), efectos secundarios, idempotencia.
-- [ ] "Superficie de Código Existente" filled with **exact signatures** of every existing symbol the implementation will call (not "see the code"). This is what lets the implementer skip exploration.
-- [ ] "Fuera de Scope" explicit (the test-writer uses it to bound test generation).
-- [ ] All business rules cited from `business_requirements.md`.
-- [ ] Acceptance criteria are concrete and testable (not "should work well").
-- [ ] Zero implementation code; business prose in Spanish, identifiers/signatures in the `conventions.md` §8 language.
-
-## Step 2.5 — Create Visible Tasks (TaskCreate)
-
-After the specs for the epic are generated (Step 2), create one `TaskCreate` per spec so the user has live visibility into the loop. Subject format: `<epic-slug> / <task-slug>` with a brief description summarizing what the spec implements. Start each task as `pending`.
-
-Advance each task's `activeForm` as the spec moves through Steps 3-8: `validating architecture` → `writing tests (RED)` → `implementing (GREEN)` → `verifying TDD honesty` → `code review` → `running verification` → `completed`. On `REJECTED_MAJOR` / `BLOCKED` keep the task `in_progress` with an `activeForm` that names the blocker (e.g. "blocked: spec ambiguity"). Full step↔state mapping: `docs/native-integration-guide.md` §4.1.
-
-**Rule of authority**: `ROADMAP.md` is the source of truth across conversations. TaskCreate is **intra-conversation visibility only** — when the user closes the session, the tasks disappear. If ROADMAP and TaskCreate diverge for any reason, ROADMAP wins. Never mark an epic `[x]` in ROADMAP based on TaskCreate state; mark tasks completed only after the ROADMAP update lands.
 
 ## Dispatch Manifest (mandatory pre-flight)
 
@@ -103,7 +75,7 @@ If the orchestrator cannot fill an item, it resolves it BEFORE dispatch (read th
 
 ## Docs Index Resolution (pre-flight, reusable)
 
-When `.specture/docs-index.yml` exists, the orchestrator MUST resolve relevant entries and pass the resulting documents as input to `architecture-validator` (Step 3) and `code-reviewer` (Step 6). Optionally also to `tdd-test-writer` and `implementer` if their dispatch manifest item resolves a non-empty list.
+When `.specture/docs-index.yml` exists, the orchestrator MUST resolve relevant entries and pass the resulting documents as input to `code-reviewer` (Step 6), and optionally to `tdd-test-writer` and `implementer` if their dispatch manifest item resolves a non-empty list. (The coordinator's Spec Planning Gate runs this same resolution for its `spec-planner` and `architecture-validator` dispatches.)
 
 > **Doctrine — preserve restricted-context principle**: the agents NEVER read `docs-index.yml` themselves. The orchestrator resolves the index and hands the agents the final list of documents as part of their input. This keeps agents cache-friendly, deterministic, and auditable.
 
@@ -141,7 +113,7 @@ When `.specture/docs-index.yml` exists, the orchestrator MUST resolve relevant e
 
 ## Current-State Resolution (pre-flight, reusable)
 
-When `docs/05-specs/_current/` exists, the orchestrator resolves the living-behavior file(s) for the component(s) the current spec touches and passes them to `architecture-validator` (Step 3) and `code-reviewer` (Step 6), so those agents see the **current behavior** of the component and can flag regressions or conflicts with what is already built.
+When `docs/05-specs/_current/` exists, the orchestrator resolves the living-behavior file(s) for the component(s) the current spec touches and passes them to `code-reviewer` (Step 6) — the coordinator's Spec Planning Gate runs the same resolution for its dispatches — so those agents see the **current behavior** of the component and can flag regressions or conflicts with what is already built.
 
 > **Doctrine — same as Docs Index Resolution**: the agents NEVER read the `_current/` directory themselves. The orchestrator resolves the relevant files and hands them over in the dispatch. Restricted context preserved.
 
@@ -153,28 +125,6 @@ When `docs/05-specs/_current/` exists, the orchestrator resolves the living-beha
 4. **Cap**: pass only the files for the components the spec actually touches (usually 1-2), never the whole `_current/` directory.
 
 When empty, dispatch normally and pass `current_state_resolved: []` so the agent knows the resolver ran — it is strictly additive context.
-
-## Step 3 — Architecture Validation (mandatory gate)
-
-Dispatch the `architecture-validator` agent (`agents/architecture-validator/AGENT.md`).
-
-**Pre-flight**: run "Docs Index Resolution" (see section above) for this spec. Capture the resolved entries list (may be empty).
-
-**Pre-flight 2**: run "Current-State Resolution" (see section above) for this spec's component(s). Capture the resolved `_current/` file(s) (may be empty).
-
-**Context to pass (restricted)**:
-- The new `.spec.md` content.
-- `.specture/stack.yml`.
-- `.specture/decisions/` (all ADRs).
-- The relevant section of `architecture.md`.
-- **Resolved docs from `docs-index.yml`** (the list from pre-flight, including each entry's `concept`, `file`, `read_when`, `tags`, `confidence`, and the file's content). If the list is empty, pass the explicit marker `docs_index_resolved: []` so the agent knows the resolver ran. Treat `ai_categorized` entries as informational context — the validator only binds against `Accepted` ADRs, not against indexed docs.
-- **Resolved `_current/` behavior** (from Current-State Resolution): the living-behavior file(s) for the component(s) this spec touches, so the validator can flag where the spec conflicts with or contradicts already-built behavior. If empty, pass `current_state_resolved: []`.
-
-**Expected output**: `APPROVED` or `REJECTED` with a list of violations.
-
-If `REJECTED`:
-- Either fix the spec (most common) and re-dispatch.
-- Or, if the rejection reveals a flaw in the architecture itself, escalate to the user and consider a `reconfigure` (new ADR).
 
 ## Step 4 — Write Tests (TDD RED phase)
 
@@ -284,7 +234,7 @@ Do NOT proceed to Step 7 until all three have reported. Use the `Monitor` tool (
 ### Iteration Cap
 
 If you've looped Step 5 → Step 6 **3 times** for the same spec without `APPROVED`, **STOP**. This is a sign of either:
-- A spec problem (ambiguous or contradictory) → fix the spec, restart from Step 3.
+- A spec problem (ambiguous or contradictory) → report `BLOCKED: spec <AC-n/BR-n/EC-n>`; the **coordinator** runs the spec-correction loop (re-plan → re-validate → revert the affected RED → resume from that spec). Never edit the sealed spec yourself.
 - An architecture problem → escalate to user, possibly add an ADR.
 - Stuck in a debugging loop → invoke `skills/debug/SKILL.md`.
 
@@ -323,7 +273,8 @@ After all specs in the epic are APPROVED + verified:
 | Permitir que el implementer commitee tests junto con código en un solo commit | RED y GREEN deben estar en commits separados. El test commit es el de tdd-test-writer; el implementer NO commitea tests. |
 | Saltarse Step 5.5 "porque el implementer dijo que no tocó tests" | El gate es mecánico (`git diff`), no de confianza. Siempre se corre. |
 | Aceptar `DONE_WITH_CONCERNS` sin leer las concerns | Lee y decide: ¿bloquea? ¿es nota para futuro? |
-| Reescribir el spec a mitad de implementación | Si el spec está mal, abortar el epic, fix spec, restart desde paso 3 |
+| Reescribir el spec a mitad de implementación | El spec está sellado. Reportá `BLOCKED: spec <ID>`; el coordinador corre el loop de corrección. |
+| Editar o regenerar un spec sellado dentro del epic-agent | Los specs los autoriza el gate (planner + validator). Un spec inejecutable se reporta, no se arregla en silencio. |
 | Marcar epic `[x]` sin haber corrido tests fresh | Verification gate (verify/SKILL.md) lo prohibe |
 | Omitir el review porque "el implementer ya hizo self-review" | Self-review ≠ review independiente. Ambos son necesarios. |
 | Usar `git add -A` o `git commit --amend` durante un epic | `git add <paths explícitos>` y commits nuevos. Un `add -A` captura trabajo en vuelo de otro agente; un `--amend` puede reescribir el commit de un tercero. |

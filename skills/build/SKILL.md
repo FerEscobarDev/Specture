@@ -175,18 +175,25 @@ split to the user (it touches `ROADMAP.md`); `contrato`: the epic needs a contra
 
 ### Dispatch the epic-agent
 
-Dispatch a general-purpose agent with a self-contained prompt — **do NOT inherit this chat's history**:
+Dispatch a general-purpose agent **with `model: sonnet`** (the epic-agent is procedural now that spec authorship lives in the planner — gate-review M7; formal measurement arrives with the build metrics) and a self-contained prompt — **do NOT inherit this chat's history**:
 
 ~~~
 You are the epic-agent for ONE epic of a Specture project.
 
-Execute Steps 2 through 8 of build/EPIC_LOOP.md (Generate Spec → ... → Mark
+Execute Steps 4 through 8 of build/EPIC_LOOP.md (Write Tests → ... → Mark
 Epic Complete) for this single epic. That file is your complete procedure;
 the epic is already locked [/] by the coordinator.
-Run Step 2.5 (TaskCreate) only for your own internal tracking; the
-coordinator owns the user-visible epic task.
-Honor every gate: Dispatch Manifest, architecture-validator, RED commit,
-TDD Honesty Gate (Step 5.5), code-reviewer, verification.
+Steps 2/2.5/3 — los specs ya fueron planificados por spec-planner y
+validados por architecture-validator; NO los regeneres ni edites. Si un
+spec resulta inejecutable, reporta BLOCKED: spec con el ID de AC/BR/EC
+afectado.
+Honor every gate: Dispatch Manifest, RED commit, TDD Honesty Gate
+(Step 5.5), code-reviewer, verification.
+
+## Evidence (mandatory — missing either one → respond NEEDS_CONTEXT)
+SPEC_SHA: [sha of the docs(specs) plan commit]
+VALIDATOR VERDICT (verbatim):
+[paste the APPROVED verdict block]
 
 ## Epic
 [paste the full epic block from ROADMAP.md]
@@ -196,7 +203,8 @@ TDD Honesty Gate (Step 5.5), code-reviewer, verification.
 
 ## Required final report
 Report exactly one of: DONE | BLOCKED | REJECTED_MAJOR
-Plus: which specs were built, which tests pass, what remains.
+(BLOCKED: spec <AC-n/BR-n/EC-n> when a sealed spec is unexecutable.)
+Plus: which specs were executed, which tests pass, what remains.
 If DONE: update ROADMAP.md to [x] for this epic and commit BEFORE reporting.
 ~~~
 
