@@ -25,6 +25,7 @@
     "architecture-validator",
     "code-reviewer",
     "implementer",
+    "spec-planner",
     "specture-router",
     "tdd-test-writer",
     "ux-implementer"
@@ -32,6 +33,7 @@
   "gates": [
     "filesystem-state-routing",
     "architecture-validation",
+    "spec-planning",
     "roadmap-validation",
     "red-commit",
     "tdd-honesty",
