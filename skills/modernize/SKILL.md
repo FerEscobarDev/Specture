@@ -239,22 +239,20 @@ Rules:
 
 For each migration epic, run the build loop with these adaptations:
 
-### 7.1 Generate Migration Spec
+### 7.1-7.2 Spec authoring + validation — delegated to build's Spec Planning Gate
 
-Use `templates/MIGRATION_SPEC_TEMPLATE.md`. Fill every section. The spec must:
-- Name the exact source patterns being replaced.
-- Name the exact target patterns replacing them.
-- State the coexistence strategy explicitly.
-- List what is out of scope (prevents scope creep).
+Migration epics go through the **same Spec Planning Gate** as every other epic (one path
+for specs — never a parallel inline loop). The epic block already declares
+`Template: MIGRATION_SPEC_TEMPLATE.md` (Step 6's milestone template), which makes the
+coordinator hand the `spec-planner` that template plus the migration conditionals: the
+`gap_analysis.md` section of the module and the `migration:` section of `stack.yml`.
 
-### 7.2 Architecture Validation
-
-Dispatch `architecture-validator` with:
-- The migration spec.
-- `docs/migration/gap_analysis.md`.
-- `.specture/stack.yml` (including the `migration:` section).
-- `.specture/conventions.md` and all ADRs.
-- The relevant section of `docs/02-architecture/architecture.md`.
+The planner fills every template section (exact source patterns replaced, exact target
+patterns, explicit coexistence strategy, out-of-scope list) and emits a **reduced**
+`COVERAGE_TABLE` for migration epics: `oos:` rows from §7 Fuera de Scope; `op:` rows only
+if the migration touches contract operations; `sym:`/`br:` rows not required. (The full
+migration-table grammar arrives with framework roadmap item 37.) Validation runs inside the
+gate — per spec, with the migration inputs — exactly as for feature epics.
 
 ### 7.3 TDD RED Phase
 
