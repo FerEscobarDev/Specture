@@ -216,6 +216,9 @@ test("flags off-template spec sections with a suggested destination; template se
       "## Guards de no-regresión (nacen verdes)",
       "- **GUARD-1:** x → test: `t.spec.js::y`",
       "",
+      "## Aclaraciones (resueltas en planificación)",
+      "- Q-1: ver _planning.md",
+      "",
       "## 🔴 Decisión de usuario",
       "- elegir A o B",
       "",
@@ -228,6 +231,6 @@ test("flags off-template spec sections with a suggested destination; template se
   const sections = json.findings.filter((f) => f.check === "spec-section");
 
   assert.equal(sections.length, 2, JSON.stringify(sections));
-  assert.ok(sections.some((f) => f.detail.includes("Decisión de usuario") && f.action.includes("ROADMAP")));
+  assert.ok(sections.some((f) => f.detail.includes("Decisión de usuario") && f.action.includes("_planning.md")));
   assert.ok(sections.some((f) => f.detail.includes("Deuda") && f.action.includes("ROADMAP")));
 });

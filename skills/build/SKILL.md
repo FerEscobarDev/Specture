@@ -8,10 +8,11 @@ description: 'Use when `docs/04-roadmap/ROADMAP.md` exists and contains epics ma
 You are the **Coordinator** of the build phase. You do NOT write code, tests, reviews, or specs directly. Your job is to:
 
 1. Build the queue of ready epics and lock one at a time.
-2. Dispatch one fresh **epic-agent** per epic, whose complete procedure is `build/EPIC_LOOP.md` (spec generation → validation → TDD → review → verification).
-3. Process each epic-agent's report before starting the next.
-4. Mark progress in `ROADMAP.md` and release the seal.
-5. Run the post-epic steps (8.5 learnings, 8.7 reconciliation) and keep your own context O(n_epics).
+2. Run the **Spec Planning Gate** per epic: dispatch the `spec-planner`, resolve its open questions with the user, validate per spec, commit the specs + `_planning.md`.
+3. Dispatch one fresh **epic-agent** per epic, whose complete procedure is `build/EPIC_LOOP.md` (TDD → review → verification over the validated specs).
+4. Process each epic-agent's report before starting the next.
+5. Mark progress in `ROADMAP.md` and release the seal.
+6. Run the post-epic steps (8.5 learnings, 8.7 reconciliation) and keep your own context O(n_epics).
 
 This skill **fuses** what was previously split into "planificación", "ejecución", and "auditoría". The split was artificial — for AI, those are one tight loop per epic. The file split is coordinator (`SKILL.md`, this file) vs epic loop (`EPIC_LOOP.md`): the epic-agent receives **only** the second, so it never sees queue mechanics it must not run.
 
@@ -23,6 +24,8 @@ This skill **fuses** what was previously split into "planificación", "ejecució
 - `docs/01-requirements/business_requirements.md` — ground truth for business rules.
 - `docs/02-architecture/architecture.md` — boundaries.
 - `docs/04-roadmap/ROADMAP.md` — what to build next.
+- The contract file (`stack.yml.api.contract_file`) + its readable companion `docs/02-architecture/api-contract.md` — to slice each epic's `operationId`s for the `spec-planner`.
+- `templates/SPEC_TEMPLATE.md` / `templates/MIGRATION_SPEC_TEMPLATE.md` — handed to the `spec-planner` per the epic's `Template:` field.
 
 ## Preconditions (what degrades when an artifact is missing)
 
@@ -42,12 +45,12 @@ This skill **fuses** what was previously split into "planificación", "ejecució
 ## Cross-Platform Subagent Initialization (Mandatory)
 
 Before proceeding, you must ensure specialized agents are registered in your environment. Check your available tools:
-- **If you have the `define_subagent` tool (Antigravity CLI):** You MUST dynamically register the subagents before doing anything else. Read the `name`, `description`, and content (`system_prompt`) of the `AGENT.md` files located in the `agents/` directory (for `architecture-validator`, `tdd-test-writer`, `implementer`, `ux-implementer`, and `code-reviewer`), and call `define_subagent` for each one to make them available to this session.
+- **If you have the `define_subagent` tool (Antigravity CLI):** You MUST dynamically register the subagents before doing anything else. Read the `name`, `description`, and content (`system_prompt`) of the `AGENT.md` files located in the `agents/` directory (for `spec-planner`, `architecture-validator`, `tdd-test-writer`, `implementer`, `ux-implementer`, and `code-reviewer`), and call `define_subagent` for each one to make them available to this session.
 - **If you do NOT have the `define_subagent` tool (Claude Code):** The agents are already statically registered by the system. You may proceed directly.
 
 ## Execution Model — Sequential Queue
 
-There is **one** execution model. This chat is **coordinator only**: it does NOT generate specs, dispatch the 4 workers, or run tests. It builds a queue of epics and dispatches **one fresh epic-agent at a time** (concurrency = 1), processing each report before starting the next. The coordinator's context stays O(n_epics) (only checkboxes + reports), never O(total work) — specs, tests, agent outputs and reviews live inside each epic-agent and are discarded when it finishes.
+There is **one** execution model. This chat is **coordinator only**: it authors specs exclusively through the `spec-planner` dispatch of the Spec Planning Gate (never by hand), and does NOT dispatch the epic-agent's workers or run tests. It builds a queue of epics and dispatches **one fresh epic-agent at a time** (concurrency = 1), processing each report before starting the next. The coordinator's context stays O(n_epics) (only checkboxes + reports), never O(total work) — specs, tests, agent outputs and reviews live inside each epic-agent and are discarded when it finishes.
 
 ### How many epics to run (batch size N)
 
@@ -81,6 +84,82 @@ If `.specture/conventions.md` §13 (Workflow/Proceso) defines branch rules, crea
 
 **If §13 defines no branch rules, skip this entirely — create no branch** (default behavior). Specture **never auto-merges**.
 
+### Spec Planning Gate (per epic — run by the coordinator)
+
+Every epic is **fully planned before any execution**: the `spec-planner` authors the 1-3
+specs, only the questions the sources cannot answer reach the user, the
+`architecture-validator` approves per spec, and the epic-agent then receives sealed,
+validated specs — never the job of writing them. The evidence lives on disk in
+`docs/05-specs/<epic-slug>/_planning.md` (tracked). Run these steps for the epic just
+locked `[/]`:
+
+1. **Dispatch the `spec-planner`** (`agents/spec-planner/AGENT.md`) with its Required
+   Inputs manifest, assembled by you: the full epic block; the linked
+   `business_requirements.md` sections + Capacidades de Frontera; the `architecture.md`
+   sections of the involved components (incl. "Carpeta raíz"); the contract slice with the
+   epic's `operationId`s; `stack.yml`, `conventions.md` (§8, §12, file-org), `Accepted`
+   ADRs; resolved docs-index and `_current/` files (run "Docs Index Resolution" and
+   "Current-State Resolution" as defined in `build/EPIC_LOOP.md` — same algorithms, you
+   have the file); the template per the epic's `Template:` field; the component root
+   paths; the frontend/migration conditionals. A missing item costs a `NEEDS_CONTEXT`
+   round-trip.
+2. **Stage, don't commit**: `git add docs/05-specs/<epic-slug>/` after each planner pass,
+   so re-dispatches stay diffeable.
+3. **Questions.** If `OPEN_QUESTIONS` is non-empty, ask the user via `AskUserQuestion`
+   (Copilot / Antigravity: closed questions in chat, same rules): at most **4 questions per
+   round**, 2-4 options each, one `(recomendada)`, at most **2 rounds per epic**. Contract
+   doubts still open after 2 rounds mean the epic is under-discovered → offer a scoped
+   `discover` instead of a third round.
+   - **Vague pressure never suppresses contract questions** ("hazlo rápido", "no me
+     preguntes" — same resistance rule as the router). **Explicit delegation** ("si hay
+     dudas usá la recomendada") is honored: answer each question with its recommended
+     option, recording `fuente: delegado por el usuario <fecha>`. Delegation scope = the
+     named epic (the whole batch only if said **before** starting it); it never survives
+     the session and is never inferred from a previous one. It does NOT authorize touching
+     the contract or the architecture — a missing shape stays `BLOCKED: contrato`.
+   - **Persist the answers.** If an answer creates or changes a business rule, edit the
+     rule **in place** in `business_requirements.md` with the marker `(aclarado en Epic
+     X.Y, <fecha>)` — never per-epic addendum subsections — BEFORE re-dispatching, so the
+     spec can cite it and validator Dimension 4 finds it. An architectural answer → new
+     ADR. Record every question, answer and `fuente:` in `_planning.md`.
+4. **Re-dispatch with `ANSWERS`** (or `VIOLATIONS`); the planner edits minimally. **Echo
+   the `CHANGELOG`** to the chat ("así quedó — …") without waiting for confirmation.
+   Contrast `git diff -- docs/05-specs/<epic-slug>/` against the `CHANGELOG`: a diff that
+   exceeds it is a finding → re-dispatch with "revertí lo no listado".
+5. **Validate per spec**: dispatch the `architecture-validator` once per spec (dims 1-6,
+   unchanged). **Only the first dispatch of the set** additionally carries `_planning.md`
+   and the source excerpts cited in `RESOLVED_ALONE` — that activates its C7 check
+   ("aclaraciones sin sustento"). On `REJECTED` → re-dispatch the planner with
+   `VIOLATIONS` (step 4). **Anti-cascade**: if C7 rejects the **same item a second time**,
+   convert it into an `OPEN_QUESTION` (back to step 3) — no third attempt between two
+   models arguing over a plausible quote. **3 accumulated rejections** for the epic →
+   escalate to the user.
+6. **Summary — always, before committing**: the specs in order, AC/BR/EC counts,
+   `operationId`s covered, and **every** `RESOLVED_ALONE` decision with its quote.
+   **Review mode** (only if the user explicitly asked this session, e.g. "construí con
+   revisión de specs"): stop here and wait for confirmation in chat. There is no toggle,
+   and Plan mode is not used.
+7. **Commit** `docs(specs): plan <epic-slug> — N specs validados` (specs +
+   `_planning.md`). Then append to `_planning.md` the validator verdict **verbatim** and
+   the commit's `SPEC_SHA`; that append rides with the epic's next commit.
+   `_planning.md` ownership is split: the planner wrote `COVERAGE_TABLE` /
+   `OPEN_QUESTIONS` / `RESOLVED_ALONE`; you append answers, verdicts and `SPEC_SHA` —
+   sequential writers, never concurrent.
+8. **`TaskCreate` one task per spec** (subject `<epic-slug> / <task-slug>`, start
+   `pending`) — user-visible progress for the epic-agent's Steps 4-8; `ROADMAP.md`
+   remains the source of truth.
+9. **Dispatch the epic-agent** (below) with the validated specs, the `SPEC_SHA` and the
+   verbatim verdict.
+
+**When the planner reports `BLOCKED`** — `sizing` (>3 specs): escalate the suggested
+split to the user (it touches `ROADMAP.md`); `contrato`: the epic needs a contract change
+→ `architecture`/ADR, never a spec; `contradicción`: escalate for an ADR.
+
+**Human contacts** (none routine — a doubt-free epic runs to `[x]` without interruption):
+`OPEN_QUESTIONS` (incl. C7 conversions) · 3 accumulated validator rejections ·
+`BLOCKED: sizing` · `BLOCKED: contrato` · resumption with unvalidated specs ·
+`BLOCKED` / `REJECTED_MAJOR` downstream · review mode on request.
+
 ### The queue loop (in this coordinator chat)
 
 1. Read **only the epic checkbox + `Dependencias` lines** of `ROADMAP.md` (not the whole doc).
@@ -90,7 +169,7 @@ If `.specture/conventions.md` §13 (Workflow/Proceso) defines branch rules, crea
 5. **Process the queue one epic at a time** (never concurrently). For each epic, in order:
    1. Mark the epic `[/]` in `ROADMAP.md`; commit. Only ONE epic is `[/]` at any moment.
    2. Set that epic's task `in_progress`.
-   3. Assemble the **base context** (`.specture/stack.yml`, `.specture/conventions.md`, all ADRs, `docs/01-requirements/business_requirements.md`, `docs/02-architecture/architecture.md`, `templates/SPEC_TEMPLATE.md`, and the full text of `build/EPIC_LOOP.md` — **never** this coordinator file) and dispatch one fresh **epic-agent** (below). Wait for its report.
+   3. Run the **Spec Planning Gate** (above) for this epic. When it completes (specs committed, `SPEC_SHA` recorded), assemble the epic-agent's base context (`.specture/stack.yml`, `.specture/conventions.md`, all ADRs, `docs/01-requirements/business_requirements.md`, `docs/02-architecture/architecture.md`, the validated specs, and the full text of `build/EPIC_LOOP.md` — **never** this coordinator file) and dispatch one fresh **epic-agent** (below). Wait for its report.
    4. Process the report (below) before starting the next epic.
 6. **Stop when the queue drains** (N epics processed) or a report escalates. Do not pull epics beyond N. If a session branch was created (§13), announce it now and suggest the merge/PR per `W-4` — Specture does not merge for you.
 

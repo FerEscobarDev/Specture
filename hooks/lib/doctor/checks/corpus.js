@@ -120,7 +120,7 @@ function canonicalSectionBases() {
 const CANONICAL_SECTIONS = canonicalSectionBases();
 
 function sectionDestination(heading) {
-  if (/decisi[oó]n/i.test(heading)) return "user decision: record it as a note in the ROADMAP for now (a per-epic _planning.md is planned as its home)";
+  if (/decisi[oó]n/i.test(heading)) return "user decision: record it in the epic's _planning.md (the coordinator appends it during spec planning)";
   if (/deuda/i.test(heading)) return "move the debt to the ROADMAP as a pending epic/task";
   if (/divergencia|handoff/i.test(heading)) return "move it to docs/03-ux-ui/handoff-mapping.md";
   if (/supersesi[oó]n/i.test(heading)) return "sealed-test supersession has no sanctioned mechanism yet — keep it out of the spec";

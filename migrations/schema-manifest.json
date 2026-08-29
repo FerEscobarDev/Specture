@@ -1,7 +1,7 @@
 {
   "files": {
     "skills/architecture/SKILL.md#required-inputs": "3ca81e44ce5435c14d6c2b0dd6c87ac6b91cbbc70c9d09c5ea4d8451e939956f",
-    "skills/build/SKILL.md#required-inputs": "dda6ef4f2ad43b0e1899f4587c21fe758ac91170a924685f960aa4e2cea6a4b2",
+    "skills/build/SKILL.md#required-inputs": "9fa81213c49e93da39e6205842f40001491b9ae0e1751ef4a341d7f036abdd55",
     "skills/contract-sync-audit/SKILL.md#required-inputs": "8e0e5960283a11cc8b6f8d271777a105f3951a004876c9df72c1ee5c6ea45592",
     "skills/discover/SKILL.md#required-inputs": "891bbe500e062f890fbee530e7ce3cdb3eeb2893b5b73647aac69562b0c163f6",
     "skills/handoff-ingest/SKILL.md#required-inputs": "63836d9d3840217a9cd713d4a8d709901cb3a4316c3a9195eab08acd4b678303",
@@ -18,6 +18,6 @@
     "templates/project-config/settings.template.yml": "c1b0765e237d6a5f775dac44cd9ec3ea7a0a7f5eaca57ec2e8bd4a25fca3560a",
     "templates/project-config/stack.template.yml": "e8c249d7de5a4a59f055f44495156823d864eb8686bd1e5ebc23934e90e1dc3f",
     "templates/ROADMAP_TEMPLATE.md": "2f2d5b52085860dbc9869cb62a2ec648555350d5fc40f7b8f76b281bcfa85e99",
-    "templates/SPEC_TEMPLATE.md": "33422ebb131ac2b96ef69385eb415f8f11bebbfa079215ad41221fc531bfa385"
+    "templates/SPEC_TEMPLATE.md": "eaa22b00d7d1c47d8ce396511eaec2ccd71d73281d6f7e4778101006cdb0900b"
   }
 }

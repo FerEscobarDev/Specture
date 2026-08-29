@@ -42,10 +42,16 @@
 > los excluyen por declaración. El tdd-test-writer los escribe (o confirma que existen) pasando.
 - **GUARD-1:** [comportamiento existente protegido] → test: `<path>::<nombre del test>`
 
-## Superficie de Código Existente (para el implementer — lo llena el orquestador en Step 2)
+## Aclaraciones (resueltas en planificación)
+> Puntero — la evidencia completa vive en el `_planning.md` del epic (COVERAGE_TABLE,
+> preguntas y respuestas, RESOLVED_ALONE con citas, veredicto del validator, SPEC_SHA).
+- Q/R-n: [duda] → [decisión] — fuente: <usuario <fecha> | delegado por el usuario | RN-nnn "cita" | ADR-00N>
+
+## Superficie de Código Existente (para el implementer — lo llena el spec-planner)
 > Los `<path>` de archivos nuevos se anclan a la **carpeta raíz del componente** del epic (campo "Carpeta raíz" en `architecture.md`, respaldado por `stack.yml.structure`). Si es "n/a" (`root_layout` flat/custom o componente no desplegable), usar el layout del proyecto.
 - Llama a: `<símbolo existente>` en `<path>` — firma: `[...]`
 - Crea: `<símbolo nuevo>` en `<path>`
+- Crea (spec hermano anterior): `<símbolo>` — firma: `[...]` `(planeada — re-anclar)`
 - Fixtures disponibles: `<path>` (no duplicar)
 
 ---
