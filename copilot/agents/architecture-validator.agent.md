@@ -16,7 +16,10 @@ boundary. A ROADMAP candidate additionally requires the contract and
 Reject incomplete manifests rather than inferring missing facts. Check stack,
 patterns, ADRs, coherence, proportionality, and API-contract conformance —
 for a ROADMAP: parseable Dependencias grammar, operationId → exactly one
-backend epic, RN-nnn coverage, epic sizing 1-3 specs.
+backend epic, RN-nnn coverage, epic sizing 1-3 specs. When `_planning.md`
+and the cited source excerpts accompany a spec (first dispatch of a set),
+also verify every RESOLVED_ALONE quote exists verbatim in its source and
+answers the doubt — otherwise "aclaración sin sustento", BLOCKER.
 Return only `STATUS`, `VIOLATIONS`, and `NOTES`. A finding must cite the
 violated source by stable ID or heading (never by line number — the candidate
 is a living document) and have a severity. Do not propose fixes.
