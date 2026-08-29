@@ -283,10 +283,12 @@ flowchart TD
     DC -->|Sí| SPLIT["Proponer dividir en sub-proyectos<br/>(construir uno por completo primero)"]
     DC -->|No| AG{"Esperar a que el usuario diga<br/>'ya está' / 'podemos seguir'"}
     SPLIT --> AG
-    AG --> D1["Generar business_requirements.md<br/>(con Capacidades de Frontera marcadas)"]
-    D1 --> D2{"Self-review: placeholders · contradicciones ·<br/>actores indefinidos · marcas de exposición"}
-    D2 -->|"problemas"| T
-    D2 -->|"limpio"| D3{"Validación explícita del usuario<br/>(NO auto-enruta)"}
+    AG --> D1["Generar business_requirements.md<br/>desde BUSINESS_REQUIREMENTS_TEMPLATE<br/>(IDs RN/CL/FA · Capacidades de Frontera)"]
+    D1 --> D2{"Chequeo mecánico (doctor check --brief):<br/>placeholders · Exposición · frontera · IDs"}
+    D2 -->|"findings"| D1
+    D2 -->|"limpio"| D2b{"Self-review de juicio:<br/>contradicciones · actores indefinidos"}
+    D2b -->|"problemas"| T
+    D2b -->|"limpio"| D3{"Validación explícita del usuario<br/>(NO auto-enruta)"}
     D3 -->|"aprueba"| ARCH[["→ architecture · Fase 2"]]
 ```
 
@@ -370,12 +372,12 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    S1["Step 1 · Mini-discovery socrático scopeado<br/>→ docs/01-requirements/feature-<slug>.md"] --> S2{"Step 2 · Impact Ripple Analysis<br/>EnterPlanMode · lee _current/ (verdad viva)"}
+    S1["Step 1 · Mini-discovery socrático scopeado<br/>(borrador feature-<slug>.md — se fusiona y borra en Step 4)"] --> S2{"Step 2 · Impact Ripple Analysis<br/>EnterPlanMode · lee _current/ (verdad viva)"}
     S2 -.->|"contradice un ADR Accepted"| ADR["Rechazar la feature como incompatible<br/>o crear un ADR que lo supersede"]
     S2 --> EX["ExitPlanMode (pide aprobación)<br/>Edit/Write/ROADMAP bloqueados hasta aprobar"]
     EX --> S3{"Step 3 · Validación del usuario<br/>(coste declarado honestamente)"}
     S3 -->|"re-scope"| S2
-    S3 -->|"acepta"| S4["Step 4 · Actualizar ROADMAP (nuevo Milestone/Epic [ ])<br/>+ architecture/ADRs si cambian"]
+    S3 -->|"acepta"| S4["Step 4 · Fusionar requerimientos por sección<br/>(marcador 'añadido por feature X' · borrar borrador)<br/>+ ROADMAP (nuevo Milestone/Epic [ ]) + architecture/ADRs"]
     S4 -.->|"cambian componentes"| AV["architecture-validator valida"]
     S4 --> S5[["Step 5 · → build (work type = feature)"]]
 ```

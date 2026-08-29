@@ -72,7 +72,7 @@ Si estás desarrollando o probando modificaciones locales de Specture, inicia Co
    /agent specture:specture-router
    ```
 2. Una vez seleccionado, pide iniciar o continuar el trabajo (*"inicia el proyecto"*, *"continuemos con el roadmap"*).
-3. El router cargará la habilidad `start` e inspeccionará el estado del sistema de archivos para dirigir la sesión a la fase correspondiente.
+3. El router inspecciona el estado del sistema de archivos y responde `PHASE: <fase> · SKILL: <ruta>` — no ejecuta la fase; invocá esa habilidad en el chat principal.
 
 Para más información sobre la arquitectura y la matriz de compatibilidad de Copilot CLI, consulta la guía dedicada en [`docs/copilot-cli-plugin.md`](docs/copilot-cli-plugin.md).
 
@@ -184,7 +184,8 @@ $SPECTURE_ROOT/
 │   ├── discover/SKILL.md              # Levantamiento socrático de negocio
 │   ├── architecture/SKILL.md          # Arquitectura + contrato de API + ROADMAP
 │   ├── ux-design/SKILL.md             # UX/UI: nav map + design system (siempre)
-│   ├── build/SKILL.md                 # Loop spec→test→code→review + Modo Frontend
+│   ├── build/SKILL.md                 # Coordinador de la cola de epics + gates de sesión
+│   ├── build/EPIC_LOOP.md             # Procedimiento del epic-agent (Steps 2-8)
 │   ├── handoff-ingest/SKILL.md        # Convierte un handoff de diseño al stack
 │   ├── contract-sync-audit/SKILL.md   # Audita sync back/front en proyectos existentes
 │   ├── debug/SKILL.md
@@ -215,6 +216,7 @@ $SPECTURE_ROOT/
 │   ├── api-contract.openapi.template.yaml
 │   ├── ROADMAP_TEMPLATE.md
 │   ├── SPEC_TEMPLATE.md
+│   ├── BUSINESS_REQUIREMENTS_TEMPLATE.md
 │   ├── DESIGN_SYSTEM_TEMPLATE.md
 │   ├── DEBUG_LOG_TEMPLATE.md
 │   └── LEARN_OUTPUT_TEMPLATE.md       # Reporte humano-legible de knowledge capture (opt-in, a pedido)
@@ -232,7 +234,7 @@ $SPECTURE_ROOT/
 | # | Skill | Slash command | Cuándo se activa | Output |
 |---|-------|--------------|------------------|--------|
 | **0** | `setup` | `/specture:setup` | Sin `.specture/stack.yml` | `.specture/` poblado + `CLAUDE.md` del proyecto |
-| **1** | `discover` | `/specture:discover` | Sin `docs/01-requirements/business_requirements.md` | Reglas de negocio, actores, edge cases |
+| **1** | `discover` | `/specture:discover` | Sin `docs/01-requirements/business_requirements.md` | Reglas de negocio, actores y edge cases con IDs estables (`RN/CL/FA`), desde template y con chequeo mecánico de salida |
 | **2** | `architecture` | `/specture:architecture` | Sin `docs/04-roadmap/ROADMAP.md` | Arquitectura + **contrato de API (OpenAPI + doc legible)** + ROADMAP de milestones/epics |
 | **3** | `ux-design` | `/specture:ux-design` | Frontend declarado + `docs/03-ux-ui/` incompleto | Mapa de navegación + **design system completo (siempre)** + (Ruta 1) specs para IA de diseño externa |
 | **4** | `build` | `/specture:build` | ROADMAP con epics `[ ]` o `[/]` | Código testeado, revisado, verificado |
@@ -261,7 +263,7 @@ Specture **no** especializa por capa técnica arbitraria (no hay un "Agente Back
 
 | Agente | Función | Contexto que recibe | Contexto que NO recibe |
 |--------|---------|---------------------|-------------------------|
-| `specture-router` | Detectar la fase del proyecto y enrutar (opt-in) | Existencia de archivos clave + checkboxes del ROADMAP | Contenido de los documentos, historial de chat |
+| `specture-router` | Detectar la fase y devolver `PHASE · SKILL` (opt-in; nunca ejecuta la fase) | Existencia de archivos clave + checkboxes del ROADMAP | Contenido de los documentos, historial de chat |
 | `architecture-validator` | Validar que plan/spec/**contrato** respeta stack, ADRs y el contrato de API | Documento + `.specture/` (+ contrato si aplica) | Código de implementación |
 | `tdd-test-writer` | Escribir tests desde el spec | Spec + business rules + testing framework | Código de implementación (anti-bias crítico) |
 | `implementer` | Hacer que los tests pasen (lógica/backend) | Spec + tests + archivos a tocar | Conversación entera, archivos no relevantes |
@@ -296,14 +298,14 @@ Output: directorio `.specture/` con `stack.yml`, `conventions.md`, `decisions/` 
 #### `/specture:discover`
 **Levantamiento socrático de requerimientos de negocio.** Actúa como Product Architect + Business Analyst. NO habla de tecnología — si el usuario intenta hablar de frameworks, lo redirige. Extrae actores, user stories, reglas de negocio, edge cases y scope mediante preguntas en lotes de 3-5, esperando respuesta antes de seguir.
 
-Output: `docs/01-requirements/business_requirements.md` con reglas verificables y actores definidos.
+Output: `docs/01-requirements/business_requirements.md` desde `templates/BUSINESS_REQUIREMENTS_TEMPLATE.md`: reglas (`RN-nnn`), casos límite (`CL-nnn`) y exclusiones (`FA-nnn`) con IDs estables que specs, ROADMAP y `_current/` citan por ID. La salida pasa por un **chequeo mecánico del doctor** (placeholders, `Exposición`, Capacidades de Frontera, IDs) antes de entregarse.
 
 > Úsalo cuando digas "inicia el proyecto", "levanta los requerimientos", "definamos el negocio".
 
 ---
 
 #### `/specture:architecture`
-**Diseña la arquitectura técnica, el contrato de API y genera el ROADMAP.** Fusiona tres responsabilidades: (1) produce `architecture.md` basado en el stack declarado en `stack.yml` (nunca inventa tecnología); (2) produce el **contrato de API** — `api-contract.openapi.yaml` (fuente de verdad machine-readable) + `api-contract.md` (versión legible) — que es la única fuente de verdad de la interfaz backend↔frontend, eliminando que cada lado invente sus propias URLs y shapes; (3) convierte arquitectura + contrato + requerimientos en un `ROADMAP.md` de milestones/epics con dependencias explícitas, ordenando los epics de frontend tras los de backend que implementan las operaciones que consumen. Valida cada documento con el agente `architecture-validator`.
+**Diseña la arquitectura técnica, el contrato de API y genera el ROADMAP.** Fusiona tres responsabilidades: (1) produce `architecture.md` basado en el stack declarado en `stack.yml` (nunca inventa tecnología); (2) produce el **contrato de API** — `api-contract.openapi.yaml` (fuente de verdad machine-readable) + `api-contract.md` (versión legible) — que es la única fuente de verdad de la interfaz backend↔frontend, eliminando que cada lado invente sus propias URLs y shapes; (3) convierte arquitectura + contrato + requerimientos en un `ROADMAP.md` de milestones/epics con dependencias explícitas, ordenando los epics de frontend tras los de backend que implementan las operaciones que consumen. Valida **los tres documentos** con el agente `architecture-validator` — incluido el ROADMAP: gramática parseable de `Dependencias`, cada `operationId` implementado por exactamente un epic backend, cobertura de `RN-nnn`, sizing de 1-3 specs por epic.
 
 Output: `docs/02-architecture/architecture.md` + `docs/02-architecture/api-contract.openapi.yaml` (+ `.md`) + `docs/04-roadmap/ROADMAP.md`.
 
@@ -421,7 +423,7 @@ Output: `.specture/docs-index.yml` + bridges en `docs/0X-*/` + ADRs Proposed en 
 ---
 
 #### `/specture:doctor` (modos `check` | `migrate` | `sync`)
-**Diagnóstico mecánico del proyecto y migraciones de esquema.** Specture versiona el plugin; el doctor versiona el **proyecto**. `check` (solo lectura) lintea el corpus documental — rutas citadas que no existen, placeholders `...`, ADRs con número duplicado o sin `Status`, reviews sin veredicto, specs sin `AC/BR/EC` o sobre 300 líneas, citas por número de línea a documentos vivos —, revisa el estado — sello `build-locked.json` huérfano, más de un epic `[/]`, `_current/` ausente con milestones cerrados, `docs-index.yml` vs toggle, residuos de worktrees — y compara `schema_version` (`.specture/settings.yml`) con la versión del plugin para listar las migraciones pendientes por tipo. `migrate` aplica las **mecánicas** (idempotentes, verificadas, registradas en `.specture/migrations.log`), lleva las **asistidas** a Plan mode y registra las de **contenido** con su skill dueño; `sync` = mecánicas + check (para CI). Nunca commitea; nunca toca specs cerrados, reviews ni debug logs.
+**Diagnóstico mecánico del proyecto y migraciones de esquema.** Specture versiona el plugin; el doctor versiona el **proyecto**. `check` (solo lectura) lintea el corpus documental — rutas citadas que no existen, placeholders `...`, ADRs con número duplicado o sin `Status`, reviews sin veredicto, specs sin `AC/BR/EC`, sobre 300 líneas o con secciones fuera del template, citas por número de línea a documentos vivos —, lintea los requerimientos — placeholders sin resolver, HUs sin `Exposición`, historias de frontera sin consolidar, reglas/casos/exclusiones sin IDs `RN/CL/FA` —, revisa el estado — sello `build-locked.json` huérfano, más de un epic `[/]`, `_current/` ausente con milestones cerrados, `docs-index.yml` vs toggle, residuos de worktrees — y compara `schema_version` (`.specture/settings.yml`) con la versión del plugin para listar las migraciones pendientes por tipo. `migrate` aplica las **mecánicas** (idempotentes, verificadas, registradas en `.specture/migrations.log`), lleva las **asistidas** a Plan mode y registra las de **contenido** con su skill dueño; `sync` = mecánicas + check (para CI). Nunca commitea; nunca toca specs cerrados, reviews ni debug logs.
 
 > Úsalo después de actualizar el plugin, cuando `/specture:start` avise migraciones pendientes, o cuando sospeches referencias rotas. Catálogo de migraciones: `migrations/`; detalle: `skills/doctor/SKILL.md` y `docs/doctor-and-migrations-design.md`.
 
@@ -434,10 +436,10 @@ Los agentes de Specture son subagentes con **contexto restringido** — cada uno
 ---
 
 #### `specture-router`
-**Router del framework (opt-in, desde v1.5.0).** Cuando se lo invoca explícitamente, este agente inspecciona el estado real del filesystem e invoca `skills/start/SKILL.md` para enrutar a la fase correcta. **No intercepta** automáticamente las conversaciones: el routing dejó de ser automático y se activa solo a pedido.
+**Router del framework (opt-in, desde v1.5.0; salida estricta desde v1.16.0).** Cuando se lo invoca explícitamente, corre la máquina de estados de `skills/start/SKILL.md` en **solo lectura** y devuelve exactamente `PHASE: <fase> · SKILL: <ruta>` — **nunca ejecuta la fase**: el chat principal invoca el skill. **No intercepta** automáticamente las conversaciones: el routing se activa solo a pedido.
 
 - **Se activa:** invocando `/specture:start`, o cuando el usuario pide iniciar/continuar trabajo de Specture ("continuemos con el roadmap", "inicia el proyecto"). **Nunca automáticamente.**
-- **No escribe código** — solo enruta.
+- **No escribe código, no invoca skills, no despacha subagentes** — solo detecta y nombra la fase.
 
 ---
 
