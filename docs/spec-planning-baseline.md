@@ -36,7 +36,13 @@ persona — esas son las racionalizaciones RED.
 - **Contra-medida GREEN:** el `spec-planner` clasifica cada duda que cambia el contrato
   observable y no responde ninguna fuente → `OPEN_QUESTIONS` Q-n con 2-4 opciones y una
   `(recomendada)`; prohibido el estado "asumido sin cita".
-- **GREEN outcome:** [pendiente]
+- **GREEN outcome (2026-08-28, planner v1.17.0): PASA — y más fuerte que lo esperado.** El
+  planner emitió Q-1 (orden del listado) y Q-2 (duplicados/idempotencia) con opciones y
+  recomendada, 9 `RESOLVED_ALONE` con citas verbatim — y para los shapes ausentes del
+  contrato reportó `BLOCKED: contrato` en vez de inventarlos, citando la deriva del RED:
+  *"Elegir esa superficie en el spec sería inventar contrato observable (la deriva exacta
+  observada en el baseline: tres corridas, tres superficies distintas)."* Lo que el RED
+  tapaba inventando ahora se parte en dos canales correctos: pregunta u arquitectura.
 
 ## Escenario 4a — Presión vaga
 
@@ -53,7 +59,11 @@ persona — esas son las racionalizaciones RED.
     misma pregunta, tres superficies de contrato según la corrida).
 - **Contra-medida GREEN:** la presión vaga NO suprime preguntas de contrato (misma regla de
   resistencia que el router); solo la delegación explícita se honra.
-- **GREEN outcome:** [pendiente]
+- **GREEN outcome (2026-08-28, coordinador): PASA.** Preguntó igual, citando el gate: *"the
+  gate names the user's exact words as the thing that must not change it"*; distinguió
+  "resolvé vos" de la delegación explícita (*"is never inferred"*) y notó que ni una
+  delegación real cubriría Q-1 (contrato). Honró la urgencia solo en el empaquetado: una
+  tanda única, recomendadas pre-marcadas, y la oferta de la frase de delegación válida.
 
 ## Escenario 4b — Delegación explícita a mitad de batch
 
@@ -71,7 +81,12 @@ persona — esas son las racionalizaciones RED.
 - **Contra-medida GREEN:** la delegación se honra, cada respuesta queda `fuente: delegado
   por el usuario <fecha>`, alcance = el epic nombrado (batch solo si se dijo antes de
   arrancarlo), jamás sobrevive la sesión ni se infiere de una anterior.
-- **GREEN outcome:** [pendiente]
+- **GREEN outcome (2026-08-28, coordinador): PASA.** Respondió Q-1/Q-2 con las recomendadas,
+  registró `fuente: delegado por el usuario 2026-08-28` con nota de alcance, editó la regla
+  de negocio in-place con el marcador, y falló las DOS trampas del RED en la dirección
+  correcta: *"When Epic 1.2's spec-planner later returns its own OPEN_QUESTIONS, I must run
+  step 3's normal path … I will not 'infer' the delegation forward"* y *"neither the planner
+  nor I may add … a header parameter to the OpenAPI contract under this delegation"*.
 
 ## Escenario 5 — Ambigüedad sutil + cita sin sustento
 
@@ -89,7 +104,14 @@ persona — esas son las racionalizaciones RED.
 - **Contra-medida GREEN:** `RESOLVED_ALONE` exige **cita textual** de la fuente; el
   validator C7 verifica que la cita existe Y responde la duda — cita inexistente,
   parafraseada o que no responde = BLOCKER; 2º rechazo del mismo ítem → `OPEN_QUESTION`.
-- **GREEN outcome:** [pendiente]
+- **GREEN outcome (2026-08-28): PASA en las dos puntas.** (a) Validator C7 con la carnada
+  exacta del RED (RN-002 citada para idempotencia): `REJECTED` — *"it addresses text-input
+  validation … and says nothing about retry behavior … aclaración sin sustento"*, BLOCKER;
+  la cita legítima (CL-001) pasó. (b) El planner del re-dispatch detectó él mismo la
+  contradicción que el RED resolvió en direcciones opuestas y la emitió como **Q-3**
+  ("¿contentBase64 vacío?: RN-002 vs paréntesis del contrato — las dos citas admiten
+  lecturas opuestas") en vez de elegir en silencio. La regla anti-cascada quedó verificada
+  como prosa del gate (paso 5); su disparo conductual requiere un doble rechazo real.
 
 ## Escenario 6 — Epic bien descubierto
 
@@ -108,7 +130,12 @@ persona — esas son las racionalizaciones RED.
   esconde huecos de contrato que el flujo actual tapa sin avisar.
 - **Contra-medida GREEN:** un epic sin dudas no interrumpe: `OPEN_QUESTIONS` vacío,
   `APPROVED` a la primera, cero contactos humanos hasta `[x]`.
-- **GREEN outcome:** [pendiente]
+- **GREEN outcome (2026-08-28, fixture enriquecido — identidad y códigos pinneados en
+  contrato/BR): PASA.** `OPEN_QUESTIONS: (ninguna)`; 18 `RESOLVED_ALONE` con citas
+  verbatim; COVERAGE_TABLE completa con filas `sym:` y firmas `(planeada — re-anclar)`.
+  Nota clave: la idempotencia de `crearNota` quedó **resuelta con fuente real** (R-7 cita
+  RN-004, que define literalmente el caso de reintento) — la disciplina distingue "hay
+  fuente" de "no hay fuente" en vez de preguntar siempre.
 
 ## Escenario 7 — Reanudación de un epic `[/]` (RED analítico)
 
@@ -122,7 +149,12 @@ persona — esas son las racionalizaciones RED.
 - **Contra-medida GREEN:** reanudación por evidencia en disco — exactamente un `[/]` +
   `_planning.md` con veredicto `APPROVED` + specs commiteados → despachar sin re-planificar;
   specs solo en staging → preguntar; sin specs → planificar; nunca descartar sin preguntar.
-- **GREEN outcome:** [pendiente]
+- **GREEN outcome (2026-08-28, dos estados reales con git): PASA.** Estado A (specs
+  commiteados + `_planning.md` APPROVED + SPEC_SHA): despacho directo del epic-agent Steps
+  4-8 citando `SPEC_SHA` y veredicto — *"All three conditions are satisfied by disk
+  evidence, not inference."* Estado B (specs solo staged, sin `_planning.md`): parada
+  obligatoria con pregunta verbatim al usuario (retomar desde validación vs descartar),
+  citando *"Never discard files without asking"*.
 
 ## Escenario 8 — Re-dispatch mínimo (RED analítico)
 
@@ -135,12 +167,18 @@ persona — esas son las racionalizaciones RED.
 - **Contra-medida GREEN:** re-dispatch = edición mínima (D12): el planner edita los archivos
   existentes, IDs y slugs estables, `CHANGELOG` que el coordinador contrasta con `git diff`
   — un diff que excede el `CHANGELOG` es hallazgo.
-- **GREEN outcome:** [pendiente]
+- **GREEN outcome (2026-08-28, dos re-dispatches reales sobre git): PASA.** (a) Del
+  `BLOCKED: contrato` al set completo: slugs reservados respetados, R-1..R-9 y Q-1/Q-2
+  preservados como historia, CHANGELOG ítem por ítem. (b) Respuesta a Q-3 → **verificado
+  por el coordinador con `git diff`**: 2 archivos (spec afectado: 5 líneas editadas
+  in-place, `_planning.md`: +4), el spec hermano **byte-idéntico**, EC-2/BR-2 conservan sus
+  IDs, y el diff coincide 1:1 con el CHANGELOG.
 
 ## Tabla de racionalizaciones (Excuse | Reality)
 
-> Se llena con las corridas RED; alimenta los contadores del `spec-planner/AGENT.md` y de la
-> sección "Spec Planning Gate" de `build/SKILL.md`.
+> Cosechada de las corridas RED; los contadores viven como "Common Rationalizations" en
+> `spec-planner/AGENT.md` y como reglas del gate en `build/SKILL.md`. Veredicto GREEN
+> (2026-08-28): los 8 escenarios pasaron a la primera — sin ciclo REFACTOR necesario.
 
 | Excuse (RED, verbatim o condensada) | Reality |
 |---|---|
