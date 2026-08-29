@@ -32,6 +32,7 @@
   "gates": [
     "filesystem-state-routing",
     "architecture-validation",
+    "roadmap-validation",
     "red-commit",
     "tdd-honesty",
     "independent-review",

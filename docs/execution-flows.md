@@ -304,8 +304,10 @@ flowchart TD
     Bc --> GB{"GATE · architecture-validator<br/>cobertura bidireccional capacidad ↔ operación"}
     GB -->|REJECTED| Bc
     GB -->|APPROVED| Croad["Parte C · ROADMAP.md<br/>Standard Milestone Order · dependencias explícitas<br/>· frontend tras el backend que consume"]
-    Croad --> SR{"Self-review del ROADMAP (5 puntos)"}
-    SR --> W{"Anunciar (ES) y esperar al usuario<br/>(no auto-avanza)"}
+    Croad --> SR["Self-review del ROADMAP<br/>(pre-check barato, 5 puntos)"]
+    SR --> GC{"GATE · architecture-validator<br/>Dependencias parseables · operationId → 1 epic backend<br/>RN-nnn cubiertas · sizing 1-3 specs"}
+    GC -->|REJECTED| Croad
+    GC -->|APPROVED| W{"Anunciar (ES) y esperar al usuario<br/>(no auto-avanza)"}
     W -->|"hay frontend"| UX[["→ ux-design · Fase 3"]]
     W -->|"sin frontend"| BLD[["→ build · Fase 4"]]
 ```

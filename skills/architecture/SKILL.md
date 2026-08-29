@@ -134,21 +134,36 @@ Each epic must specify:
 - **Componentes de arquitectura involucrados** (links a secciones de `architecture.md`)
 - **Operaciones del contrato** (cuando aplique): los `operationId` que el epic **implementa** (backend) o **consume** (frontend), referenciando `api-contract.md`.
 
-### Self-Review of ROADMAP
+### Self-Review of ROADMAP (cheap pre-check before spending a dispatch)
 
-Before reporting done:
+Fix inline anything you can catch yourself before dispatching the validator:
 
-1. **Coverage** — every business rule and user story in `business_requirements.md` traces to at least one epic.
+1. **Coverage** — every business rule (`RN-nnn`) and user story in `business_requirements.md` traces to at least one epic.
 2. **Order** — no epic depends on something that comes later.
 3. **Granularity** — no epic looks like 10+ specs (split it) and no epic is a single file change (merge it with a neighbor).
 4. **Architecture alignment** — every architectural component appears in some epic.
 5. **Contract coverage (when a contract exists)** — every `operationId` in `api-contract.md` is implemented by exactly one backend epic and (if it's consumed by the UI) consumed by at least one frontend epic. No orphan operations; no frontend page consuming an operation no epic implements.
 
-Fix issues inline.
+### Validation Gate (mandatory)
+
+Part A and Part B are gated; the ROADMAP is the direct input of the build queue and of spec
+planning — garbage that gets through here becomes mis-ordered epics and hallucinated specs
+downstream, so it gets the same gate.
+
+**Pre-flight: Docs Index Resolution.** If `.specture/docs-index.yml` exists and
+`docs_index.enabled` (`.specture/settings.yml`) is not `false`, resolve entries whose tags
+intersect the milestones' domains. Cap at `docs_index.max_entries_per_dispatch` (default 3).
+Use the algorithm in `skills/build/SKILL.md` § "Docs Index Resolution".
+
+Dispatch the `architecture-validator` agent with:
+- Input: `ROADMAP.md` + the contract file (`stack.yml.api.contract_file`) + `api-contract.md` + `business_requirements.md` (the ROADMAP cites its `RN-nnn` IDs) + `architecture.md` + `.specture/stack.yml` + `.specture/conventions.md` + `.specture/decisions/` + the resolved docs-index entries (pass `docs_index_resolved: []` if empty).
+- Expected output: `APPROVED` or `REJECTED`. The validator runs the ROADMAP branch of its Dimension 6: parseable `Dependencias` grammar, dependency order, every `operationId` implemented by exactly one backend epic (no orphans), every `RN-nnn` covered by ≥1 epic, epic sizing 1-3 specs, architecture alignment.
+
+If `REJECTED`, fix the ROADMAP and re-dispatch. Do NOT announce the documents as done until `APPROVED`.
 
 ## After All Documents Exist
 
 Announce in Spanish:
-> "Arquitectura aprobada por el validator, contrato de API generado en la ruta de `stack.yml.api.contract_file` (+ `api-contract.md` legible) y ROADMAP generado en `docs/04-roadmap/ROADMAP.md`. Por favor revísalos. Cuando estés listo, podemos pasar a la Fase 3 (UX) si tienes frontend, o directamente a la Fase 4 (build) para empezar a construir el primer epic."
+> "Arquitectura, contrato de API (en la ruta de `stack.yml.api.contract_file`, + `api-contract.md` legible) y ROADMAP en `docs/04-roadmap/ROADMAP.md` — los tres aprobados por el `architecture-validator`. Por favor revísalos. Cuando estés listo, podemos pasar a la Fase 3 (UX) si tienes frontend, o directamente a la Fase 4 (build) para empezar a construir el primer epic."
 
 Wait for the user. Do not auto-advance.
