@@ -89,7 +89,7 @@ You MUST respond in EXACTLY this format. Nothing else.
 STATUS: <APPROVED | REJECTED | BLOCKED>
 
 VIOLATIONS:
-- <Dimension>: <Specific violation citing the stable ID or section heading of the candidate (AC-n, BR-n, operationId, ADR-nnn §title, heading text) — never a line number: the candidate is a living document>
+- <Dimension>: <Specific violation citing the stable ID or section heading of the candidate (AC-n, BR-n, RN-nnn, CL-nnn, FA-nnn, operationId, ADR-nnn §title, heading text) — never a line number: the candidate is a living document>
   - Why it violates: <reference to stack.yml field / convention / ADR>
   - Severity: <BLOCKER | WARNING>
 

@@ -26,7 +26,7 @@
 | Idempotencia | sí/no + comportamiento en reintento |
 
 ## Reglas de Negocio
-- **BR-1:** [regla] — fuente: business_requirements.md §X
+- **BR-1:** [regla] — fuente: `RN-nnn` de business_requirements.md
 - **BR-2:** ...
 
 ## Criterios de Aceptación (≥1 test por ID)

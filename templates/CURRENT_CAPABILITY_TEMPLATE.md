@@ -11,7 +11,7 @@
 
 ## Reglas de negocio vigentes
 > Solo las que rigen HOY. Las superseded bajan a "Historial".
-- **BR — [enunciado de la regla vigente]** · origen: `[epic/task]` · `business_requirements.md` §X
+- **BR — [enunciado de la regla vigente]** · origen: `[epic/task]` · fuente: `RN-nnn`
 
 ## Comportamiento observable vigente
 > Los criterios de aceptación que describen lo que el sistema hace hoy en este componente.

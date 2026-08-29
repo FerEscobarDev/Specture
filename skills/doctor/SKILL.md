@@ -73,6 +73,7 @@ Used by CI and by `start` Step 0. Mechanical migrations are applied and the chec
 | `1.12-structure-block` | assisted | `project.slug` + `structure` block in `stack.yml` |
 | `1.15-settings-file` | mechanical | toggles from §10 → `.specture/settings.yml` (+ pointer) |
 | `1.15-schema-version` | mechanical | `schema_version` = last fully-applied version |
+| `1.16-requirements-ids` | assisted | stable `RN-nnn` / `CL-nnn` / `FA-nnn` IDs on rules, edge cases and out-of-scope in `business_requirements.md` |
 
 ## Red Flags — STOP
 

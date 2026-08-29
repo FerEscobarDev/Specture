@@ -43,7 +43,7 @@
 - [ ] **Epic 1.1:** [Nombre del Epic]
   - **Dependencias:** Ninguna
   - **Descripción:** [1-2 frases.]
-  - **Reglas de negocio clave:** [Links a secciones de `business_requirements.md`]
+  - **Reglas de negocio clave:** [IDs `RN-nnn` de `business_requirements.md`, ej. RN-001, RN-014]
   - **Componentes de arquitectura involucrados:** [Links a secciones de `architecture.md`]
   - **Operaciones del contrato:** [`operationId`s que este epic *implementa* (backend) o *consume* (frontend), de `api-contract.md`. Omitir si el epic no toca el boundary HTTP. Un epic de página frontend que consume una operación debe depender del epic backend que la implementa.]
   - **Specs estimados:** [N — orientativo, se concretará en Fase 4]

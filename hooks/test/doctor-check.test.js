@@ -126,3 +126,77 @@ test("refuses a directory that is not a Specture project", () => {
   assert.equal(result.status, 2);
   assert.match(result.stderr, /not a Specture project/);
 });
+
+test("reports requirements findings: placeholders, missing Exposición, boundary coverage and rule IDs", () => {
+  const projectRoot = createProject({
+    ...CLEAN,
+    "docs/01-requirements/business_requirements.md": [
+      "# Requerimientos",
+      "",
+      "## Historias de Usuario",
+      "",
+      "- **HU-PAGO-001:** Cobrar suscripción · Actor: Admin · Exposición: `UI`",
+      "- **HU-PAGO-002:** Reintentar cobro · Actor: Sistema",
+      "",
+      "## Capacidades de Frontera",
+      "",
+      "- Ninguna",
+      "",
+      "## Reglas de Negocio",
+      "",
+      "- Un usuario no puede tener dos suscripciones activas (TBD)",
+      "",
+      "## Casos Límite",
+      "",
+      "- **CL-001:** Pago falla a la mitad → reintentar",
+      "",
+      "## Fuera de Alcance",
+      "",
+      "- Facturación electrónica",
+      ""
+    ].join("\n")
+  });
+  const { status, json } = runDoctor(projectRoot);
+  const checks = json.findings.map((f) => f.check);
+
+  assert.equal(status, 1, "unresolved placeholder is an ERROR");
+  assert.ok(checks.includes("req-placeholder"), "req-placeholder");
+  assert.ok(checks.includes("req-hu-exposicion"), "req-hu-exposicion (HU-PAGO-002)");
+  assert.ok(checks.includes("req-boundary-coverage"), "req-boundary-coverage (HU-PAGO-001 not consolidated)");
+  const ruleFindings = json.findings.filter((f) => f.check === "req-rule-ids");
+  assert.equal(ruleFindings.length, 2, "Reglas + Fuera de Alcance lack IDs; Casos Límite has CL-001");
+});
+
+test("a business_requirements.md following the template produces no requirements findings", () => {
+  const projectRoot = createProject({
+    ...CLEAN,
+    "docs/01-requirements/business_requirements.md": [
+      "# Requerimientos",
+      "",
+      "## Historias de Usuario",
+      "",
+      "- **HU-PAGO-001:** Cobrar suscripción · Actor: Admin · Exposición: `UI`",
+      "- **HU-PAGO-002:** Reintentar cobro · Actor: Sistema · Exposición: `Interna`",
+      "",
+      "## Capacidades de Frontera",
+      "",
+      "- **HU-PAGO-001** — consumidor: Admin — cobro de suscripción",
+      "",
+      "## Reglas de Negocio",
+      "",
+      "- **RN-001:** Un usuario no puede tener dos suscripciones activas",
+      "",
+      "## Casos Límite",
+      "",
+      "- **CL-001:** Pago falla a la mitad → reintentar",
+      "",
+      "## Fuera de Alcance",
+      "",
+      "- **FA-001:** Facturación electrónica",
+      ""
+    ].join("\n")
+  });
+  const { json } = runDoctor(projectRoot);
+
+  assert.deepEqual(json.findings.filter((f) => f.group === "requirements"), []);
+});

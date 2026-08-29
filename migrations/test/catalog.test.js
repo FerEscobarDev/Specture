@@ -230,3 +230,33 @@ test("1.15-schema-version records the plugin version when nothing is pending, el
   });
   assert.equal(m.inferSchemaVersion(contextFor(behind)), "1.8.0", "1.9-dependencies-syntax pending → schema stays at 1.8.0");
 });
+
+test("1.16-requirements-ids detects missing RN IDs and exposes plan inputs without writing", () => {
+  const m = byId["1.16-requirements-ids"];
+  const pending = makeProject({
+    ".specture/stack.yml": STACK,
+    "docs/01-requirements/business_requirements.md":
+      "## Reglas de Negocio\n\n- Un usuario no puede tener dos suscripciones activas\n\n## Casos Límite\n\n- Pago falla a la mitad\n\n## Fuera de Alcance\n\n- Facturación electrónica\n"
+  });
+  const ctx = contextFor(pending);
+  assert.equal(m.detect(ctx), "pending");
+  const inputs = m.planInputs(ctx);
+  assert.ok(inputs.rules.includes("suscripciones activas"));
+  assert.ok(inputs.edgeCases.includes("Pago falla"));
+  assert.ok(inputs.outOfScope.includes("Facturación"));
+  assert.ok(inputs.guidance.includes("RN-nnn"));
+  assert.deepEqual(ctx.writes, []);
+
+  const done = makeProject({
+    ".specture/stack.yml": STACK,
+    "docs/01-requirements/business_requirements.md": "## Reglas de Negocio\n\n- **RN-001:** regla\n"
+  });
+  assert.equal(m.detect(contextFor(done)), "done");
+  assert.equal(m.verify(contextFor(done)), true);
+  const prefixed = makeProject({
+    ".specture/stack.yml": STACK,
+    "docs/01-requirements/business_requirements.md": "## Reglas de Negocio\n\n- **RN-SEG-007:** regla\n"
+  });
+  assert.equal(m.detect(contextFor(prefixed)), "done", "domain prefix counts as an ID");
+  assert.equal(m.detect(contextFor(makeProject({ ".specture/stack.yml": STACK }))), "n/a", "no business_requirements.md → n/a");
+});

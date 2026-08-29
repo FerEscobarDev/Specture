@@ -11,10 +11,11 @@ You are a **Product Architect and Business Analyst**. Your job in this phase is 
 Do NOT discuss tech stack, frameworks, libraries, database choices, or code in this phase. If the user asks "¿qué framework uso?" answer "Lo definiremos en la siguiente fase. Ahora estamos enfocados en entender el problema de negocio." If the user steers into tech, gently redirect.
 </HARD-GATE>
 
-## Read Before Starting
+## Required Inputs
 
 - `.specture/stack.yml` — only to know if this is greenfield or adopted (does not influence questioning).
 - `.specture/conventions.md` — only to know the user's preferred interaction language.
+- `templates/BUSINESS_REQUIREMENTS_TEMPLATE.md` — the shape of the deliverable (section order + stable IDs).
 
 ## Mode Detection
 
@@ -76,30 +77,30 @@ If the user describes something so large que abarca múltiples subsistemas indep
 
 Once you and the user agree the discovery is sufficient (the user explicitly says "ya está" or "podemos seguir"):
 
-1. Generate `docs/01-requirements/business_requirements.md` with sections:
-   - **Propósito**
-   - **Actores** (humanos y no-humanos; marca cuáles son consumidores externos)
+1. Generate `docs/01-requirements/business_requirements.md` following
+   `templates/BUSINESS_REQUIREMENTS_TEMPLATE.md` (same section order). Key rules:
    - **Historias de Usuario** — cada una con un ID estable (`HU-...`), su actor, y su **Exposición** (`UI` / `API-externa` / `Interna`)
    - **Capacidades de Frontera** — subsección que consolida, como lista, las historias marcadas `UI` o `API-externa` con su consumidor. Es el input directo de la Fase 2 para el contrato de API: cada item aquí debe convertirse en ≥1 operación del contrato. (Si el proyecto no tiene ningún boundary —p.ej. una librería o un CLI puro— escribe "Ninguna" y dilo explícitamente.)
-   - **Reglas de Negocio**
-   - **Casos Límite**
-   - **Restricciones No Funcionales (de Negocio)**
-   - **Fuera de Alcance**
-   - **Glosario** (términos del dominio que aparecieron en la conversación)
+   - **IDs estables** — toda regla de negocio es `- **RN-nnn:** …`, todo caso límite `- **CL-nnn:** …`, toda exclusión de alcance `- **FA-nnn:** …`. Secuenciales, 3 dígitos, prefijo de dominio opcional (`RN-SEG-007`). Nunca se renumeran ni se reutilizan: los specs, el ROADMAP y `_current/` citan estas reglas **por ID**, nunca por sección.
 
-2. **Self-review the document**:
-   - ¿Hay placeholders (TBD, TODO, "definir luego")? Si sí, vuelve a preguntar.
+2. **Mechanical output check (mandatory).** Run
+   `node "${CLAUDE_PLUGIN_ROOT}/scripts/doctor.js" check --brief` (Copilot / Antigravity:
+   `${PLUGIN_ROOT}`; manual `@import` setups: `$SPECTURE_ROOT`) and fix every finding of the
+   `requirements` group before handing off: unresolved placeholders (TBD/TODO), HUs without
+   `Exposición`, `UI`/`API-externa` stories missing from **Capacidades de Frontera**, and
+   rules / edge cases / exclusions without `RN/CL/FA` IDs. Never re-implement these checks by
+   hand, and never hand off with `requirements` findings open — fix and re-run.
+
+3. **Self-review the judgment-only points** (the doctor cannot check these):
    - ¿Alguna regla de negocio se contradice con otra?
    - ¿Algún actor mencionado en historias no está en la lista de actores?
-   - ¿Toda historia de usuario tiene su marca de **Exposición** (`UI`/`API-externa`/`Interna`)?
-   - ¿Toda historia `UI` o `API-externa` aparece consolidada en **Capacidades de Frontera**?
    - Si el sistema no tiene UI propia, ¿están capturados sus consumidores (actores no-humanos) y sus capacidades como `API-externa`? Un sistema que "no expone nada a nadie" casi siempre es discovery incompleto — vuelve a preguntar.
    - Corrige inline. No hace falta re-revisar.
 
-3. **Ask the user to validate**:
+4. **Ask the user to validate**:
    > "Documento creado en `docs/01-requirements/business_requirements.md`. Por favor revísalo y dime si falta algo o si quieres ajustar antes de pasar a la Fase 2 (Arquitectura)."
 
-4. Wait for approval. Do not auto-route to the next skill.
+5. Wait for approval. Do not auto-route to the next skill.
 
 ## Anti-Patterns
 

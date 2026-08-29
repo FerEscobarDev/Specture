@@ -9,7 +9,7 @@ const root = path.resolve(__dirname, "..", "..");
 const doctorPath = path.join(root, "scripts", "doctor.js");
 const catalog = require("../../migrations");
 const { runMigrate, verifyMigration, readLog } = require("../lib/doctor/migrate");
-const PLUGIN = "1.15.0"; // exercise the 1.15 migrations regardless of the installed version
+const PLUGIN = "1.16.0"; // exercise migrations through 1.16 regardless of the installed version
 
 const temporaryDirectories = [];
 
@@ -104,7 +104,7 @@ test("a second apply is a no-op; verifying the assisted migration advances the s
   const after = runMigrate(projectRoot, { pluginVersion: PLUGIN, catalog, apply: true });
   assert.deepEqual(after.assisted, []);
   assert.equal(after.schema.after, PLUGIN);
-  assert.match(read(projectRoot, ".specture/settings.yml"), /^schema_version: 1\.15\.0\b/m);
+  assert.match(read(projectRoot, ".specture/settings.yml"), /^schema_version: 1\.16\.0\b/m);
 });
 
 test("verify refuses an incomplete migration and content migrations are deferred with their owner", () => {
