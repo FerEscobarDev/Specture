@@ -140,3 +140,20 @@ test("CLI: migrate (dry run) exits 0, --plan prints inputs, --verify exits 1 whe
   assert.equal(out.check.settingsSource, "settings.yml");
   assert.ok(fs.existsSync(path.join(projectRoot, ".specture", "migrations.log")));
 });
+
+test("the 1.16 assisted migrations run in declared order and the schema stops at the first pending one", () => {
+  const projectRoot = legacyProject();
+  write(projectRoot, "docs/01-requirements/business_requirements.md",
+    "## Historias de Usuario\n\n- **HU-A-001:** Algo · Exposición: `UI`\n\n## Capacidades de Frontera\n\n- **HU-A-001** — consumidor: Admin\n\n## Reglas de Negocio\n\n- Una regla sin ID\n");
+  write(projectRoot, "docs/01-requirements/feature-pagos.md", "## Reglas de Negocio\n\n- Otra regla\n");
+  const result = runMigrate(projectRoot, { pluginVersion: PLUGIN, catalog, apply: true, by: "test" });
+
+  assert.deepEqual(
+    result.assisted.map((m) => m.id),
+    ["1.12-structure-block", "1.16-requirements-ids", "1.16-requirements-merge"],
+    "declared intra-version order: ids before merge"
+  );
+  assert.ok(result.assisted[1].planInputs.rules.includes("sin ID"));
+  assert.deepEqual(result.assisted[2].planInputs.featureFiles.map((f) => f.file), ["docs/01-requirements/feature-pagos.md"]);
+  assert.equal(result.schema.after, "1.11.0", "first pending assisted (1.12-structure-block) halts the schema");
+});

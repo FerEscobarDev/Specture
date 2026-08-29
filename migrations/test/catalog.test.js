@@ -260,3 +260,34 @@ test("1.16-requirements-ids detects missing RN IDs and exposes plan inputs witho
   assert.equal(m.detect(contextFor(prefixed)), "done", "domain prefix counts as an ID");
   assert.equal(m.detect(contextFor(makeProject({ ".specture/stack.yml": STACK }))), "n/a", "no business_requirements.md → n/a");
 });
+
+test("1.16-requirements-merge detects drafts and Adenda sections and exposes the merge plan", () => {
+  const m = byId["1.16-requirements-merge"];
+  const withDraft = makeProject({
+    ".specture/stack.yml": STACK,
+    "docs/01-requirements/business_requirements.md": "## Reglas de Negocio\n\n- **RN-001:** regla\n",
+    "docs/01-requirements/feature-pagos.md": "## Reglas de Negocio\n\n- Nueva regla de pagos\n"
+  });
+  const ctx = contextFor(withDraft);
+  assert.equal(m.detect(ctx), "pending");
+  const inputs = m.planInputs(ctx);
+  assert.deepEqual(inputs.featureFiles.map((f) => f.file), ["docs/01-requirements/feature-pagos.md"]);
+  assert.deepEqual(inputs.featureFiles[0].headings, ["## Reglas de Negocio"]);
+  assert.ok(inputs.guidance.includes("añadido por feature"));
+  assert.deepEqual(ctx.writes, []);
+
+  const withAdenda = makeProject({
+    ".specture/stack.yml": STACK,
+    "docs/01-requirements/business_requirements.md": "## Reglas de Negocio\n\n- **RN-001:** regla\n\n## Adenda v1.2\n\n- extra\n"
+  });
+  assert.equal(m.detect(contextFor(withAdenda)), "pending", "Adenda section counts as pending");
+  assert.ok(m.planInputs(contextFor(withAdenda)).adendaSections[0].includes("extra"));
+
+  const clean = makeProject({
+    ".specture/stack.yml": STACK,
+    "docs/01-requirements/business_requirements.md": "## Reglas de Negocio\n\n- **RN-001:** regla\n"
+  });
+  assert.equal(m.detect(contextFor(clean)), "done");
+  assert.equal(m.verify(contextFor(clean)), true);
+  assert.equal(m.detect(contextFor(makeProject({ ".specture/stack.yml": STACK }))), "n/a", "no requirements dir → n/a");
+});

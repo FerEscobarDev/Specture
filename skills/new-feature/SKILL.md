@@ -27,7 +27,14 @@ Apply Phase 1 (`skills/discover/SKILL.md`) Socratic technique, but scoped to thi
 
 Do NOT ask about technology — the stack is already locked.
 
-Output: a temporary doc `docs/01-requirements/feature-<slug>.md` (or append to a "New Features" section in the main requirements doc — ask the user which they prefer).
+Output: **merge, not accumulation.** The feature's requirements end up **fused per-section**
+into `docs/01-requirements/business_requirements.md`: every new HU/RN/CL/FA lands in its home
+section with the marker `(añadido por feature <slug>, <fecha>)` and **continues the existing ID
+numbering** (never renumber, never reuse). While the feature is being validated (Steps 2-3) you
+may draft in a working file `docs/01-requirements/feature-<slug>.md`, but it is scratch: it is
+merged and **deleted in Step 4** when the ROADMAP is approved. Forbidden: appending "Adenda" /
+"New Features" sections — business truth lives in one file with one structure, and `build`
+hands the epic-agent only `business_requirements.md`, so anything left outside never reaches it.
 
 ## Step 2 — Impact Ripple Analysis (UNIQUE TO SPECTURE)
 
@@ -86,6 +93,9 @@ Wait for explicit approval before continuing.
 
 Once approved:
 
+- **Merge the feature requirements**: fold `feature-<slug>.md` per-section into
+  `business_requirements.md` with the `(añadido por feature <slug>, <fecha>)` marker (new
+  RN/CL/FA continue the existing numbering) and **delete the draft file**. No addenda sections.
 - Add a new **Milestone** or **Epic** to `ROADMAP.md` with state `[ ]`. Position it with explicit dependencies.
 - If components changed: update `docs/02-architecture/architecture.md` accordingly. Run the change through the `architecture-validator` agent (`agents/architecture-validator/AGENT.md`).
 - If ADRs changed: create new ADR file(s) in `.specture/decisions/` per the ADR rules (never delete, supersede explicitly).
@@ -106,5 +116,6 @@ Hand off to `skills/build/SKILL.md`. Signal **work type = `feature`** and the fe
 | Add the feature inline in an existing epic | Impossible to track separately, ROADMAP becomes a lie. |
 | Modify completed specs in-place without trace | Specs are immutable artifacts. If they change, it's a new spec or a deprecation. |
 | Decide architecture changes alone | If the new feature requires architectural change, the user must approve and an ADR must record it. |
+| Keep `feature-*.md` files or "Adenda" sections after approval | Business truth fragments across files; the epic-agent receives only `business_requirements.md`. Merge per-section and delete the draft (`doctor` reports leftovers via `1.16-requirements-merge`). |
 
 > Comportamiento observable con Plan mode activo: ver `docs/native-integration-guide.md` ("Comportamiento observable por skill").

@@ -25,7 +25,8 @@ const catalog = [
   require("./1.12-structure-block"),
   require("./1.15-settings-file"),
   require("./1.15-schema-version"),
-  require("./1.16-requirements-ids")
+  require("./1.16-requirements-ids"),
+  require("./1.16-requirements-merge")
 ];
 
 // Stable sort by `since` only: entries that share a version keep their declared
