@@ -316,7 +316,7 @@ If any check fails, fix it before announcing completion.
 - ❌ Auto-classify "other" files into specific categories (user picks or skips).
 - ❌ Generate ROADMAP epics without the user's explicit choice (Phase 3 ROADMAP handling).
 - ❌ Read full doc content (only first 30 lines per file — token budget).
-- ❌ Pass the index to agents directly — that's the orchestrator's job in `build/SKILL.md` and `architecture/SKILL.md`.
+- ❌ Pass the index to agents directly — that's the orchestrator's job in `build/EPIC_LOOP.md` and `architecture/SKILL.md`.
 
 ## Anti-Patterns
 

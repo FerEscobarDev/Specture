@@ -61,6 +61,6 @@ decide(
   `TDD Honesty Gate: \`${relative}\` is part of the sealed test contract for epic "${epic}"` +
     `${spec.slug ? ` (spec ${spec.slug})` : ""} (RED commit ${spec.red_sha || "unknown"}). ` +
     `Tests cannot be modified between the RED commit and the epic's completion. If you genuinely need to ` +
-    `change the test contract, abort the epic via skills/build/SKILL.md and re-dispatch the tdd-test-writer ` +
+    `change the test contract, abort the epic via skills/build/EPIC_LOOP.md and re-dispatch the tdd-test-writer ` +
     `with the corrected spec.`
 );

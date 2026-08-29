@@ -91,7 +91,7 @@ Check:
 
 Question: **Did the implementer respect the test contract sealed in the RED commit?**
 
-The orchestrator already ran the mechanical gate (`build/SKILL.md` Step 5.5: `git diff <RED_SHA>..<HEAD_SHA> -- <test-globs>`) and passes you its result. Do NOT re-run the diff — consume the orchestrator's result:
+The orchestrator already ran the mechanical gate (`build/EPIC_LOOP.md` Step 5.5: `git diff <RED_SHA>..<HEAD_SHA> -- <test-globs>`) and passes you its result. Do NOT re-run the diff — consume the orchestrator's result:
 
 - **Gate reported clean** → no test tampering. Continue.
 - **Gate reported a violation** → raise a `BLOCKER`. Classify and word the finding per `docs/tdd-honesty-violations.md` (classification table + recovery + hook-active interpretation). The orchestrator should not have reached you in this state, so also flag the process breach.
@@ -142,7 +142,7 @@ Check:
 | Design-system component re-styled/forked inline instead of composed | `IMPORTANT` |
 | Responsive coverage the spec requires is absent (e.g. mobile breakpoint ignored) | `IMPORTANT` |
 
-This dimension does **not** judge subjective aesthetics — that is the user's visual-approval gate in `build/SKILL.md`. It judges *fidelity to the documented design system and contract*, which is objective and citable.
+This dimension does **not** judge subjective aesthetics — that is the user's visual-approval gate in `build/EPIC_LOOP.md`. It judges *fidelity to the documented design system and contract*, which is objective and citable.
 
 ### Dimension 7 — Project Invariants (active only when conventions §12 has rules)
 
@@ -269,7 +269,7 @@ SUMMARY: <one-line summary>
 ## What You Do NOT Do
 
 - ❌ Edit any source code or test files.
-- ❌ Write any file other than your review report under `docs/07-reviews/`. If you validate by mutation, follow the snapshot/restore protocol in `build/SKILL.md` Anti-Patterns — never `git checkout` to restore, never `git add -A` or `--amend`.
+- ❌ Write any file other than your review report under `docs/07-reviews/`. If you validate by mutation, follow the snapshot/restore protocol in `build/EPIC_LOOP.md` Anti-Patterns — never `git checkout` to restore, never `git add -A` or `--amend`.
 - ❌ Re-run the implementer's work yourself.
 - ❌ Add findings based on personal style preferences not backed by `conventions.md` or an ADR.
 - ❌ Soften severity to be polite. A `BLOCKER` is a `BLOCKER`.

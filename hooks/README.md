@@ -63,7 +63,7 @@ Proyectos creados antes de v1.15.0 pueden tener el toggle en `.specture/conventi
 
 **v1 (legacy, sigue aceptado):** `{ "epic", "red_sha", "test_paths": [...], "locked_at" }`. Los hooks leen la **unión** de `test_paths` (v1) y `specs[].test_paths` (v2); no hace falta migrar un sello en curso (el archivo es transitorio y gitignoreado). La lógica compartida vive en `lib/seal.js`.
 
-**Lifecycle**: `skills/build/SKILL.md` **agrega** la entrada del spec en Step 4 (después de cada RED commit). Lo borra el **coordinador** al procesar el `DONE` del epic (queue loop 5.4) — y también el epic-agent en Step 8, por si acaso; ninguno confía en el otro. Si querés desbloquear edits de tests legítimamente durante un epic en curso, borrá el archivo a mano y aceptá que el TDD contract se rompió — el `git diff` del Step 5.5 va a detectarlo igual.
+**Lifecycle**: el epic-agent (`skills/build/EPIC_LOOP.md`) **agrega** la entrada del spec en Step 4 (después de cada RED commit). Lo borra el **coordinador** al procesar el `DONE` del epic (queue loop 5.4) — y también el epic-agent en Step 8, por si acaso; ninguno confía en el otro. Si querés desbloquear edits de tests legítimamente durante un epic en curso, borrá el archivo a mano y aceptá que el TDD contract se rompió — el `git diff` del Step 5.5 va a detectarlo igual.
 
 **Sello huérfano**: si `docs/04-roadmap/ROADMAP.md` existe y **ningún** epic está `[/]`, el sello sobrevivió a su epic. Los hooks entonces **permiten** la edición (Claude Code: `permissionDecision: "allow"` con la razón; Copilot/Antigravity: razón por stderr) — un archivo olvidado nunca bloquea trabajo ajeno — y `/specture:doctor check` lo reporta como ERROR (`seal-stale`).
 

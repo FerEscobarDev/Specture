@@ -1,4 +1,7 @@
-> **Estado: IMPLEMENTADO en v1.4.0; consolidado en v1.8.0.** Este es el documento
+> **Estado: IMPLEMENTADO en v1.4.0; consolidado en v1.8.0; partido en v1.16.0** (el
+> procedimiento del epic-agent — Steps 2–8, Manifest, resoluciones, gate 5.5, Iteration Cap,
+> anti-patterns — vive ahora en `skills/build/EPIC_LOOP.md`, único archivo que recibe el
+> epic-agent; `build/SKILL.md` queda solo coordinador). Este es el documento
 > de diseño de R4 (modo agente-por-epic) — el origen del **modo de ejecución único**
 > actual. En v1.8.0 los tres modos que existieron (Inline, Agentes por Epic, Paralelo
 > por Olas) se colapsaron en uno solo: "Execution Model — Sequential Queue" en

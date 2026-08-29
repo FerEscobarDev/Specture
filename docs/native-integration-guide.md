@@ -85,7 +85,7 @@ Ver `hooks/README.md` — tabla de síntomas y causas. Los más comunes:
 
 ### 4.1 Mapeo de los 9 pasos a estados visibles
 
-Cuando `/specture:build` empieza un epic, el orchestrator crea una task por cada spec del epic (1–3 typically). Cada task progresa por estos `activeForm`:
+Cuando `/specture:build` encola epics, el **coordinador** crea una task visible por epic. Dentro de cada epic-agent (`build/EPIC_LOOP.md`), Step 2.5 crea tasks internas por spec (1–3 típicamente) que progresan por estos `activeForm`:
 
 ```
 validating architecture  → architecture-validator dispatch (Step 3)

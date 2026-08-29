@@ -147,7 +147,7 @@ flowchart TD
     Br2 --> D
     D --> L{"¿Quedan epics en la cola?"}
     L -->|Sí| E["Marcar epic [/] + commit<br/>despachar 1 epic-agent fresco"]
-    E --> F["epic-agent ejecuta Steps 2–8<br/>(contexto aislado, se descarta al terminar)"]
+    E --> F["epic-agent ejecuta build/EPIC_LOOP.md (Steps 2–8)<br/>(contexto aislado, se descarta al terminar)"]
     F --> G{"Procesar el reporte"}
     G -->|DONE| H["Verificar [x] + commit por git log<br/>(no confiar en el reporte)"]
     G -->|"BLOCKED / REJECTED_MAJOR"| ESC(["Escalar al usuario · sin auto-retry"])
@@ -157,13 +157,16 @@ flowchart TD
 
 ### 3.2 El loop por epic — `spec → validate → RED → GREEN → review → verify`
 
-El diagrama central del framework. Cada epic recorre estos pasos dentro de su epic-agent. Los
-**gates** (rombos) son innegociables: validación de arquitectura, RED commit, TDD Honesty Gate,
-code review y verificación.
+El diagrama central del framework. Los Steps 2–8 son el procedimiento del epic-agent y viven
+en `build/EPIC_LOOP.md` (único archivo que el epic-agent recibe); Step 1 y Steps 8.5/8.7/9
+son del coordinador (`build/SKILL.md`). Los **gates** (rombos) son innegociables: validación
+de arquitectura, RED commit, TDD Honesty Gate, code review y verificación.
 
 ```mermaid
 flowchart TD
-    S1["Step 1 · Pick & Lock<br/>epic → [/] · commit"] --> S2["Step 2 · Generar spec(s)<br/>granular · sin código · self-contained"]
+    S1["Step 1 · Pick & Lock (coordinador)<br/>epic → [/] · commit"] --> S2
+    subgraph EL ["epic-agent · build/EPIC_LOOP.md"]
+    S2["Step 2 · Generar spec(s)<br/>granular · sin código · self-contained"]
     S2 --> S25["Step 2.5 · TaskCreate por spec<br/>(visibilidad en vivo)"]
     S25 --> S3{"Step 3 · GATE<br/>architecture-validator"}
     S3 -->|REJECTED| FIXS["Corregir spec<br/>(o escalar → nuevo ADR)"]
@@ -181,7 +184,8 @@ flowchart TD
     S6 -->|APPROVED| S7{"Step 7 · Verificación<br/>correr tests fresh · leer salida completa"}
     S7 -->|"rojo"| ESC
     S7 -->|"verde"| S8["Step 8 · epic → [x] · commit<br/>· borrar build-locked.json"]
-    S8 --> S85["Step 8.5 · Capturar aprendizajes<br/>(opt-in default No → knowledge)"]
+    end
+    S8 --> S85["Step 8.5 · Capturar aprendizajes (coordinador)<br/>(opt-in default No → knowledge)"]
     S85 --> S87["Step 8.7 · Reconciliación de milestone<br/>(si cierra: _current/ + lápidas en ROADMAP)"]
     S87 --> S9(["Step 9 · Reset de contexto (automático)<br/>el epic-agent se descarta → siguiente epic"])
 ```

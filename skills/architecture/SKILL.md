@@ -50,7 +50,7 @@ Generate `docs/02-architecture/architecture.md` from the template.
 
 ### Validation Gate (mandatory)
 
-**Pre-flight: Docs Index Resolution.** If `.specture/docs-index.yml` exists and `docs_index.enabled` is not `false`, resolve up to `docs_index.max_entries_per_dispatch` entries (default 3; both read from `.specture/settings.yml`) whose tags intersect with the high-level components and architectural concerns of the document. Use the same algorithm documented in `skills/build/SKILL.md` § "Docs Index Resolution". The resolved entries become additional input to the validator (informational context, not binding — only `Accepted` ADRs bind validation).
+**Pre-flight: Docs Index Resolution.** If `.specture/docs-index.yml` exists and `docs_index.enabled` is not `false`, resolve up to `docs_index.max_entries_per_dispatch` entries (default 3; both read from `.specture/settings.yml`) whose tags intersect with the high-level components and architectural concerns of the document. Use the same algorithm documented in `skills/build/EPIC_LOOP.md` § "Docs Index Resolution". The resolved entries become additional input to the validator (informational context, not binding — only `Accepted` ADRs bind validation).
 
 Once written, **dispatch the `architecture-validator` agent** (`agents/architecture-validator/AGENT.md`) with:
 - Input: `architecture.md` + `.specture/stack.yml` + `.specture/conventions.md` + `.specture/decisions/` + the resolved docs-index entries (with their content; pass `docs_index_resolved: []` if empty).
@@ -87,7 +87,7 @@ Generate both, from the templates in `$SPECTURE_ROOT/templates/`:
 
 ### Validation Gate (mandatory)
 
-**Pre-flight: Docs Index Resolution.** If `.specture/docs-index.yml` exists and `docs_index.enabled` (`.specture/settings.yml`) is not `false`, resolve entries with tags like `external-integration`, `security`, or any `backend`/`frontend` tag relevant to the contract's boundary capabilities. Cap at `docs_index.max_entries_per_dispatch` (default 3). Use the algorithm in `skills/build/SKILL.md` § "Docs Index Resolution".
+**Pre-flight: Docs Index Resolution.** If `.specture/docs-index.yml` exists and `docs_index.enabled` (`.specture/settings.yml`) is not `false`, resolve entries with tags like `external-integration`, `security`, or any `backend`/`frontend` tag relevant to the contract's boundary capabilities. Cap at `docs_index.max_entries_per_dispatch` (default 3). Use the algorithm in `skills/build/EPIC_LOOP.md` § "Docs Index Resolution".
 
 Dispatch the `architecture-validator` agent with:
 - Input: the contract file (`stack.yml.api.contract_file`) + `api-contract.md` + `architecture.md` + **the `Capacidades de Frontera` section of `business_requirements.md`** + `.specture/stack.yml` + `.specture/conventions.md` + `.specture/decisions/` + the resolved docs-index entries (pass `docs_index_resolved: []` if empty).
@@ -153,7 +153,7 @@ downstream, so it gets the same gate.
 **Pre-flight: Docs Index Resolution.** If `.specture/docs-index.yml` exists and
 `docs_index.enabled` (`.specture/settings.yml`) is not `false`, resolve entries whose tags
 intersect the milestones' domains. Cap at `docs_index.max_entries_per_dispatch` (default 3).
-Use the algorithm in `skills/build/SKILL.md` § "Docs Index Resolution".
+Use the algorithm in `skills/build/EPIC_LOOP.md` § "Docs Index Resolution".
 
 Dispatch the `architecture-validator` agent with:
 - Input: `ROADMAP.md` + the contract file (`stack.yml.api.contract_file`) + `api-contract.md` + `business_requirements.md` (the ROADMAP cites its `RN-nnn` IDs) + `architecture.md` + `.specture/stack.yml` + `.specture/conventions.md` + `.specture/decisions/` + the resolved docs-index entries (pass `docs_index_resolved: []` if empty).
