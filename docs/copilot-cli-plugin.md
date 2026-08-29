@@ -56,7 +56,7 @@ copilot --plugin-dir C:\Proyectos\VibeCoding
    ```
 
 2. **Iniciar o continuar trabajo**:
-   Una vez activado el agente, pide iniciar o continuar el trabajo (*"inicia el proyecto"*, *"continuemos con el roadmap"*). El router cargará la habilidad `start` e inspeccionará el sistema de archivos para dirigir la sesión a la fase adecuada.
+   Una vez activado el agente, pide iniciar o continuar el trabajo (*"inicia el proyecto"*, *"continuemos con el roadmap"*). El router inspecciona el sistema de archivos y responde una línea estricta `PHASE: <fase> · SKILL: <ruta>` — **no ejecuta la fase**. Invocá la habilidad indicada en el chat principal (paso 3).
 
 3. **Invocación directa de Habilidades**:
    Las habilidades mantienen sus nombres estándar (`start`, `setup`, `discover`, `architecture`, `ux-design`, `build`, `debug`, `knowledge`). Copilot puede inferir la habilidad requerida o puedes nombrarla explícitamente.

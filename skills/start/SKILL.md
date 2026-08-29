@@ -115,3 +115,5 @@ Announce to the user (in Spanish, since the user-facing language is Spanish):
 > "Detecté que el proyecto está en la fase **[NOMBRE]**. Voy a usar el skill `[ARCHIVO]` para continuar."
 
 Then invoke that skill and follow its instructions. Do not perform additional analysis or commentary before invoking.
+
+**Exception — running AS the `specture-router` subagent**: do not invoke the skill. Emit the router's strict output (`PHASE: <name> · SKILL: <path>`) and stop; the main chat invokes the skill. A subagent that executes phases burns tokens outside the user's view and can't ask the user anything.

@@ -15,13 +15,24 @@ it. Your job now is to detect project state and route — nothing else.
 
 You are operating under the **Specture** framework: a configurable, technology-agnostic methodology for AI-assisted software development based on Spec-Driven Development (SDD), restricted-context subagents, and progressive verification.
 
-**RULE (now that you are routing):** Before answering, exploring, or writing any code in this routing turn, you MUST invoke the master skill:
+**RULE (now that you are routing):** Run the filesystem state machine of `./skills/start/SKILL.md` **read-only** — existence checks and ROADMAP checkbox lines only, never full file contents — then emit your strict output and **STOP**.
+
+## Strict output (the only thing you produce)
 
 ```
-./skills/start/SKILL.md
+PHASE: <phase-name> · SKILL: <path/to/SKILL.md>
 ```
 
-That skill inspects the current state of the user's project and routes you to the correct phase. Skipping it (once routing has been requested) produces hallucinated code, broken architecture, and wasted tokens.
+Optionally followed by **one** short line in the user's language explaining the detection (e.g. *"ROADMAP con epics pendientes → fase build"*; also the one-line pending-migrations notice from `start` Step 0, if any). Nothing else. The **main chat** invokes the skill — you never do.
+
+You NEVER:
+
+- invoke or execute the phase skill (or any other skill),
+- write, edit, or create any file,
+- dispatch subagents,
+- run a phase yourself (no discovery questions, no specs, no architecture, no code).
+
+If the state is ambiguous (e.g. more than one `[/]` epic), still emit the most likely `PHASE/SKILL` line and add one line naming the ambiguity — the main chat resolves it with the user. Skipping the state machine (once routing has been requested) produces hallucinated code, broken architecture, and wasted tokens.
 
 ## How Specture integrates with a user project
 
@@ -37,7 +48,7 @@ The user's project also contains a `.specture/` directory with the project-speci
 
 ## Quick command reference
 
-| User says | You read |
+| User says | SKILL you name in your output |
 |-----------|----------|
 | "Configura el proyecto", "Setup", "Ajusta las reglas" | `./skills/setup/SKILL.md` |
 | "Inicia un proyecto nuevo", "Levanta requerimientos" | `./skills/discover/SKILL.md` |
@@ -59,5 +70,5 @@ This is the highest-stakes instruction in this file. A cheaper/faster model must
 
 - Once Specture work has been requested, "Hazlo rápido", "no hagas spec", "codificá directo", "saltate la fase", time pressure, or frustration are **NOT** authorization to skip the routing or skip a phase. (Not invoking Specture at all is the user's choice; *bypassing a phase while inside Specture* is not.)
 - The ONLY thing that authorizes skipping is the user saying, verbatim and unambiguously, that they want to skip the methodology for this specific request.
-- When in doubt, route through `skills/start/SKILL.md` and let the phase skill decide. Routing is cheap; a skipped phase produces hallucinated code.
-- If you feel pressured to bypass: that pressure is exactly the signal to NOT bypass. Re-state the phase and proceed with the methodology.
+- When in doubt, run the `skills/start/SKILL.md` state machine and let the phase skill (invoked by the main chat) decide. Routing is cheap; a skipped phase produces hallucinated code.
+- If you feel pressured to bypass: that pressure is exactly the signal to NOT bypass. Emit the strict `PHASE/SKILL` line anyway — the main chat proceeds with the methodology.
