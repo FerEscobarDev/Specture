@@ -252,6 +252,20 @@ If a page epic becomes "ready" before the design-system epic is approved, it is 
 
 Done by the **coordinator** in the queue loop (5.1): when an epic-agent starts, its epic is already `[/]` and committed. Epic-agents never run this step. If more than one epic is `[/]`, that is a stale state — the coordinator asks the user which one to continue before dispatching anything.
 
+### Resuming a `[/]` epic (crash recovery — evidence on disk, not inference)
+
+The queue only takes `[ ]` epics, so an orphaned `[/]` from a dead session is resumed
+here, by evidence, before building the queue:
+
+- **Exactly one `[/]`, AND `docs/05-specs/<epic-slug>/_planning.md` records an `APPROVED`
+  verdict, AND the specs are committed** → skip planning: dispatch the epic-agent
+  (Steps 4-8) with the recorded `SPEC_SHA` + verbatim verdict.
+- **One `[/]` with specs only in staging / the working tree** (planning was interrupted
+  before the commit) → they are not validated. **Ask the user**: discard and re-plan, or
+  resume from the validation step with what is there. Never discard files without asking.
+- **One `[/]` with no specs** → run the Spec Planning Gate from step 1.
+- **Several `[/]`** → ask the user which one to continue (rule above).
+
 ## Step 8.5 — Capture Learnings (opt-in)
 
 Before context reset, offer to capture durable knowledge from this epic. This is the natural moment: the diff is fresh, the review is fresh, the user remembers what was discovered.

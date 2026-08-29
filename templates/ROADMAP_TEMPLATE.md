@@ -22,7 +22,7 @@
 | Símbolo | Estado | Significado |
 |---------|--------|-------------|
 | `[ ]` | Pendiente | El epic aún no se ha tocado. |
-| `[/]` | En Progreso | Hay un spec activo o un epic-agent trabajando en él. La ejecución es secuencial: solo UN epic puede estar en `[/]` a la vez. |
+| `[/]` | En Progreso | Hay un spec activo o un epic-agent trabajando en él. La ejecución es secuencial: solo UN epic puede estar en `[/]` a la vez. Un `[/]` puede tener specs sellados en disco (`_planning.md` con veredicto `APPROVED`): es **reanudable** sin re-planificar. |
 | `[x]` | Completado | Todos los specs del epic han sido implementados, revisados (`code-reviewer` APPROVED), y verificados (tests pasan, lint limpio). |
 
 ---
