@@ -13,7 +13,7 @@ Three modes:
 
 | Mode | What it does | Writes |
 |---|---|---|
-| `check` (default) | corpus lint (broken paths, `...` placeholders, duplicate ADRs, ADRs without Status, reviews without verdict, specs without IDs or over 300 lines, line-number citations), state (stale seal, >1 `[/]`, missing `_current/`, docs-index vs toggle, worktree leftovers), schema drift (pending migrations by kind) | nothing |
+| `check` (default) | corpus lint (broken paths, `...` placeholders, duplicate ADRs, ADRs without Status, reviews without verdict, specs without IDs, over 300 lines or with off-template sections, line-number citations), requirements lint (unresolved placeholders, HUs without `Exposición`, boundary stories not consolidated, rules/edge cases/exclusions without `RN/CL/FA` IDs), state (stale seal, >1 `[/]`, missing `_current/`, docs-index vs toggle, worktree leftovers), schema drift (pending migrations by kind) | nothing |
 | `migrate` | applies pending **mechanical** migrations (with `--apply`), drafts the **assisted** ones in Plan mode, records **content** ones as deferred with their owner; advances `schema_version` | `.specture/`, `.gitignore`, ROADMAP, requirements/architecture docs, `.specture/migrations.log` |
 | `sync` | `migrate --apply` (mechanical only) + `check` — for CI and for `start` | mechanical only |
 

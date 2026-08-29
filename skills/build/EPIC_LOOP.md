@@ -192,7 +192,7 @@ Dispatch the `tdd-test-writer` agent (`agents/tdd-test-writer/AGENT.md`).
 
 **Orchestrator post-checks (all mandatory)**:
 
-1. **Verify failure reason**: run the tests yourself and confirm they fail for the right reason ("function not defined" / "wrong return value"), not because of syntax errors or missing dependencies.
+1. **Verify failure reason**: run the tests yourself and confirm they fail for the right reason ("function not defined" / "wrong return value"), not because of syntax errors or missing dependencies. **Exception — guards**: tests declared in the spec's "Guards de no-regresión (nacen verdes)" section are born green by definition — verify they PASS, and that they don't count toward the RED tally.
 2. **Verify the RED commit exists and is clean**:
    ```
    git show --stat <RED_SHA>
@@ -243,6 +243,8 @@ git diff <RED_SHA>..<HEAD_SHA> -- <test-path-globs>
 
 - **Empty output** → ✅ Tests untouched. Proceed to Step 6.
 - **Non-empty output** → ❌ TDD violation. Do NOT proceed to review. You **MUST** read `docs/tdd-honesty-violations.md` and follow its classification + recovery procedure (it also covers the hook-active vs hook-inactive interpretation). Show the diff to the user verbatim before acting.
+
+**Guards de no-regresión**: the tests declared in the spec's "Guards de no-regresión (nacen verdes)" section are born green by declaration — the gate never treats a passing guard as "a test that failed to fail". They are still sealed like every other test in the RED commit: editing one after `RED_SHA` IS a violation.
 
 This gate is non-negotiable: TDD violations are invisible if you only look at the implementation diff.
 

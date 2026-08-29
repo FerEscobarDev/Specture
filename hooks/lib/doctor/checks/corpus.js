@@ -1,6 +1,7 @@
 // Corpus lint — mechanical checks over the project's documentation.
 // Every finding: { severity, group: "corpus", check, file, detail, action }.
 
+const fs = require("fs");
 const path = require("path");
 const { execFileSync } = require("child_process");
 const { lines } = require("../project");
@@ -85,6 +86,69 @@ function reviews(project) {
   return out;
 }
 
+// Canonical H2 sections come from the plugin's own spec templates, parsed at load
+// (so a template edit — e.g. a new section — is canonical without touching this file).
+// A missing template contributes nothing; both missing → the check disables itself.
+const TEMPLATE_NAMES = ["SPEC_TEMPLATE.md", "MIGRATION_SPEC_TEMPLATE.md"];
+
+function headingBase(line) {
+  return line
+    .replace(/^#{2}\s*/, "")
+    .split("(")[0]
+    .replace(/[^\p{L}\p{N}\s]/gu, " ")
+    .replace(/^[\d\s.]+/, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+}
+
+function canonicalSectionBases() {
+  const bases = new Set();
+  for (const name of TEMPLATE_NAMES) {
+    try {
+      const text = fs.readFileSync(path.resolve(__dirname, "..", "..", "..", "..", "templates", name), "utf8");
+      for (const line of lines(text)) {
+        if (/^##\s/.test(line)) bases.add(headingBase(line));
+      }
+    } catch {
+      // template not readable → contributes nothing
+    }
+  }
+  return bases;
+}
+
+const CANONICAL_SECTIONS = canonicalSectionBases();
+
+function sectionDestination(heading) {
+  if (/decisi[oó]n/i.test(heading)) return "user decision: record it as a note in the ROADMAP for now (a per-epic _planning.md is planned as its home)";
+  if (/deuda/i.test(heading)) return "move the debt to the ROADMAP as a pending epic/task";
+  if (/divergencia|handoff/i.test(heading)) return "move it to docs/03-ux-ui/handoff-mapping.md";
+  if (/supersesi[oó]n/i.test(heading)) return "sealed-test supersession has no sanctioned mechanism yet — keep it out of the spec";
+  return "move it to its owning document or delete it (the template's sections are the spec's contract)";
+}
+
+// Like spec-size, this scans every spec (project.living excludes epic specs by design):
+// off-template sections in historical specs are noise the user can ignore, but new specs
+// get flagged the moment they grow a rogue section.
+function specSections(project) {
+  const out = [];
+  if (CANONICAL_SECTIONS.size === 0) return out;
+  for (const rel of project.files) {
+    if (!rel.startsWith("docs/05-specs/") || !rel.endsWith(".spec.md")) continue;
+    const text = project.read(rel) || "";
+    for (const line of lines(text)) {
+      if (!/^##\s/.test(line)) continue;
+      const base = headingBase(line);
+      if (!base) continue;
+      const canonical = [...CANONICAL_SECTIONS].some((c) => base === c || base.startsWith(c + " "));
+      if (!canonical) {
+        out.push(finding("WARNING", "spec-section", rel, `off-template section: ${line.trim()}`, sectionDestination(line)));
+      }
+    }
+  }
+  return out;
+}
+
 function specs(project) {
   const out = [];
   for (const rel of project.files) {
@@ -128,7 +192,7 @@ function lineCitations(project) {
 }
 
 function run(project) {
-  return [...brokenPaths(project), ...adrs(project), ...reviews(project), ...specs(project), ...lineCitations(project)];
+  return [...brokenPaths(project), ...adrs(project), ...reviews(project), ...specs(project), ...specSections(project), ...lineCitations(project)];
 }
 
 module.exports = { run, SPEC_LINE_CEILING, CITED_PATH, LINE_CITATION, REVIEW_STATUS, ADR_STATUS };

@@ -200,3 +200,34 @@ test("a business_requirements.md following the template produces no requirements
 
   assert.deepEqual(json.findings.filter((f) => f.group === "requirements"), []);
 });
+
+test("flags off-template spec sections with a suggested destination; template sections pass", () => {
+  const projectRoot = createProject({
+    ...CLEAN,
+    "docs/05-specs/epic-1.1/01-scaffold.spec.md": [
+      "# SPEC: Scaffold",
+      "",
+      "## Objetivo",
+      "algo",
+      "",
+      "## Criterios de Aceptación (≥1 test por ID)",
+      "- **AC-1:** pasa",
+      "",
+      "## Guards de no-regresión (nacen verdes)",
+      "- **GUARD-1:** x → test: `t.spec.js::y`",
+      "",
+      "## 🔴 Decisión de usuario",
+      "- elegir A o B",
+      "",
+      "## Deuda que NO salda",
+      "- deuda X",
+      ""
+    ].join("\n")
+  });
+  const { json } = runDoctor(projectRoot);
+  const sections = json.findings.filter((f) => f.check === "spec-section");
+
+  assert.equal(sections.length, 2, JSON.stringify(sections));
+  assert.ok(sections.some((f) => f.detail.includes("Decisión de usuario") && f.action.includes("ROADMAP")));
+  assert.ok(sections.some((f) => f.detail.includes("Deuda") && f.action.includes("ROADMAP")));
+});

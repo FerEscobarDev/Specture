@@ -36,6 +36,12 @@
 ## Edge Cases (los que cambian comportamiento — NO exhaustivo)
 - **EC-1:** [caso] → [resultado esperado]
 
+## Guards de no-regresión (nacen verdes — omitir si no aplica)
+> Tests que protegen comportamiento **ya existente** que este spec podría romper. Se declaran
+> aquí, **nacen verdes** y NO cuentan como RED: el conteo RED del Step 4 y el TDD Honesty Gate
+> los excluyen por declaración. El tdd-test-writer los escribe (o confirma que existen) pasando.
+- **GUARD-1:** [comportamiento existente protegido] → test: `<path>::<nombre del test>`
+
 ## Superficie de Código Existente (para el implementer — lo llena el orquestador en Step 2)
 > Los `<path>` de archivos nuevos se anclan a la **carpeta raíz del componente** del epic (campo "Carpeta raíz" en `architecture.md`, respaldado por `stack.yml.structure`). Si es "n/a" (`root_layout` flat/custom o componente no desplegable), usar el layout del proyecto.
 - Llama a: `<símbolo existente>` en `<path>` — firma: `[...]`

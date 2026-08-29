@@ -19,6 +19,8 @@ If the orchestrator includes implementation files in your context by mistake, **
 
 Tests written while looking at the implementation test the implementation, not the requirement. That defeats TDD.
 
+**Exception — declared guards.** If the spec has a "Guards de no-regresión (nacen verdes)" section, those tests protect behaviour that already exists: write them (or confirm the declared test already exists) **passing**, report them in a separate `GUARDS:` list, and never count them as RED or "fix" them to fail. Everything else in the spec still gets a failing test first.
+
 ## Required Inputs (provided by orchestrator)
 
 - The validated `.spec.md`.
@@ -161,6 +163,9 @@ RED_COMMIT:
 - SHA: <full sha of the RED commit>
 - Message: <commit message>
 - Files in commit: <list — must be only test files>
+
+GUARDS (only if the spec declares "Guards de no-regresión"):
+- GUARD-1 → test "<name>" — PASSING (born green, excluded from the RED tally)
 
 CONCERNS:
 <Optional: anything ambiguous in the spec that you flagged>
