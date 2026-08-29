@@ -4,7 +4,7 @@
 > (revisión: C-1…C-9, M1-M7, G1-G12), `psikora-scale-review.md` (N1-N10) y
 > `doctor-and-migrations-design.md` (doctor, catálogo de migraciones, principios). Cada
 > ítem cita su fuente; las definiciones son las de origen, no reinterpretaciones. Estado:
-> **M0 hecho (v1.14.1) · M1 hecho (v1.15.0) · M2 hecho (v1.16.0)**, los tres el 2026-08-28. Las **decisiones** que
+> **M0 hecho (v1.14.1) · M1 hecho (v1.15.0) · M2 hecho (v1.16.0) · M3 hecho (v1.17.0)**. Las **decisiones** que
 > condicionan el orden están en el Apéndice A (A1-A5 cerradas; A6-A7 abiertas). **Solo contiene ajustes del framework**: las acciones sobre el proyecto
 > Psikora viven en su propio repo (`C:\Proyectos\Psikora\PLAN-SANEAMIENTO-SPECTURE-2026-08-28.md`).
 
@@ -255,7 +255,7 @@ el único artefacto sin autor especializado ni canal al usuario) que separa lo r
 cita textual de lo que solo el usuario puede decidir. El validator sigue por spec; sin
 script de set, sin sello, sin overlay. Escenarios 1, 4, 5, 6, 7, 8 del diseño §6.1.*
 
-- [ ] **19. Agente `spec-planner` (`agents/spec-planner/AGENT.md`, `model: opus`) (D4, D11, D21)**
+- [x] **19. Agente `spec-planner` (`agents/spec-planner/AGENT.md`, `model: opus`) (D4, D11, D21)** · hecho 2026-08-29, v1.17.0 (`1b3e600`) — baseline RED previo en `a5e4f21`; espejo Copilot + matrix en el mismo commit (paridad 3-way); epic-agent pinneado a sonnet en el dispatch (`f2ccb18`)
   Traduce **un** epic en 1-3 specs code-free, self-contained y ordenados por dependencia;
   los escribe a disco **sin commitear** (el coordinador hace `git add` — diffeable — y
   commitea tras `APPROVED`); no despacha ni toca nada fuera de `docs/05-specs/<epic-slug>/`.
@@ -284,7 +284,7 @@ script de set, sin sello, sin overlay. Escenarios 1, 4, 5, 6, 7, 8 del diseño �
   procedural → **pinnear `model: sonnet`** y medir (M7).
   `Fuente: gate-design §4.2, D4, D11, D12, D21; gate-review M7` · `Esfuerzo: alto` · `Depende de: 13, 14, 15, 16`
 
-- [ ] **20. Criterio de escalado, formato de preguntas y delegación (D9, D19)**
+- [x] **20. Criterio de escalado, formato de preguntas y delegación (D9, D19)** · hecho 2026-08-29, v1.17.0 (`e953c31`, junto a 21 y 22 — misma sección del gate)
   Una duda va a `OPEN_QUESTIONS` **solo si** (1) cambia el contrato observable (AC, BR,
   EC, celda de la tabla de contrato o Fuera de Scope — dudas de *cómo* implementar las
   resuelven `conventions.md`/ADRs) **y** (2) no es resoluble con las fuentes entregadas; si
@@ -300,7 +300,7 @@ script de set, sin sello, sin overlay. Escenarios 1, 4, 5, 6, 7, 8 del diseño �
   Copilot/Antigravity = preguntas cerradas en chat con las mismas reglas.
   `Fuente: gate-design §4.3, §4.11, D9, D19` · `Esfuerzo: bajo (en el coordinador)` · `Depende de: 19`
 
-- [ ] **21. `docs/05-specs/<epic>/_planning.md` trackeado + persistencia de aclaraciones (M1, C-2, D10, D18)**
+- [x] **21. `docs/05-specs/<epic>/_planning.md` trackeado + persistencia de aclaraciones (M1, C-2, D10, D18)** · hecho 2026-08-29, v1.17.0 (`e953c31`) — propiedad partida: el planner escribe COVERAGE_TABLE/OPEN_QUESTIONS/RESOLVED_ALONE, el coordinador agrega respuestas/veredicto/SPEC_SHA
   Artefacto único por epic con: `COVERAGE_TABLE` (única, machine-readable — es lo que leerá
   `spec-set-check.js`), `OPEN_QUESTIONS` + respuestas + fuente, `RESOLVED_ALONE` con citas,
   resultado del chequeo mecánico, veredicto del validator verbatim, `SPEC_SHA`. Reemplaza
@@ -316,7 +316,7 @@ script de set, sin sello, sin overlay. Escenarios 1, 4, 5, 6, 7, 8 del diseño �
   **Con el ítem 16 vigente, `_planning.md` es el único hogar de decisiones** — no un quinto.
   `Fuente: gate-review M1 / C-2; gate-design §4.5, D10, D18; psikora-review §6` · `Esfuerzo: bajo` · `Depende de: 16, 19`
 
-- [ ] **22. Visibilidad sin bloqueo: eco de interpretación, resumen, modo revisión a pedido (D2, D7)**
+- [x] **22. Visibilidad sin bloqueo: eco de interpretación, resumen, modo revisión a pedido (D2, D7)** · hecho 2026-08-29, v1.17.0 (`e953c31`)
   Sin gate humano obligatorio (fatiga de aprobación: firma sin leer desde el epic 5;
   "todas" dejaría de ser desatendido) y sin Plan mode (`ExitPlanMode` es bloqueante,
   reintroduce D2 por la puerta de atrás). **Eco** tras cada re-dispatch: el coordinador
@@ -330,7 +330,7 @@ script de set, sin sello, sin overlay. Escenarios 1, 4, 5, 6, 7, 8 del diseño �
   validar, `BLOCKED`/`REJECTED_MAJOR` aguas abajo, modo revisión — **ninguno rutinario**.
   `Fuente: gate-design §4.6, §4.12, D2, D3, D6, D7` · `Esfuerzo: bajo` · `Depende de: 19`
 
-- [ ] **23. Cambios en el epic-agent: Steps 4-8 con `SPEC_SHA` + veredicto verbatim (D17, §4.9)**
+- [x] **23. Cambios en el epic-agent: Steps 4-8 con `SPEC_SHA` + veredicto verbatim (D17, §4.9)** · hecho 2026-08-29, v1.17.0 (`f2ccb18`) — EPIC_LOOP pierde Steps 2/2.5/3 conservando la numeración 4-8
   El prompt de despacho pasa de "Execute Steps 2 through 8" a "Steps 4 through 8" y
   agrega: *"Steps 2/2.5/3 — los specs ya fueron planificados por `spec-planner` y
   validados; NO los regeneres ni edites. Si un spec resulta inejecutable, reporta
@@ -341,7 +341,7 @@ script de set, sin sello, sin overlay. Escenarios 1, 4, 5, 6, 7, 8 del diseño �
   epic-agent". El Step 3 por spec queda absorbido por el gate.
   `Fuente: gate-design §4.9, D17` · `Esfuerzo: bajo` · `Depende de: 15, 19`
 
-- [ ] **24. Loop de corrección de spec a mitad de epic (M6, C-7)**
+- [x] **24. Loop de corrección de spec a mitad de epic (M6, C-7)** · hecho 2026-08-29, v1.17.0 (`307597d`) — "des-sellar" = quitar SOLO la entrada del spec afectado de specs[] (hueco no cubierto por los docs, resuelto acá)
   Con specs sellados, la recuperación del Iteration Cap (`build:417` "fix the spec,
   restart from Step 3") y del `BLOCKED: spec` no tienen camino. Definición, en el
   coordinador: `BLOCKED: spec <AC-n>` → des-sellar → re-despachar planner con `VIOLATIONS`
@@ -350,7 +350,7 @@ script de set, sin sello, sin overlay. Escenarios 1, 4, 5, 6, 7, 8 del diseño �
   el spec 1.
   `Fuente: gate-review M6 / C-7` · `Esfuerzo: bajo` · `Depende de: 23`
 
-- [ ] **25. Reanudación de un epic `[/]` (§4.10)**
+- [x] **25. Reanudación de un epic `[/]` (§4.10)** · hecho 2026-08-29, v1.17.0 (`3fab1f0`) — endurecido: evidencia en disco (`_planning.md` APPROVED + specs commiteados), no la inferencia "commiteado ⇒ validado" que C-2 rechazó
   Gap preexistente: la cola solo toma epics `[ ]` (`build:57`); un `[/]` huérfano tras un
   crash queda trabado. Definición: exactamente un `[/]` **y** `_planning.md` con veredicto
   `APPROVED` + specs commiteados → saltar la planificación y despachar el epic-agent
@@ -361,7 +361,7 @@ script de set, sin sello, sin overlay. Escenarios 1, 4, 5, 6, 7, 8 del diseño �
   en disco (reanudable).
   `Fuente: gate-design §4.10, §6.2` · `Esfuerzo: bajo` · `Depende de: 21, 23`
 
-- [ ] **26. Validator: chequeo C7 sobre `_planning.md` (dims 1-6 por spec sin cambios) (D13)**
+- [x] **26. Validator: chequeo C7 sobre `_planning.md` (dims 1-6 por spec sin cambios) (D13)** · hecho 2026-08-29, v1.17.0 (`8398b6b`) — C7 solo en el primer dispatch del set (los extractos de fuentes viajan en el dispatch); anti-cascada en el gate del coordinador
   Nueva verificación: cada ítem de `RESOLVED_ALONE` — la **cita textual existe** en la
   fuente entregada (verificable, `grep`) **y responde** la duda (juicio). Cita inexistente,
   parafraseada o que no responde → "aclaración sin sustento", BLOCKER. **Regla
@@ -371,7 +371,7 @@ script de set, sin sello, sin overlay. Escenarios 1, 4, 5, 6, 7, 8 del diseño �
   esta etapa el validator sigue despachándose **por spec** (sin la dimensión de set).
   `Fuente: gate-design §4.4 (C7), D8, D13; gate-review §1.5` · `Esfuerzo: bajo` · `Depende de: 21`
 
-- [ ] **27. Cross-platform, `modernize` delegando al gate, documentación de usuario (§4.11, §6.2, §6.3, D16)**
+- [x] **27. Cross-platform, `modernize` delegando al gate, documentación de usuario (§4.11, §6.2, §6.3, D16)** · hecho 2026-08-29, v1.17.0 (`869f970` modernize + `b4ddeea` docs; espejo/matrix en `1b3e600`) — tabla reducida para migraciones hasta el ítem 37 (C-9a aceptado)
   `spec-planner` en "Cross-Platform Subagent Initialization" de `build` (`define_subagent`
   en Antigravity) y en `copilot/agents/` + `compatibility-matrix.json` (`agents` +
   `spec-planner`; `gates` + `spec-planning`). `modernize` Steps 7.1-7.2 delegan al gate (el
@@ -385,7 +385,7 @@ script de set, sin sello, sin overlay. Escenarios 1, 4, 5, 6, 7, 8 del diseño �
   no genera specs), `docs/integration-claude-native.md` **no se toca** (D3 vigente).
   `Fuente: gate-design §4.11, §6.2, §6.3, D16` · `Esfuerzo: medio` · `Depende de: 19-26`
 
-- [ ] **28. Baseline `write-skill` — escenarios 1, 4, 5, 6, 7, 8 (§6.1)**
+- [x] **28. Baseline `write-skill` — escenarios 1, 4, 5, 6, 7, 8 (§6.1)** · hecho 2026-08-29, v1.17.0 (RED `a5e4f21`, GREEN `7459d87`; `docs/spec-planning-baseline.md`) — los 8 escenarios verdes a la primera, sin ciclo REFACTOR
   Proyecto de prueba con `.specture/` y ROADMAP mínimos; RED (correr sin el cambio,
   documentar la racionalización textual) → GREEN → REFACTOR. (1) BR ambigua evidente →
   `OPEN_QUESTIONS` con opciones. (4) Presión vs delegación: "hazlo rápido, no me preguntes"

@@ -632,6 +632,27 @@ Specture está en desarrollo activo. Para decisiones arquitectónicas internas, 
 
 ## Changelog
 
+### v1.17.0 — Spec Planning Gate · etapa 1: el autor y las preguntas
+
+**Motivación:** el spec es el contrato sellado de toda la cadena (test-writer → implementer → reviewer) y era el único artefacto sin autor especializado ni canal al usuario. El baseline RED (`docs/spec-planning-baseline.md`) lo midió: 12-14 decisiones unilaterales de contrato observable por epic, cero preguntas, tres superficies de identidad y tres formatos de subida distintos entre corridas para el mismo problema, y una delegación vaga convertida en autoridad para editar el contrato OpenAPI. Es la Milestone 3 de `docs/framework-roadmap.md`; diseño en `docs/spec-planning-gate-design.md` corregido por su revisión (M1-M7).
+
+**Cambios:**
+
+- **Agente `spec-planner` (Opus, el 7º):** traduce un epic en 1-3 specs code-free sin commitear; regla de hierro "no existe el tercer estado" — toda duda de contrato queda `RESOLVED_ALONE` con **cita textual** o va a `OPEN_QUESTIONS` como pregunta cerrada; `BLOCKED: contrato` cuando el epic necesita un shape que el contrato no tiene (jamás se inventa ni se parchea); re-dispatch = edición mínima con IDs estables y `CHANGELOG` contrastado contra `git diff`.
+- **Spec Planning Gate en el coordinador de `build`:** cada epic se planifica completo antes de ejecutar; `AskUserQuestion` ≤4 preguntas/tanda, ≤2 tandas, siempre con una `(recomendada)`; la presión vaga no suprime preguntas, la delegación explícita se honra (`fuente: delegado por el usuario`, alcance = el epic nombrado) y nunca autoriza tocar el contrato; respuestas que cambian reglas se editan in-place en `business_requirements.md` con marcador `(aclarado en Epic X.Y, fecha)`; "todas" sigue desatendido — un epic sin dudas corre hasta `[x]` sin interrupciones; modo revisión solo a pedido.
+- **`docs/05-specs/<epic>/_planning.md` trackeado:** COVERAGE_TABLE + preguntas/respuestas + `RESOLVED_ALONE` con citas + veredicto verbatim + `SPEC_SHA` — propiedad partida (el planner escribe sus 3 secciones; el coordinador agrega evidencia).
+- **Validator C7 ("aclaraciones sin sustento"):** en el primer dispatch del set verifica que cada cita existe verbatim en la fuente entregada Y responde la duda — BLOCKER si no; anti-cascada: 2º rechazo del mismo ítem → pregunta al usuario.
+- **Epic-agent procedural (Steps 4-8, `model: sonnet`):** recibe specs sellados con `SPEC_SHA` + veredicto verbatim (sin ambos → `NEEDS_CONTEXT`); `EPIC_LOOP.md` pierde Steps 2/2.5/3; nuevo anti-pattern "editar o regenerar un spec sellado".
+- **Loop de corrección a mitad de epic:** `BLOCKED: spec <ID>` → des-sellado quirúrgico de esa entrada → re-plan mínimo → re-validación → `git revert` del RED afectado → reanudar desde ese spec.
+- **Reanudación de un `[/]` por evidencia en disco:** `_planning.md` APPROVED + specs commiteados → despacha sin re-planificar; specs solo en staging → pregunta; nunca descarta sin preguntar.
+- **`modernize` delega al gate** (un solo camino para specs; tabla reducida para epics de migración hasta el ítem 37).
+- Baseline TDD-for-docs completo en `docs/spec-planning-baseline.md`: 8 escenarios RED→GREEN, todos verdes a la primera.
+- Tests: 59 (paridad de 7 agentes, secciones canónicas del template, schema gate re-sincronizado).
+
+**Migración para proyectos existentes:** ninguna — `_planning.md` lo crea el gate durante `build` (el doctor ya lo clasificaba como documento vivo desde v1.15.0) y las secciones nuevas de template no invalidan specs existentes.
+
+**Backward-compat:** los specs existentes siguen válidos (la sección "Aclaraciones" es un puntero opcional); un `[/]` huérfano gana camino de reanudación en vez de quedar trabado; el formato de output del validator no cambia; los epics de migración usan el mismo gate con su template declarado.
+
 ### v1.16.0 — Prerrequisitos del Spec Planning Gate
 
 **Motivación:** el Spec Planning Gate (Milestone 3 del roadmap) asume IDs estables en los requerimientos, un ROADMAP validado mecánicamente, un procedimiento de epic corto y specs con techo y forma. Ninguno existía: las reglas de negocio se citaban por "§X" (juicio, no mecánica), el ROADMAP era la única fase sin gate, el epic-agent recibía las 517 líneas de `build/SKILL.md` (~190 solo del coordinador), y la verdad de negocio se fragmentaba en `feature-*.md` y "Adendas". Es la Milestone 2 de `docs/framework-roadmap.md`.
