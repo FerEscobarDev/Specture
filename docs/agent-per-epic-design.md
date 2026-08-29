@@ -1,7 +1,9 @@
 > **Estado: IMPLEMENTADO en v1.4.0; consolidado en v1.8.0; partido en v1.16.0** (el
 > procedimiento del epic-agent — Steps 2–8, Manifest, resoluciones, gate 5.5, Iteration Cap,
 > anti-patterns — vive ahora en `skills/build/EPIC_LOOP.md`, único archivo que recibe el
-> epic-agent; `build/SKILL.md` queda solo coordinador). Este es el documento
+> epic-agent; `build/SKILL.md` queda solo coordinador). **Desde v1.17.0 el epic-agent ya
+> no genera specs**: ejecuta Steps 4-8 — la planificación vive en el Spec Planning Gate del
+> coordinador (`spec-planner` + validación por spec). Este es el documento
 > de diseño de R4 (modo agente-por-epic) — el origen del **modo de ejecución único**
 > actual. En v1.8.0 los tres modos que existieron (Inline, Agentes por Epic, Paralelo
 > por Olas) se colapsaron en uno solo: "Execution Model — Sequential Queue" en
@@ -44,7 +46,7 @@ Insertar entre `## Required Inputs` y `## The Loop`. Presenta al usuario la elec
 
 ### Cambio 2 — Agregar `## Modo: Agentes por Epic`
 
-El chat principal es solo coordinador. Por epic: lee checkboxes del ROADMAP, bloquea el epic `[/]`, prepara contexto base, despacha un epic-agent fresco (sin heredar historial) que corre Steps 2-8, y procesa el reporte (DONE/BLOCKED/REJECTED_MAJOR) verificando contra el filesystem.
+El chat principal es solo coordinador. Por epic: lee checkboxes del ROADMAP, bloquea el epic `[/]`, prepara contexto base, despacha un epic-agent fresco (sin heredar historial) que corre Steps 2-8 (Steps 4-8 desde v1.17.0), y procesa el reporte (DONE/BLOCKED/REJECTED_MAJOR) verificando contra el filesystem.
 
 El prompt del epic-agent incluye tres instrucciones de omisión: saltar "Execution Mode Selection" (ya está en ese modo), saltar Step 1 (epic ya bloqueado), saltar Step 9 (context reset N/A — su contexto se descarta).
 

@@ -69,7 +69,7 @@ Inicia `agy` en la raíz de tu proyecto. El router y las habilidades de Specture
   - `/specture:discover` — Levantamiento socrático de negocio.
   - `/specture:architecture` — Arquitectura, contrato OpenAPI y ROADMAP.
   - `/specture:ux-design` — Navigation map y Design System.
-  - `/specture:build` — Ciclo iterativo TDD (spec → test → code → review).
+  - `/specture:build` — Ciclo iterativo TDD (plan → test → code → review). Las tandas del `spec-planner` llegan como preguntas cerradas en el chat (mismas reglas que en Claude Code).
   - `/specture:debug` — Diagnóstico estructurado con causa raíz obligatoria.
   - `/specture:knowledge` — Captura y auditoría de conocimiento.
 

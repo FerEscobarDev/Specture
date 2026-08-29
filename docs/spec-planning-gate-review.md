@@ -1,4 +1,5 @@
-> **Estado: REVISIÓN CRÍTICA — 2026-08-28.** Reporte solicitado por el usuario:
+> **Estado: REVISIÓN CRÍTICA — 2026-08-28; etapa 1 APLICADA en v1.17.0** (M1, M3, M6, M7 +
+> planner/preguntas/C7); M2, M4 y M5 quedan para la etapa 2 (v1.18.0). Reporte solicitado por el usuario:
 > (1) juzgar si `docs/spec-planning-gate-design.md` aporta valor real al framework,
 > (2) analizar lo ya implementado, (3) proponer otras oportunidades de mejora.
 > Perspectiva: diseño de sistemas multi-agente de generación de código, SDD con IA

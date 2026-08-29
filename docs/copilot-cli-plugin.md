@@ -61,6 +61,9 @@ copilot --plugin-dir C:\Proyectos\VibeCoding
 3. **Invocación directa de Habilidades**:
    Las habilidades mantienen sus nombres estándar (`start`, `setup`, `discover`, `architecture`, `ux-design`, `build`, `debug`, `knowledge`). Copilot puede inferir la habilidad requerida o puedes nombrarla explícitamente.
 
+4. **Preguntas del Spec Planning Gate**:
+   En `build`, las tandas del `spec-planner` llegan como **preguntas cerradas en el chat** (2-4 opciones, una recomendada, ≤4 por tanda, ≤2 tandas por epic) — mismas reglas que `AskUserQuestion` en Claude Code. `copilot/agents/` incluye los 7 espejos de agentes.
+
 ---
 
 ## TDD Honesty Gate en Copilot CLI

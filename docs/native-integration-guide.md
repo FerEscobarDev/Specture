@@ -21,7 +21,7 @@ Specture v1.2.0 delega a la plataforma seis funciones que antes vivían como con
 | `Plan mode` | Gate de aprobación obligatorio en `debug` y `new-feature` antes de tocar código. |
 | Background tasks | Paraleliza review + linter + type-checker en el build loop. |
 
-El principio core de Specture — **contexto restringido por agente** — se mantiene intacto: los cuatro agentes especializados siguen recibiendo solo los archivos que necesitan, y se les prohíbe explícitamente consultar memorias persistentes.
+El principio core de Specture — **contexto restringido por agente** — se mantiene intacto: los agentes especializados siguen recibiendo solo los archivos que necesitan, y se les prohíbe explícitamente consultar memorias persistentes.
 
 ---
 
@@ -85,10 +85,10 @@ Ver `hooks/README.md` — tabla de síntomas y causas. Los más comunes:
 
 ### 4.1 Mapeo de los 9 pasos a estados visibles
 
-Cuando `/specture:build` encola epics, el **coordinador** crea una task visible por epic. Dentro de cada epic-agent (`build/EPIC_LOOP.md`), Step 2.5 crea tasks internas por spec (1–3 típicamente) que progresan por estos `activeForm`:
+Cuando `/specture:build` encola epics, el **coordinador** crea una task visible por epic; al cerrar el Spec Planning Gate crea además una task por spec (1–3 típicamente) que progresa por estos `activeForm`:
 
 ```
-validating architecture  → architecture-validator dispatch (Step 3)
+planning specs           → spec-planner + validator por spec (Spec Planning Gate, coordinador)
 writing tests (RED)      → tdd-test-writer dispatch (Step 4)
 implementing (GREEN)     → implementer dispatch (Step 5)
 verifying TDD honesty    → manual git diff gate (Step 5.5)
@@ -113,7 +113,7 @@ Si por cualquier razón TaskCreate y ROADMAP discrepan (ej. el modelo marcó una
 
 ### 5.1 Cuándo se usa
 
-Context7 está activo en exactamente dos lugares cuando `context7.enabled: true`:
+Context7 está activo en exactamente dos lugares cuando `context7.enabled: true` (el `spec-planner` **nunca** lo usa: la planificación es source-bound — una doc externa lavaría supuestos como si fueran citas):
 
 **`code-reviewer` — Dimension 5 (Stack Idiomaticity)**
 
@@ -195,15 +195,14 @@ Claude Code notifica automáticamente cuando un background task termina. El orqu
 
 ### 8.1 "Necesito modificar un test legítimamente durante GREEN, ¿cómo?"
 
-El TDD Honesty Gate existe precisamente porque "es legítimo" es la racionalización más común para violarlo. Si el test está mal, probablemente el spec está mal — y el spec se corrige en Step 2, no en Step 5.
+El TDD Honesty Gate existe precisamente porque "es legítimo" es la racionalización más común para violarlo. Si el test está mal, probablemente el spec está mal — y el spec se corrige re-planificando (loop de corrección del coordinador), no en Step 5.
 
 Si genuinamente necesitás cambiar el contrato de test mid-epic:
 
-1. Abortá el epic actual (no marqués `[x]` el spec actual).
-2. Borrá `.specture/state/build-locked.json` para liberar el gate.
-3. Volvé a Step 2 del build loop: actualizá el spec con lo que aprendiste.
-4. Re-dispatch `tdd-test-writer` para que produzca un nuevo RED commit con el contrato corregido.
-5. El `RED_SHA` se actualiza, el state file se rescribe, el implementer arranca de cero.
+1. Reportá `BLOCKED: spec <AC-n/BR-n/EC-n>` (o abortá el epic si estás en el chat).
+2. El coordinador corre el **loop de corrección**: quita SOLO la entrada de ese spec de `build-locked.json`, re-despacha al `spec-planner` con `VIOLATIONS` (edición mínima), re-valida, y hace `git revert` del RED afectado.
+3. Re-dispatch `tdd-test-writer` para producir el nuevo RED commit con el contrato corregido.
+4. El `RED_SHA` se actualiza, el state file se reescribe, y el epic-agent reanuda **desde el spec afectado**.
 
 Nunca edites un test "rapidito" para hacerlo pasar — eso destruye el audit trail que justifica todo el framework.
 
@@ -254,7 +253,7 @@ Con `context7.enabled: true`, Step 2 (Gap Analysis) toma los hechos de docs vige
 
 ## Apéndice — Anti-memory clauses
 
-Como parte de v1.2.0, los cuatro agentes restringidos (`architecture-validator`, `tdd-test-writer`, `implementer`, `code-reviewer`) recibieron una cláusula explícita de contexto restringido que prohíbe:
+Como parte de v1.2.0 (y v1.17.0 para `spec-planner`), los agentes restringidos (`spec-planner`, `architecture-validator`, `tdd-test-writer`, `implementer`, `code-reviewer`) llevan una cláusula explícita de contexto restringido que prohíbe:
 
 - Leer memorias persistentes (`~/.claude/projects/*/memory/`).
 - Consultar Context7 (excepto `code-reviewer` para Dimension 5 y `modernize` para gap analysis).

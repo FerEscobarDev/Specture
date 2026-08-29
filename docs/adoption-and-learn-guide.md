@@ -115,7 +115,7 @@ tu-proyecto/
 
 Cuando corrés `/specture:build` y entra al loop de un epic:
 
-- **Step 3 (architecture-validator dispatch)** — el orquestador lee el spec, extrae tags/conceptos (módulo, componente, backend/frontend), filtra el `docs-index.yml` por intersección de tags, ordena por score, toma top 3 (cap por `docs_index.max_entries_per_dispatch`), lee esos archivos y los pasa al validator como input adicional (`docs_index_resolved: [...]`). El validator NUNCA lee el índice — solo recibe los docs resueltos.
+- **Spec Planning Gate (architecture-validator dispatch del coordinador)** — el orquestador lee el spec, extrae tags/conceptos (módulo, componente, backend/frontend), filtra el `docs-index.yml` por intersección de tags, ordena por score, toma top 3 (cap por `docs_index.max_entries_per_dispatch`), lee esos archivos y los pasa al validator como input adicional (`docs_index_resolved: [...]`). El validator NUNCA lee el índice — solo recibe los docs resueltos.
 
 - **Step 6 (code-reviewer dispatch)** — misma lógica. El reviewer recibe los docs y los usa como contexto informativo. Si un finding depende SOLO de una entrada `ai_categorized` (no validada por humano), lo marca explícitamente en el reporte.
 
@@ -309,7 +309,7 @@ Desde el siguiente dispatch del `architecture-validator`, el ADR es vinculante.
         ┌─────────────────────────────────────────────────────────┐
         │  /specture:start  →  /specture:build (loop por epic)     │
         │                                                          │
-        │   Step 3 (architecture-validator) ────┐                  │
+        │   Gate (architecture-validator)  ─────┐                  │
         │   Step 6 (code-reviewer)         ─────┤  (pre-flight)    │
         │                                       ▼                  │
         │   ┌────────────────────────────────────────────┐         │

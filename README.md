@@ -199,6 +199,7 @@ $SPECTURE_ROOT/
 │   └── doctor/SKILL.md                # Diagnóstico del corpus + migraciones de esquema (check · migrate · sync)
 ├── agents/
 │   ├── specture-router/AGENT.md       # Router (opt-in: se invoca con /specture:start)
+│   ├── spec-planner/AGENT.md            # Autor del spec: 1-3 specs por epic + preguntas
 │   ├── architecture-validator/AGENT.md  # Valida planes/contrato contra .specture/
 │   ├── tdd-test-writer/AGENT.md         # Escribe tests desde el spec (sin ver código)
 │   ├── implementer/AGENT.md             # Implementa para pasar tests (backend/lógica)
@@ -237,7 +238,7 @@ $SPECTURE_ROOT/
 | **1** | `discover` | `/specture:discover` | Sin `docs/01-requirements/business_requirements.md` | Reglas de negocio, actores y edge cases con IDs estables (`RN/CL/FA`), desde template y con chequeo mecánico de salida |
 | **2** | `architecture` | `/specture:architecture` | Sin `docs/04-roadmap/ROADMAP.md` | Arquitectura + **contrato de API (OpenAPI + doc legible)** + ROADMAP de milestones/epics |
 | **3** | `ux-design` | `/specture:ux-design` | Frontend declarado + `docs/03-ux-ui/` incompleto | Mapa de navegación + **design system completo (siempre)** + (Ruta 1) specs para IA de diseño externa |
-| **4** | `build` | `/specture:build` | ROADMAP con epics `[ ]` o `[/]` | Código testeado, revisado, verificado |
+| **4** | `build` | `/specture:build` | ROADMAP con epics `[ ]` o `[/]` | Specs planificados y validados por epic (Spec Planning Gate) + código testeado, revisado, verificado |
 
 ## Capacidades Transversales
 
@@ -257,14 +258,15 @@ $SPECTURE_ROOT/
 
 ---
 
-## Los 6 Agentes
+## Los 7 Agentes
 
-Specture **no** especializa por capa técnica arbitraria (no hay un "Agente Backend" vs "Agente Frontend" partido por dónde vive el archivo — eso es falsa especialización). Especializa por **función cognitiva** con contexto restringido. `implementer` y `ux-implementer` no son "backend vs frontend por capa": son dos funciones cognitivas distintas — *hacer pasar tests de lógica* vs *renderizar con fidelidad al design system, accesibilidad y cliente tipado*. La calidad visual y la adherencia a tokens son una lente cognitiva que el implementer genérico (optimizado para TDD de lógica) no tiene. El sexto, `specture-router`, no construye nada: solo detecta la fase (opt-in, vía `/specture:start`).
+Specture **no** especializa por capa técnica arbitraria (no hay un "Agente Backend" vs "Agente Frontend" partido por dónde vive el archivo — eso es falsa especialización). Especializa por **función cognitiva** con contexto restringido. `implementer` y `ux-implementer` no son "backend vs frontend por capa": son dos funciones cognitivas distintas — *hacer pasar tests de lógica* vs *renderizar con fidelidad al design system, accesibilidad y cliente tipado*. La calidad visual y la adherencia a tokens son una lente cognitiva que el implementer genérico (optimizado para TDD de lógica) no tiene. El sexto, `spec-planner`, es el **autor especializado del spec**: traduce un epic en 1-3 specs validados y separa lo resuelto con cita textual de lo que solo el usuario puede decidir. El séptimo, `specture-router`, no construye nada: solo detecta la fase (opt-in, vía `/specture:start`).
 
 | Agente | Función | Contexto que recibe | Contexto que NO recibe |
 |--------|---------|---------------------|-------------------------|
 | `specture-router` | Detectar la fase y devolver `PHASE · SKILL` (opt-in; nunca ejecuta la fase) | Existencia de archivos clave + checkboxes del ROADMAP | Contenido de los documentos, historial de chat |
-| `architecture-validator` | Validar que plan/spec/**contrato** respeta stack, ADRs y el contrato de API | Documento + `.specture/` (+ contrato si aplica) | Código de implementación |
+| `spec-planner` | Traducir un epic en 1-3 specs code-free; citar textualmente o preguntar (`OPEN_QUESTIONS`) | Bloque del epic + fuentes enlazadas + slice del contrato + template | Comportamiento del código (solo firmas), memoria, Context7 |
+| `architecture-validator` | Validar que plan/spec/ROADMAP/**contrato** respeta stack, ADRs y el contrato de API (+ citas C7) | Documento + `.specture/` (+ contrato / `_planning.md` si aplica) | Código de implementación |
 | `tdd-test-writer` | Escribir tests desde el spec | Spec + business rules + testing framework | Código de implementación (anti-bias crítico) |
 | `implementer` | Hacer que los tests pasen (lógica/backend) | Spec + tests + archivos a tocar | Conversación entera, archivos no relevantes |
 | `ux-implementer` | Implementar UI con fidelidad al design system | Spec + design system + slice del contrato + tests + checklist de marca | URLs a mano, valores hardcodeados, código no relacionado |
@@ -327,7 +329,9 @@ Output: `docs/03-ux-ui/navigation_map.md` + `docs/03-ux-ui/design_system.md` (+ 
 ---
 
 #### `/specture:build`
-**Orquesta el loop de construcción spec → test → código → review por epic.** Es el skill más denso: toma el próximo epic del ROADMAP, genera su spec, lo despacha al `architecture-validator`, luego al `tdd-test-writer` (RED commit), luego al `implementer` (GREEN), y finalmente al `code-reviewer`. Cada agente recibe solo el contexto que necesita. Incluye un **TDD Honesty Gate** que verifica con `git diff` que el implementer no modificó los tests. Marca el epic como `[x]` solo cuando el reviewer aprueba y los tests pasan.
+**Orquesta el loop de construcción plan → test → código → review por epic.** Es el skill más denso. **Cada epic se planifica completo antes de ejecutar** (Spec Planning Gate): el coordinador despacha al `spec-planner`, que escribe los 1-3 specs y **pregunta solo lo que las fuentes no responden** (≤4 preguntas por tanda, ≤2 tandas, siempre con una recomendada) — un epic bien descubierto corre hasta `[x]` sin una sola interrupción, así que "todas" sigue siendo desatendido. El `architecture-validator` aprueba cada spec (incluidas las citas de `RESOLVED_ALONE`, chequeo C7) y la evidencia queda trackeada en `docs/05-specs/<epic>/_planning.md`. Recién entonces el epic-agent ejecuta: `tdd-test-writer` (RED commit) → `implementer` (GREEN) → `code-reviewer`, con el **TDD Honesty Gate** (`git diff`) en el medio. Marca el epic `[x]` solo cuando el reviewer aprueba y los tests pasan.
+
+**Cómo pedir revisión o delegar:** *"construí con revisión de specs"* frena el gate en el resumen para que confirmes; *"si hay dudas usá la recomendada"* delega las respuestas (quedan registradas como `fuente: delegado por el usuario`, con alcance solo al epic nombrado). La presión vaga ("hazlo rápido, no preguntes") **no** suprime preguntas de contrato.
 
 **Modo Frontend (v1.6.0):** cuando el epic es de UI, despacha `ux-implementer` en vez del implementer genérico y aplica el orden obligatorio: el epic de **design system** se construye primero (tokens + componentes + ruta `/dev/design-system`) y pasa por un **gate de aprobación visual humana** (Claude puede capturar screenshots con Playwright; el usuario aprueba) antes de que se construya cualquier página. Las páginas consumen el backend solo a través del **cliente tipado generado del contrato**, en orden de dependencia de `operationId`.
 
@@ -440,6 +444,16 @@ Los agentes de Specture son subagentes con **contexto restringido** — cada uno
 
 - **Se activa:** invocando `/specture:start`, o cuando el usuario pide iniciar/continuar trabajo de Specture ("continuemos con el roadmap", "inicia el proyecto"). **Nunca automáticamente.**
 - **No escribe código, no invoca skills, no despacha subagentes** — solo detecta y nombra la fase.
+
+---
+
+#### `spec-planner`
+**Autor especializado del spec (v1.17.0).** Traduce **un** epic en 1-3 specs code-free, self-contained y ordenados por dependencia; los escribe a disco sin commitear y no toca nada fuera de `docs/05-specs/<epic-slug>/`. Su regla de hierro: **no existe el tercer estado** — toda duda que cambie el contrato observable queda `RESOLVED_ALONE` con **cita textual** de una fuente entregada, o va a `OPEN_QUESTIONS` como pregunta cerrada con opciones. En re-dispatch edita mínimamente (IDs y slugs estables, `CHANGELOG` contrastado contra `git diff`).
+
+- **Contexto que recibe:** bloque del epic + secciones enlazadas de requerimientos/arquitectura + slice del contrato + template + ADRs Accepted + `_current/`/docs-index resueltos.
+- **Contexto que NO recibe:** comportamiento del código existente (solo firmas y paths), memoria, Context7, historial.
+- **Output:** `STATUS` + `SPECS` + `COVERAGE_TABLE` + `OPEN_QUESTIONS` + `RESOLVED_ALONE` + `CHANGELOG` + `CONCERNS`.
+- **Modelo:** Opus (detectar ambigüedad real y citar es juicio; el spec es el contrato sellado de toda la cadena).
 
 ---
 

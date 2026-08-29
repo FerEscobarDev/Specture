@@ -111,12 +111,14 @@ distintas.
 flowchart LR
     O["Orquestador<br/>(build / architecture / modernize / new-feature)<br/>ensambla contexto RESTRINGIDO por agente"]
 
+    O -->|"bloque del epic + fuentes + slice contrato + template<br/>(firmas y paths, NUNCA comportamiento)"| SP["spec-planner · Opus<br/>1-3 specs + OPEN_QUESTIONS / RESOLVED_ALONE"]
     O -->|"documento + .specture/<br/>(SIN código)"| AV["architecture-validator · Opus<br/>APPROVED / REJECTED / BLOCKED"]
     O -->|"spec + business rules + framework de test<br/>(SIN implementación — anti-bias)"| TW["tdd-test-writer · Sonnet<br/>tests RED (fallidos)"]
     O -->|"spec + tests RED + archivos a tocar + RED_SHA"| IM["implementer · Sonnet<br/>código GREEN (lógica)"]
     O -->|"spec + design_system + slice contrato<br/>+ tests + checklist de marca"| UX["ux-implementer · Sonnet<br/>UI fiel a tokens/contrato/a11y"]
     O -->|"diff + spec + .specture/<br/>+ resultado del gate 5.5"| CR["code-reviewer · Opus<br/>APPROVED / REJECTED_MINOR / REJECTED_MAJOR"]
 
+    SP -.->|"NO recibe"| X5["comportamiento del código · memoria · Context7"]
     AV -.->|"NO recibe"| X1["código de implementación"]
     TW -.->|"NO recibe"| X2["archivos de implementación"]
     IM -.->|"NO recibe"| X3["conversación · memoria · resto del repo"]
@@ -133,7 +135,7 @@ Todos los implementadores validan el **Dispatch Manifest** como primera acción 
 
 ### 3.1 Modelo coordinador / cola secuencial
 
-Hay **un solo** modo de ejecución. El chat es **solo coordinador**: no genera specs ni corre tests.
+Hay **un solo** modo de ejecución. El chat es **solo coordinador**: autoriza specs únicamente vía el `spec-planner` (Spec Planning Gate) y no corre tests.
 Construye una cola de hasta **N** epics y despacha **un epic-agent aislado a la vez**
 (concurrencia = 1). El contexto del coordinador se mantiene O(n_epics) — solo checkboxes + reportes.
 
@@ -146,8 +148,9 @@ flowchart TD
     Br -->|No| D["TaskCreate por epic encolado<br/>(cola visible)"]
     Br2 --> D
     D --> L{"¿Quedan epics en la cola?"}
-    L -->|Sí| E["Marcar epic [/] + commit<br/>despachar 1 epic-agent fresco"]
-    E --> F["epic-agent ejecuta build/EPIC_LOOP.md (Steps 2–8)<br/>(contexto aislado, se descarta al terminar)"]
+    L -->|Sí| E["Marcar epic [/] + commit"]
+    E --> SPG["Spec Planning Gate:<br/>spec-planner → preguntas → validator por spec<br/>→ resumen → commit specs + _planning.md"]
+    SPG --> F["epic-agent ejecuta build/EPIC_LOOP.md (Steps 4–8)<br/>(contexto aislado, se descarta al terminar)"]
     F --> G{"Procesar el reporte"}
     G -->|DONE| H["Verificar [x] + commit por git log<br/>(no confiar en el reporte)"]
     G -->|"BLOCKED / REJECTED_MAJOR"| ESC(["Escalar al usuario · sin auto-retry"])
@@ -157,21 +160,28 @@ flowchart TD
 
 ### 3.2 El loop por epic — `spec → validate → RED → GREEN → review → verify`
 
-El diagrama central del framework. Los Steps 2–8 son el procedimiento del epic-agent y viven
-en `build/EPIC_LOOP.md` (único archivo que el epic-agent recibe); Step 1 y Steps 8.5/8.7/9
-son del coordinador (`build/SKILL.md`). Los **gates** (rombos) son innegociables: validación
-de arquitectura, RED commit, TDD Honesty Gate, code review y verificación.
+El diagrama central del framework. La planificación vive en el **coordinador** (Spec
+Planning Gate: `spec-planner` + validación por spec); los Steps 4–8 son el procedimiento
+del epic-agent y viven en `build/EPIC_LOOP.md` (único archivo que recibe); Step 1 y Steps
+8.5/8.7/9 son del coordinador (`build/SKILL.md`). Los **gates** (rombos) son innegociables:
+planificación validada, RED commit, TDD Honesty Gate, code review y verificación.
 
 ```mermaid
 flowchart TD
-    S1["Step 1 · Pick & Lock (coordinador)<br/>epic → [/] · commit"] --> S2
-    subgraph EL ["epic-agent · build/EPIC_LOOP.md"]
-    S2["Step 2 · Generar spec(s)<br/>granular · sin código · self-contained"]
-    S2 --> S25["Step 2.5 · TaskCreate por spec<br/>(visibilidad en vivo)"]
-    S25 --> S3{"Step 3 · GATE<br/>architecture-validator"}
-    S3 -->|REJECTED| FIXS["Corregir spec<br/>(o escalar → nuevo ADR)"]
+    S1["Step 1 · Pick & Lock (coordinador)<br/>epic → [/] · commit"] --> SP
+    subgraph GATE ["coordinador · Spec Planning Gate"]
+    SP["spec-planner · Opus<br/>1-3 specs + OPEN_QUESTIONS / RESOLVED_ALONE"]
+    SP --> SQ{"¿OPEN_QUESTIONS?"}
+    SQ -->|"sí"| ASKQ["AskUserQuestion ≤4/tanda · ≤2 tandas<br/>respuestas → BR in place · re-dispatch"]
+    ASKQ --> SP
+    SQ -->|"no"| S3{"GATE · architecture-validator por spec<br/>(+ C7 sobre _planning.md en el 1º)"}
+    S3 -->|REJECTED| FIXS["re-dispatch planner con VIOLATIONS<br/>(edición mínima · CHANGELOG vs git diff)"]
     FIXS --> S3
-    S3 -->|APPROVED| S4["Step 4 · RED · tdd-test-writer<br/>escribe tests que FALLAN (sin ver código)"]
+    S3 -->|APPROVED| SC["Resumen → commit specs + _planning.md<br/>SPEC_SHA · TaskCreate por spec"]
+    end
+    SC --> S4
+    subgraph EL ["epic-agent · build/EPIC_LOOP.md (Steps 4–8 · Sonnet)"]
+    S4["Step 4 · RED · tdd-test-writer<br/>escribe tests que FALLAN (sin ver código)"]
     S4 --> S4c{"Post-checks: ¿fallan por la razón correcta?<br/>¿RED commit solo-tests? · capturar RED_SHA<br/>· sellar .specture/state/build-locked.json"}
     S4c -->|No| S4
     S4c -->|Sí| S5["Step 5 · GREEN · implementer / ux-implementer<br/>código mínimo · tests sellados"]

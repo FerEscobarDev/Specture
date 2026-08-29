@@ -1,4 +1,10 @@
-> **Estado: DISEÑO DEFINIDO — pendiente de implementación.** Documento iniciado
+> **Estado: IMPLEMENTADO — etapa 1 en v1.17.0** (ítems 19-28 del roadmap del framework);
+> etapa 2 (spec-set-check, sello de specs, overlay, métricas) pendiente para v1.18.0.
+> Deltas vs este diseño, decididos por la revisión y el roadmap: la evidencia vive en
+> `docs/05-specs/<epic>/_planning.md` trackeado (M1 — no en el commit message ni al pie de
+> cada spec); el validator sigue **por spec** con solo C7 agregado (C-6); las versiones
+> reales son v1.17.0/v1.18.0 (no v1.15/v1.16, que fueron doctor y prerrequisitos).
+> Documento iniciado
 > el 2026-08-28 a pedido del usuario tras observar "falencias en la forma de
 > generar las specs". Las decisiones de diseño se tomaron en conversación ese
 > mismo día, y el mismo día se hizo una **revisión crítica** del diseño desde el
