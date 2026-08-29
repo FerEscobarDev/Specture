@@ -54,7 +54,9 @@ git diff <RED_SHA>..<HEAD_SHA> -- <test-path-globs>
    re-run `tdd-test-writer` with the implementer's concern as input. Get a new
    RED commit. Restart Step 5 with the new `RED_SHA`.
 3. **Abort the spec entirely** if the violation signals a fundamental
-   spec/implementation mismatch — fix the spec, restart from Step 3.
+   spec/implementation mismatch — report `BLOCKED: spec <AC-n/BR-n/EC-n>`;
+   the coordinator runs the spec-correction loop (re-plan → re-validate →
+   revert the affected RED → resume from that spec).
 
 ## Why this gate is non-negotiable
 

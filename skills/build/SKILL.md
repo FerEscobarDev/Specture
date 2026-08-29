@@ -211,7 +211,14 @@ If DONE: update ROADMAP.md to [x] for this epic and commit BEFORE reporting.
 ### Coordinator processes the report
 
 - **DONE** → verify the epic is `[x]` in `ROADMAP.md` and the commit landed (don't trust the report — `git log`/read the checkbox). **Release the seal yourself**: delete `.specture/state/build-locked.json` if it still exists and confirm it is gone — do not rely on the epic-agent's Step 8 (a leftover seal blocks the next epic's tests; the hook only fails open on it once no epic is `[/]`). Mark that epic's task `completed`. Continue with the next queued epic.
-- **BLOCKED** / **REJECTED_MAJOR** → escalate to the user with the report summary before continuing. Do not auto-retry.
+- **BLOCKED: spec <AC-n/BR-n/EC-n>** (also the Iteration Cap's spec-problem exit) → run the **spec-correction loop**, in this order:
+  1. **Unseal only that spec's TDD entry**: remove the affected spec's `{slug, red_sha, test_paths}` object from `specs[]` in `.specture/state/build-locked.json` — never delete the whole file (that unseals the sibling specs), never leave the entry (the hook would deny the re-written RED).
+  2. Re-dispatch the `spec-planner` with `VIOLATIONS` naming the affected ID (minimal edit; `CHANGELOG` contrasted against `git diff` as in the gate).
+  3. Re-validate the corrected spec (per-spec dispatch; include the C7 inputs only if `RESOLVED_ALONE` changed).
+  4. Commit the corrected spec and append the **new `SPEC_SHA`** + verdict to `_planning.md`.
+  5. **`git revert`** the affected spec's RED commit — never `reset`: history is append-only.
+  6. Re-dispatch the epic-agent **from the affected spec**, not from spec 1, with the new `SPEC_SHA` + verbatim verdict.
+- **BLOCKED** (other) / **REJECTED_MAJOR** → escalate to the user with the report summary before continuing. Do not auto-retry.
 - **BLOCKED: insufficient context** → the epic is too large for one agent. Escalate to the user to consider splitting it before re-dispatching.
 
 ### Why this model
