@@ -618,6 +618,24 @@ Specture está en desarrollo activo. Para decisiones arquitectónicas internas, 
 
 ## Changelog
 
+### v1.16.0 — Prerrequisitos del Spec Planning Gate
+
+**Motivación:** el Spec Planning Gate (Milestone 3 del roadmap) asume IDs estables en los requerimientos, un ROADMAP validado mecánicamente, un procedimiento de epic corto y specs con techo y forma. Ninguno existía: las reglas de negocio se citaban por "§X" (juicio, no mecánica), el ROADMAP era la única fase sin gate, el epic-agent recibía las 517 líneas de `build/SKILL.md` (~190 solo del coordinador), y la verdad de negocio se fragmentaba en `feature-*.md` y "Adendas". Es la Milestone 2 de `docs/framework-roadmap.md`.
+
+**Cambios:**
+
+- **`templates/BUSINESS_REQUIREMENTS_TEMPLATE.md` + IDs estables:** reglas (`RN-nnn`), casos límite (`CL-nnn`) y exclusiones (`FA-nnn`) — specs, ROADMAP y `_current/` citan por ID, nunca por sección; `discover` cierra con un chequeo mecánico del doctor (grupo `requirements`: placeholders, `Exposición`, Capacidades de Frontera, IDs).
+- **Gate del validator sobre el ROADMAP (Part C):** gramática parseable de `Dependencias`, cada `operationId` implementado por exactamente un epic backend, cobertura de `RN-nnn`, sizing 1-3 specs — las tres partes de `architecture` quedan con gate.
+- **`build` partido:** `SKILL.md` = coordinador (cola, branching, reportes, 8.5/8.7/9); `build/EPIC_LOOP.md` = procedimiento del epic-agent (Steps 2-8, Manifest, resoluciones, gate 5.5, Iteration Cap, anti-patterns) — el epic-agent recibe **solo** el segundo.
+- **Forma del spec:** check `spec-section` (WARNING con destino sugerido para secciones fuera del template) + sección "Guards de no-regresión (nacen verdes)" en `SPEC_TEMPLATE.md` — declarados, no cuentan como RED, el gate 5.5 los excluye.
+- **Router con salida estricta:** `specture-router` corre la máquina de estados de `start` en solo lectura y devuelve `PHASE: <fase> · SKILL: <ruta>` — nunca ejecuta fases; el chat principal invoca el skill.
+- **`new-feature` fusiona, no acumula:** requerimientos fusionados por sección con marcador `(añadido por feature X, fecha)`, borrador `feature-*.md` borrado al aprobar el ROADMAP, "Adendas" prohibidas.
+- Tests: 59 (requirements lint, spec-section, ambas migraciones 1.16, orden intra-versión del catálogo).
+
+**Migración para proyectos existentes:** `/specture:doctor migrate` ofrece `1.16-requirements-ids` (asistida: retrofit de IDs `RN/CL/FA`) y `1.16-requirements-merge` (asistida: fusión de `feature-*.md`/Adendas, borradores eliminados), en ese orden. Los ítems 14/15/16/17 no requieren migración: gate del ROADMAP y router son proceso del framework, el split de `build` es layout interno, y los guards son opt-in para specs nuevos.
+
+**Backward-compat:** `business_requirements.md` sin IDs sigue funcionando (el doctor lo reporta como WARNING; la Dim 4 del validator degrada a juicio). `build` despacha igual que antes — cambia el archivo que recibe el epic-agent, no el flujo. El router era advisory; su nueva salida estricta no rompe ningún skill (ninguno lo referencia). Specs existentes con secciones extra solo generan WARNINGs.
+
 ### v1.15.0 — Doctor: diagnóstico del corpus + migraciones de esquema del proyecto
 
 **Motivación:** Specture versionaba el plugin pero no el proyecto. Cada release definía "backward-compat" como *"sin X, comportamiento anterior"* — un no-op silencioso: el proyecto actualizaba el plugin y nunca recibía la feature, o la recibía a medias cuando un skill aguas abajo la asumía (lápidas apuntando a un `_current/` inexistente, validator sin contrato legible, reviewer sin comportamiento vigente). Un proyecto real migró a mano tres veces y seguía sin v1.6, v1.7 y v1.9. Es la Milestone 1 de `docs/framework-roadmap.md`; diseño en `docs/doctor-and-migrations-design.md`.

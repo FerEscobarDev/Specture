@@ -4,7 +4,7 @@
 > (revisión: C-1…C-9, M1-M7, G1-G12), `psikora-scale-review.md` (N1-N10) y
 > `doctor-and-migrations-design.md` (doctor, catálogo de migraciones, principios). Cada
 > ítem cita su fuente; las definiciones son las de origen, no reinterpretaciones. Estado:
-> **M0 hecho (v1.14.1) · M1 hecho (v1.15.0)**, ambos el 2026-08-28. Las **decisiones** que
+> **M0 hecho (v1.14.1) · M1 hecho (v1.15.0) · M2 hecho (v1.16.0)**, los tres el 2026-08-28. Las **decisiones** que
 > condicionan el orden están en el Apéndice A (A1-A5 cerradas; A6-A7 abiertas). **Solo contiene ajustes del framework**: las acciones sobre el proyecto
 > Psikora viven en su propio repo (`C:\Proyectos\Psikora\PLAN-SANEAMIENTO-SPECTURE-2026-08-28.md`).
 
@@ -185,7 +185,7 @@ existentes.*
 *Objetivo: que el gate encuentre IDs estables, un ROADMAP validado, un `build` corto y
 specs con techo. Ninguno depende del gate; todos lo abaratan.*
 
-- [ ] **13. `templates/BUSINESS_REQUIREMENTS_TEMPLATE.md` + IDs estables `RN/CL/FA` + chequeo mecánico de salida de `discover` (G3, C-4)**
+- [x] **13. `templates/BUSINESS_REQUIREMENTS_TEMPLATE.md` + IDs estables `RN/CL/FA` + chequeo mecánico de salida de `discover` (G3, C-4)** · hecho 2026-08-28, v1.16.0 (`426f25f`) — chequeo en `hooks/lib/doctor/checks/requirements.js`; migración asistida `1.16-requirements-ids`
   Es el único entregable de fase sin template. `discover` produce `HU-…` estables pero
   las reglas de negocio se citan por "§X" (`SPEC_TEMPLATE:29`, `ROADMAP_TEMPLATE:46`), así
   que la Dim 4 del validator, el chequeo C2 del gate y la trazabilidad de `_current/` son
@@ -195,7 +195,7 @@ specs con techo. Ninguno depende del gate; todos lo abaratan.*
   ID). Psikora ya inventó `RN-SEG-007`, `RN-PAGO-006` (50 únicos): confirma la necesidad.
   `Fuente: gate-review G3 / C-4` · `Esfuerzo: 1-2 días` · `Depende de: 7 (migración)`
 
-- [ ] **14. Gate del `architecture-validator` sobre el ROADMAP — Part C (G4)**
+- [x] **14. Gate del `architecture-validator` sobre el ROADMAP — Part C (G4)** · hecho 2026-08-28, v1.16.0 (`72db124`) — sin migración (proceso del framework)
   Part A y Part B de `architecture` tienen gate; Part C (`:136-146`) solo self-review, y el
   validator **ya tiene** escrito el chequeo ("When the ROADMAP is also in scope",
   `architecture-validator:82`) sin que nadie lo invoque. Definición: un dispatch por
@@ -206,7 +206,7 @@ specs con techo. Ninguno depende del gate; todos lo abaratan.*
   11 huecos sin dueño.
   `Fuente: gate-review G4` · `Esfuerzo: medio día` · `Depende de: —`
 
-- [ ] **15. Partir `build/SKILL.md` en coordinador + `build/EPIC_LOOP.md` (M3, G2, C-3)**
+- [x] **15. Partir `build/SKILL.md` en coordinador + `build/EPIC_LOOP.md` (M3, G2, C-3)** · hecho 2026-08-28, v1.16.0 (`2276407`) — numeración Steps 2-8 conservada a propósito (el ítem 23 renumera a 4-8)
   `build/SKILL.md:79` pasa **el archivo completo** (512 líneas) al epic-agent; ~200 son solo
   del coordinador (Execution Model, cola, Branching, Steps 8.5/8.7/9, prosa del gate
   visual) e invitan a ejecutar pasos prohibidos. El gate sumaría +80-120 líneas netas
@@ -217,7 +217,7 @@ specs con techo. Ninguno depende del gate; todos lo abaratan.*
   procedimiento".
   `Fuente: gate-review M3 / G2 / C-3` · `Esfuerzo: 1 día` · `Depende de: 2`
 
-- [ ] **16. Techo y forma del spec + sección de guards (N2)**
+- [x] **16. Techo y forma del spec + sección de guards (N2)** · hecho 2026-08-28, v1.16.0 (`a6a258d`; el techo de 300 líneas había salido en v1.15.0 — esta release agrega `spec-section` y los guards)
   Verificación mecánica (vía `doctor`, ítem 5): spec > 300 líneas ⇒ WARNING "split o
   mover narrativa"; secciones fuera del template ⇒ WARNING con destino sugerido (decisión
   del usuario → `_planning.md`; deuda → ROADMAP; divergencia handoff →
@@ -229,7 +229,7 @@ specs con techo. Ninguno depende del gate; todos lo abaratan.*
   `_planning.md` es un quinto lugar donde escribir lo mismo.
   `Fuente: psikora-review N2 / §2.2 / §6` · `Esfuerzo: bajo` · `Depende de: 5`
 
-- [ ] **17. Router: salida estricta, nunca ejecuta fases (G6)**
+- [x] **17. Router: salida estricta, nunca ejecuta fases (G6)** · hecho 2026-08-28, v1.16.0 (`dba4252`) — se eligió salida estricta `PHASE · SKILL` (el agente se conserva; no se eliminó)
   `README:72` documenta `/agent specture:specture-router`; `specture-router/AGENT.md:18`
   ordena invocar `start`, y `start:112` "invoke that skill and follow its instructions" —
   nada impide que un subagente Haiku sin `AskUserQuestion` termine corriendo `build` o
@@ -238,7 +238,7 @@ specs con techo. Ninguno depende del gate; todos lo abaratan.*
   el skill. O eliminar el agente (los skills ya son slash commands).
   `Fuente: gate-review G6` · `Esfuerzo: medio día` · `Depende de: —`
 
-- [ ] **18. Requerimientos: fusión, no acumulación (N10, generaliza D18)**
+- [x] **18. Requerimientos: fusión, no acumulación (N10, generaliza D18)** · hecho 2026-08-28, v1.16.0 (`260dd04`) — migración asistida `1.16-requirements-merge`
   `new-feature` Step 1 **fusiona por sección** en `business_requirements.md` (marcador
   `(añadido por feature X, fecha)`), borra el `feature-*.md` al aprobar el ROADMAP;
   prohibidas las "Adendas" apendizadas; el epic-agent recibe siempre el archivo único. En
