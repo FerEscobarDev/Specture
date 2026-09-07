@@ -80,6 +80,11 @@ rationalizations this agent exists to eliminate.
         registrations, barrels, config — anything unlisted is denied at write time when
         hooks are on), never a sentence about what the code does.
   - [ ] "Fuera de Scope" explicit (the test-writer uses it to bound test generation).
+  - [ ] A test of a **closed** epic that this spec contradicts by design is **declared** under
+        "Supersesiones de tests sellados" (`Supersede: <path>::<test> — motivo: BR-n — epic
+        origen: <epic>`; source: `_current/` or the old spec, quoted in `RESOLVED_ALONE`) and
+        mirrored as a `sup:` row — never contradicted in silence, never a sibling spec's test
+        (that is the correction loop).
   - [ ] All business rules cited from `business_requirements.md` by `RN-nnn` ID.
   - [ ] Acceptance criteria concrete and testable (not "should work well").
   - [ ] Zero implementation code; business prose in Spanish, identifiers/signatures in the

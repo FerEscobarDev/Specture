@@ -61,6 +61,7 @@ For each ADR with status `Superseded`: ignore — it's no longer active.
 ### 4. Coherence Check
 
 - If the candidate is a spec: does the spec reference business rules that exist in `business_requirements.md`? Cite the rules, don't paraphrase.
+- If the candidate is a spec with a "Supersesiones de tests sellados" section: every `Supersede: <path>::<test> — motivo: BR-n — epic origen: <epic>` names a test that exists (in the delivered inputs — ask for the file list if it was not handed to you), cites a `BR-n` **of this spec**, and belongs to a **closed** epic — a test of a sibling spec of the same epic, or a `motivo` that is not one of this spec's rules, is a `BLOCKER` (that is the spec-correction loop, not a supersession).
 - If the candidate is an architecture doc: does it cover every component that the requirements demand?
 
 ### 5. Anti-Bloat Check

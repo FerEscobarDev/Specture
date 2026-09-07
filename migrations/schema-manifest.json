@@ -11,7 +11,7 @@
     "skills/ux-design/SKILL.md#required-inputs": "dbf6dd2d3a7c7544d0c57b4b85c235ffc8bc9230c44b5970db7389f177379477",
     "templates/BUSINESS_REQUIREMENTS_TEMPLATE.md": "6ca9d2fde4a40f3c2ae5003ec75a835e9d3a2f2ba93c879b41c32125c3d2dd08",
     "templates/CURRENT_CAPABILITY_TEMPLATE.md": "52b0dcec13c79fa7041db8e6f8cfa748067d682355d57ab5290c885a365a22d7",
-    "templates/MIGRATION_SPEC_TEMPLATE.md": "e747ded21aca05de185d003c6a9e262c2536c0a6e6afc7a5d8402244a879569e",
+    "templates/MIGRATION_SPEC_TEMPLATE.md": "533f6f95dfeb96544e2f4cc728a0efa0438e3edd8a5fd52bbabaed4b97c52984",
     "templates/PLANNING_TEMPLATE.md": "520b091dac4e392a6ea467ded6d18da486d55b58a1266429e3fda795da3a7fb2",
     "templates/project-config/conventions.template.md": "9d839586ef9adc19fe1603d73d85569befc57628f018b1b6898614fe6c5ee517",
     "templates/project-config/decisions/000-template.md": "1a39576f4a0e7b4f69ba3bbe9ac4aa4b438ab6091c26a53dac58d4b425f11972",
@@ -19,6 +19,6 @@
     "templates/project-config/settings.template.yml": "c1b0765e237d6a5f775dac44cd9ec3ea7a0a7f5eaca57ec2e8bd4a25fca3560a",
     "templates/project-config/stack.template.yml": "e8c249d7de5a4a59f055f44495156823d864eb8686bd1e5ebc23934e90e1dc3f",
     "templates/ROADMAP_TEMPLATE.md": "d38ebee715d2b0cb7172eb9b5c5b3fb84e6218fbb58ecc31316c6c235c0123c9",
-    "templates/SPEC_TEMPLATE.md": "426998c9d8d13c464aef06db3a5c1c3bce96d1bf663ad25da62982ed0adcc71d"
+    "templates/SPEC_TEMPLATE.md": "bb9ac554bf75dbf6c11f7a8ebdd84b77aa4980e860bafc34f3c92f3d321c9ca6"
   }
 }

@@ -339,6 +339,28 @@ test("migration epics: C2 and C4 are skipped with INFO; C-gap needs every GAP ex
   assert.ok(lie.lines.some((l) => /^C-gap BLOCKER 01-mig: la tabla declara GAP-001 pero el spec no lo lista/.test(l)));
 });
 
+test("C-sup: every Supersede: line needs its sup: row (and vice-versa) and the path must exist on disk", () => {
+  const supersedeSection = "\n## Supersesiones de tests sellados (omitir si no aplica)\n- Supersede: `tests/old/nota.test.js::rechaza titulo repetido` — motivo: BR-1 — epic origen: epic-0.9-old\n";
+  const specs = { ...CLEAN_SPECS, "01-subir": CLEAN_SPECS["01-subir"] + supersedeSection };
+  const rows = CLEAN_ROWS + "\n- sup: tests/old/nota.test.js::rechaza titulo repetido → 01-subir (BR-1)";
+
+  const ok = runCheck(createProject({ specs, planning: planningDoc(rows), files: { "tests/old/nota.test.js": "// old\n" } }));
+  assert.equal(ok.status, 0, ok.lines.join("\n"));
+
+  const missingFile = runCheck(createProject({ specs, planning: planningDoc(rows) }));
+  assert.equal(missingFile.status, 1);
+  assert.ok(missingFile.lines.some((l) => /^C-sup BLOCKER 01-subir: Supersede `tests\/old\/nota\.test\.js` no existe en disco/.test(l)), missingFile.lines.join("\n"));
+
+  const noRow = runCheck(createProject({ specs, files: { "tests/old/nota.test.js": "// old\n" } }));
+  assert.ok(noRow.lines.some((l) => /^C-sup BLOCKER 01-subir: Supersede `tests\/old\/nota\.test\.js::rechaza titulo repetido` sin fila sup:/.test(l)), noRow.lines.join("\n"));
+
+  const noLine = runCheck(createProject({ planning: planningDoc(rows), files: { "tests/old/nota.test.js": "// old\n" } }));
+  assert.ok(noLine.lines.some((l) => /^C-sup BLOCKER 01-subir: fila sup: .* sin línea Supersede: en el spec/.test(l)), noLine.lines.join("\n"));
+
+  const wrongSlug = runCheck(createProject({ specs, planning: planningDoc(rows.replace("→ 01-subir (BR-1)", "→ 02-listar (BR-1)")), files: { "tests/old/nota.test.js": "// old\n" } }));
+  assert.ok(wrongSlug.lines.some((l) => /^C-sup BLOCKER 01-subir: .*la tabla la asigna a 02-listar/.test(l)), wrongSlug.lines.join("\n"));
+});
+
 test("planning.js parses the four core row kinds, the epic block and a spec's surface", () => {
   const table = planning.parseCoverageTable(planningDoc(CLEAN_ROWS));
   assert.equal(table.found, true);

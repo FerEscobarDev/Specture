@@ -95,7 +95,8 @@ Question: **Did the implementer respect the test contract sealed in the RED comm
 The orchestrator already ran the mechanical gate (`build/EPIC_LOOP.md` Step 5.5: `git diff <RED_SHA>..<HEAD_SHA> -- <test-globs>`) and passes you its result. Do NOT re-run the diff — consume the orchestrator's result:
 
 - **Gate reported clean** → no test tampering. Continue.
-- **Gate reported a violation** → raise a `BLOCKER`. Classify and word the finding per `docs/tdd-honesty-violations.md` (classification table + recovery + hook-active interpretation). The orchestrator should not have reached you in this state, so also flag the process breach.
+- **Gate reported a violation** → raise a `BLOCKER`. Classify and word the finding per `$SPECTURE_ROOT/docs/tdd-honesty-reference.md` (the framework's reference — never a same-named file of the project; classification table + recovery + hook-active interpretation). The orchestrator should not have reached you in this state, so also flag the process breach.
+- **Declared supersessions** (the spec's `Supersede:` lines + `SUPERSEDE_SHA`, handed to you): confirm `SUPERSEDE_SHA` precedes `RED_SHA` and touched only the declared paths, and that the reviewed range touches none of them; any edit to a closed epic's test that the spec did **not** declare is a `BLOCKER` like any other test modification.
 
 Independently of the gate, run the **vacuous-green check** (this is review value the diff cannot catch): did any RED test pass at HEAD without code that genuinely implements the spec (trivial `return true`, hardcoded values, no-op matching the assertions)? If so → `BLOCKER` under Dimension 1 (Spec Compliance), citing the vacuously-passing test.
 

@@ -104,3 +104,14 @@ dado que cada epic migra exactamente un módulo con interface externa preservada
 
 - [ej. "El adapter debe implementar la interfaz IAuthService existente para no romper consumers"]
 - [ej. "No introducir dependencias npm nuevas sin ADR — si se necesita una lib nueva, BLOCKED"]
+
+---
+
+## 10. Supersesiones de tests sellados (omitir si no aplica)
+
+> Tests de un epic **cerrado** (o characterization tests sellados) que esta migración contradice
+> por diseño — solo cuando §3 declara el breaking change que los invalida. Mismo protocolo que
+> `SPEC_TEMPLATE.md`: commit `test(supersede)` previo al RED, fila `sup:` en la COVERAGE_TABLE,
+> registro en `_planning.md` § SUPERSESIONES.
+
+- Supersede: `<path>::<nombre del test>` — motivo: AC-n | breaking change §3 — epic origen: <epic-slug>

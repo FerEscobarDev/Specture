@@ -186,7 +186,7 @@ flowchart TD
     S4c -->|No| S4
     S4c -->|Sí| S5["Step 5 · GREEN · implementer / ux-implementer<br/>código mínimo · tests sellados"]
     S5 --> S55{"Step 5.5 · TDD Honesty Gate (mecánico)<br/>git diff RED_SHA..HEAD -- tests"}
-    S55 -->|"diff ≠ vacío ❌"| VIOL["Violación TDD →<br/>docs/tdd-honesty-violations.md"]
+    S55 -->|"diff ≠ vacío ❌"| VIOL["Violación TDD →<br/>$SPECTURE_ROOT/docs/tdd-honesty-reference.md"]
     S55 -->|"vacío ✅"| S6{"Step 6 · GATE · code-reviewer<br/>(+ linter + type-check en paralelo)"}
     S6 -->|REJECTED_MINOR| S5
     S6 -->|REJECTED_MAJOR| ESC["Fix grande con contexto fresco<br/>o escalar al usuario"]

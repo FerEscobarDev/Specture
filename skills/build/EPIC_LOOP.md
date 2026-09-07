@@ -162,8 +162,9 @@ Dispatch the `tdd-test-writer` agent (`agents/tdd-test-writer/AGENT.md`).
 - `.specture/stack.yml` (specifically `testing_framework` for backend or frontend, depending on what the spec covers).
 - `.specture/conventions.md` testing section.
 - **NOT** any existing implementation files. The agent must be blind to implementation to avoid biasing tests toward existing behavior.
+- **Declared supersessions** (spec section "Supersesiones de tests sellados", roadmap item 35): the list of `Supersede: <path>::<test> — motivo: BR-n` lines, verbatim. Before dispatching, with hooks on, lift the test deny for exactly those paths: `node "${CLAUDE_PLUGIN_ROOT}/hooks/lib/seal-cli.js" supersede --paths "<path1>,<path2>"`. **Abort with `BLOCKED: spec <ID>`** if any superseded path is inside a sibling spec's `test_paths` of this epic's seal — a same-epic contradiction is the spec-correction loop, never a supersession.
 
-**Expected output**: test file(s) at the path indicated by conventions, all currently failing (RED), **committed by the agent in a single RED commit**, and the SHA of that commit reported as `RED_SHA`.
+**Expected output**: test file(s) at the path indicated by conventions, all currently failing (RED), **committed by the agent in a single RED commit**, and the SHA of that commit reported as `RED_SHA`. When supersessions were declared: a separate, **earlier** commit `test(supersede): <epic>/<task-slug> — <path>::<test> (BR-n)` touching only the declared files, reported as `SUPERSEDE_SHA`.
 
 **Orchestrator post-checks (all mandatory)**:
 
@@ -174,6 +175,7 @@ Dispatch the `tdd-test-writer` agent (`agents/tdd-test-writer/AGENT.md`).
    ```
    The commit MUST contain only test files (paths matching `conventions.md` test globs). If the commit touches any production code, abort — re-dispatch `tdd-test-writer` with a clear instruction to commit tests in isolation.
 3. **Capture `RED_SHA`** for use in Step 5.5 and Step 6. This is now the immutable reference point for the test contract.
+3b. **Supersessions, if declared**: `git show --stat <SUPERSEDE_SHA>` touches **only** the declared paths and is an ancestor of `RED_SHA` (`git merge-base --is-ancestor`); the superseded tests are now RED and count in the tally like any other; then `seal-cli.js supersede --clear` (the exemption lived only for the dispatch) and include the superseded files in this spec's `--test-paths` below — they are part of this spec's contract from now on. Report them in your final `SUPERSESSIONS:` lines (`<path>::<test> → <SUPERSEDE_SHA>`).
 4. **Capture the test path globs** from `conventions.md` (e.g. `**/*.test.ts`, `tests/**/*.py`). Both Step 5.5 and the code-reviewer need them.
 5. **Seal the test contract via state file** (enables the TDD Honesty Gate hook). **Merge this spec's entry** into `.specture/state/build-locked.json` through the only sanctioned writer — never by hand, never overwriting the coordinator's epic-level fields (`spec_sha`, `spec_paths`, `allowed_paths`) or a sibling's `red_sha`:
    ```
@@ -221,9 +223,11 @@ git diff <RED_SHA>..<HEAD_SHA> -- <test-path-globs>
 ```
 
 - **Empty output** → ✅ Tests untouched. Proceed to Step 6.
-- **Non-empty output** → ❌ TDD violation. Do NOT proceed to review. You **MUST** read `docs/tdd-honesty-violations.md` and follow its classification + recovery procedure (it also covers the hook-active vs hook-inactive interpretation). Show the diff to the user verbatim before acting.
+- **Non-empty output** → ❌ TDD violation. Do NOT proceed to review. You **MUST** read `$SPECTURE_ROOT/docs/tdd-honesty-reference.md` (from the plugin: `${CLAUDE_PLUGIN_ROOT}/docs/tdd-honesty-reference.md` — **never** a `docs/tdd-honesty-*.md` of the project's own cwd) and follow its classification + recovery procedure (it also covers the hook-active vs hook-inactive interpretation). Show the diff to the user verbatim before acting.
 
 **Guards de no-regresión**: the tests declared in the spec's "Guards de no-regresión (nacen verdes)" section are born green by declaration — the gate never treats a passing guard as "a test that failed to fail". They are still sealed like every other test in the RED commit: editing one after `RED_SHA` IS a violation.
+
+**Supersesiones declaradas**: a `test(supersede)` commit is applied **before** `RED_SHA`, so the range never contains it — excluded by declaration, not by exception. A superseded path that shows up in `git diff <RED_SHA>..<HEAD_SHA>` **is** a violation like any other, and so is any edit to a closed epic's test the spec did not declare.
 
 This gate is non-negotiable: TDD violations are invisible if you only look at the implementation diff.
 
@@ -238,6 +242,7 @@ Dispatch the `code-reviewer` agent (`agents/code-reviewer/AGENT.md`).
 **Context to pass**:
 - `RED_SHA` and `HEAD_SHA` (for citing the reviewed range).
 - **The Step 5.5 gate result** (clean | violation + details). The reviewer's Dimension 4 consumes this instead of re-running the diff.
+- **The declared supersessions** (the spec's `Supersede:` lines) + `SUPERSEDE_SHA`, or "none" — Dimension 4 checks the range never touches them and that nothing undeclared touched a closed epic's test.
 - The `.spec.md`.
 - `.specture/stack.yml`, `.specture/conventions.md`.
 - **Only the ADRs relevant to the module(s) the spec touches.** Safety rule: if you are unsure whether an ADR applies, include it — err toward inclusion, never toward omission. (Passing every ADR of a mature project is the bulk of this dispatch's cost and most are irrelevant to a given spec.)

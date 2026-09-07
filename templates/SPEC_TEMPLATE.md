@@ -42,6 +42,14 @@
 > los excluyen por declaración. El tdd-test-writer los escribe (o confirma que existen) pasando.
 - **GUARD-1:** [comportamiento existente protegido] → test: `<path>::<nombre del test>`
 
+## Supersesiones de tests sellados (omitir si no aplica)
+> Un test de un epic **CERRADO** que este spec contradice por diseño (una regla cambió — cítala
+> por `BR-n`). Nunca un test de un spec hermano de este epic (eso es el loop de corrección).
+> Lo aplica el `tdd-test-writer` en un commit `test(supersede)` **previo** al RED commit, así el
+> TDD Honesty Gate lo excluye por declaración; el registro vive en `_planning.md` § SUPERSESIONES
+> y en la fila `sup:` de la COVERAGE_TABLE (`spec-set-check.js` C-sup los cruza).
+- Supersede: `<path>::<nombre del test>` — motivo: BR-n — epic origen: <epic-slug>
+
 ## Aclaraciones (resueltas en planificación)
 > Puntero — la evidencia completa vive en el `_planning.md` del epic (COVERAGE_TABLE,
 > preguntas y respuestas, RESOLVED_ALONE con citas, veredicto del validator, SPEC_SHA).

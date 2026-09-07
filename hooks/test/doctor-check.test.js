@@ -219,18 +219,26 @@ test("flags off-template spec sections with a suggested destination; template se
       "## Aclaraciones (resueltas en planificación)",
       "- Q-1: ver _planning.md",
       "",
+      "## Supersesiones de tests sellados (omitir si no aplica)",
+      "- Supersede: `tests/old.test.js::t` — motivo: BR-1 — epic origen: epic-0.9",
+      "",
       "## 🔴 Decisión de usuario",
       "- elegir A o B",
       "",
       "## Deuda que NO salda",
       "- deuda X",
+      "",
+      "## 🔴 Supersesión de tests sellados (bitácora)",
+      "- se cambió el test X porque sí",
       ""
     ].join("\n")
   });
   const { json } = runDoctor(projectRoot);
   const sections = json.findings.filter((f) => f.check === "spec-section");
 
-  assert.equal(sections.length, 2, JSON.stringify(sections));
+  assert.equal(sections.length, 3, JSON.stringify(sections));
   assert.ok(sections.some((f) => f.detail.includes("Decisión de usuario") && f.action.includes("_planning.md")));
   assert.ok(sections.some((f) => f.detail.includes("Deuda") && f.action.includes("ROADMAP")));
+  assert.ok(sections.some((f) => f.detail.includes("bitácora") && f.action.includes("Supersede:") && f.action.includes("Supersesiones de tests sellados")));
+  assert.ok(!sections.some((f) => f.detail.includes("omitir si no aplica")), "the template's own supersession section is canonical");
 });

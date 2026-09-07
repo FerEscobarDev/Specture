@@ -301,6 +301,7 @@ METRICS (mandatory — the coordinator appends them to build-metrics.jsonl):
   needs_context_spec: N · iteration_cap_spec: N · blocked_spec: N ·
   review_rejections: minor N / major N (spec_defect N — from the reviewer's CAUSE:) ·
   supersessions: N · firma re-read: N verified / M corrected
+SUPERSESSIONS: <none | one line per declared test: <path>::<test> → <SUPERSEDE_SHA>>
 If DONE: update ROADMAP.md to [x] for this epic and commit BEFORE reporting.
 ~~~
 
@@ -314,7 +315,7 @@ If DONE: update ROADMAP.md to [x] for this epic and commit BEFORE reporting.
   edited during the epic: treat the report as **`REJECTED_MAJOR`**, show the diff verbatim
   and escalate to the user. No automatic action — a `[x]` commit that already landed is
   reverted only on the user's decision. Empty → process the status below.
-- **DONE** → verify the epic is `[x]` in `ROADMAP.md` and the commit landed (don't trust the report — `git log`/read the checkbox). **Release the seal yourself**: `node "${CLAUDE_PLUGIN_ROOT}/hooks/lib/seal-cli.js" release` and confirm `.specture/state/build-locked.json` is gone — do not rely on the epic-agent's Step 8 (a leftover seal blocks the next epic's tests; the hook only fails open on it once no epic is `[/]`). Mark that epic's task `completed`. Continue with the next queued epic.
+- **DONE** → verify the epic is `[x]` in `ROADMAP.md` and the commit landed (don't trust the report — `git log`/read the checkbox). **Release the seal yourself**: `node "${CLAUDE_PLUGIN_ROOT}/hooks/lib/seal-cli.js" release` and confirm `.specture/state/build-locked.json` is gone — do not rely on the epic-agent's Step 8 (a leftover seal blocks the next epic's tests; the hook only fails open on it once no epic is `[/]`). Mark that epic's task `completed`. **Supersessions** (roadmap item 35): if the report lists any, fill the `commit:` of each line of `## SUPERSESIONES` in `_planning.md` with its `SUPERSEDE_SHA` and append one line to `docs/05-specs/_supersessions.md` (create it lazily; it is an index, one line per epic, never a narrative): `- <epic-slug> (<fecha>) — N tests supersedidos — ver docs/05-specs/<epic-slug>/_planning.md § SUPERSESIONES`. Continue with the next queued epic.
 - **BLOCKED: spec <AC-n/BR-n/EC-n>** (also the Iteration Cap's spec-problem exit) → run the **spec-correction loop**, in this order:
   1. **Unseal only that spec's TDD entry**: `seal-cli.js unseal-spec --slug <task-slug>` removes the affected spec's `{slug, red_sha, test_paths}` object from `specs[]` — never delete the whole file (that unseals the sibling specs and the spec seal), never leave the entry (the hook would deny the re-written RED). The epic-level `spec_paths` stay in place until step 4 re-seals.
   2. Re-dispatch the `spec-planner` with `VIOLATIONS` naming the affected ID (minimal edit; `CHANGELOG` contrasted against `git diff` as in the gate).

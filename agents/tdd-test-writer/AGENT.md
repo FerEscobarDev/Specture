@@ -113,6 +113,28 @@ Before reporting back, check:
 - [ ] No `TODO` or `it.skip` in shipped tests.
 - [ ] Test count is within the proportionality ceiling — count(AC) + count(BR effective) + count(EC); no combinatorial bloat, nothing testing the spec's "Fuera de Scope".
 
+### Step 5.5 — Apply declared supersessions (only when the spec declares them)
+
+The spec's section **"Supersesiones de tests sellados"** lists tests of a **closed** epic that
+this spec contradicts by design (`Supersede: <path>::<test> — motivo: BR-n`). They are the only
+sealed tests you may ever touch, and only like this:
+
+1. Edit or delete **exactly** the declared tests (nothing else in those files, no other files),
+   so that they now express the rule cited by `BR-n`. A test the spec did not declare is off
+   limits even if it "obviously" contradicts the spec — report it as a concern.
+2. Commit them **alone, before the RED commit**:
+   ```
+   git add <declared test paths>
+   git commit -m "test(supersede): <epic>/<task-slug> — <path>::<test> (BR-n)"
+   ```
+   Report the SHA as `SUPERSEDE_SHA`. The TDD Honesty Gate excludes this commit by
+   declaration: it precedes `RED_SHA`, so `git diff <RED_SHA>..<HEAD_SHA>` never contains it.
+3. Continue with Step 6: the superseded tests must be **failing** at the RED commit like every
+   other test of this spec (they are part of its contract from now on).
+
+If a declared path does not exist, or the declared test belongs to a spec of **this** epic,
+stop and report `BLOCKED` with the line — that is a spec defect, not a supersession.
+
 ### Step 6 — Commit the failing tests (RED commit) — MANDATORY
 
 This commit is the **audit trail of the TDD contract**. After this commit, the tests are immutable until the implementation is reviewed. The TDD Honesty Gate in `skills/build/SKILL.md` uses this commit's SHA as the reference point to detect any test tampering during implementation.
@@ -144,6 +166,8 @@ STATUS: <DONE | NEEDS_CONTEXT | BLOCKED>
 
 FILES_CREATED:
 - <path>: <number of tests>
+
+SUPERSEDE: <none | SUPERSEDE_SHA <sha> — <path>::<test> (BR-n), ...>
 
 COVERAGE_MAP (iterate the spec's stable IDs in order — this is a deterministic
 by-product of going ID by ID, NOT a second interpretive pass):
