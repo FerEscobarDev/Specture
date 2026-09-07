@@ -113,3 +113,34 @@ test("fails open when hooks are disabled or state is corrupt", () => {
     ""
   );
 });
+
+test("v3: denies a sealed spec and a write outside allowed_paths with the shared reasons (Copilot/Antigravity envelope)", () => {
+  const projectRoot = createProject({
+    state: {
+      epic: "epic-1.2-notas",
+      spec_sha: "abc1234",
+      spec_paths: ["docs/05-specs/epic-1.2-notas/*.spec.md"],
+      test_globs: ["tests/**/*.test.js"],
+      allowed_paths: ["src/notas/"],
+      specs: [{ slug: "01-modelo-nota", red_sha: "red111", test_paths: ["tests/notas/modelo-nota.test.js"] }]
+    }
+  });
+  fs.mkdirSync(path.join(projectRoot, "docs", "04-roadmap"), { recursive: true });
+  fs.writeFileSync(path.join(projectRoot, "docs", "04-roadmap", "ROADMAP.md"), "- [/] **Epic 1.2:** notas\n");
+
+  const spec = runHook(projectRoot, path.join(projectRoot, "docs", "05-specs", "epic-1.2-notas", "01-modelo-nota.spec.md"));
+  assert.deepEqual(Object.keys(JSON.parse(spec.stdout)), ["permissionDecision", "permissionDecisionReason"]);
+  assert.match(JSON.parse(spec.stdout).permissionDecisionReason, /Spec Seal.*SPEC_SHA abc1234/);
+
+  const outside = runHook(projectRoot, path.join(projectRoot, "src", "billing", "x.js"));
+  assert.match(JSON.parse(outside.stdout).permissionDecisionReason, /Allowed Paths: `src\/billing\/x\.js`/);
+  assert.equal(runHook(projectRoot, path.join(projectRoot, "src", "notas", "router.js")).stdout, "");
+
+  // Antigravity's field name
+  const agy = spawnSync(process.execPath, [hookPath], {
+    cwd: projectRoot,
+    encoding: "utf8",
+    input: JSON.stringify({ hook_event_name: "PreToolUse", tool_input: { TargetFile: path.join(projectRoot, "src", "billing", "y.js") } })
+  });
+  assert.match(JSON.parse(agy.stdout).permissionDecisionReason, /Allowed Paths/);
+});

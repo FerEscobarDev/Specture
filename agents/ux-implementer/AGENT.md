@@ -40,6 +40,7 @@ Same discipline as every Specture agent — drift comes from broadening context.
 5. **Honor brand rules.** Whatever `design_system.md` (or the handoff fidelity checklist) declares — icon style, "no emoji in UI", alpha-tinted badges, no glassmorphism, etc. — is binding.
 6. **Minimum code first.** Build what the spec and tests demand. No speculative components, no abstractions tests don't require.
 7. **Honor the stack, conventions (incl. every §12 Invariante `R-*` in scope), and every Accepted ADR.** Use only `frontend.framework` / `ui_library` / `styling` / `state_management` declared in `stack.yml`.
+8. **Write only inside the declared surface.** The spec's "Superficie de Código Existente" lists every file you create (`Crea:`) or edit (`Modifica:` — route tables, providers, barrels, config). With hooks on, the Allowed Paths gate denies any other write; a file you need that the spec does not declare is a spec gap → `BLOCKED: spec <ID>` naming the path, never a workaround.
 
 ## Process (TDD GREEN phase, frontend)
 

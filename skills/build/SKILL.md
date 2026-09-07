@@ -207,6 +207,21 @@ files**: you hand it a table `SYMBOL | PATH | SIGNATURE` of the component's exis
    `OPEN_QUESTIONS` / `RESOLVED_ALONE` / `SUPERSESIONES`; you write the sections marked
    *(coordinador)* — answers, `CODE_SURFACE`, `MECH_CHECK`, `VEREDICTOS`, `SPEC_SHA` —
    sequential writers, never concurrent.
+   **Seal the specs** (roadmap items 31/36 — `hooks/README.md` schema v3), right after the
+   commit, through the only sanctioned writer:
+   ```
+   node "${CLAUDE_PLUGIN_ROOT}/hooks/lib/seal-cli.js" write --epic <epic-slug> --spec-sha <SPEC_SHA> \
+     --spec-paths "docs/05-specs/<epic-slug>/*.spec.md" \
+     --test-globs "<conventions.md test globs>,<test root, e.g. tests/**>" \
+     --allowed-paths "$(node "${CLAUDE_PLUGIN_ROOT}/hooks/lib/spec-set-check.js" docs/05-specs/<epic-slug> --allowed-paths | paste -sd,)"
+   ```
+   `spec_paths` makes the validated specs immutable during the epic (hook deny "Spec Seal");
+   `allowed_paths` (the union of every `Crea:`/`Modifica:` path — 4a's `C-path` guaranteed
+   each one has a path) makes writes outside the declared surface a deny "Allowed Paths"
+   (zero code without spec, item 36). `test_globs` must include the conventions test globs
+   **and** the test root directory so RED-phase helpers stay writable. No `Crea:`/`Modifica:`
+   at all (docs-only epic) → omit `--allowed-paths` and say so in one line. Never hand-edit
+   `build-locked.json`. The epic-agent later **merges** its `specs[]` entries into this file.
 8. **`TaskCreate` one task per spec** (subject `<epic-slug> / <task-slug>`, start
    `pending`) — user-visible progress for the epic-agent's Steps 4-8; `ROADMAP.md`
    remains the source of truth.
@@ -256,6 +271,9 @@ Honor every gate: Dispatch Manifest, RED commit, TDD Honesty Gate
 SPEC_SHA: [sha of the docs(specs) plan commit]
 VALIDATOR VERDICT (verbatim):
 [paste the APPROVED verdict block]
+SEAL: written (spec_sha=<SPEC_SHA>; allowed_paths: <N> | none) — merge your specs[]
+entries with seal-cli.js merge-spec; the hook denies sealed tests, sealed specs and
+writes outside the declared surface.
 
 ## Epic
 [paste the full epic block from ROADMAP.md]
@@ -272,12 +290,20 @@ If DONE: update ROADMAP.md to [x] for this epic and commit BEFORE reporting.
 
 ### Coordinator processes the report
 
-- **DONE** → verify the epic is `[x]` in `ROADMAP.md` and the commit landed (don't trust the report — `git log`/read the checkbox). **Release the seal yourself**: delete `.specture/state/build-locked.json` if it still exists and confirm it is gone — do not rely on the epic-agent's Step 8 (a leftover seal blocks the next epic's tests; the hook only fails open on it once no epic is `[/]`). Mark that epic's task `completed`. Continue with the next queued epic.
+- **First, for any status — the spec-seal check (mirror of gate 5.5, hooks or not):**
+  ```
+  git diff <SPEC_SHA>..HEAD -- 'docs/05-specs/<epic-slug>/*.spec.md'
+  ```
+  (`_planning.md` is excluded — it legitimately grows.) Non-empty → a validated spec was
+  edited during the epic: treat the report as **`REJECTED_MAJOR`**, show the diff verbatim
+  and escalate to the user. No automatic action — a `[x]` commit that already landed is
+  reverted only on the user's decision. Empty → process the status below.
+- **DONE** → verify the epic is `[x]` in `ROADMAP.md` and the commit landed (don't trust the report — `git log`/read the checkbox). **Release the seal yourself**: `node "${CLAUDE_PLUGIN_ROOT}/hooks/lib/seal-cli.js" release` and confirm `.specture/state/build-locked.json` is gone — do not rely on the epic-agent's Step 8 (a leftover seal blocks the next epic's tests; the hook only fails open on it once no epic is `[/]`). Mark that epic's task `completed`. Continue with the next queued epic.
 - **BLOCKED: spec <AC-n/BR-n/EC-n>** (also the Iteration Cap's spec-problem exit) → run the **spec-correction loop**, in this order:
-  1. **Unseal only that spec's TDD entry**: remove the affected spec's `{slug, red_sha, test_paths}` object from `specs[]` in `.specture/state/build-locked.json` — never delete the whole file (that unseals the sibling specs), never leave the entry (the hook would deny the re-written RED).
+  1. **Unseal only that spec's TDD entry**: `seal-cli.js unseal-spec --slug <task-slug>` removes the affected spec's `{slug, red_sha, test_paths}` object from `specs[]` — never delete the whole file (that unseals the sibling specs and the spec seal), never leave the entry (the hook would deny the re-written RED). The epic-level `spec_paths` stay in place until step 4 re-seals.
   2. Re-dispatch the `spec-planner` with `VIOLATIONS` naming the affected ID (minimal edit; `CHANGELOG` contrasted against `git diff` as in the gate).
   3. Run the mechanical set check (gate step 4a) and, on `PASS`, re-validate the corrected spec (per-spec dispatch with the new `MECH_CHECK:` line; include the C7 inputs only if `RESOLVED_ALONE` changed).
-  4. Commit the corrected spec and append the **new `SPEC_SHA`** + verdict to `_planning.md`.
+  4. Commit the corrected spec, append the **new `SPEC_SHA`** + verdict to `_planning.md`, and re-seal: `seal-cli.js write` again with the new `--spec-sha` (and the recomputed `--allowed-paths`) — it keeps the sibling `specs[]` entries.
   5. **`git revert`** the affected spec's RED commit — never `reset`: history is append-only.
   6. Re-dispatch the epic-agent **from the affected spec**, not from spec 1, with the new `SPEC_SHA` + verbatim verdict.
 - **BLOCKED** (other) / **REJECTED_MAJOR** → escalate to the user with the report summary before continuing. Do not auto-retry.
@@ -323,7 +349,9 @@ here, by evidence, before building the queue:
   verdict AND a `MECH_CHECK: PASS` whose sha equals `spec-set-check.js <epic-dir>
   --hash-only`, AND the specs are committed** → skip planning: dispatch the epic-agent
   (Steps 4-8) with the recorded `SPEC_SHA` + verbatim verdict. A stale or missing
-  `MECH_CHECK` → run gate step 4a first (and re-validate only if it fails).
+  `MECH_CHECK` → run gate step 4a first (and re-validate only if it fails). If
+  `.specture/state/build-locked.json` is missing (gitignored — a fresh clone never has it),
+  rewrite it with `seal-cli.js write` from the recorded `SPEC_SHA` before dispatching.
 - **One `[/]` with specs only in staging / the working tree** (planning was interrupted
   before the commit) → they are not validated. **Ask the user**: discard and re-plan, or
   resume from the validation step with what is there. Never discard files without asking.
@@ -380,8 +408,11 @@ For a very large batch (high N) processed in a single coordinator session, the u
 
 ## Anti-Patterns
 
-The full Anti-Patterns table travels with the epic-agent in `build/EPIC_LOOP.md`. The
-git-safety rows bind **this coordinator too**: never `git add -A` or `git commit --amend`;
+The full Anti-Patterns table travels with the epic-agent in `build/EPIC_LOOP.md`. Two rows
+bind **this coordinator** specifically: never hand-edit `.specture/state/build-locked.json`
+(`seal-cli.js` is the only writer — `write` / `unseal-spec` / `release`); never skip the
+`git diff <SPEC_SHA>..HEAD` spec-seal check when processing a report. The git-safety rows
+bind the coordinator too: never `git add -A` or `git commit --amend`;
 never restore with `git checkout -- <archivo>` after a mutation (snapshot to scratch first,
 verify with `git hash-object`); never run two writing agents against the same checkout.
 

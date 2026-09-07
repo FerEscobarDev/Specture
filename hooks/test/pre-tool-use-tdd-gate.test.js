@@ -93,3 +93,56 @@ test("without a ROADMAP the seal is trusted; without hooks.enabled nothing happe
   const corrupt = createProject({ state: "not-json" });
   assert.equal(runHook(corrupt, path.join(corrupt, "tests", "a.test.js")).stdout, "");
 });
+
+// ---- schema v3 (v1.18.0): sealed specs + allowed paths ---------------------------------
+
+const V3_STATE = {
+  epic: "epic-1.2-notas",
+  sealed_at: "2026-09-07T10:00:00Z",
+  spec_sha: "abc1234",
+  spec_paths: ["docs/05-specs/epic-1.2-notas/*.spec.md"],
+  test_globs: ["tests/**/*.test.js"],
+  allowed_paths: ["src/notas/service.js", "src/notas/"],
+  specs: [{ slug: "01-modelo-nota", red_sha: "red111", test_paths: ["tests/notas/modelo-nota.test.js"] }]
+};
+const IN_PROGRESS = "- [/] **Epic 1.2:** notas\n";
+
+test("v3: a plan-time seal with only spec_paths denies the sealed spec and allows everything else", () => {
+  const projectRoot = createProject({ state: { epic: "epic-1.2-notas", spec_sha: "abc1234", spec_paths: V3_STATE.spec_paths }, roadmap: IN_PROGRESS });
+  const denied = runHook(projectRoot, path.join(projectRoot, "docs", "05-specs", "epic-1.2-notas", "01-modelo-nota.spec.md"));
+  assert.equal(denied.json.hookSpecificOutput.permissionDecision, "deny");
+  assert.match(denied.json.hookSpecificOutput.permissionDecisionReason, /Spec Seal: `docs\/05-specs\/epic-1\.2-notas\/01-modelo-nota\.spec\.md`.*SPEC_SHA abc1234.*BLOCKED: spec/);
+  assert.equal(runHook(projectRoot, path.join(projectRoot, "docs", "05-specs", "epic-1.2-notas", "_planning.md")).stdout, "");
+  assert.equal(runHook(projectRoot, path.join(projectRoot, "src", "x.js")).stdout, "");
+  assert.equal(runHook(projectRoot, path.join(projectRoot, "tests", "x.test.js")).stdout, "");
+});
+
+test("v3: allowed_paths denies production code outside the declared surface, never docs/ or .specture/", () => {
+  const projectRoot = createProject({ state: V3_STATE, roadmap: IN_PROGRESS });
+  const reason = (rel) => {
+    const { json, stdout } = runHook(projectRoot, path.join(projectRoot, ...rel.split("/")));
+    return json ? json.hookSpecificOutput.permissionDecisionReason : stdout;
+  };
+  assert.equal(reason("src/notas/service.js"), "", "declared file");
+  assert.equal(reason("src/notas/router.js"), "", "under a declared dir");
+  assert.equal(reason("tests/notas/otro.test.js"), "", "future test under test_globs");
+  assert.equal(reason("docs/04-roadmap/ROADMAP.md"), "");
+  assert.equal(reason(".specture/state/build-locked.json"), "");
+  assert.match(reason("src/billing/x.js"), /Allowed Paths: `src\/billing\/x\.js`.*epic-1\.2-notas.*Crea:\/Modifica:.*BLOCKED: spec <ID>/);
+  assert.match(reason("README.md"), /Allowed Paths: `README\.md`/);
+  assert.match(reason("tests/notas/modelo-nota.test.js"), /TDD Honesty Gate/, "sealed test wins over allowed");
+  assert.match(reason("docs/05-specs/epic-1.2-notas/01-modelo-nota.spec.md"), /Spec Seal/);
+});
+
+test("v3: a stale seal fails open with a reason for all three kinds; supersede_paths lifts only the test deny", () => {
+  const stale = createProject({ state: V3_STATE, roadmap: "- [x] **Epic 1.2:** notas\n" });
+  for (const rel of ["tests/notas/modelo-nota.test.js", "docs/05-specs/epic-1.2-notas/01-modelo-nota.spec.md", "src/billing/x.js"]) {
+    const { json } = runHook(stale, path.join(stale, ...rel.split("/")));
+    assert.equal(json.hookSpecificOutput.permissionDecision, "allow", rel);
+    assert.match(json.hookSpecificOutput.permissionDecisionReason, /stale seal/);
+  }
+
+  const superseding = createProject({ state: { ...V3_STATE, supersede_paths: ["tests/notas/modelo-nota.test.js"] }, roadmap: IN_PROGRESS });
+  assert.equal(runHook(superseding, path.join(superseding, "tests", "notas", "modelo-nota.test.js")).stdout, "");
+  assert.equal(runHook(superseding, path.join(superseding, "src", "billing", "x.js")).json.hookSpecificOutput.permissionDecision, "deny");
+});

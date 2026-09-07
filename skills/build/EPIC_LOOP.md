@@ -12,6 +12,13 @@ Ground rules:
   coordinator's Spec Planning Gate — you receive them sealed, with their `SPEC_SHA` and
   the verbatim `APPROVED` verdict. **Never regenerate or edit a spec.** If a spec turns
   out to be unexecutable, report `BLOCKED: spec <AC-n/BR-n/EC-n>` with the affected ID.
+  With hooks on, `.specture/state/build-locked.json` (written by the coordinator via
+  `seal-cli.js`, schema v3) makes the hook **deny** three kinds of edit: a sealed test path,
+  a sealed spec path, and — when the seal carries `allowed_paths` — any production write
+  outside the `Crea:`/`Modifica:` paths of the specs. A denied write is never worked
+  around: it is a `BLOCKED: spec <ID>` naming the file. Without hooks, the coordinator runs
+  `git diff <SPEC_SHA>..HEAD -- '<specs>'` on your report and treats any diff as
+  `REJECTED_MAJOR`.
 - The specialized subagents (`tdd-test-writer`, `implementer`, `ux-implementer`,
   `code-reviewer`) are already registered by the coordinator — dispatch them by name with
   the restricted context each step defines.
@@ -150,17 +157,20 @@ Dispatch the `tdd-test-writer` agent (`agents/tdd-test-writer/AGENT.md`).
    The commit MUST contain only test files (paths matching `conventions.md` test globs). If the commit touches any production code, abort — re-dispatch `tdd-test-writer` with a clear instruction to commit tests in isolation.
 3. **Capture `RED_SHA`** for use in Step 5.5 and Step 6. This is now the immutable reference point for the test contract.
 4. **Capture the test path globs** from `conventions.md` (e.g. `**/*.test.ts`, `tests/**/*.py`). Both Step 5.5 and the code-reviewer need them.
-5. **Seal the test contract via state file** (enables the TDD Honesty Gate hook). **Append this spec's entry** to `.specture/state/build-locked.json` — create the file on the epic's first spec, keep the entries of earlier specs, never overwrite a sibling's `red_sha`:
+5. **Seal the test contract via state file** (enables the TDD Honesty Gate hook). **Merge this spec's entry** into `.specture/state/build-locked.json` through the only sanctioned writer — never by hand, never overwriting the coordinator's epic-level fields (`spec_sha`, `spec_paths`, `allowed_paths`) or a sibling's `red_sha`:
+   ```
+   node "${CLAUDE_PLUGIN_ROOT}/hooks/lib/seal-cli.js" merge-spec --slug <task-slug> --red-sha <RED_SHA> --test-paths "<file1>,<file2>" --epic <epic-slug>
+   ```
+   `--test-paths` is the **explicit list of test files of the RED commit** (`git show --stat <RED_SHA>`, project-relative) — not the conventions-wide globs: a glob would seal the next spec's tests before they exist (and, from v1.18.0, would sweep a closed epic's tests into this seal). The resulting file (schema v3, `hooks/README.md`):
    ```json
    {
-     "epic": "<epic-slug>",
-     "sealed_at": "<ISO-8601 of the first seal>",
-     "specs": [
-       { "slug": "<task-slug>", "red_sha": "<RED_SHA>", "test_paths": ["<glob1>", "<glob2>"] }
-     ]
+     "epic": "<epic-slug>", "sealed_at": "<ISO-8601 of the first seal>",
+     "spec_sha": "<SPEC_SHA>", "spec_paths": ["docs/05-specs/<epic-slug>/*.spec.md"],
+     "test_globs": ["<conventions globs>", "<test root>/**"], "allowed_paths": ["<Crea:/Modifica: paths>"],
+     "specs": [ { "slug": "<task-slug>", "red_sha": "<RED_SHA>", "test_paths": ["<file1>", "<file2>"] } ]
    }
    ```
-   (Schema in `hooks/README.md`; the legacy single-`red_sha` form is still read.) If the user opted in to hooks (`hooks.enabled: true` in `.specture/settings.yml` — or in `conventions.md` §10 for projects not yet migrated), `hooks/pre-tool-use-tdd-gate.js` will use this file to deny any Edit/Write that targets a sealed test path until the coordinator releases the seal. The orchestrator-side `git diff` check in Step 5.5 still runs as defense-in-depth.
+   (The legacy single-`red_sha` form and v2 are still read.) If the user opted in to hooks (`hooks.enabled: true` in `.specture/settings.yml` — or in `conventions.md` §10 for projects not yet migrated), the PreToolUse hook denies any Edit/Write that targets a sealed test path, a sealed spec path, or production code outside `allowed_paths`, until the coordinator releases the seal. The orchestrator-side `git diff` check in Step 5.5 still runs as defense-in-depth.
 
 If any post-check fails, do NOT proceed to Step 5.
 
@@ -178,6 +188,7 @@ Dispatch the `implementer` agent (`agents/implementer/AGENT.md`).
 - The `RED_SHA` value, with an explicit instruction: *"The tests committed at `<RED_SHA>` are the sealed contract. You must NOT modify, delete, skip, rename, or move any of those test files. The TDD Honesty Gate will run `git diff <RED_SHA>..HEAD -- <test-globs>` after your work and any change will abort the spec."*
 - `.specture/stack.yml`, `.specture/conventions.md`, all ADRs.
 - The **exact signatures** of existing symbols the implementation will call — already captured in the spec's "Superficie de Código Existente" section (do not make the implementer rediscover an API by reading files) — PLUS the minimum set of source files to actually modify (NOT the whole codebase).
+- The explicit instruction: *"Write only to the paths the spec declares under `Crea:` / `Modifica:` (and the tests you were given). With hooks on, a write anywhere else is denied by the Allowed Paths gate — a denied write means the spec is incomplete: stop and report `BLOCKED: spec <ID>` naming the file, never work around it."*
 
 **Expected output**: minimal code to make tests pass; agent commits implementation in commits **separate from the RED commit**; reports status `DONE` / `DONE_WITH_CONCERNS` / `NEEDS_CONTEXT` / `BLOCKED`, plus the `HEAD_SHA` after the last implementation commit.
 
@@ -261,7 +272,7 @@ After all specs in the epic are APPROVED + verified:
 
 - Update `ROADMAP.md`: change the epic from `[/]` to `[x]`.
 - Commit the ROADMAP update.
-- **Release the test contract**: delete `.specture/state/build-locked.json` if it exists. Without this, the next epic's edits to its own files could be blocked by stale test globs. (The coordinator deletes it again when it processes your `DONE` — belt and braces; neither side trusts the other.)
+- **Release the seal**: `node "${CLAUDE_PLUGIN_ROOT}/hooks/lib/seal-cli.js" release` (deletes `.specture/state/build-locked.json` — sealed tests, sealed specs and allowed paths alike). Without this, the next epic's edits to its own files could be blocked by stale rules. (The coordinator releases it again when it processes your `DONE` — belt and braces; neither side trusts the other.)
 
 ## Anti-Patterns
 
@@ -274,7 +285,9 @@ After all specs in the epic are APPROVED + verified:
 | Saltarse Step 5.5 "porque el implementer dijo que no tocó tests" | El gate es mecánico (`git diff`), no de confianza. Siempre se corre. |
 | Aceptar `DONE_WITH_CONCERNS` sin leer las concerns | Lee y decide: ¿bloquea? ¿es nota para futuro? |
 | Reescribir el spec a mitad de implementación | El spec está sellado. Reportá `BLOCKED: spec <ID>`; el coordinador corre el loop de corrección. |
-| Editar o regenerar un spec sellado dentro del epic-agent | Los specs los autoriza el gate (planner + validator). Un spec inejecutable se reporta, no se arregla en silencio. |
+| Editar o regenerar un spec sellado dentro del epic-agent | Los specs los autoriza el gate (planner + validator). Un spec inejecutable se reporta, no se arregla en silencio. Con hooks, el sello (`spec_paths`) lo deniega; sin hooks, el coordinador lo detecta con `git diff <SPEC_SHA>..HEAD`. |
+| Escribir fuera de la Superficie "porque hacía falta un archivo de wiring" (router, registro DI, barrel, config) | Es un hueco del spec, no una licencia: `BLOCKED: spec <ID>` nombrando el archivo; el planner agrega la línea `Modifica:` y el epic se reanuda. Con hooks, el gate Allowed Paths lo deniega antes. |
+| Editar `.specture/state/build-locked.json` a mano | `seal-cli.js merge-spec` / `release` son los únicos escritores: preservan los campos del coordinador (`spec_sha`, `spec_paths`, `allowed_paths`) y las entradas de los specs hermanos. |
 | Marcar epic `[x]` sin haber corrido tests fresh | Verification gate (verify/SKILL.md) lo prohibe |
 | Omitir el review porque "el implementer ya hizo self-review" | Self-review ≠ review independiente. Ambos son necesarios. |
 | Usar `git add -A` o `git commit --amend` durante un epic | `git add <paths explícitos>` y commits nuevos. Un `add -A` captura trabajo en vuelo de otro agente; un `--amend` puede reescribir el commit de un tercero. |

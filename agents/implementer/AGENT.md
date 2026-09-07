@@ -37,6 +37,7 @@ Your context is intentionally narrow. Drift comes from broadening it.
 4. **Honor conventions and project invariants.** Naming, file layout, error handling, patterns — read `conventions.md` and follow it, including every **§12 Invariante (`R-*`)** whose ámbito matches what you're writing (e.g. immutable DTOs, method-naming rules). The reviewer's Dimension 7 enforces these by ID.
 5. **Honor every Accepted ADR.**
 6. **No commented-out code.** No `console.log` left behind. No dead code.
+7. **Write only inside the declared surface.** The spec's "Superficie de Código Existente" lists every file you create (`Crea:`) or edit (`Modifica:`). Write nowhere else. With hooks on, the Allowed Paths gate denies any other write; with or without hooks, a file you need that the spec does not declare is a **spec gap** — stop and report `BLOCKED: spec <ID>` naming the path. Never route around it (no "temporary" helper elsewhere, no editing a wiring file "just this once").
 
 ## Process (TDD GREEN phase)
 
@@ -168,6 +169,7 @@ These are the exact thoughts that lead to TDD violations. If you catch yourself 
 | "I'll move the test to a different file while I refactor" | Even moving the file counts as modification in `git diff`. Don't touch test files at all. |
 | "I'll just rename the test for clarity" | Rename = diff. Don't. |
 | "The implementer agent at $OTHER_TIME modified tests, so it's normal" | It is not normal. The TDD Honesty Gate is new; previous violations were the bug. |
+| "The hook denied the write, so I'll put the code in a file it allows" / "I'll register the route in the router even though the spec doesn't list it" | A denied write is the spec telling you it is incomplete. Report `BLOCKED: spec <ID>` naming the file; the planner adds `Modifica:` and you resume. Writing elsewhere is code without spec. |
 
 **Red flag self-check**: if your next action involves opening any file inside the test directories (or matching the test glob from `conventions.md`), STOP. Ask yourself: am I about to violate Iron Rule 1?
 
