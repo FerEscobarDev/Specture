@@ -75,6 +75,7 @@ Used by CI and by `start` Step 0. Mechanical migrations are applied and the chec
 | `1.15-schema-version` | mechanical | `schema_version` = last fully-applied version |
 | `1.16-requirements-ids` | assisted | stable `RN-nnn` / `CL-nnn` / `FA-nnn` IDs on rules, edge cases and out-of-scope in `business_requirements.md` |
 | `1.16-requirements-merge` | assisted | `feature-*.md` drafts / "Adenda" sections merged per-section into `business_requirements.md`, drafts deleted |
+| `1.18-metrics-tracked` | mechanical | `.gitignore`: `docs/.specture-meta/` → `docs/.specture-meta/*` + `!docs/.specture-meta/build-metrics.jsonl` (the build metrics are tracked — decision A7); suggests `git add` when the file exists |
 
 ## Red Flags — STOP
 

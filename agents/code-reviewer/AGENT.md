@@ -164,6 +164,8 @@ Invariants are project law that recurs across every epic; §3/§4 cover higher-l
 - `REJECTED_MINOR` — `BLOCKER` findings exist but they're localized fixes (1-3 specific things to change). The same implementer can fix them in a follow-up loop.
 - `REJECTED_MAJOR` — `BLOCKER` findings indicate a fundamental issue (architecture mismatch, spec misunderstanding, broken core contract). Fix is non-trivial; orchestrator should consider re-spec, ADR change, or fresh implementation context.
 
+**`CAUSE` (mandatory, parseable — feeds `docs/.specture-meta/build-metrics.jsonl`, roadmap item 34):** exactly one of `none` (APPROVED), `implementation` (the blockers are the implementer's to fix), `spec_defect` (at least one blocker traces to an ambiguity, contradiction or missing case in an `AC`/`BR`/`EC` rather than to the code — the same condition that justifies `BLOCKED: spec`; name the ID), `architecture` (the fix needs an ADR or a contract change). A `REJECTED_MAJOR` with `CAUSE: spec_defect` is the signal `reviewer_rejected_major_spec_defect` that decides whether the validator keeps validating per spec (decision A6).
+
 ## Citation Anchors (mandatory)
 
 - **Code under review** (`git diff <RED_SHA>..<HEAD_SHA>`): `path:line` is valid because the range is fixed — every `Location:` is read at `HEAD_SHA`. `path::symbol` is the stable alternative.
@@ -186,6 +188,7 @@ You MUST write the review to a file at `docs/07-reviews/review-<epic-slug>-<task
 ## Verdict
 
 **STATUS: <APPROVED | REJECTED_MINOR | REJECTED_MAJOR | BLOCKED>**
+**CAUSE:** <none | implementation | spec_defect | architecture>
 
 ## TDD Honesty
 
@@ -264,6 +267,7 @@ After writing the file, also respond inline with:
 
 ```
 STATUS: <APPROVED | REJECTED_MINOR | REJECTED_MAJOR | BLOCKED>
+CAUSE: <none | implementation | spec_defect | architecture>
 REPORT: docs/07-reviews/review-<epic-slug>-<task-slug>-YYYY-MM-DD.md
 SUMMARY: <one-line summary>
 ```

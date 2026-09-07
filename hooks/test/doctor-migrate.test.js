@@ -157,3 +157,26 @@ test("the 1.16 assisted migrations run in declared order and the schema stops at
   assert.deepEqual(result.assisted[2].planInputs.featureFiles.map((f) => f.file), ["docs/01-requirements/feature-pagos.md"]);
   assert.equal(result.schema.after, "1.11.0", "first pending assisted (1.12-structure-block) halts the schema");
 });
+
+test("v1.18.0: a v1.17-shaped project only needs 1.18-metrics-tracked and the schema advances to 1.18.0", () => {
+  const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "specture-migrate-"));
+  temporaryDirectories.push(projectRoot);
+  write(projectRoot, ".gitignore", ".specture/state/\ndocs/.specture-meta/\n");
+  write(projectRoot, ".specture/stack.yml", 'project:\n  name: "Demo"\n  slug: "demo"\napi:\n  style: "rest"\n  contract_file: "docs/02-architecture/api-contract.openapi.yaml"\nstructure:\n  root_layout: custom\n');
+  write(projectRoot, ".specture/settings.yml", "schema_version: 1.17.0\nprofile: custom\nhooks.enabled: true\n");
+  write(projectRoot, ".specture/conventions.md", "# Convenciones\n\n## 10. Specture\n\n> ver settings.yml\n\n## 12. Invariantes del Proyecto (R-*)\n\n| ID | Regla |\n|----|-------|\n\n## 13. Workflow / Proceso (W-*)\n\n- W-3: Conventional Commits\n");
+  write(projectRoot, ".specture/decisions/001-initial-stack.md", "# ADR-001\n\n## Status\n\nAccepted\n");
+  write(projectRoot, "docs/04-roadmap/ROADMAP.md", "# ROADMAP\n\n### Milestone 1: Foundation\n\n- [ ] **Epic 1.1:** Scaffold\n  - **Dependencias:** Ninguna\n");
+  write(projectRoot, "docs/.specture-meta/build-metrics.jsonl", "");
+
+  const result = runMigrate(projectRoot, { pluginVersion: "1.18.0", catalog, apply: true, by: "test" });
+  assert.deepEqual(result.applied.map((m) => m.id), ["1.18-metrics-tracked"]);
+  assert.deepEqual(result.assisted, []);
+  assert.deepEqual(result.failed, []);
+  const gitignore = read(projectRoot, ".gitignore").split(/\r?\n/).filter(Boolean);
+  assert.deepEqual(gitignore, [".specture/state/", "docs/.specture-meta/*", "!docs/.specture-meta/build-metrics.jsonl"]);
+  assert.equal(result.schema.after, "1.18.0");
+  assert.match(read(projectRoot, ".specture/settings.yml"), /^schema_version: 1\.18\.0\b/m);
+  assert.equal(readLog(projectRoot).length, 1);
+  assert.ok(result.applied[0].notes.some((n) => n.includes("git add docs/.specture-meta/build-metrics.jsonl")));
+});

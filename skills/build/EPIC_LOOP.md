@@ -258,7 +258,8 @@ Do NOT proceed to Step 7 until all three have reported. Use the `Monitor` tool (
 
 - `APPROVED` → proceed to Step 7 (verification).
 - `REJECTED_MINOR` → loop back to Step 5 with the issues; implementer fixes; re-review.
-- `REJECTED_MAJOR` → either large fix needed (loop with fresh context) or architectural issue (escalate to user).
+- `REJECTED_MAJOR` → either large fix needed (loop with fresh context) or architectural issue (escalate to user). With `CAUSE: spec_defect` the problem is the sealed spec, not the code: report `BLOCKED: spec <ID>` (the coordinator runs the correction loop) instead of re-dispatching the implementer.
+- **Tally every review's `STATUS` + `CAUSE`** (`none | implementation | spec_defect | architecture`): the `METRICS` block of your final report sums `review_rejections` minor/major and `spec_defect` per epic — a review without a parseable `CAUSE:` line is incomplete, ask the reviewer for it.
 
 ### Iteration Cap
 

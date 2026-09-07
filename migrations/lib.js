@@ -11,6 +11,11 @@ function gitignoreLines(ctx) {
   return lines(ctx.read(".gitignore") || "").map((l) => l.trim());
 }
 
+// Exact line match (after trim) — for entries where the trailing slash / glob matters.
+function hasGitignoreLine(ctx, exact) {
+  return gitignoreLines(ctx).includes(exact);
+}
+
 function hasGitignoreEntry(ctx, entry) {
   const wanted = entry.replace(/\/$/, "");
   return gitignoreLines(ctx).some((l) => l.replace(/\/$/, "") === wanted);
@@ -84,6 +89,7 @@ module.exports = {
   TEMPLATES,
   gitignoreLines,
   hasGitignoreEntry,
+  hasGitignoreLine,
   ensureGitignoreEntry,
   templateText,
   extractSection,

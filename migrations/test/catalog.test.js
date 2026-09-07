@@ -214,7 +214,7 @@ test("1.15-schema-version records the plugin version when nothing is pending, el
     ".specture/stack.yml": STACK,
     ".specture/settings.yml": "profile: custom\nhooks.enabled: true\n",
     ".specture/conventions.md": "## 12. Invariantes\n\n## 13. Workflow\n",
-    ".gitignore": ".specture/state/\ndocs/.specture-meta/\n"
+    ".gitignore": ".specture/state/\ndocs/.specture-meta/*\n!docs/.specture-meta/build-metrics.jsonl\n"
   });
   assert.equal(m.detect(contextFor(clean)), "pending");
   m.apply(contextFor(clean));
@@ -225,7 +225,7 @@ test("1.15-schema-version records the plugin version when nothing is pending, el
     ".specture/stack.yml": STACK,
     ".specture/settings.yml": "profile: custom\n",
     ".specture/conventions.md": "## 12. Invariantes\n\n## 13. Workflow\n",
-    ".gitignore": ".specture/state/\ndocs/.specture-meta/\n",
+    ".gitignore": ".specture/state/\ndocs/.specture-meta/*\n!docs/.specture-meta/build-metrics.jsonl\n",
     "docs/04-roadmap/ROADMAP.md": "- [ ] **Epic 1.1:** A\n  - **Dependencias:** depende de que el usuario apruebe\n"
   });
   assert.equal(m.inferSchemaVersion(contextFor(behind)), "1.8.0", "1.9-dependencies-syntax pending → schema stays at 1.8.0");

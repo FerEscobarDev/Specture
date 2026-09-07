@@ -30,7 +30,7 @@ function runDoctor(projectRoot, ...extra) {
 
 // A project exactly as `setup` leaves it at the installed plugin version: no migration pending.
 const CLEAN = {
-  ".gitignore": ".specture/state/\ndocs/.specture-meta/\n",
+  ".gitignore": ".specture/state/\ndocs/.specture-meta/*\n!docs/.specture-meta/build-metrics.jsonl\n",
   ".specture/stack.yml": 'project:\n  name: "Demo"\n  slug: "demo"\napi:\n  style: "rest"\n  contract_file: "docs/02-architecture/api-contract.openapi.yaml"\nstructure:\n  root_layout: custom\n',
   ".specture/settings.yml": `schema_version: ${pluginVersion}\nprofile: custom\nhooks.enabled: true\n`,
   ".specture/conventions.md": "# Convenciones\n\n## 10. Specture\n\n> ver settings.yml\n\n## 12. Invariantes del Proyecto (R-*)\n\n| ID | Regla |\n|----|-------|\n\n## 13. Workflow / Proceso (W-*)\n\n- W-3: Conventional Commits\n",

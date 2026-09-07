@@ -31,7 +31,8 @@ You manage the project's durable knowledge. Two modes, one domain (the `docs-ind
 |---|---|
 | `/specture:knowledge capture`, alias `/specture:learn`, "capturemos aprendizajes", build Step 8.5, debug Phase 4.5 exit, `--teach <concept>` | **capture** |
 | `/specture:knowledge audit`, alias `/specture:audit-knowledge`, "audita el índice" | **audit** |
-| `/specture:knowledge` with no mode | Ask: *"¿capture (guardar lo aprendido) o audit (revisar la salud del índice)?"* |
+| `/specture:knowledge stats`, "¿cómo viene el gate?", "métricas del build" | **stats** |
+| `/specture:knowledge` with no mode | Ask: *"¿capture (guardar lo aprendido), audit (revisar la salud del índice) o stats (métricas del build)?"* |
 
 ---
 
@@ -282,6 +283,52 @@ Acción:  >85 "índice saludable, re-correr en 1-3 meses" · 60-85 "limpieza men
 
 - ❌ Auto-fix orphans / auto-consolidate duplicates / re-index uncovered (use `knowledge capture` or `setup-docs-bridge`).
 - ❌ Promote `ai_categorized` → `user_confirmed` · refresh `last_verified` itself (only humans) · touch source-of-truth files.
+
+---
+
+# Mode: stats — build metrics reader (roadmap item 34)
+
+Read-only. Turns the per-epic telemetry the build coordinator appends to
+`docs/.specture-meta/build-metrics.jsonl` (tracked in git since v1.18.0) into the reading
+the Spec Planning Gate was designed to be judged by (`docs/spec-planning-gate-design.md`
+§6.5).
+
+## Stats — Inputs
+
+- `docs/.specture-meta/build-metrics.jsonl` — may not exist yet (that is a valid answer, not an
+  error).
+- Optional: `--last N` (only the last N epics), `--baseline` (see below).
+
+## Stats — Procedure
+
+1. Run the reader and print its output **verbatim**:
+   ```
+   node "${CLAUDE_PLUGIN_ROOT}/hooks/lib/metrics-report.js" --project . [--last N]
+   ```
+   It prints one row per epic, the aggregates split by `source` (`gate` vs `baseline`) and
+   the §6.5 reading: defects downstream (`needs_context_spec` + `iteration_cap_spec` +
+   `blocked_spec`) falling → the gate catches real ambiguity; not falling with
+   `open_questions ≈ 0` → the planner does not ask (fix the planner, not the validation);
+   `reviewer_rejected_major_spec_defect` rising → keep validating per spec (decision A6);
+   `c7_rejections` high → harden the planner's Step 4; tokens → the user's judgment (no
+   harness; the `tokens` field is optional).
+2. **No file yet** → say so and offer the baseline: *"No hay métricas todavía. ¿Reconstruyo
+   el baseline de los epics cerrados antes del gate (`--baseline --write`)?"* On yes:
+   ```
+   node "${CLAUDE_PLUGIN_ROOT}/hooks/lib/metrics-report.js" --project . --baseline --write
+   ```
+   It reconstructs one `source: "baseline"` line per `[x]` epic from what is mechanical —
+   review verdicts and `CAUSE:` in `docs/07-reviews/`, `_planning.md` counters when present,
+   RED / revert / `test(supersede)` commits — with `null` for what cannot be recovered and
+   `heuristic: true` when an old review's `spec_defect` was inferred from its text. Commit
+   the file (`docs(metrics): baseline — N epics`).
+3. Close with one recommendation per firing rule, in the user's words. Never edit the file
+   by hand, never "fix" a line; a suspicious line is reported, not rewritten.
+
+## Stats — What this mode does NOT do
+
+- ❌ Write metrics for gate epics (only the build coordinator appends those) · ❌ delete or
+  rewrite lines · ❌ decide A6 by itself (it reports the signal; the user decides).
 
 ---
 

@@ -252,7 +252,7 @@ split to the user (it touches `ROADMAP.md`); `contrato`: the epic needs a contra
 
 ### Dispatch the epic-agent
 
-Dispatch a general-purpose agent **with `model: sonnet`** (the epic-agent is procedural now that spec authorship lives in the planner — gate-review M7; formal measurement arrives with the build metrics) and a self-contained prompt — **do NOT inherit this chat's history**:
+Dispatch a general-purpose agent **with `model: sonnet`** (the epic-agent is procedural now that spec authorship lives in the planner — gate-review M7; measured per epic in `docs/.specture-meta/build-metrics.jsonl`, read with `knowledge stats`) and a self-contained prompt — **do NOT inherit this chat's history**:
 
 ~~~
 You are the epic-agent for ONE epic of a Specture project.
@@ -285,6 +285,10 @@ writes outside the declared surface.
 Report exactly one of: DONE | BLOCKED | REJECTED_MAJOR
 (BLOCKED: spec <AC-n/BR-n/EC-n> when a sealed spec is unexecutable.)
 Plus: which specs were executed, which tests pass, what remains.
+METRICS (mandatory — the coordinator appends them to build-metrics.jsonl):
+  needs_context_spec: N · iteration_cap_spec: N · blocked_spec: N ·
+  review_rejections: minor N / major N (spec_defect N — from the reviewer's CAUSE:) ·
+  supersessions: N · firma re-read: N verified / M corrected
 If DONE: update ROADMAP.md to [x] for this epic and commit BEFORE reporting.
 ~~~
 
@@ -308,6 +312,7 @@ If DONE: update ROADMAP.md to [x] for this epic and commit BEFORE reporting.
   6. Re-dispatch the epic-agent **from the affected spec**, not from spec 1, with the new `SPEC_SHA` + verbatim verdict.
 - **BLOCKED** (other) / **REJECTED_MAJOR** → escalate to the user with the report summary before continuing. Do not auto-retry.
 - **BLOCKED: insufficient context** → the epic is too large for one agent. Escalate to the user to consider splitting it before re-dispatching.
+- **Metrics — after processing any report** (roadmap item 34, gate design §6.5; never blocks): append **one JSON line** to `docs/.specture-meta/build-metrics.jsonl` (create the directory if absent; fail-open, like `index-usage.jsonl`) with your own gate counters — `planner_dispatches`, `open_questions` (asked), `resolved_alone` (rows), `c7_rejections`, `mech_check_failures`, `validator_dispatches`, `validator_verdict` (`APPROVED` | `ESCALATED`) — plus the report's `METRICS` values (`needs_context_spec`, `iteration_cap_spec`, `blocked_spec`, `reviewer_rejected_major_spec_defect`, `review_rejections`, `supersessions`), `specs`, `outcome` (`DONE` | `BLOCKED` | `REJECTED_MAJOR` | `ESCALATED`), `source: "gate"`, `plugin`, `ts`, and `tokens: null` unless the user handed you a figure (`{input, output, source}`). Line schema and reader: `hooks/lib/metrics-report.js` (`/specture:knowledge stats`). The file is **tracked** (decision A7): `git add docs/.specture-meta/build-metrics.jsonl` and commit `docs(metrics): <epic-slug> — <outcome>` — the same commit carries the epic's `_planning.md` appends (verdicts, `SPEC_SHA`, supersession SHAs).
 
 ### Why this model
 

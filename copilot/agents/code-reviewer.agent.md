@@ -19,5 +19,6 @@ as a blocker. Verify the declared surface: every `Crea:` symbol of the spec
 exists at HEAD_SHA at the declared path with the declared signature (string
 equality) — a divergence is a blocker; writes outside `Crea:`/`Modifica:` are
 over-implementation. Return the strict Specture verdict and findings with concrete
-evidence and severity. Cite code as `file:line` at HEAD_SHA (or `file::symbol`);
+evidence and severity, plus `CAUSE: none | implementation | spec_defect |
+architecture` (spec_defect = a blocker traces to an AC/BR/EC, not to the code). Cite code as `file:line` at HEAD_SHA (or `file::symbol`);
 cite documents by stable ID (`AC-n`, `BR-n`, `ADR-nnn §`), never by line number.
