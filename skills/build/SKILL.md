@@ -182,16 +182,28 @@ files**: you hand it a table `SYMBOL | PATH | SIGNATURE` of the component's exis
    - No node available → the same three checks by hand with `grep` (epic ops vs `op:` rows,
      `RN-nnn` vs `br:` rows, `(planeada — re-anclar)` vs `sym:` rows) and append
      `MECH_CHECK: MANUAL <fecha>`; the validator accepts it with a note.
-5. **Validate per spec**: dispatch the `architecture-validator` once per spec (dims 1-6,
-   unchanged). **Every** validator dispatch of the gate carries the **last `MECH_CHECK:`
-   line** of `_planning.md` verbatim — a required input: without it the validator answers
-   `BLOCKED`. **Only the first dispatch of the set** additionally carries `_planning.md`
-   and the source excerpts cited in `RESOLVED_ALONE` — that activates its C7 check
-   ("aclaraciones sin sustento"). On `REJECTED` → re-dispatch the planner with
-   `VIOLATIONS` (step 4), then 4a again. **Anti-cascade**: if C7 rejects the **same item a second time**,
-   convert it into an `OPEN_QUESTION` (back to step 3) — no third attempt between two
-   models arguing over a plausible quote. **3 accumulated rejections** for the epic →
-   escalate to the user.
+5. **Validate — the set first, then each spec** (roadmap item 30; decision A6: dims 1-6 stay
+   per spec, the set gets one extra dispatch — the metrics decide later whether to merge
+   them). **Every** validator dispatch of the gate carries the **last `MECH_CHECK:` line** of
+   `_planning.md` verbatim — a required input: without it the validator answers `BLOCKED`.
+   - **5a — one `SPEC_SET` dispatch per epic** of the `architecture-validator` (its Dimension
+     7: **C3** every "Fuera de Scope" item has an owner in the `oos:` rows, **C7**
+     "aclaraciones sin sustento", **C8** Superficie with signatures and paths only, **C2
+     fallback** when 4a was `UNVERIFIABLE`/`MANUAL`) with: the epic block, **all** the specs
+     in path order, the contract slice, `_planning.md` (`COVERAGE_TABLE`, `RESOLVED_ALONE`,
+     last `MECH_CHECK:`), the source excerpts cited in `RESOLVED_ALONE`, and the
+     `CODE_SURFACE` table. It runs first because a C3/C7 rejection reshuffles content across
+     specs — the per-spec dispatches then run once, on the stabilized set.
+   - **5b — one dispatch per spec** (dims 1-6, unchanged; **never** `_planning.md` — Dimension
+     7 does not run per spec).
+   - On `REJECTED` (5a or 5b) → re-dispatch the planner with `VIOLATIONS` (step 4) → 4a →
+     5a again only if the `CHANGELOG` touched `COVERAGE_TABLE`, `RESOLVED_ALONE`, a "Fuera
+     de Scope" or a Superficie → 5b only for the specs the `CHANGELOG` touched.
+     **Anti-cascade**: if C7 rejects the **same item a second time**, convert it into an
+     `OPEN_QUESTION` (back to step 3) — no third attempt between two models arguing over a
+     plausible quote. **3 accumulated rejections** (4a FAILs + 5a + 5b) for the epic →
+     escalate to the user. Record every verdict verbatim under `## VEREDICTOS`
+     (`### set — dispatch N` / `### <task-slug> — dispatch N`).
 6. **Summary — always, before committing**: the specs in order, AC/BR/EC counts,
    `operationId`s covered, and **every** `RESOLVED_ALONE` decision with its quote.
    **Review mode** (only if the user explicitly asked this session, e.g. "construí con
@@ -306,7 +318,7 @@ If DONE: update ROADMAP.md to [x] for this epic and commit BEFORE reporting.
 - **BLOCKED: spec <AC-n/BR-n/EC-n>** (also the Iteration Cap's spec-problem exit) → run the **spec-correction loop**, in this order:
   1. **Unseal only that spec's TDD entry**: `seal-cli.js unseal-spec --slug <task-slug>` removes the affected spec's `{slug, red_sha, test_paths}` object from `specs[]` — never delete the whole file (that unseals the sibling specs and the spec seal), never leave the entry (the hook would deny the re-written RED). The epic-level `spec_paths` stay in place until step 4 re-seals.
   2. Re-dispatch the `spec-planner` with `VIOLATIONS` naming the affected ID (minimal edit; `CHANGELOG` contrasted against `git diff` as in the gate).
-  3. Run the mechanical set check (gate step 4a) and, on `PASS`, re-validate the corrected spec (per-spec dispatch with the new `MECH_CHECK:` line; include the C7 inputs only if `RESOLVED_ALONE` changed).
+  3. Run the mechanical set check (gate step 4a) and, on `PASS`, re-validate: the `SPEC_SET` dispatch (5a) again only if the `CHANGELOG` touched `COVERAGE_TABLE`, `RESOLVED_ALONE`, a "Fuera de Scope" or a Superficie; then the per-spec dispatch (5b) of the corrected spec, with the new `MECH_CHECK:` line.
   4. Commit the corrected spec, append the **new `SPEC_SHA`** + verdict to `_planning.md`, and re-seal: `seal-cli.js write` again with the new `--spec-sha` (and the recomputed `--allowed-paths`) — it keeps the sibling `specs[]` entries.
   5. **`git revert`** the affected spec's RED commit — never `reset`: history is append-only.
   6. Re-dispatch the epic-agent **from the affected spec**, not from spec 1, with the new `SPEC_SHA` + verbatim verdict.
@@ -350,9 +362,9 @@ Done by the **coordinator** in the queue loop (5.1): when an epic-agent starts, 
 The queue only takes `[ ]` epics, so an orphaned `[/]` from a dead session is resumed
 here, by evidence, before building the queue:
 
-- **Exactly one `[/]`, AND `docs/05-specs/<epic-slug>/_planning.md` records an `APPROVED`
-  verdict AND a `MECH_CHECK: PASS` whose sha equals `spec-set-check.js <epic-dir>
-  --hash-only`, AND the specs are committed** → skip planning: dispatch the epic-agent
+- **Exactly one `[/]`, AND `docs/05-specs/<epic-slug>/_planning.md` records `APPROVED`
+  verdicts for the set (5a) and for every spec (5b) AND a `MECH_CHECK: PASS` whose sha
+  equals `spec-set-check.js <epic-dir> --hash-only`, AND the specs are committed** → skip planning: dispatch the epic-agent
   (Steps 4-8) with the recorded `SPEC_SHA` + verbatim verdict. A stale or missing
   `MECH_CHECK` → run gate step 4a first (and re-validate only if it fails). If
   `.specture/state/build-locked.json` is missing (gitignored — a fresh clone never has it),

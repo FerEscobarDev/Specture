@@ -22,7 +22,7 @@ The orchestrator MUST give you:
 - **When the candidate is the ROADMAP** (`docs/04-roadmap/ROADMAP.md`): the ROADMAP itself, plus the API contract (operation coverage), `business_requirements.md` (`RN-nnn` coverage) and `architecture.md` (component alignment). Without the contract or the requirements, report which coverage check could not run rather than approving blindly.
 
 - **When the candidate is a spec authored by `spec-planner` (any dispatch)**: the last `MECH_CHECK:` line of `docs/05-specs/<epic-slug>/_planning.md` — the token of the coordinator's mechanical set check (`hooks/lib/spec-set-check.js`, gate step 4a). `MECH_CHECK: PASS <sha>` → proceed; `MECH_CHECK: MANUAL <fecha>` (no node available) → proceed and say so in NOTES; `MECH_CHECK: UNVERIFIABLE …` → proceed and run the C2 fallback of Dimension 7 by judgment; **absent → `BLOCKED — missing input: MECH_CHECK`** (nothing else proves the set check ran).
-- **When the candidate is a spec authored by `spec-planner` AND this is the set's first validator dispatch**: `docs/05-specs/<epic-slug>/_planning.md` plus the **source excerpts** that its `RESOLVED_ALONE` items cite. These two activate Dimension 7 (C7); without them Dimension 7 simply does not run — their absence on a non-first dispatch is normal, never a `BLOCKED`.
+- **When the candidate is the `SPEC_SET` of an epic** (one dispatch per epic, before the per-spec ones — roadmap item 30): the full epic block; **all** the epic's specs in path order; the contract slice; `docs/05-specs/<epic-slug>/_planning.md` (`COVERAGE_TABLE`, `RESOLVED_ALONE`, the last `MECH_CHECK:` line); the **source excerpts** its `RESOLVED_ALONE` items cite; and the `CODE_SURFACE` table (or its summary line / `UNAVAILABLE`). These activate Dimension 7 (C3 / C7 / C8 / C2-fallback); a missing one is `BLOCKED — missing input: <what>`. Per-spec dispatches never carry `_planning.md`: Dimension 7 does not run there, and that is normal.
 
 If any required input is missing, respond `BLOCKED — missing input: <what>` and stop.
 
@@ -91,22 +91,38 @@ Checks depend on what the candidate is:
   - **Sizing** — every epic estimates 1-3 specs; an epic that reads like 10+ specs, or like a single file change, is a `WARNING` naming the epic.
   - **Architecture alignment** — every component in `architecture.md` appears in ≥1 epic — `WARNING`.
 
-### 7. Aclaraciones sin sustento (C7)
+### 7. Set checks — C3 / C7 / C8 / C2-fallback (only on the `SPEC_SET` dispatch)
 
-Run this dimension **only when** `_planning.md` and the cited source excerpts were provided
-(the coordinator attaches them to the **first** dispatch of a spec set only). For **each**
-item in `RESOLVED_ALONE`:
+Run this dimension **only when** the candidate is a `SPEC_SET` (the coordinator's single
+set dispatch per epic, after the mechanical check 4a passed — roadmap item 30). Dimensions
+1-6 keep running **per spec** in their own dispatches; here you judge what only the set
+shows. Every violation of this dimension cites `<task-slug>` + the stable ID.
 
-- **The quote exists** (mechanical): the `cita: "…"` phrase appears **verbatim** in the
-  delivered source excerpt. You verify against what was handed to you — never by reading
-  files yourself (Context Restriction).
-- **The quote answers the doubt** (judgment): the phrase actually decides the specific
-  decision claimed. A quote about a *related* topic (e.g. input validation cited to settle
-  idempotency) does not answer it.
-
-A nonexistent, paraphrased, or non-answering quote → violation **"aclaración sin sustento"**,
-Severity `BLOCKER`, citing the `R-n` item and quoting its `cita` as evidence. Do not
-propose a better source — that is the planner's job on re-dispatch.
+- **C3 — every "Fuera de Scope" item has an owner.** Each item of each spec's "Fuera de
+  Scope" has an `oos:` row in the `COVERAGE_TABLE`. `cubierto por: <task-slug>` must name a
+  sibling that actually covers it (an AC or an operation of that spec); `diferido a: <Epic
+  X.Y | fuera del epic>` must be reasonable → `WARNING`; **`BLOCKER`** when the deferred
+  item is a capability the epic block itself names (its description, an `operationId` on
+  its "Operaciones del contrato" line, or a linked `RN-nnn`) — "fuera del epic" is not an
+  owner for the epic's own scope.
+- **C7 — aclaraciones sin sustento.** For **each** item in `RESOLVED_ALONE`: **the quote
+  exists** (mechanical — the `cita: "…"` phrase appears **verbatim** in the delivered source
+  excerpt; you verify against what was handed to you, never by reading files yourself)
+  **and the quote answers the doubt** (judgment — the phrase actually decides the specific
+  decision claimed; a quote about a *related* topic, e.g. input validation cited to settle
+  idempotency, does not). A nonexistent, paraphrased, or non-answering quote → violation
+  **"aclaración sin sustento"**, Severity `BLOCKER`, citing the `R-n` item and quoting its
+  `cita` as evidence. Do not propose a better source — that is the planner's job on
+  re-dispatch.
+- **C8 — Superficie sin comportamiento.** Each spec's "Superficie de Código Existente"
+  contains only `Llama a:` / `Crea:` / `Modifica:` / `Crea (spec hermano anterior):` /
+  `Fixtures disponibles:` lines with paths and signatures. A sentence about what existing
+  code *does* ("X retries once", "internally normalizes…") → `WARNING`; a `Llama a:` symbol
+  absent from the delivered `CODE_SURFACE` table — or any `Llama a:` line when the table is
+  `UNAVAILABLE` — → `WARNING` (the planner cited a signature it could not have copied).
+- **C2 fallback.** Only when the last `MECH_CHECK:` line is `UNVERIFIABLE` or `MANUAL`:
+  every `RN-nnn` on the epic's "Reglas de negocio clave" is cited by ≥1 spec — by judgment,
+  `BLOCKER` when one is missing.
 
 ## Output Format (strict)
 
@@ -116,7 +132,7 @@ You MUST respond in EXACTLY this format. Nothing else.
 STATUS: <APPROVED | REJECTED | BLOCKED>
 
 VIOLATIONS:
-- <Dimension>: <Specific violation citing the stable ID or section heading of the candidate (AC-n, BR-n, RN-nnn, CL-nnn, FA-nnn, operationId, ADR-nnn §title, heading text) — never a line number: the candidate is a living document>
+- <Dimension>: <Specific violation citing the stable ID or section heading of the candidate (AC-n, BR-n, RN-nnn, CL-nnn, FA-nnn, operationId, ADR-nnn §title, heading text) — never a line number: the candidate is a living document; on a SPEC_SET dispatch, prefixed with the <task-slug> it belongs to>
   - Why it violates: <reference to stack.yml field / convention / ADR>
   - Severity: <BLOCKER | WARNING>
 
