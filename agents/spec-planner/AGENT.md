@@ -157,7 +157,7 @@ SPECS:                          (paths, en orden de ejecución — NO el conteni
 
 COVERAGE_TABLE:                 (machine-readable — exact grammar, one row per line; parsed by spec-set-check.js)
 - op: <operationId> → <task-slug> (implementa | consume)
-- br: <RN-nnn de business_requirements.md> → <task-slug> [BR-n]
+- br: <RN-nnn de business_requirements.md> → <task-slug> [BR-n]      (migration specs: [AC-n])
 - sym: <símbolo> — crea: <task-slug> — firma: `<firma exacta>` — consume: [<task-slug>, ...]
 - oos: <ítem Fuera de Scope> → cubierto por: <task-slug> | diferido a: <Epic X.Y | fuera del epic>
 - gap: <GAP-nnn> → <task-slug>                 (solo epics de migración)

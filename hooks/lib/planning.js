@@ -61,9 +61,10 @@ function parseRow(kind, rest) {
       m = value.match(new RegExp(`^\`?([A-Za-z0-9_.-]+)\`?\\s*${ARROW}\\s*\`?([A-Za-z0-9_.-]+)\`?\\s*\\((implementa|consume)\\)\\s*$`));
       return m ? { operationId: m[1], slug: m[2], mode: m[3] } : null;
     case "br":
-      m = value.match(new RegExp(`^\`?([^\`]+?)\`?\\s*${ARROW}\\s*\`?([A-Za-z0-9_.-]+)\`?\\s*(?:\\[\\s*(BR-\\d+)\\s*\\])?\\s*$`));
+      // `[BR-n]` in feature specs; `[AC-n]` in migration specs (MIGRATION_SPEC_TEMPLATE has no BR section).
+      m = value.match(new RegExp(`^\`?([^\`]+?)\`?\\s*${ARROW}\\s*\`?([A-Za-z0-9_.-]+)\`?\\s*(?:\\[\\s*((?:BR|AC)-\\d+(?:\\s*,\\s*(?:BR|AC)-\\d+)*)\\s*\\])?\\s*$`));
       if (!m) return null;
-      return { rule: collapse(m[1]), slug: m[2], br: m[3] || null };
+      return { rule: collapse(m[1]), slug: m[2], br: m[3] ? collapse(m[3]) : null };
     case "sym":
       m = value.match(new RegExp(`^(.+?)${DASH}crea\\s*:\\s*\`?([A-Za-z0-9_.-]+)\`?${DASH}firma\\s*:\\s*(.+?)${DASH}consume\\s*:\\s*\\[([^\\]]*)\\]\\s*$`));
       if (!m) return null;
@@ -208,20 +209,40 @@ function findEpicBlock(roadmapText, epicId) {
 // Spec files
 // ---------------------------------------------------------------------------
 
-const SURFACE_LINE = /^\s*-\s*(Llama a|Crea \(spec hermano anterior\)|Crea|Modifica|Fixtures disponibles)\s*:\s*(.*)$/i;
+// `Crea (<anything>):` is the "sibling / planned" variant of Crea: (the template says
+// `Crea (spec hermano anterior):`; planners write variations of the parenthetical).
+const SURFACE_LINE = /^\s*-\s*(Llama a|Crea\s*\([^)]*\)|Crea|Modifica|Fixtures disponibles)\s*:\s*(.*)$/i;
+const PATH_LIKE = /^[A-Za-z0-9_.@-]+(?:\/[A-Za-z0-9_.@-]+)+$/;
 
 function parseSurfaceLine(kind, rest) {
   const symbol = (rest.match(/`([^`]+)`/) || [null, rest.split(/\s+(?:en|—|–|-)\s+/)[0]])[1];
   const pathMatch = rest.match(/\ben\s+`?([^`\s]+)`?/);
   const firmaMatch = rest.match(/firma\s*:\s*(.+?)(?:\s*`?\(planeada|$)/i);
+  const cleanSymbol = unquote(symbol);
+  // `Modifica: \`src/app.js\`` — the subject IS the path when no `en <path>` follows.
+  const path = pathMatch ? pathMatch[1] : PATH_LIKE.test(cleanSymbol) ? cleanSymbol : null;
   return {
-    kind: kind.toLowerCase().startsWith("crea (") ? "crea-hermano" : kind.toLowerCase().replace(/\s.*$/, ""),
-    symbol: unquote(symbol),
-    path: pathMatch ? pathMatch[1] : null,
+    kind: /^crea\s*\(/i.test(kind) ? "crea-hermano" : kind.toLowerCase().replace(/\s.*$/, ""),
+    symbol: cleanSymbol,
+    path,
     firma: firmaMatch ? normalizeSignature(firmaMatch[1]) : null,
     planned: /\(planeada\s*[—–-]+\s*re-anclar\)/i.test(rest),
     raw: collapse(rest)
   };
+}
+
+// `- **Implementa** (…): \`operationId\` — \`[a, b]\`` (template) or `- **Implementa:** \`a\` — \`POST /x\``:
+// a bracket list wins; otherwise every backticked identifier-looking token counts.
+function operationsFromLine(line) {
+  const m = line.match(/\*\*(Implementa|Consume)\s*:?\s*\*\*\s*:?(.*)$/i);
+  if (!m) return null;
+  const mode = m[1].toLowerCase() === "consume" ? "consume" : "implementa";
+  const rest = m[2];
+  const bracket = rest.match(/\[([^\]]*)\]/);
+  const ids = bracket
+    ? bracket[1].split(",").map((s) => unquote(s)).filter(Boolean)
+    : [...rest.matchAll(/`([A-Za-z][A-Za-z0-9_.]*)`/g)].map((x) => x[1]).filter((id) => id.toLowerCase() !== "operationid");
+  return ids.map((id) => ({ id, mode }));
 }
 
 // { slug, operations: [{id, mode}], hasOperationsSection, rules, surface: [...], plannedSymbols,
@@ -230,11 +251,8 @@ function parseSpec(text, slug) {
   const opsSection = extractSection(text, /^##\s+Operaciones del Contrato/i) || "";
   const operations = [];
   for (const line of lines(opsSection)) {
-    const m = line.match(/\*\*(Implementa|Consume)\*\*[^[]*\[([^\]]*)\]/i);
-    if (!m) continue;
-    for (const id of m[2].split(",").map((s) => unquote(s)).filter(Boolean)) {
-      operations.push({ id, mode: m[1].toLowerCase() === "consume" ? "consume" : "implementa" });
-    }
+    const found = operationsFromLine(line);
+    if (found) operations.push(...found);
   }
   const surfaceSection = extractSection(text, /^##\s+Superficie de C/i) || "";
   const surface = [];

@@ -9,7 +9,7 @@
 
 ## COVERAGE_TABLE
 - op: <operationId> → <task-slug> (implementa | consume)
-- br: <RN-nnn> → <task-slug> [BR-n]
+- br: <RN-nnn> → <task-slug> [BR-n]                 (specs de migración sin sección BR: [AC-n])
 - sym: <símbolo> — crea: <task-slug> — firma: `<firma exacta>` — consume: [<task-slug>, ...]
 - oos: <ítem Fuera de Scope> → cubierto por: <task-slug> | diferido a: <Epic X.Y | fuera del epic>
 - gap: <GAP-nnn> → <task-slug>                      (solo epics de migración)

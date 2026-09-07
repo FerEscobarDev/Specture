@@ -371,6 +371,10 @@ test("planning.js parses the four core row kinds, the epic block and a spec's su
   assert.equal(table.rows.sym[0].firma, "class Repo { insert(row) }");
   assert.equal(table.rows.oos[0].deferredTo, "fuera del epic");
   assert.equal(planning.parseCoverageTable(planningDoc("- sym: A -- crea: 01-a -- firma: `a()` -- consume: []")).rows.sym[0].crea, "01-a");
+  const migrationBr = planning.parseCoverageTable(planningDoc("- br: RN-005 → 01-tags [AC-4]\n- br: RN-006 → 01-tags [BR-1, BR-3]"));
+  assert.deepEqual(migrationBr.errors, [], "migration specs cite the covering AC-n instead of a BR-n");
+  assert.equal(migrationBr.rows.br[0].br, "AC-4");
+  assert.equal(migrationBr.rows.br[1].br, "BR-1, BR-3");
 
   const epic = planning.findEpicBlock(roadmap([{ id: "1.1", ops: "`subir`, `listar` (consume)", rules: "RN-001, RN-SEG-007" }]), "epic-1.1-x");
   assert.equal(epic.id, "1.1");
@@ -378,6 +382,18 @@ test("planning.js parses the four core row kinds, the epic block and a spec's su
   assert.deepEqual(epic.rules, ["RN-001", "RN-SEG-007"]);
   assert.deepEqual(planning.parseOperations("subirArchivo, listarArchivos"), [{ id: "subirArchivo", mode: "implementa" }, { id: "listarArchivos", mode: "implementa" }]);
   assert.deepEqual(planning.parseOperations("Omitir si el epic no toca el boundary HTTP"), []);
+
+  // Planner variations seen in the stage-2 GREEN baseline (REFACTOR): bold-colon ops line with
+  // backticked ids, `Crea (<anything>):` as the planned variant, `Modifica: \`path\`` without `en`.
+  const variant = planning.parseSpec(
+    "## Operaciones del Contrato de API\n- **Implementa:** `asignarEtiqueta` — `POST /archivos/{id}/etiquetas`.\n\n## Superficie de Código Existente\n- Crea (Epic 1.1 — planeada, todavía fuera del CODE_SURFACE): `ArchivoRepository` — firma: `class ArchivoRepository { insert(row) }` `(planeada — re-anclar)`\n- Modifica: `archivador_api/src/archivos/archivo-repository.js` *(solo si hace falta)*\n- Crea: `TagService` en `archivador_api/src/tags/tag-service.js` — firma: `class TagService {}`\n",
+    "01-x"
+  );
+  assert.deepEqual(variant.operations, [{ id: "asignarEtiqueta", mode: "implementa" }]);
+  assert.equal(variant.plannedSymbols.length, 1);
+  assert.equal(variant.plannedSymbols[0].symbol, "ArchivoRepository");
+  assert.deepEqual(variant.modifiedPaths, ["archivador_api/src/archivos/archivo-repository.js"]);
+  assert.deepEqual(variant.surfaceWithoutPath, []);
 
   const parsed = planning.parseSpec(CLEAN_SPECS["02-listar"], "02-listar");
   assert.deepEqual(parsed.operations, [{ id: "listar", mode: "implementa" }]);
