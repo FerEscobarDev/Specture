@@ -561,7 +561,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with: { node-version: 22 }
-      - run: git clone --depth 1 --branch v1.18.0 https://github.com/FerEscobarDev/Specture.git .specture-plugin
+      - run: git clone --depth 1 --branch v1.18.1 https://github.com/FerEscobarDev/Specture.git .specture-plugin
       - run: node .specture-plugin/scripts/doctor.js check --project .
 ```
 
@@ -647,6 +647,26 @@ Specture está en desarrollo activo. Para decisiones arquitectónicas internas, 
 ---
 
 ## Changelog
+
+### v1.18.1 — Cierre de huecos de la Milestone 4
+
+**Motivación:** una auditoría del diff `v1.17.0..v1.18.0` tras publicar la etapa 2 del gate encontró lo que quedó a medias: tres espejos Copilot sin las reglas nuevas, cuatro tests que el plan listaba y no se escribieron, strings del doctor que mandaban borrar el sello a mano, prosa obsoleta en guías y diseños (toggles "en `conventions.md` §10", "dos modos" de `knowledge`, `Steps 2-8`), el catálogo del diseño del doctor detenido en 1.15, cuerpos de ítems del roadmap contradiciendo su línea de "hecho", `actions/*@v4` con aviso de Node 20, y un fixture de baseline que solo existía en el scratchpad de una sesión. Al escribir los tests faltantes aparecieron tres bugs reales. Patch: sin cambio de comportamiento de skills ni agentes, sin cambio de esquema.
+
+**Cambios:**
+
+- **Tres bugs corregidos:** `hooks/lib/seal.js` — el gate Allowed Paths denegaba escrituras **fuera del proyecto** (un path que `relativize` no puede hacer relativo ya no se gobierna); `hooks/lib/doctor/checks/state.js` — `seal-mismatch` marcaba WARNING para los slugs reales `epic-X.Y-nombre` (ahora compara el id `X.Y`); `hooks/lib/doctor/project.js` — un milestone con "archivador" en el título contaba como lápida (`/archivad/` sin límite de palabra) y el doctor pedía `_current/`.
+- **Espejos Copilot al día (C-9b):** `tdd-test-writer` (supersesiones declaradas, commit `test(supersede)` previo al RED, `SUPERSEDE:`), `implementer` y `ux-implementer` (escribir solo dentro de `Crea:`/`Modifica:`, `BLOCKED: spec <ID>` ante un archivo no declarado); `docs/copilot-cli-plugin.md` deja de sobreafirmar la paridad.
+- **Tests que faltaban:** sello v3 aceptado/huérfano/mismatch en el doctor, stale v3 en el hook de Copilot/Antigravity, precedencia test-sellado ∩ `allowed_paths`, `relativize` dentro/igual/fuera de la raíz y path absoluto nativo, `seal-cli show`/`supersede`, lápidas del ROADMAP.
+- **Doctor:** las acciones de `seal-corrupt`/`seal-stale`/`seal-mismatch` apuntan a `seal-cli.js release` (y `show`) en vez de borrar el JSON a mano; el detalle de `seal-stale` nombra tests, specs y allowed paths.
+- **Telemetría:** el schema de `index-usage.jsonl` en `EPIC_LOOP.md` tenía `step: 3|6` (el Step 3 no existe desde v1.17.0) → `gate|4|6` con `spec-planner` en el enum.
+- **Prosa obsoleta:** `knowledge` declara sus tres modos (frontmatter e intro); `docs/native-integration-guide.md` y `docs/execution-flows.md` §5.5 hablan de `.specture/settings.yml` y de `stats`; el README completa el árbol de `templates/` (`MIGRATION_SPEC`, `PLANNING`, `CURRENT_CAPABILITY`) y nombra la migración 1.18 en la sección del doctor; `docs/doctor-and-migrations-design.md` lista `1.16-*` y `1.18-metrics-tracked`; los cuerpos de los ítems 34/35/37 del roadmap llevan su resolución; `build/SKILL.md` gana en Preconditions la fila de **Node ≥ 22** (sin Node no hay sello ni chequeo mecánico: quedan los `git diff` y la Dim 1 del reviewer) y la de `PLANNING_TEMPLATE.md`, y la nota de la variable de raíz por plataforma (`${PLUGIN_ROOT}` / `$SPECTURE_ROOT`) para los scripts.
+- **Fixture reproducible:** `scripts/baseline-fixture.js <dir> [--stage 1|2] [--git]` regenera el scratch "Archivador" de los dos baselines desde `scripts/baseline-fixture/archivador/` (`npm run baseline:fixture`); su test verifica que el doctor lo ve limpio y que los escenarios mecánicos 2/3/11 reproducen.
+- **CI:** `actions/checkout` y `actions/setup-node` a `@v5` (adiós al aviso de Node 20).
+- Tests: 111 (101 → 111).
+
+**Migración para proyectos existentes:** ninguna.
+
+**Backward-compat:** total. `templates/PLANNING_TEMPLATE.md` sigue fuera de `## Required Inputs` de `build` a propósito (esa sección está hasheada por el gate de esquema y su cambio sería minor): se documenta en Preconditions y en los pasos del gate.
 
 ### v1.18.0 — Spec Planning Gate · etapa 2: el set y la evidencia
 
