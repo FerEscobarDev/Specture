@@ -93,6 +93,34 @@ validated specs — never the job of writing them. The evidence lives on disk in
 `docs/05-specs/<epic-slug>/_planning.md` (tracked). Run these steps for the epic just
 locked `[/]`:
 
+**Pre-flight — Code Surface Resolution** (roadmap item 33; third application of the doctrine
+"the orchestrator resolves, the agent never reads" — see Docs Index Resolution and
+Current-State Resolution in `build/EPIC_LOOP.md`). The planner **does not open source
+files**: you hand it a table `SYMBOL | PATH | SIGNATURE` of the component's existing code.
+- **Roots**: the "Carpeta raíz" of every involved component in `architecture.md`, backed by
+  `stack.yml.structure`; "n/a" → the dirs of `structure.apps`; no code yet (greenfield) →
+  `CODE_SURFACE: (vacío — componente sin código)`.
+- **Method A (preferred)**: dispatch a general-purpose subagent with `model: haiku` (sonnet if
+  haiku is unavailable), read-only tools (Read/Glob/Grep), this prompt and nothing else:
+  ~~~
+  Read ONLY files under: <roots>. Do not read anything else. Do not describe behavior.
+  List every exported/public symbol (functions, classes, methods of exported classes,
+  constants, types) as rows, one per line, strict format, no prose, max 80 rows,
+  alphabetical by PATH then SYMBOL:
+  SYMBOL | PATH | SIGNATURE
+  SIGNATURE = the declaration line as written (name, parameters with types, return type).
+  No bodies, no comments. If there are no exported symbols, output exactly: NONE
+  ~~~
+- **Method B (no subagent tool)**: `grep` the exports of the language declared in
+  `stack.yml` — TS/JS `^export\s+(async\s+)?(function|class|const|let|interface|type|enum)\s+\w+`,
+  Python `^(def|class)\s+\w+`, C#/Java `^\s*public\s+[^=]*?\b\w+\s*\(`, Go
+  `^func\s+(\([^)]*\)\s*)?\w+\(`; SIGNATURE = the matched line, trimmed.
+- **Output**: pass the table to the planner as a `CODE_SURFACE:` block (transient — not
+  persisted) and append one summary line to `## CODE_SURFACE` of `_planning.md`
+  (`roots · símbolos: N · método · fecha`). Both methods failing → `CODE_SURFACE: UNAVAILABLE`:
+  the planner writes only `Crea:`/`Modifica:` lines and raises `CONCERNS`; the validator's C8
+  sees the summary line.
+
 1. **Dispatch the `spec-planner`** (`agents/spec-planner/AGENT.md`) with its Required
    Inputs manifest, assembled by you: the full epic block; the linked
    `business_requirements.md` sections + Capacidades de Frontera; the `architecture.md`
@@ -101,9 +129,10 @@ locked `[/]`:
    ADRs; resolved docs-index and `_current/` files (run "Docs Index Resolution" and
    "Current-State Resolution" as defined in `build/EPIC_LOOP.md` — same algorithms, you
    have the file); the template per the epic's `Template:` field plus
-   `templates/PLANNING_TEMPLATE.md` (the `_planning.md` grammar); the component root
-   paths; the frontend/migration conditionals. A missing item costs a `NEEDS_CONTEXT`
-   round-trip.
+   `templates/PLANNING_TEMPLATE.md` (the `_planning.md` grammar); the **Code Surface
+   table** from the pre-flight above (`(vacío)` / `UNAVAILABLE` are valid and explicit — the
+   planner never reads code); the frontend/migration conditionals. A missing item costs a
+   `NEEDS_CONTEXT` round-trip.
 2. **Stage, don't commit**: `git add docs/05-specs/<epic-slug>/` after each planner pass,
    so re-dispatches stay diffeable.
 3. **Questions.** If `OPEN_QUESTIONS` is non-empty, ask the user via `AskUserQuestion`
