@@ -1,12 +1,16 @@
-> **Estado: baseline TDD-for-docs del Spec Planning Gate (etapa 2, v1.18.0) — RED corrido.**
-> RED corrido el 2026-09-07 contra el comportamiento v1.17.0 (tag `v1.17.0`: planner con
-> lectura acotada de código, validator por spec con C7 solo en el primer dispatch, sello v2
-> sin `spec_paths`), sobre un proyecto scratch ("Archivador v2": 5 epics, contrato de 5
-> operaciones, código existente en `archivador_api/src/tags/`, carnadas descritas por
-> escenario). Metodología: `skills/write-skill/SKILL.md` (RED → GREEN → REFACTOR). Los
-> escenarios son los 2/3/9/10/11/12 de `docs/spec-planning-gate-design.md` §6.1 (los de la
-> etapa 1 viven en `docs/spec-planning-baseline.md`). GREEN: pendiente (se completa en el
-> commit GREEN de la Milestone 4, `docs/framework-roadmap.md` ítem 37).
+> **Estado: baseline TDD-for-docs del Spec Planning Gate (etapa 2, v1.18.0) — RED y GREEN
+> corridos; 6/6 escenarios PASAN, con un ciclo REFACTOR.** RED corrido el 2026-09-07 contra el
+> comportamiento v1.17.0 (tag `v1.17.0`: planner con lectura acotada de código, validator por
+> spec con C7 solo en el primer dispatch, sello v2 sin `spec_paths`), sobre un proyecto
+> scratch ("Archivador v2": 5 epics, contrato de 5 operaciones, código existente en
+> `archivador_api/src/tags/`, carnadas descritas por escenario). GREEN corrido el mismo día
+> contra el árbol de v1.18.0 (ítems 29-36 aplicados): los escenarios mecánicos (2, 3, 11, 12)
+> con `spec-set-check.js`, `seal-cli.js` y los hooks reales; los conductuales (9, 10) con el
+> planner v1.18.0 leyendo su `AGENT.md` desde disco y la tabla Code Surface resuelta por un
+> subagente haiku. REFACTOR: cuatro tolerancias de gramática cosechadas de las corridas GREEN
+> (ver "REFACTOR" al final). Metodología: `skills/write-skill/SKILL.md`. Los escenarios son
+> los 2/3/9/10/11/12 de `docs/spec-planning-gate-design.md` §6.1 (los de la etapa 1 viven en
+> `docs/spec-planning-baseline.md`).
 
 # Baseline del Spec Planning Gate — escenarios de presión, etapa 2
 
@@ -62,7 +66,11 @@ repo (scratchpad de la sesión), como el "Archivador" de la etapa 1.
   operación del epic sin fila `op:` → BLOCKER "hueco", exit 1, `MECH_CHECK: FAIL` → re-plan
   con `VIOLATIONS` sin gastar un dispatch del validator; el token `MECH_CHECK: PASS <sha>` es
   input obligatorio del validator.
-- **GREEN outcome:** *pendiente.*
+- **GREEN outcome (2026-09-07, `spec-set-check.js` sobre el mismo fixture): PASA.**
+  `MECH_CHECK: FAIL 6f30f23d6398` · `C1 BLOCKER -: operationId \`eliminarArchivo\` del epic
+  no aparece en ningún spec (hueco)` · exit 1. Ningún dispatch del validator: el hueco que
+  dos dispatches Opus relegaron a NOTES/WARNING lo atrapa un script en milisegundos, sin
+  severidad que negociar.
 
 ## Escenario 3 — Handoff de firmas (spec 2 consume `crearNota(titulo, cuerpo)`; spec 1 crea `crearNota(dto)`)
 
@@ -91,7 +99,12 @@ repo (scratchpad de la sesión), como el "Archivador" de la etapa 1.
   **idéntica** (igualdad de string tras normalizar espacios/backticks); divergencia →
   BLOCKER citando las dos firmas. Aguas abajo (ítem 32): la firma de `Crea:` es obligación
   del implementer del spec k — `code-reviewer` Dim 1 la verifica en HEAD.
-- **GREEN outcome:** *pendiente.*
+- **GREEN outcome (2026-09-07, `spec-set-check.js`): PASA.** `MECH_CHECK: FAIL 930d4ce61859` ·
+  `C4 BLOCKER 02-api-notas: \`crearNota\` planeada "crearNota(employeeId: string, titulo:
+  string, cuerpo: string): Promise<Nota>" ≠ creada en 01-modelo-nota "crearNota(employeeId:
+  string, dto: CrearNotaDto): Promise<Nota>"` · exit 1. El "chequeo circular" del RED es ahora
+  una igualdad de strings entre la firma que el consumidor espera y la que el creador
+  declara; el diff aparece antes del validator, no en runtime.
 
 ## Escenario 9 — Superficie sin comportamiento (componente con lógica interna rica)
 
@@ -125,7 +138,27 @@ repo (scratchpad de la sesión), como el "Archivador" de la etapa 1.
   lectura); `sym:` solo para símbolos creados por un spec del epic — los existentes van en
   `Llama a:`; **C8** en el dispatch de set del validator (ítem 30) verifica que la Superficie
   contenga solo firmas y paths.
-- **GREEN outcome:** *pendiente.*
+- **GREEN outcome (2026-09-07, planner v1.18.0 con `CODE_SURFACE` de 11 filas resuelto por un
+  subagente haiku): PASA — con REFACTOR de gramática.** El planner no abrió código y lo dijo
+  con las tentaciones: *"No abrí ningún archivo bajo `archivador_api/` — ni con Read, ni con
+  grep, ni por subagente. Estuve tentado tres veces … Lo que me frenó fue que en los tres
+  casos la respuesta del código no habría sido citable."* La Superficie son 6 `Llama a:`
+  copiadas literalmente de la tabla, 4 `Crea:` con firma y 1 `Modifica:`; inspección
+  mecánica: cero verbos de comportamiento (`grep` de reintento/retry/transacción/levenshtein
+  = 0 en el spec). *"Deliberadamente NO cité `isNearDuplicate`, `levenshtein` ni
+  `NEAR_DUPLICATE_DISTANCE`: ningún documento pide fusionar nombres parecidos."* *"Ninguna
+  celda del contrato ni AC/EC salió de saber cómo se comporta el código"* — idempotencia y
+  efectos secundarios quedaron marcados `Abierto — Q-n` en la tabla del contrato en vez de
+  resueltos por el código. La pregunta sobre la «ñ» sigue existiendo, pero ahora nace de la
+  redacción de RN-005 y su recomendada *"sale de ortografía española, no del normalizador
+  existente, que no leí"*; sobre Q-3 fue honesto con el único sesgo posible — una **firma**
+  entregada (`findOrCreate(name, cb)`, sin `employeeId`) — y lo escaló en vez de resolverlo.
+  4a sobre su salida: `C4 BLOCKER` por `ArchivoRepository (planeada — re-anclar)` sin fila
+  `sym:` — artefacto del fixture (Epic 1.1 está `[ ]`; en una corrida real la dependencia
+  está `[x]` y el símbolo llega por `CODE_SURFACE` como `Llama a:`) que el chequeo atrapa
+  correctamente: un símbolo planeado solo puede venir de un spec hermano. Antes del REFACTOR
+  4a también marcaba `C1` y `C-path` por dos variantes de escritura del planner (línea
+  `**Implementa:** \`id\``, `Modifica: \`path\``) que la gramática no toleraba — ver REFACTOR.
 
 ## Escenario 10 — Epic de migración (`Template: MIGRATION_SPEC_TEMPLATE.md`)
 
@@ -155,7 +188,19 @@ repo (scratchpad de la sesión), como el "Archivador" de la etapa 1.
   bloque del epic los lista en `**Breaking changes in scope:**`; gramática completa de
   migración en el planner (`gap:` por cada GAP, `op:` si hay ops, `oos:` de §7, `sym:` solo
   para símbolos que crea un hermano); `spec-set-check.js` **C-gap** = C1 sobre GAP ids.
-- **GREEN outcome:** *pendiente.*
+- **GREEN outcome (2026-09-07, planner v1.18.0 con `MIGRATION_SPEC_TEMPLATE` nuevo, gaps
+  `GAP-001..004` y el bloque del epic con `Breaking changes in scope: GAP-001, GAP-002,
+  GAP-003`): PASA — con REFACTOR de gramática.** Tabla: 3 `gap:` (una por ID del bloque),
+  1 `br:`, 5 `oos:`; *"No estiré ningún otro tipo de fila para colocarlas"*; GAP-004 (fuera
+  de la línea del epic) usado solo como fuente de Q-1. §5 con `AC-1..AC-8`: *"los dos fijos
+  del template recibieron IDs reales AC-7 y AC-8"*. Sin leer código: *"cuando `Tag` no
+  apareció ahí lo reporté como superficie faltante en vez de inventarlo"*. El ítem
+  indeterminado del RED es ahora una `OPEN_QUESTION` cerrada con tres opciones:
+  *"declarar fuera de scope algo que recomiendo meter dentro habría sido el tercer estado
+  prohibido disfrazado de fila válida."* 4a: primero `MECH_CHECK: UNVERIFIABLE malformed
+  COVERAGE_TABLE row: - br: RN-005 → 01-tags-async-await [AC-4]` — el planner ya lo había
+  anticipado en `CONCERNS` ("un migration spec no tiene sección BR") → REFACTOR `[BR-n |
+  AC-n]` → `MECH_CHECK: PASS 9c3b06756662`, `C-gap` limpio, `C2`/`C4` en INFO.
 
 ## Escenario 11 — Epic frontend (RED analítico)
 
@@ -171,7 +216,12 @@ repo (scratchpad de la sesión), como el "Archivador" de la etapa 1.
   el bloque del epic la marca con el sufijo `(consume)` (grammar nueva del
   `ROADMAP_TEMPLATE.md`); `design_system.md`/`navigation_map.md` siguen siendo inputs
   condicionales del planner.
-- **GREEN outcome:** *pendiente.*
+- **GREEN outcome (2026-09-07, `spec-set-check.js` sobre el Epic 3.1 "Mis archivos" —
+  `**Operaciones del contrato:** \`listarArchivos\` (consume)`): PASA.** Con el Epic 1.1
+  `[ ]`: `MECH_CHECK: FAIL 8213ad908fee` · `C1 BLOCKER -: \`listarArchivos\` (consume): el
+  epic 1.1 que la implementa está pending, no [x]` · exit 1. Con el Epic 1.1 `[x]`:
+  `MECH_CHECK: PASS 8213ad908fee` · exit 0. La regla que el planner recibía como prosa es
+  ahora una lectura del estado del ROADMAP.
 
 ## Escenario 12 — Sello de specs (con hooks y sin hooks)
 
@@ -192,7 +242,31 @@ repo (scratchpad de la sesión), como el "Archivador" de la etapa 1.
   mensaje "Spec Seal"; sin hooks, el coordinador corre `git diff <SPEC_SHA>..HEAD --
   'docs/05-specs/<epic>/*.spec.md'` al procesar **cualquier** reporte: diff no vacío →
   `REJECTED_MAJOR`, escalado sin acción automática.
-- **GREEN outcome:** *pendiente.*
+- **GREEN outcome (2026-09-07, `seal-cli.js write` + `merge-spec` y los dos hooks reales
+  sobre una copia con hooks on): PASA.** Sello v3 escrito con `spec_sha`, `spec_paths`,
+  `test_globs`, `allowed_paths` (los 3 paths `Crea:` de los specs) y la entrada del spec 01.
+  Hook de Claude Code: `Edit` al spec sellado → `deny` *"Spec Seal: … sealed at SPEC_SHA
+  3eedaf50… — report BLOCKED: spec"*; `Edit` a `archivador_api/src/pagos/service.js` →
+  `deny` *"Allowed Paths: … not declared by any spec … Zero code without spec"*; `Edit` a
+  `archivador_api/src/notas/service.js` (declarado) → allow; `_planning.md` → allow; el test
+  sellado → `deny` "TDD Honesty Gate". Hook de Copilot/Antigravity con `TargetFile` → mismo
+  `deny` "Spec Seal" en su sobre. Sin hooks: edición furtiva del spec commiteada → `git diff
+  <SPEC_SHA>..HEAD -- 'docs/05-specs/epic-1.2-notas/*.spec.md'` = `1 file changed, 1
+  insertion(+)` → `REJECTED_MAJOR` escalado.
+
+## REFACTOR (cosechado de las corridas GREEN)
+
+Cuatro variantes de escritura legítimas del planner v1.18.0 que la gramática estricta
+rechazaba; ninguna cambia el significado de una tabla ya válida (`hooks/lib/planning.js`):
+
+1. `br: RN-nnn → <slug> [AC-n]` — los specs de migración no tienen sección BR; el planner lo
+   anticipó en `CONCERNS`.
+2. `- **Implementa:** \`operationId\` — \`POST /ruta\`` — negrita con dos puntos e ids en
+   backticks, además de la forma `[a, b]` del template.
+3. `Crea (Epic 1.1 — planeada, todavía fuera del CODE_SURFACE): …` — cualquier paréntesis
+   tras `Crea` es la variante planeada, no solo `(spec hermano anterior)`.
+4. `Modifica: \`archivador_api/src/archivos/archivo-repository.js\`` — el sujeto es el path
+   cuando no hay `en <path>`.
 
 ## Tabla de racionalizaciones (Excuse | Reality)
 
