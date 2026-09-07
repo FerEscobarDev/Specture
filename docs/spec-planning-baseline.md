@@ -3,7 +3,8 @@
 > el epic-agent), sobre un proyecto scratch ("Archivador": 2 epics, contrato de 4
 > operaciones, carnadas descritas por escenario). Metodología: `skills/write-skill/SKILL.md`
 > (RED → GREEN → REFACTOR). Los escenarios son los 1/4/5/6/7/8 de
-> `docs/spec-planning-gate-design.md` §6.1 (2/3/9-12 son de la etapa 2, ítem 37).
+> `docs/spec-planning-gate-design.md` §6.1 (2/3/9-12 son de la etapa 2, ítem 37 —
+> baseline propio en `docs/spec-planning-baseline-stage2.md`, v1.18.0).
 
 # Baseline del Spec Planning Gate — escenarios de presión, etapa 1
 
