@@ -142,7 +142,7 @@ Si querés agregar tu propio hook siguiendo el patrón:
 | Síntoma | Causa probable |
 |---------|---------------|
 | El hook nunca se dispara aunque `hooks.enabled: true` | El plugin no está instalado, o `${CLAUDE_PLUGIN_ROOT}` no resuelve. Verificá `claude /plugin list`. |
-| El TDD Gate no bloquea aunque estoy en build loop | `.specture/state/build-locked.json` no existe o sus `test_paths` no matchean. Comprobá con `cat .specture/state/build-locked.json`. |
+| El TDD Gate no bloquea aunque estoy en build loop | `.specture/state/build-locked.json` no existe o sus `test_paths` no matchean. Inspeccioná el sello con `node "${CLAUDE_PLUGIN_ROOT}/hooks/lib/seal-cli.js" show` (o `cat .specture/state/build-locked.json`). |
 | El TDD Gate bloquea archivos que no son tests | Algún glob en `test_paths` es demasiado amplio. Revisá la línea de testing en `conventions.md` (desde v1.18.0 `merge-spec` guarda la lista de archivos del RED commit, no globs). |
 | El hook deniega un archivo de producción con "Allowed Paths" | El spec no lo declara en `Crea:`/`Modifica:`. No es un falso positivo: el implementer reporta `BLOCKED: spec <ID>` con el archivo y el planner agrega la línea `Modifica:` (loop de corrección). Si es un helper de tests, `test_globs` debe incluir la carpeta raíz de tests (`tests/**`). |
 | El hook deniega un spec con "Spec Seal" | Los specs validados son inmutables durante el epic. Un spec inejecutable se reporta como `BLOCKED: spec <ID>`; el coordinador lo des-sella (`unseal-spec`), lo re-planifica y lo re-sella con un `SPEC_SHA` nuevo. |

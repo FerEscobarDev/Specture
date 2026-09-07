@@ -13,18 +13,21 @@ function seal(project) {
   try {
     state = JSON.parse(project.read(rel));
   } catch {
-    return [finding("ERROR", "seal-corrupt", rel, "build-locked.json is not valid JSON", "delete the file (the hook fails open on it anyway)")];
+    return [finding("ERROR", "seal-corrupt", rel, "build-locked.json is not valid JSON", 'release it: node "${CLAUDE_PLUGIN_ROOT}/hooks/lib/seal-cli.js" release (the hooks fail open on it anyway)')];
   }
   const inProgress = project.roadmap ? project.roadmap.epics.filter((e) => e.state === "in-progress") : [];
   const epic = String(state.epic || "");
   if (project.roadmap && inProgress.length === 0) {
-    return [finding("ERROR", "seal-stale", rel, `seal for epic "${epic}" but no epic is [/] in ROADMAP.md — sealed test paths stay blocked for any future work`, "delete .specture/state/build-locked.json (the epic is already closed)")];
+    return [finding("ERROR", "seal-stale", rel, `seal for epic "${epic}" but no epic is [/] in ROADMAP.md — sealed tests, specs and allowed paths stay blocked for any future work`, 'release it: node "${CLAUDE_PLUGIN_ROOT}/hooks/lib/seal-cli.js" release (the epic is already closed)')];
   }
   if (epic && inProgress.length > 0) {
+    // Seal slugs follow the spec-dir convention `epic-<X.Y>-<name>` (or just `epic-<X.Y>`):
+    // the epic id inside the slug is the reliable key; the substring rule stays as fallback.
     const needle = epic.toLowerCase().replace(/^epic-/, "");
-    const matches = inProgress.some((e) => `${e.id || ""} ${e.text}`.toLowerCase().includes(needle));
+    const idInSlug = (epic.match(/(\d+(?:\.\d+)+)/) || [])[1] || null;
+    const matches = inProgress.some((e) => (idInSlug && e.id === idInSlug) || `${e.id || ""} ${e.text}`.toLowerCase().includes(needle));
     if (!matches) {
-      return [finding("WARNING", "seal-mismatch", rel, `seal for epic "${epic}" but the [/] epic is "${inProgress[0].id || inProgress[0].text}"`, "confirm the seal belongs to the running epic; delete it if it is a leftover")];
+      return [finding("WARNING", "seal-mismatch", rel, `seal for epic "${epic}" but the [/] epic is "${inProgress[0].id || inProgress[0].text}"`, 'confirm the seal belongs to the running epic (seal-cli.js show); release it with seal-cli.js release if it is a leftover')];
     }
   }
   return [];

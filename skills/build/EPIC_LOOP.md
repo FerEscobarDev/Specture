@@ -128,8 +128,10 @@ When `.specture/docs-index.yml` exists, the orchestrator MUST resolve relevant e
 8. **Log the resolution** to `docs/.specture-meta/index-usage.jsonl` (create the directory if absent, append-only, never block dispatch on log failure). One JSON object per line:
 
    ```json
-   {"ts":"<ISO-8601>","skill":"build","step":"3|6","epic":"<slug>","spec":"<slug>","agent":"architecture-validator|code-reviewer","queried_tags":["..."],"queried_concepts":["..."],"resolved":[{"concept":"...","file":"...","confidence":"...","score":N}],"total_in_index":N}
+   {"ts":"<ISO-8601>","skill":"build","step":"gate|4|6","epic":"<slug>","spec":"<slug>","agent":"spec-planner|architecture-validator|tdd-test-writer|implementer|code-reviewer","queried_tags":["..."],"queried_concepts":["..."],"resolved":[{"concept":"...","file":"...","confidence":"...","score":N}],"total_in_index":N}
    ```
+
+   `step` is `gate` when the coordinator resolves the index for its Spec Planning Gate dispatches (`spec-planner`, `architecture-validator`), `4` for the tdd-test-writer, `6` for the code-reviewer (and `5` if you resolve it for the implementer).
 
 ### When the resolved list is empty
 

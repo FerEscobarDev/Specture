@@ -145,10 +145,17 @@ function outsideAllowedPaths(relativePath, seal) {
   return !pathMatchesAnyGlob(rel, allowed);
 }
 
+// A path `relativize` could not make project-relative (it lives outside the project root):
+// posix-absolute or drive-letter absolute. The seal never governs it.
+function isOutsideProject(relativePath) {
+  return /^(?:[A-Za-z]:)?\//.test(String(relativePath).replace(/\\/g, "/"));
+}
+
 // The deny kind for a path, in precedence order, or null when the edit is allowed:
 //   { kind: "test", spec } | { kind: "spec" } | { kind: "allowed" }
 function classify(relativePath, seal) {
   if (!hasRules(seal)) return null;
+  if (isOutsideProject(relativePath)) return null;
   const spec = matchSealed(relativePath, seal);
   if (spec) return { kind: "test", spec };
   if (matchSealedSpecPath(relativePath, seal)) return { kind: "spec" };
@@ -204,6 +211,7 @@ module.exports = {
   matchSealed,
   matchSealedSpecPath,
   outsideAllowedPaths,
+  isOutsideProject,
   classify,
   denyReason,
   sealIsStale
