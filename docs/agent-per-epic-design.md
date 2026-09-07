@@ -3,7 +3,10 @@
 > anti-patterns — vive ahora en `skills/build/EPIC_LOOP.md`, único archivo que recibe el
 > epic-agent; `build/SKILL.md` queda solo coordinador). **Desde v1.17.0 el epic-agent ya
 > no genera specs**: ejecuta Steps 4-8 — la planificación vive en el Spec Planning Gate del
-> coordinador (`spec-planner` + validación por spec). Este es el documento
+> coordinador (`spec-planner` + validación por spec). **Desde v1.18.0** recibe los specs
+> sellados (`spec_paths` en el sello, hook deny), fusiona sus entradas de tests con
+> `seal-cli.js merge-spec`, re-lee las firmas reales del spec anterior antes de cada Manifest,
+> aplica las supersesiones declaradas antes del RED y reporta `METRICS` + `SUPERSESSIONS`. Este es el documento
 > de diseño de R4 (modo agente-por-epic) — el origen del **modo de ejecución único**
 > actual. En v1.8.0 los tres modos que existieron (Inline, Agentes por Epic, Paralelo
 > por Olas) se colapsaron en uno solo: "Execution Model — Sequential Queue" en

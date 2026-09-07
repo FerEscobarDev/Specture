@@ -1,5 +1,9 @@
 > **Estado: REVISIÓN CRÍTICA — 2026-08-28; etapa 1 APLICADA en v1.17.0** (M1, M3, M6, M7 +
-> planner/preguntas/C7); M2, M4 y M5 quedan para la etapa 2 (v1.18.0). Reporte solicitado por el usuario:
+> planner/preguntas/C7); **etapa 2 APLICADA en v1.18.0** (M2 → reviewer Dim 1 verifica firmas
+> `Crea:`; M4 → Code Surface Resolution, el planner no lee código; M5 → token `MECH_CHECK`;
+> C-6 → validator de set + por spec, decisión A6 se cierra con métricas; C-8 → 4a mecánico;
+> C-9a → gramática de migración `gap:`; C-9b → brecha de espejos documentada; G5 →
+> `allowed_paths`; G7 → `metrics-report.js` + `knowledge stats`). Reporte solicitado por el usuario:
 > (1) juzgar si `docs/spec-planning-gate-design.md` aporta valor real al framework,
 > (2) analizar lo ya implementado, (3) proponer otras oportunidades de mejora.
 > Perspectiva: diseño de sistemas multi-agente de generación de código, SDD con IA

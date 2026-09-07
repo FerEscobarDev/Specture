@@ -1,9 +1,17 @@
-> **Estado: IMPLEMENTADO — etapa 1 en v1.17.0** (ítems 19-28 del roadmap del framework);
-> etapa 2 (spec-set-check, sello de specs, overlay, métricas) pendiente para v1.18.0.
-> Deltas vs este diseño, decididos por la revisión y el roadmap: la evidencia vive en
-> `docs/05-specs/<epic>/_planning.md` trackeado (M1 — no en el commit message ni al pie de
-> cada spec); el validator sigue **por spec** con solo C7 agregado (C-6); las versiones
-> reales son v1.17.0/v1.18.0 (no v1.15/v1.16, que fueron doctor y prerrequisitos).
+> **Estado: IMPLEMENTADO — etapa 1 en v1.17.0 (ítems 19-28), etapa 2 en v1.18.0 (ítems
+> 29-37 del roadmap del framework).** Deltas vs este diseño, decididos por la revisión y el
+> roadmap: la evidencia vive en `docs/05-specs/<epic>/_planning.md` trackeado (M1 — no en el
+> commit message ni al pie de cada spec) con gramática fija en `templates/PLANNING_TEMPLATE.md`;
+> el validator corre **un dispatch de set** (C3/C7/C8/C2-fallback) **más** las dims 1-6 por
+> spec — no un dispatch único (decisión A6: se consolida solo si
+> `reviewer_rejected_major_spec_defect` no sube); el chequeo 4a emite un token `MECH_CHECK`
+> obligatorio para el validator (M5); el planner **no lee código** — recibe la tabla Code
+> Surface del coordinador (M4); el overlay `FIRMAS_REALES` (§4.7) quedó como re-lectura
+> defensiva y la corrección es la Dim 1 del reviewer (M2); el sello v3 lleva `spec_sha`,
+> `spec_paths`, `allowed_paths` y se escribe solo con `seal-cli.js`; las métricas (§6.5) se
+> trackean en git (A7) con el campo `reviewer_rejected_major_spec_defect`; la supersesión
+> sancionada de tests (N6) no estaba en este diseño. Las versiones reales son
+> v1.17.0/v1.18.0 (no v1.15/v1.16, que fueron doctor y prerrequisitos).
 > Documento iniciado
 > el 2026-08-28 a pedido del usuario tras observar "falencias en la forma de
 > generar las specs". Las decisiones de diseño se tomaron en conversación ese

@@ -149,10 +149,11 @@ flowchart TD
     Br2 --> D
     D --> L{"¿Quedan epics en la cola?"}
     L -->|Sí| E["Marcar epic [/] + commit"]
-    E --> SPG["Spec Planning Gate:<br/>spec-planner → preguntas → validator por spec<br/>→ resumen → commit specs + _planning.md"]
+    E --> SPG["Spec Planning Gate:<br/>Code Surface → spec-planner → preguntas → 4a spec-set-check (MECH_CHECK)<br/>→ validator: set (C3/C7/C8) + por spec → resumen → commit specs + _planning.md<br/>→ sello: seal-cli write (spec_sha · spec_paths · allowed_paths)"]
     SPG --> F["epic-agent ejecuta build/EPIC_LOOP.md (Steps 4–8)<br/>(contexto aislado, se descarta al terminar)"]
-    F --> G{"Procesar el reporte"}
-    G -->|DONE| H["Verificar [x] + commit por git log<br/>(no confiar en el reporte)"]
+    F --> G{"Procesar el reporte:<br/>1º git diff SPEC_SHA..HEAD -- specs"}
+    G -->|"diff ≠ vacío"| ESC
+    G -->|DONE| H["Verificar [x] + commit por git log<br/>(no confiar en el reporte) · seal-cli release<br/>· línea en build-metrics.jsonl (docs(metrics))"]
     G -->|"BLOCKED / REJECTED_MAJOR"| ESC(["Escalar al usuario · sin auto-retry"])
     H --> L
     L -->|No| FIN(["Cola drenada · sugerir merge/PR (W-4)<br/>Specture nunca mergea solo"])
@@ -170,59 +171,73 @@ planificación validada, RED commit, TDD Honesty Gate, code review y verificaci�
 flowchart TD
     S1["Step 1 · Pick & Lock (coordinador)<br/>epic → [/] · commit"] --> SP
     subgraph GATE ["coordinador · Spec Planning Gate"]
-    SP["spec-planner · Opus<br/>1-3 specs + OPEN_QUESTIONS / RESOLVED_ALONE"]
+    CS["Pre-flight · Code Surface Resolution<br/>SYMBOL | PATH | SIGNATURE (haiku / grep) — el planner no lee código"]
+    CS --> SP["spec-planner · Opus<br/>1-3 specs + COVERAGE_TABLE + OPEN_QUESTIONS / RESOLVED_ALONE"]
     SP --> SQ{"¿OPEN_QUESTIONS?"}
     SQ -->|"sí"| ASKQ["AskUserQuestion ≤4/tanda · ≤2 tandas<br/>respuestas → BR in place · re-dispatch"]
     ASKQ --> SP
-    SQ -->|"no"| S3{"GATE · architecture-validator por spec<br/>(+ C7 sobre _planning.md en el 1º)"}
-    S3 -->|REJECTED| FIXS["re-dispatch planner con VIOLATIONS<br/>(edición mínima · CHANGELOG vs git diff)"]
-    FIXS --> S3
-    S3 -->|APPROVED| SC["Resumen → commit specs + _planning.md<br/>SPEC_SHA · TaskCreate por spec"]
+    SQ -->|"no"| MC{"4a · spec-set-check.js (mecánico)<br/>C1 cobertura · C2 RN · C4 firmas · C5 sizing · C6 orden"}
+    MC -->|"FAIL"| FIXS["re-dispatch planner con VIOLATIONS<br/>(edición mínima · CHANGELOG vs git diff)"]
+    MC -->|"PASS → MECH_CHECK token"| S3a{"GATE 5a · validator · dispatch de SET<br/>C3 dueños de Fuera de Scope · C7 citas · C8 Superficie"}
+    S3a -->|REJECTED| FIXS
+    S3a -->|APPROVED| S3{"GATE 5b · validator por spec<br/>(dims 1-6, con MECH_CHECK)"}
+    S3 -->|REJECTED| FIXS
+    FIXS --> SP
+    S3 -->|APPROVED| SC["Resumen → commit specs + _planning.md<br/>SPEC_SHA · seal-cli write (spec_paths + allowed_paths)<br/>· TaskCreate por spec"]
     end
     SC --> S4
     subgraph EL ["epic-agent · build/EPIC_LOOP.md (Steps 4–8 · Sonnet)"]
-    S4["Step 4 · RED · tdd-test-writer<br/>escribe tests que FALLAN (sin ver código)"]
-    S4 --> S4c{"Post-checks: ¿fallan por la razón correcta?<br/>¿RED commit solo-tests? · capturar RED_SHA<br/>· sellar .specture/state/build-locked.json"}
+    S4["Step 4 · RED · tdd-test-writer<br/>escribe tests que FALLAN (sin ver código)<br/>(+ commit test(supersede) previo si el spec declara Supersede:)"]
+    S4 --> S4c{"Post-checks: ¿fallan por la razón correcta?<br/>¿RED commit solo-tests? · capturar RED_SHA<br/>· seal-cli merge-spec (lista de archivos del RED)"}
     S4c -->|No| S4
-    S4c -->|Sí| S5["Step 5 · GREEN · implementer / ux-implementer<br/>código mínimo · tests sellados"]
+    S4c -->|Sí| S5["Step 5 · GREEN · implementer / ux-implementer<br/>código mínimo · tests sellados · solo paths Crea:/Modifica:<br/>(re-lectura de firmas del spec anterior antes del Manifest)"]
     S5 --> S55{"Step 5.5 · TDD Honesty Gate (mecánico)<br/>git diff RED_SHA..HEAD -- tests"}
     S55 -->|"diff ≠ vacío ❌"| VIOL["Violación TDD →<br/>$SPECTURE_ROOT/docs/tdd-honesty-reference.md"]
-    S55 -->|"vacío ✅"| S6{"Step 6 · GATE · code-reviewer<br/>(+ linter + type-check en paralelo)"}
+    S55 -->|"vacío ✅"| S6{"Step 6 · GATE · code-reviewer<br/>(+ linter + type-check en paralelo)<br/>Dim 1 verifica firmas Crea: en HEAD · CAUSE: parseable"}
     S6 -->|REJECTED_MINOR| S5
     S6 -->|REJECTED_MAJOR| ESC["Fix grande con contexto fresco<br/>o escalar al usuario"]
     S6 -.->|"3 loops sin APPROVED"| CAP["Iteration Cap → arreglar spec<br/>o invocar debug"]
     S6 -->|APPROVED| S7{"Step 7 · Verificación<br/>correr tests fresh · leer salida completa"}
     S7 -->|"rojo"| ESC
-    S7 -->|"verde"| S8["Step 8 · epic → [x] · commit<br/>· borrar build-locked.json"]
+    S7 -->|"verde"| S8["Step 8 · epic → [x] · commit<br/>· seal-cli release · reporte con METRICS + SUPERSESSIONS"]
     end
     S8 --> S85["Step 8.5 · Capturar aprendizajes (coordinador)<br/>(opt-in default No → knowledge)"]
     S85 --> S87["Step 8.7 · Reconciliación de milestone<br/>(si cierra: _current/ + lápidas en ROADMAP)"]
     S87 --> S9(["Step 9 · Reset de contexto (automático)<br/>el epic-agent se descarta → siguiente epic"])
 ```
 
-### 3.3 TDD Honesty Gate — secuencia
+### 3.3 Sello del build — secuencia (tests, specs y superficie)
 
-El contrato de tests se **sella** en el RED commit. El implementer tiene prohibido tocar los tests;
-un hook opcional lo bloquea mecánicamente, y el coordinador siempre corre el `git diff` como
-defensa en profundidad.
+Tres contratos se **sellan** en `.specture/state/build-locked.json` (schema v3, escrito solo por
+`hooks/lib/seal-cli.js`): los specs validados (`spec_sha` + `spec_paths`, coordinador), los
+tests de cada RED commit (`specs[]`, epic-agent) y la superficie declarada por los specs
+(`allowed_paths`). Un hook opcional lo bloquea mecánicamente; el coordinador y el epic-agent
+siempre corren los `git diff` como defensa en profundidad. Una supersesión declarada
+(`Supersede:`) levanta el deny de test **solo** para esos paths y **solo** durante el dispatch
+del tdd-test-writer.
 
 ```mermaid
 sequenceDiagram
-    participant O as Orquestador
+    participant C as Coordinador
+    participant O as epic-agent
     participant TW as tdd-test-writer
     participant H as Hook PreToolUse<br/>(opcional)
     participant IM as implementer
 
-    O->>TW: spec validado (sin código)
-    TW->>TW: escribe tests que FALLAN
-    TW-->>O: RED commit (solo tests) + RED_SHA
-    O->>O: sella .specture/state/build-locked.json
-    O->>IM: spec + tests + RED_SHA<br/>"los tests están sellados"
+    C->>C: commit specs validados → SPEC_SHA<br/>seal-cli write (spec_paths · allowed_paths · test_globs)
+    C->>O: specs + SPEC_SHA + veredicto + SEAL: written
+    O->>H: seal-cli supersede --paths (solo si el spec declara Supersede:)
+    O->>TW: spec validado (sin código) + supersesiones declaradas
+    TW-->>O: test(supersede) previo (SUPERSEDE_SHA) · RED commit (solo tests) + RED_SHA
+    O->>O: seal-cli merge-spec (lista de archivos del RED) · supersede --clear
+    O->>IM: spec + tests + RED_SHA<br/>"tests sellados · escribí solo en Crea:/Modifica:"
     IM->>H: intenta Edit/Write
-    H-->>IM: si toca un test sellado → DENY
+    H-->>IM: test sellado → DENY (TDD Honesty Gate)<br/>spec sellado → DENY (Spec Seal)<br/>fuera de la superficie → DENY (Allowed Paths)
     IM-->>O: código GREEN + HEAD_SHA (tests intactos)
     O->>O: git diff RED_SHA..HEAD -- <test-globs>
-    Note over O: vacío → ✅ continúa a code review<br/>no vacío → ❌ violación TDD (recovery)
+    Note over O: vacío → ✅ code review (Dim 1 verifica firmas Crea:)<br/>no vacío → ❌ violación TDD (recovery)
+    O-->>C: DONE + METRICS + SUPERSESSIONS
+    C->>C: git diff SPEC_SHA..HEAD -- specs (vacío ✅ / ≠ vacío → REJECTED_MAJOR)<br/>seal-cli release · build-metrics.jsonl
 ```
 
 ### 3.4 Epics de frontend — Design-System-First + Visual Approval Gate

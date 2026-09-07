@@ -57,17 +57,17 @@ Si no se dispara, ver `hooks/README.md` sección Troubleshooting.
 
 > Histórico: hasta v1.4.0 este hook inyectaba un `additionalContext` al abrir Claude Code recordando invocar `skills/start/SKILL.md`. En v1.5.0 el routing pasó a ser **opt-in**: el hook fue deregistrado de `settings.json` y el script `hooks/session-start.js` quedó dormido. Para entrar a Specture ahora invocás `/specture:start` (o pedís iniciar/continuar el trabajo) y el router detecta la fase. El único hook activo es el `PreToolUse` (TDD Honesty Gate, abajo).
 
-### 3.2 PreToolUse / TDD Honesty Gate — qué bloquea
+### 3.2 PreToolUse / sello del build — qué bloquea
 
-Mientras un epic del build loop está en curso (entre el commit RED de `tdd-test-writer` y el cierre del epic en Step 8), `.specture/state/build-locked.json` está presente y sella la lista de paths de tests.
+Mientras un epic del build loop está en curso, `.specture/state/build-locked.json` (schema v3 desde v1.18.0, escrito solo por `hooks/lib/seal-cli.js`) sella tres cosas: los **specs validados** (`spec_paths`, desde el commit de planificación del coordinador), los **tests** de cada RED commit (`specs[].test_paths`, lista de archivos) y — cuando los specs declaran su superficie — los **paths permitidos** de producción (`allowed_paths` = `Crea:`/`Modifica:`).
 
-Si en ese intervalo cualquier agente (incluido el implementer) intenta `Edit`, `Write` o `NotebookEdit` sobre un path que matchea esos globs, el hook responde con un `permissionDecision: "deny"` que incluye:
+Si en ese intervalo cualquier agente (incluido el implementer) intenta `Edit`, `Write` o `NotebookEdit`, el hook clasifica el path y responde `permissionDecision: "deny"` con un mensaje distinto por caso, en este orden de precedencia:
 
-- El path bloqueado.
-- El RED commit que selló el contrato.
-- Instrucciones para desbloquear legítimamente (abortar el epic y re-dispatch el tdd-test-writer).
+- **TDD Honesty Gate** — un test sellado: el path, el RED commit que lo selló y cómo desbloquear legítimamente (abortar el epic y re-dispatch del tdd-test-writer).
+- **Spec Seal** — un spec validado: el `SPEC_SHA` y la instrucción de reportar `BLOCKED: spec <ID>` (el coordinador corre el loop de corrección).
+- **Allowed Paths** — código fuera de `Crea:`/`Modifica:`: "cero código sin spec"; el implementer reporta `BLOCKED: spec <ID>` con el archivo y el planner agrega `Modifica:`. `docs/` y `.specture/` nunca se rigen por esta regla, y sin `allowed_paths` en el sello no actúa.
 
-El usuario ve este mensaje y entiende por qué el modelo no pudo modificar el test.
+El usuario ve el mensaje y entiende por qué el modelo no pudo hacer esa escritura. Un sello huérfano (ningún epic `[/]`) falla abierto con la razón.
 
 ### 3.3 Troubleshooting: hook no se dispara
 
@@ -206,13 +206,16 @@ Si genuinamente necesitás cambiar el contrato de test mid-epic:
 
 Nunca edites un test "rapidito" para hacerlo pasar — eso destruye el audit trail que justifica todo el framework.
 
+**¿Y un test de un epic ya cerrado que este spec contradice a propósito?** Eso no es una violación sino una **supersesión declarada** (v1.18.0): el spec la lista en "Supersesiones de tests sellados" (`Supersede: <path>::<test> — motivo: BR-n`), el `tdd-test-writer` la aplica en un commit `test(supersede)` previo al RED, el gate la excluye por declaración y el registro queda en `_planning.md` § SUPERSESIONES (+ el índice `docs/05-specs/_supersessions.md`). Detalle: `$SPECTURE_ROOT/docs/tdd-honesty-reference.md`.
+
 ### 8.2 "El hook bloqueó algo que no era una violación, ¿qué hago?"
 
-Tres casos posibles:
+Cuatro casos posibles:
 
-- **Glob demasiado amplio**: revisá `test_paths` en `.specture/state/build-locked.json`. Si incluye algo como `**/*.ts` en lugar de `**/*.test.ts`, fixéalo en `conventions.md` (sección 7 testing) — el orchestrator lo lee de ahí.
-- **State file huérfano**: un epic se abortó pero el archivo quedó. Borralo a mano.
-- **Edit en archivo de soporte (test helper)**: si tu glob captura `tests/fixtures/*` y querés tocarlo, está bien — borrar el state file desbloquea, pero perdés la protección del epic en curso. Lo mejor: aislar el path del helper fuera del glob.
+- **Glob demasiado amplio**: revisá `test_paths` en `.specture/state/build-locked.json`. Desde v1.18.0 el epic-agent guarda la lista de archivos del RED commit (no globs); si ves un glob, viene de un sello viejo — fixéalo en `conventions.md` (sección 7 testing).
+- **State file huérfano**: un epic se abortó pero el archivo quedó. `node "${CLAUDE_PLUGIN_ROOT}/hooks/lib/seal-cli.js" release` (o `/specture:doctor`, que lo reporta).
+- **Edit en archivo de soporte (test helper)**: `test_globs` del sello debe incluir la carpeta raíz de tests (`tests/**`) además de los globs de conventions; el coordinador la agrega al sellar. Si falta, no borres el sello: reescribilo con `seal-cli.js write` agregándola.
+- **"Allowed Paths" sobre un archivo de producción** (router, registro DI, config): no es un falso positivo — el spec no lo declara. El implementer reporta `BLOCKED: spec <ID>` con el archivo, el coordinador corre el loop de corrección y el planner agrega la línea `Modifica:`. Rodearlo escribiendo "en otro lado" es exactamente lo que el gate existe para impedir.
 
 ### 8.3 "¿Cómo desactivo Specture en una conversación puntual?"
 
@@ -233,7 +236,8 @@ Esta sección consolida lo que cada skill hace diferente con hooks/Context7/Plan
 Con `hooks.enabled: true` y/o `context7.enabled: true`:
 
 - **TaskCreate visible**: cada spec del epic aparece como tarea viva, transicionando por `validating architecture` → `writing tests (RED)` → `implementing (GREEN)` → `code review` → `running verification` → `completed`. Sin hooks, solo `ROADMAP.md` refleja el progreso.
-- **TDD Honesty Gate como hard block**: mientras existe `.specture/state/build-locked.json`, cualquier `Edit`/`Write` contra un test sellado se deniega a nivel plataforma. Sin el hook, la violación se detecta post-mortem vía `git diff` en Step 5.5.
+- **Sello del build como hard block**: mientras existe `.specture/state/build-locked.json`, cualquier `Edit`/`Write` contra un test sellado, un spec sellado o un archivo de producción fuera de `Crea:`/`Modifica:` se deniega a nivel plataforma. Sin el hook, las violaciones se detectan post-mortem: `git diff RED_SHA..HEAD` en Step 5.5, `git diff SPEC_SHA..HEAD` en el coordinador, y la Dimensión 1 del reviewer para la superficie.
+- **Chequeo mecánico del set y métricas** (con o sin hooks): `spec-set-check.js` corre tras cada pasada del planner y su token `MECH_CHECK` viaja al validator; cada epic termina con una línea en `docs/.specture-meta/build-metrics.jsonl` (trackeada) que `/specture:knowledge stats` lee.
 - **Review en paralelo (Step 6)**: `code-reviewer` corre concurrente con linter y type-checker. ~30-50% menos wall-clock en diffs grandes. El rigor de cada gate no cambia.
 - **Dimension 5 con Context7**: con `context7.enabled: true`, las reviews citan deprecaciones versionadas del framework de `stack.yml`. Sin él, el reviewer omite Dimension 5 y lo nota en el reporte.
 

@@ -66,11 +66,21 @@ copilot --plugin-dir C:\Proyectos\VibeCoding
 
 ---
 
-## TDD Honesty Gate en Copilot CLI
+## Sello del build en Copilot CLI (TDD Honesty Gate + Spec Seal + Allowed Paths)
 
-Specture declara sus hooks en `hooks.json` usando el evento `PreToolUse`. Durante la fase TDD RED, los archivos de test sellados quedan bloqueados mecánicamente contra escrituras accidental o prematuras.
+Specture declara sus hooks en `hooks.json` usando el evento `PreToolUse`. Mientras un epic está en curso, `.specture/state/build-locked.json` (schema v3, v1.18.0) hace que el hook deniegue tres tipos de escritura: un **test sellado** (TDD Honesty Gate), un **spec validado** (Spec Seal — el planner y el validator ya lo aprobaron; un spec inejecutable se reporta como `BLOCKED: spec <ID>`) y **código fuera de la superficie** `Crea:`/`Modifica:` de los specs (Allowed Paths — cero código sin spec). La respuesta es `{ "permissionDecision": "deny", "permissionDecisionReason": … }` con el motivo y la vía de recuperación.
 
-Los hooks de Copilot CLI operan con manejo de excepciones para fallar de forma abierta (*fail open*) en caso de errores no evaluables, manteniendo la verificación en `git diff` como defensa en profundidad.
+Los hooks de Copilot CLI operan con manejo de excepciones para fallar de forma abierta (*fail open*) en caso de errores no evaluables, manteniendo los `git diff` del coordinador y del epic-agent como defensa en profundidad.
+
+Los scripts del gate se invocan con la raíz del plugin de Copilot (`${PLUGIN_ROOT}` en vez de `${CLAUDE_PLUGIN_ROOT}`), igual que el doctor:
+
+```shell
+node "${PLUGIN_ROOT}/hooks/lib/spec-set-check.js" docs/05-specs/<epic> --roadmap docs/04-roadmap/ROADMAP.md --epic <X.Y>   # gate 4a → MECH_CHECK
+node "${PLUGIN_ROOT}/hooks/lib/seal-cli.js" write|merge-spec|unseal-spec|supersede|release|show                          # único escritor del sello
+node "${PLUGIN_ROOT}/hooks/lib/metrics-report.js" --project . [--baseline --write]                                        # knowledge stats
+```
+
+**Brecha conocida de los espejos (C-9b):** `copilot/agents/*.agent.md` tienen 16-30 líneas frente a las 100-300 de `agents/*/AGENT.md`; llevan las reglas de significado (no leer código, gramática de la `COVERAGE_TABLE`, chequeos de set, firmas `Crea:` + `CAUSE:`), pero no las tablas de racionalizaciones ni los worked examples. Generarlos desde `AGENT.md` es el ítem 40 del roadmap del framework.
 
 ---
 

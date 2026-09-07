@@ -75,11 +75,11 @@ Inicia `agy` en la raíz de tu proyecto. El router y las habilidades de Specture
 
 ---
 
-## TDD Honesty Gate en Antigravity
+## Sello del build en Antigravity (TDD Honesty Gate + Spec Seal + Allowed Paths)
 
-Specture declara sus hooks en `hooks.json` usando el evento `PreToolUse`. Durante la fase TDD RED, los archivos de test sellados quedan bloqueados mecánicamente contra escrituras accidentales.
+Specture declara sus hooks en `hooks.json` usando el evento `PreToolUse` (matcher `Edit|Write|NotebookEdit|write_to_file|replace_file_content`; el hook lee `TargetFile` además de `file_path`). Mientras un epic está en curso, `.specture/state/build-locked.json` (schema v3, v1.18.0) hace que el hook deniegue un **test sellado**, un **spec validado** y cualquier **escritura de código fuera de la superficie** `Crea:`/`Modifica:` de los specs, cada una con su motivo y su vía de recuperación (`BLOCKED: spec <ID>` para los dos últimos).
 
-El hook opera bajo una política **fail-open** en caso de errores inesperados, manteniendo la verificación en `git diff` como defensa en profundidad.
+El hook opera bajo una política **fail-open** en caso de errores inesperados, manteniendo los `git diff` del coordinador y del epic-agent como defensa en profundidad. Los scripts del gate (`hooks/lib/spec-set-check.js`, `hooks/lib/seal-cli.js`, `hooks/lib/metrics-report.js`) se invocan con `${PLUGIN_ROOT}`, igual que el doctor.
 
 ---
 

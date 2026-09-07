@@ -166,12 +166,16 @@ $SPECTURE_ROOT/
 ├── migrations/                        # Catálogo de migraciones <since>-<slug>.js + schema-manifest.json + tests
 ├── hooks/
 │   ├── README.md                      # Cómo funcionan, schema de build-locked.json, troubleshooting
-│   ├── pre-tool-use-tdd-gate.js       # TDD Honesty Gate (Claude Code)
-│   ├── specture-pre-tool-use-tdd-gate.js  # TDD Honesty Gate (Copilot / Antigravity; hooks.json)
+│   ├── pre-tool-use-tdd-gate.js       # Gate PreToolUse (Claude Code): tests sellados · specs sellados · allowed paths
+│   ├── specture-pre-tool-use-tdd-gate.js  # Mismo gate para Copilot / Antigravity (hooks.json)
 │   ├── copilot-pre-tool-use-tdd-gate.js   # Shim de compatibilidad → specture-pre-tool-use-tdd-gate.js
 │   ├── lib/specture-guard.js          # Guard compartido (opt-in por hooks.enabled)
 │   ├── lib/settings.js                # Lector de .specture/settings.yml (fallback a conventions §10, perfiles)
-│   ├── lib/seal.js                    # Sello del contrato de tests (schema v2 por spec, v1 legacy, sello huérfano)
+│   ├── lib/seal.js                    # Sello del build (schema v3: spec_sha/spec_paths/allowed_paths + specs[]; v2/v1 legacy; clasificación de denies)
+│   ├── lib/seal-cli.js                # Único escritor del sello: write · merge-spec · unseal-spec · supersede · release · show
+│   ├── lib/planning.js                # Parser de _planning.md (COVERAGE_TABLE + hash), del bloque de epic y de los specs
+│   ├── lib/spec-set-check.js          # Gate 4a: C1/C2/C4/C5/C6 (+ C-path/C-gap/C-sup) sobre el set de specs → MECH_CHECK token
+│   ├── lib/metrics-report.js          # Lector de docs/.specture-meta/build-metrics.jsonl (+ --baseline) — knowledge stats
 │   ├── lib/doctor/                    # Chequeos del doctor: corpus · estado · drift · migrate
 │   └── test/                          # Tests de contrato del plugin, hooks, settings y doctor
 ├── copilot/
@@ -185,7 +189,7 @@ $SPECTURE_ROOT/
 │   ├── architecture/SKILL.md          # Arquitectura + contrato de API + ROADMAP
 │   ├── ux-design/SKILL.md             # UX/UI: nav map + design system (siempre)
 │   ├── build/SKILL.md                 # Coordinador de la cola de epics + gates de sesión
-│   ├── build/EPIC_LOOP.md             # Procedimiento del epic-agent (Steps 2-8)
+│   ├── build/EPIC_LOOP.md             # Procedimiento del epic-agent (Steps 4-8: RED → GREEN → review → verify → [x])
 │   ├── handoff-ingest/SKILL.md        # Convierte un handoff de diseño al stack
 │   ├── contract-sync-audit/SKILL.md   # Audita sync back/front en proyectos existentes
 │   ├── debug/SKILL.md
@@ -238,7 +242,7 @@ $SPECTURE_ROOT/
 | **1** | `discover` | `/specture:discover` | Sin `docs/01-requirements/business_requirements.md` | Reglas de negocio, actores y edge cases con IDs estables (`RN/CL/FA`), desde template y con chequeo mecánico de salida |
 | **2** | `architecture` | `/specture:architecture` | Sin `docs/04-roadmap/ROADMAP.md` | Arquitectura + **contrato de API (OpenAPI + doc legible)** + ROADMAP de milestones/epics |
 | **3** | `ux-design` | `/specture:ux-design` | Frontend declarado + `docs/03-ux-ui/` incompleto | Mapa de navegación + **design system completo (siempre)** + (Ruta 1) specs para IA de diseño externa |
-| **4** | `build` | `/specture:build` | ROADMAP con epics `[ ]` o `[/]` | Specs planificados y validados por epic (Spec Planning Gate) + código testeado, revisado, verificado |
+| **4** | `build` | `/specture:build` | ROADMAP con epics `[ ]` o `[/]` | Specs planificados, chequeados mecánicamente como set (`MECH_CHECK`), validados y **sellados** por epic (Spec Planning Gate) + código testeado, revisado, verificado + una línea de métricas por epic |
 
 ## Capacidades Transversales
 
@@ -254,6 +258,7 @@ $SPECTURE_ROOT/
 | `setup-docs-bridge` | `/specture:setup-docs-bridge` | Proyecto Adopt con documentación preexistente abundante (≥10 .md). Genera `docs-index.yml` + bridges + ADRs Proposed |
 | `knowledge` (capture) | `/specture:knowledge` · alias `/specture:learn` | Captura post-sesión opt-in (post-epic, post-debug, manual). Propone drafts de ADRs/índice/conventions con aprobación granular |
 | `knowledge` (audit) | `/specture:knowledge audit` · alias `/specture:audit-knowledge` | Auditoría periódica (1-3 meses) del `docs-index.yml`: detecta orphans, duplicates, stale, uncovered. Read-only |
+| `knowledge` (stats) | `/specture:knowledge stats` | Lee `docs/.specture-meta/build-metrics.jsonl` (una línea por epic, trackeada) y aplica la lectura del gate: ¿bajan los defectos aguas abajo? ¿pregunta el planner? ¿sube `spec_defect`? Ofrece reconstruir el baseline de los epics previos al gate. Read-only |
 | `doctor` | `/specture:doctor` · `check` \| `migrate` \| `sync` | Después de actualizar el plugin, cuando `start` avisa migraciones pendientes, o para lintear el corpus (rutas rotas, ADRs duplicados, reviews sin veredicto, sello huérfano). `check` es solo lectura; `migrate` aplica las migraciones mecánicas y lleva las asistidas a Plan mode |
 
 ---
@@ -265,12 +270,12 @@ Specture **no** especializa por capa técnica arbitraria (no hay un "Agente Back
 | Agente | Función | Contexto que recibe | Contexto que NO recibe |
 |--------|---------|---------------------|-------------------------|
 | `specture-router` | Detectar la fase y devolver `PHASE · SKILL` (opt-in; nunca ejecuta la fase) | Existencia de archivos clave + checkboxes del ROADMAP | Contenido de los documentos, historial de chat |
-| `spec-planner` | Traducir un epic en 1-3 specs code-free; citar textualmente o preguntar (`OPEN_QUESTIONS`) | Bloque del epic + fuentes enlazadas + slice del contrato + template | Comportamiento del código (solo firmas), memoria, Context7 |
-| `architecture-validator` | Validar que plan/spec/ROADMAP/**contrato** respeta stack, ADRs y el contrato de API (+ citas C7) | Documento + `.specture/` (+ contrato / `_planning.md` si aplica) | Código de implementación |
+| `spec-planner` | Traducir un epic en 1-3 specs code-free; citar textualmente o preguntar (`OPEN_QUESTIONS`) | Bloque del epic + fuentes enlazadas + slice del contrato + templates + tabla **Code Surface** (`símbolo → path → firma`, resuelta por el coordinador) | Código (no abre archivos fuente), memoria, Context7 |
+| `architecture-validator` | Validar que plan/spec/ROADMAP/**contrato** respeta stack, ADRs y el contrato de API; en el dispatch de **set** por epic, C3 (dueño de cada Fuera de Scope) + C7 (citas) + C8 (Superficie sin comportamiento) | Documento + `.specture/` + token `MECH_CHECK` (+ contrato / `_planning.md` + todos los specs en el dispatch de set) | Código de implementación |
 | `tdd-test-writer` | Escribir tests desde el spec | Spec + business rules + testing framework | Código de implementación (anti-bias crítico) |
 | `implementer` | Hacer que los tests pasen (lógica/backend) | Spec + tests + archivos a tocar | Conversación entera, archivos no relevantes |
 | `ux-implementer` | Implementar UI con fidelidad al design system | Spec + design system + slice del contrato + tests + checklist de marca | URLs a mano, valores hardcodeados, código no relacionado |
-| `code-reviewer` | Review unificado (spec + arch + quality + TDD + **frontend**) | Diff + spec + `.specture/` (+ design system/contrato en epics de UI) | Sugerir fixes (solo reporta) |
+| `code-reviewer` | Review unificado (spec + arch + quality + TDD + **frontend**); verifica que cada `Crea:` exista en HEAD con la firma declarada; devuelve `CAUSE:` parseable | Diff + spec + `.specture/` + supersesiones declaradas (+ design system/contrato en epics de UI) | Sugerir fixes (solo reporta) |
 
 ---
 
@@ -332,6 +337,8 @@ Output: `docs/03-ux-ui/navigation_map.md` + `docs/03-ux-ui/design_system.md` (+ 
 **Orquesta el loop de construcción plan → test → código → review por epic.** Es el skill más denso. **Cada epic se planifica completo antes de ejecutar** (Spec Planning Gate): el coordinador despacha al `spec-planner`, que escribe los 1-3 specs y **pregunta solo lo que las fuentes no responden** (≤4 preguntas por tanda, ≤2 tandas, siempre con una recomendada) — un epic bien descubierto corre hasta `[x]` sin una sola interrupción, así que "todas" sigue siendo desatendido. El `architecture-validator` aprueba cada spec (incluidas las citas de `RESOLVED_ALONE`, chequeo C7) y la evidencia queda trackeada en `docs/05-specs/<epic>/_planning.md`. Recién entonces el epic-agent ejecuta: `tdd-test-writer` (RED commit) → `implementer` (GREEN) → `code-reviewer`, con el **TDD Honesty Gate** (`git diff`) en el medio. Marca el epic `[x]` solo cuando el reviewer aprueba y los tests pasan.
 
 **Cómo pedir revisión o delegar:** *"construí con revisión de specs"* frena el gate en el resumen para que confirmes; *"si hay dudas usá la recomendada"* delega las respuestas (quedan registradas como `fuente: delegado por el usuario`, con alcance solo al epic nombrado). La presión vaga ("hazlo rápido, no preguntes") **no** suprime preguntas de contrato.
+
+**Etapa 2 del gate (v1.18.0) — el set y la evidencia.** Antes de gastar un dispatch del validator, el coordinador corre `hooks/lib/spec-set-check.js` sobre el **conjunto** de specs: cada `operationId` del epic en exactamente un spec, cada `RN-nnn` citada, cada firma `(planeada — re-anclar)` idéntica a la que crea el spec anterior, orden de dependencia, tamaño — un hueco o un desajuste vuelve al planner sin pasar por el validator, y el token `MECH_CHECK: PASS <sha>` es input obligatorio del validator. El planner ya **no abre código**: el coordinador le entrega una tabla `símbolo → path → firma` de la carpeta raíz del componente (Code Surface Resolution). El validator recibe además **un dispatch de set** por epic (C3: todo "Fuera de Scope" tiene dueño; C7: citas; C8: Superficie solo firmas y paths). Tras el commit de planificación, los specs quedan **sellados** (`spec_sha` + `spec_paths` en `build-locked.json`, escritos con `hooks/lib/seal-cli.js`): con hooks, editar un spec se deniega; sin hooks, el coordinador corre `git diff <SPEC_SHA>..HEAD` al procesar el reporte y escala cualquier diff como `REJECTED_MAJOR`. Con hooks, el sello también lleva los paths `Crea:`/`Modifica:` de los specs y **deniega cualquier escritura de código fuera de ellos** (cero código sin spec): un archivo que falta no se agrega a escondidas — el implementer reporta `BLOCKED: spec <ID>` y el planner suma la línea `Modifica:`. El `code-reviewer` verifica que cada símbolo `Crea:` exista en HEAD con la firma declarada y devuelve `CAUSE:` (`none | implementation | spec_defect | architecture`). Un test de un epic **cerrado** que el nuevo spec contradice se declara (`Supersede: <path>::<test> — motivo: BR-n`), se aplica en un commit `test(supersede)` previo al RED y queda registrado en `_planning.md` — nunca más un ledger de excepciones. Y cada epic deja una línea en `docs/.specture-meta/build-metrics.jsonl` (trackeado): `/specture:knowledge stats` la lee y te dice si el gate está atrapando ambigüedad real.
 
 **Modo Frontend (v1.6.0):** cuando el epic es de UI, despacha `ux-implementer` en vez del implementer genérico y aplica el orden obligatorio: el epic de **design system** se construye primero (tokens + componentes + ruta `/dev/design-system`) y pasa por un **gate de aprobación visual humana** (Claude puede capturar screenshots con Playwright; el usuario aprueba) antes de que se construya cualquier página. Las páginas consumen el backend solo a través del **cliente tipado generado del contrato**, en orden de dependencia de `operationId`.
 
@@ -415,14 +422,16 @@ Output: `.specture/docs-index.yml` + bridges en `docs/0X-*/` + ADRs Proposed en 
 
 ---
 
-#### `/specture:knowledge` (modos `capture` | `audit`)
-**Higiene de conocimiento del proyecto, unificada en una skill con dos modos** (v1.11.0). Los aliases `/specture:learn` → `capture` y `/specture:audit-knowledge` → `audit` siguen funcionando.
+#### `/specture:knowledge` (modos `capture` | `audit` | `stats`)
+**Higiene de conocimiento del proyecto, unificada en una skill con tres modos** (v1.11.0; `stats` desde v1.18.0). Los aliases `/specture:learn` → `capture` y `/specture:audit-knowledge` → `audit` siguen funcionando.
 
 **Modo `capture`** (ex-`/specture:learn`): captura post-sesión opt-in del conocimiento descubierto. Se activa al final de un epic (build Step 8.5), tras confirmar una causa raíz (debug Phase 4.5), manualmente, o con `--teach <concepto>`. Filtra relevancia, recolecta evidencia, cross-referencia el `docs-index.yml`, y genera hasta **3 drafts** por invocación (entrada de índice `ai_categorized`, ADR `Status: Proposed`, patch a `conventions.md`/bridge, o test de characterization pendiente). El usuario **aprueba en bloque vía Plan mode**. Hard token budget ~30K. **Nunca escribe a la memoria personal de Claude.** Gate: `knowledge.enabled` (§10). Output: drafts + log en `docs/.specture-meta/learn-history.jsonl`.
 
 **Modo `audit`** (ex-`/specture:audit-knowledge`): auditoría periódica read-only del `docs-index.yml`. Detecta **ORPHAN** (HIGH), **DUPLICATE_CANDIDATE** (MEDIUM), **STALE/VERY_STALE** (LOW/MEDIUM), **UNCOVERED** (LOW), **UNKNOWN_AGE** (LOW); calcula un **health score 0-100**. **Nunca auto-corrige** — propone acciones y el usuario decide. Output: `docs/.specture-meta/last-audit.md` + `audit-history.jsonl`.
 
-> Úsalo (capture) cuando termine un epic / se confirme un root cause / quieras formalizar lo descubierto; (audit) cada 1-3 meses o cuando el índice parezca desfasado.
+**Modo `stats`** (v1.18.0): lee `docs/.specture-meta/build-metrics.jsonl` — la línea por epic que el coordinador de `build` anexa y commitea (`planner_dispatches`, `open_questions`, `c7_rejections`, `mech_check_failures`, `needs_context_spec`, `iteration_cap_spec`, `blocked_spec`, `reviewer_rejected_major_spec_defect`, `review_rejections`, `supersessions`, `outcome`, `tokens` opcional) — vía `hooks/lib/metrics-report.js`, y aplica la lectura del diseño del gate: bajan los defectos aguas abajo → el gate atrapa ambigüedad real; no bajan y `open_questions ≈ 0` → el planner no pregunta; sube `spec_defect` → mantener la validación por spec (decisión A6). Si no hay archivo, ofrece `--baseline --write`: reconstruye una línea por epic cerrado desde los veredictos de `docs/07-reviews/`, los contadores de `_planning.md` y el `git log`. Read-only.
+
+> Úsalo (capture) cuando termine un epic / se confirme un root cause / quieras formalizar lo descubierto; (audit) cada 1-3 meses o cuando el índice parezca desfasado; (stats) cada ~10 epics con gate para decidir sobre él con datos.
 
 ---
 
@@ -450,17 +459,18 @@ Los agentes de Specture son subagentes con **contexto restringido** — cada uno
 #### `spec-planner`
 **Autor especializado del spec (v1.17.0).** Traduce **un** epic en 1-3 specs code-free, self-contained y ordenados por dependencia; los escribe a disco sin commitear y no toca nada fuera de `docs/05-specs/<epic-slug>/`. Su regla de hierro: **no existe el tercer estado** — toda duda que cambie el contrato observable queda `RESOLVED_ALONE` con **cita textual** de una fuente entregada, o va a `OPEN_QUESTIONS` como pregunta cerrada con opciones. En re-dispatch edita mínimamente (IDs y slugs estables, `CHANGELOG` contrastado contra `git diff`).
 
-- **Contexto que recibe:** bloque del epic + secciones enlazadas de requerimientos/arquitectura + slice del contrato + template + ADRs Accepted + `_current/`/docs-index resueltos.
-- **Contexto que NO recibe:** comportamiento del código existente (solo firmas y paths), memoria, Context7, historial.
+- **Contexto que recibe:** bloque del epic + secciones enlazadas de requerimientos/arquitectura + slice del contrato + templates (`SPEC_TEMPLATE` o `MIGRATION_SPEC_TEMPLATE` + `PLANNING_TEMPLATE`) + ADRs Accepted + `_current/`/docs-index resueltos + la tabla **Code Surface** (`SYMBOL | PATH | SIGNATURE` de la carpeta raíz del componente, resuelta por el coordinador — v1.18.0).
+- **Contexto que NO recibe:** el código (desde v1.18.0 **no abre archivos fuente**: un símbolo ausente de la tabla es un `CONCERNS`, nunca una lectura ni una firma inventada), memoria, Context7, historial.
+- **Salida machine-readable:** la `COVERAGE_TABLE` de `_planning.md` (gramática exacta de `templates/PLANNING_TEMPLATE.md`: `op:` / `br:` / `sym:` / `oos:` / `gap:` / `sup:`) la parsea `hooks/lib/spec-set-check.js` — una fila que no parsea vuelve como `VIOLATIONS`.
 - **Output:** `STATUS` + `SPECS` + `COVERAGE_TABLE` + `OPEN_QUESTIONS` + `RESOLVED_ALONE` + `CHANGELOG` + `CONCERNS`.
 - **Modelo:** Opus (detectar ambigüedad real y citar es juicio; el spec es el contrato sellado de toda la cadena).
 
 ---
 
 #### `architecture-validator`
-**Revisor independiente de conformidad arquitectónica.** Recibe un documento (plan, spec, o architecture.md) y lo compara contra `.specture/stack.yml`, `conventions.md`, y todos los ADRs aceptados. Devuelve `APPROVED` o `REJECTED` con las violaciones específicas (tecnología no declarada en stack, patrón prohibido, ADR ignorado, naming incorrecto).
+**Revisor independiente de conformidad arquitectónica.** Recibe un documento (plan, spec, o architecture.md) y lo compara contra `.specture/stack.yml`, `conventions.md`, y todos los ADRs aceptados. Devuelve `APPROVED` o `REJECTED` con las violaciones específicas (tecnología no declarada en stack, patrón prohibido, ADR ignorado, naming incorrecto). En el Spec Planning Gate corre dos veces por epic (v1.18.0): **un dispatch de set** (`SPEC_SET`: todos los specs + `_planning.md` + extractos citados + Code Surface) para la Dimensión 7 — C3 todo "Fuera de Scope" tiene dueño, C7 citas verbatim que responden la duda, C8 Superficie solo firmas y paths, C2 fallback si el chequeo mecánico no pudo verificar — y luego **un dispatch por spec** (dims 1-6). Todo spec del planner llega con el token `MECH_CHECK` del chequeo mecánico; sin él responde `BLOCKED`.
 
-- **Contexto que recibe:** documento candidato + `.specture/` completo.
+- **Contexto que recibe:** documento candidato + `.specture/` completo + `MECH_CHECK` (+ el set y `_planning.md` en el dispatch de set).
 - **Contexto que NO recibe:** código de implementación.
 - **Output:** `APPROVED` | `REJECTED — [violaciones]` | `BLOCKED — missing input: [qué]`
 - **Modelo:** Opus (razonamiento de alta precisión).
@@ -478,7 +488,7 @@ Los agentes de Specture son subagentes con **contexto restringido** — cada uno
 ---
 
 #### `implementer`
-**Ingeniero de implementación con contexto mínimo.** Recibe el spec, los tests fallando, y los archivos fuente relevantes (solo los que debe tocar). Escribe el código mínimo para hacer pasar los tests. Tiene prohibido modificar, saltar, o debilitar los tests recibidos — el **TDD Honesty Gate** del build loop verifica esto con `git diff`. Si algo falta para proceder, responde `NEEDS_CONTEXT` en lugar de inventar.
+**Ingeniero de implementación con contexto mínimo.** Recibe el spec, los tests fallando, y los archivos fuente relevantes (solo los que debe tocar). Escribe el código mínimo para hacer pasar los tests. Tiene prohibido modificar, saltar, o debilitar los tests recibidos — el **TDD Honesty Gate** del build loop verifica esto con `git diff`. Escribe **solo dentro de la superficie declarada** por el spec (`Crea:`/`Modifica:`): con hooks, una escritura fuera se deniega (Allowed Paths); un archivo que el spec no declara es un hueco del spec → `BLOCKED: spec <ID>`, nunca un rodeo. Si algo falta para proceder, responde `NEEDS_CONTEXT` en lugar de inventar.
 
 - **Contexto que recibe:** spec + tests (RED) + archivos fuente a modificar + `.specture/`.
 - **Contexto que NO recibe:** la conversación entera, archivos no relacionados.
@@ -498,10 +508,10 @@ Los agentes de Specture son subagentes con **contexto restringido** — cada uno
 ---
 
 #### `code-reviewer`
-**Staff Engineer + Lead Reviewer en un solo pase.** Revisa el código implementado en cuatro dimensiones core simultáneas — (1) conformidad con el spec, (2) conformidad con arquitectura y ADRs, (3) calidad del código, (4) honestidad TDD — más dos opcionales: (5) idiomaticidad del stack vía Context7, y (6) **fidelidad de frontend** en epics de UI (adherencia a tokens, accesibilidad, adherencia al contrato, reglas de marca). No modifica código — produce un reporte estructurado.
+**Staff Engineer + Lead Reviewer en un solo pase.** Revisa el código implementado en cuatro dimensiones core simultáneas — (1) conformidad con el spec, incluida la **superficie declarada** (cada símbolo `Crea:` existe en HEAD con la firma declarada — BLOCKER si diverge; escrituras fuera de `Crea:`/`Modifica:` son sobre-implementación), (2) conformidad con arquitectura y ADRs, (3) calidad del código, (4) honestidad TDD (incluidas las supersesiones declaradas: la revisión no debe tocarlas y nada no declarado puede tocar un test de un epic cerrado) — más dos opcionales: (5) idiomaticidad del stack vía Context7, y (6) **fidelidad de frontend** en epics de UI (adherencia a tokens, accesibilidad, adherencia al contrato, reglas de marca). No modifica código — produce un reporte estructurado.
 
-- **Contexto que recibe:** diff del implementer + spec + `.specture/` + output de tests + sección relevante de `architecture.md` (+ design system y slice del contrato en epics de UI).
-- **Output:** `APPROVED` | `REJECTED_MINOR — [lista de fixes]` | `REJECTED_MAJOR — [razón crítica]`.
+- **Contexto que recibe:** diff del implementer + spec + `.specture/` + output de tests + sección relevante de `architecture.md` + supersesiones declaradas (+ design system y slice del contrato en epics de UI).
+- **Output:** `APPROVED` | `REJECTED_MINOR — [lista de fixes]` | `REJECTED_MAJOR — [razón crítica]`, siempre con `CAUSE: none | implementation | spec_defect | architecture` (la señal `spec_defect` alimenta las métricas y la decisión A6).
 - **Modelo:** Opus (máxima precisión en review).
 
 ---
@@ -520,11 +530,12 @@ Cada proyecto que use Specture tiene una carpeta `.specture/`:
 │   ├── migrations.log         # Registro append-only de migraciones aplicadas / diferidas
 │   └── decisions/             # ADRs versionados, nunca borrados
 └── docs/
+    ├── .specture-meta/        # Telemetría local (gitignoreada) — salvo build-metrics.jsonl, trackeado (v1.18.0)
     ├── 01-requirements/
     ├── 02-architecture/
     ├── 03-ux-ui/
     ├── 04-roadmap/
-    ├── 05-specs/
+    ├── 05-specs/              # <epic>/*.spec.md + <epic>/_planning.md (evidencia del gate) + _supersessions.md (índice)
     ├── 06-debug-logs/
     └── 07-reviews/
 ```
@@ -546,7 +557,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with: { node-version: 22 }
-      - run: git clone --depth 1 --branch v1.15.0 https://github.com/FerEscobarDev/Specture.git .specture-plugin
+      - run: git clone --depth 1 --branch v1.18.0 https://github.com/FerEscobarDev/Specture.git .specture-plugin
       - run: node .specture-plugin/scripts/doctor.js check --project .
 ```
 
@@ -560,7 +571,7 @@ Specture v1.2.0 integra seis capacidades nativas de Claude Code para convertir l
 
 | Capacidad | Función |
 |-----------|---------|
-| Hook `PreToolUse` (TDD Honesty Gate) | Bloquea mecánicamente edits a tests durante GREEN. |
+| Hook `PreToolUse` (sello del build) | Bloquea mecánicamente, mientras el epic está en curso: edits a **tests sellados** (TDD Honesty Gate), edits a **specs sellados** (Spec Seal, v1.18.0) y escrituras de código **fuera de la superficie** `Crea:`/`Modifica:` de los specs (Allowed Paths, v1.18.0). |
 | `TaskCreate` | Lista en vivo de specs del epic activo durante `/specture:build`. |
 | `Context7` MCP | Docs vigentes para `code-reviewer` (Dimension 5: idiomaticity) y `modernize` (gap analysis). |
 | `Plan mode` | Gate de aprobación antes de tocar código en `debug` y `new-feature`. |
@@ -585,7 +596,8 @@ Sin esos toggles, los hooks shippean pero no actúan, y Context7 nunca se consul
 - Al abrir Claude Code en un proyecto Specture **no pasa nada automáticamente**: invocá `/specture:start` (o decí "continuemos con el roadmap") para que el router detecte la fase y enrute.
 - Durante `/specture:build`, una lista visible trackea los specs del epic activo y su progreso por los pasos del loop.
 - La ejecución del build es **secuencial**: el coordinador encola hasta N epics (decís "ejecuta 3"; sin número corre 1) y los construye **de a uno**, cada uno en un epic-agent de contexto aislado, parando al agotar la cola.
-- Si algún agente intenta modificar un test durante GREEN, la edición se rechaza con un mensaje del TDD Honesty Gate explicando el contrato sellado.
+- Si algún agente intenta modificar un test durante GREEN, la edición se rechaza con un mensaje del TDD Honesty Gate explicando el contrato sellado. Desde v1.18.0 pasa lo mismo con un spec validado (mensaje "Spec Seal", con el `SPEC_SHA`) y con cualquier archivo de producción que ningún spec declare en `Crea:`/`Modifica:` (mensaje "Allowed Paths"): el implementer no lo rodea — reporta `BLOCKED: spec <ID>` con el archivo y el planner agrega la línea `Modifica:`.
+- Sin hooks, los specs sellados igual están protegidos: el coordinador corre `git diff <SPEC_SHA>..HEAD -- <specs>` al procesar cada reporte y escala cualquier diff como `REJECTED_MAJOR`.
 - Al pedir `/specture:debug` o `/specture:new-feature`, Claude entra automáticamente en Plan mode — el fix o el análisis se aprueba antes de tocar el codebase.
 - En reviews y migraciones, las findings pueden citar APIs vigentes para tu stack consultadas en tiempo real vía Context7.
 

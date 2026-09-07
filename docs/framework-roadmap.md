@@ -4,8 +4,8 @@
 > (revisión: C-1…C-9, M1-M7, G1-G12), `psikora-scale-review.md` (N1-N10) y
 > `doctor-and-migrations-design.md` (doctor, catálogo de migraciones, principios). Cada
 > ítem cita su fuente; las definiciones son las de origen, no reinterpretaciones. Estado:
-> **M0 hecho (v1.14.1) · M1 hecho (v1.15.0) · M2 hecho (v1.16.0) · M3 hecho (v1.17.0)**. Las **decisiones** que
-> condicionan el orden están en el Apéndice A (A1-A5 cerradas; A6-A7 abiertas). **Solo contiene ajustes del framework**: las acciones sobre el proyecto
+> **M0 hecho (v1.14.1) · M1 hecho (v1.15.0) · M2 hecho (v1.16.0) · M3 hecho (v1.17.0) · M4 hecho (v1.18.0)**. Las **decisiones** que
+> condicionan el orden están en el Apéndice A (A1-A7 cerradas). **Solo contiene ajustes del framework**: las acciones sobre el proyecto
 > Psikora viven en su propio repo (`C:\Proyectos\Psikora\PLAN-SANEAMIENTO-SPECTURE-2026-08-28.md`).
 
 # Roadmap del framework Specture — v1.14.1 → v1.19
@@ -405,7 +405,13 @@ script de set, sin sello, sin overlay. Escenarios 1, 4, 5, 6, 7, 8 del diseño �
 *Objetivo: chequeos mecánicos del conjunto antes del validator, sello de specs, firmas
 verificadas por el reviewer, métricas que decidan. Escenarios 2, 3, 9-12.*
 
-- [ ] **29. `hooks/lib/spec-set-check.js` — chequeos mecánicos C1/C2*/C4/C5/C6 + token `MECH_CHECK` (D15, M5, C-8)**
+> **Hecho el 2026-09-07 (v1.18.0) sin los ~10 epics de datos**: el framework no los genera y
+> ningún proyecto consumidor los tenía. A6 y A7 se cerraron con las opciones conservadoras
+> (Apéndice A) y el ítem 34 embarca el instrumento (`build-metrics.jsonl` + lector con
+> `--baseline`) para que la lectura §6.5 se haga cuando los epics existan. Baseline
+> RED→GREEN en `docs/spec-planning-baseline-stage2.md`.
+
+- [x] **29. `hooks/lib/spec-set-check.js` — chequeos mecánicos C1/C2*/C4/C5/C6 + token `MECH_CHECK` (D15, M5, C-8)** · hecho 2026-09-07, v1.18.0 (`990f344`; gramática tolerante `1adba3e`) — `templates/PLANNING_TEMPLATE.md` fija la gramática de `_planning.md`; parser en `hooks/lib/planning.js`; C-path/C-gap/C-sup además de los cinco del diseño; `MECH_CHECK: PASS|FAIL|UNVERIFIABLE <sha12 de las filas>`; `--hash-only` y `--allowed-paths`; el ROADMAP_TEMPLATE gana gramática parseable para ops/RN y la línea `Template:`
   Invocado por el coordinador (`node "${CLAUDE_PLUGIN_ROOT}/hooks/lib/spec-set-check.js"
   <epic-dir> <epic-block-file>`; sin node → los mismos chequeos con `grep`). Lee la
   `COVERAGE_TABLE` de `_planning.md` + el bloque del epic. **C1** cada `operationId` del
@@ -421,7 +427,7 @@ verificadas por el reviewer, métricas que decidan. Escenarios 2, 3, 9-12.*
   en `hooks/test/`.
   `Fuente: gate-design §4.4 (4a), D15; gate-review M5 / C-8` · `Esfuerzo: medio` · `Depende de: 13, 21`
 
-- [ ] **30. Validator: Dimension 7 — C3, C8, C2 fallback; set vs por spec decidido con datos (D5, C-6)**
+- [x] **30. Validator: Dimension 7 — C3, C8, C2 fallback; set vs por spec decidido con datos (D5, C-6)** · hecho 2026-09-07, v1.18.0 (`b8630c1`) — A6 = **por spec + un dispatch de set** (C3/C7/C8/C2-fallback; C7 se muda del "primer dispatch por spec"); el set corre **antes** que los por-spec porque un rechazo C3/C7 reordena contenido entre specs; la consolidación en un dispatch único se decide con `reviewer_rejected_major_spec_defect`
   Candidato "spec-set de un epic": inputs = bloque del epic, todos los specs en orden (por
   path), slice del contrato, fuentes citadas en `RESOLVED_ALONE`, resultado de 4a. **C3**
   ningún ítem de "Fuera de Scope" sin dueño: lo cubre un hermano o el set lo declara
@@ -434,7 +440,7 @@ verificadas por el reviewer, métricas que decidan. Escenarios 2, 3, 9-12.*
   si sube, volver a dims 1-6 por spec y dejar solo C3/C7/C8 en el dispatch de set.
   `Fuente: gate-design §4.4 (4b), D5; gate-review C-6` · `Esfuerzo: bajo` · `Depende de: 29, 34`
 
-- [ ] **31. Sello de specs: `SPEC_SHA` + `spec_paths` en `build-locked.json` + hook (§4.8, D14, D17)**
+- [x] **31. Sello de specs: `SPEC_SHA` + `spec_paths` en `build-locked.json` + hook (§4.8, D14, D17)** · hecho 2026-09-07, v1.18.0 (`2846723`, junto al 36) — schema v3 (`spec_sha`, `spec_paths`, `test_globs`, `allowed_paths`, `supersede_paths`, `specs[]`; v1/v2 siguen leyéndose); nuevo `hooks/lib/seal-cli.js` como único escritor (`write` / `merge-spec` / `unseal-spec` / `supersede` / `release` / `show`); `specs[].test_paths` pasa a ser la **lista de archivos** del RED commit (prerrequisito del ítem 41); sin hooks, `git diff <SPEC_SHA>..HEAD -- specs` al procesar cualquier reporte → `REJECTED_MAJOR` escalado
   Tras el commit `docs(specs): plan <epic-slug> — N specs validados`, el coordinador
   escribe en el sello `{ epic, spec_sha, spec_paths, sealed_at }`; el epic-agent **fusiona**
   `red_sha` + `test_paths` (no sobreescribe); Step 8 lo borra (con la liberación verificada
@@ -448,7 +454,7 @@ verificadas por el reviewer, métricas que decidan. Escenarios 2, 3, 9-12.*
   `spec_sha`/`spec_paths`/`sealed_at`.
   `Fuente: gate-design §4.8, D14, D17, §6.2` · `Esfuerzo: bajo` · `Depende de: 11, 23`
 
-- [ ] **32. Reviewer Dim 1: los símbolos `Crea:` existen en HEAD con la firma declarada; overlay como re-lectura defensiva (M2, C-1, §4.7)**
+- [x] **32. Reviewer Dim 1: los símbolos `Crea:` existen en HEAD con la firma declarada; overlay como re-lectura defensiva (M2, C-1, §4.7)** · hecho 2026-09-07, v1.18.0 (`44a6f55`) — `Crea:` gana el slot obligatorio `— firma:` en `SPEC_TEMPLATE`; la re-lectura del epic-agent vive antes del Manifest del spec k+1 y una divergencia es `REJECTED_MINOR` del spec k, nunca una edición del spec
   El diseño original corregía firmas planeadas → reales con un **overlay** en el Manifest
   del spec k+1 (`FIRMAS_REALES: <símbolo> → <firma>` que prevalece sobre la "Superficie"):
   parche a un problema autoinfligido (planificar upfront vuelve *planeadas* las firmas que
@@ -462,7 +468,7 @@ verificadas por el reviewer, métricas que decidan. Escenarios 2, 3, 9-12.*
   `CONCERNS`), pero deja de ser el mecanismo de corrección.
   `Fuente: gate-review M2 / C-1; gate-design §4.7, D14` · `Esfuerzo: bajo` · `Depende de: 29`
 
-- [ ] **33. "Code Surface Resolution" — pre-flight del coordinador; el planner no lee código (M4, C-5)**
+- [x] **33. "Code Surface Resolution" — pre-flight del coordinador; el planner no lee código (M4, C-5)** · hecho 2026-09-07, v1.18.0 (`d7a3b55`) — subagente genérico haiku/sonnet de solo lectura con formato `SYMBOL | PATH | SIGNATURE` (o `grep` de exports por lenguaje), sin 8º agente; la tabla viaja como `CODE_SURFACE` y deja una línea resumen en `_planning.md`; el RED del escenario 9 mostró que con lectura acotada el código moldeaba preguntas, recomendadas y ACs
   La restricción "solo archivos que contienen los símbolos que la Superficie nombra" es
   circular (el planner decide qué símbolos nombra) y no enforzable. Tercera aplicación de
   la doctrina "el orquestador resuelve, el agente nunca lee" (Docs Index Resolution,
@@ -472,7 +478,7 @@ verificadas por el reviewer, métricas que decidan. Escenarios 2, 3, 9-12.*
   vuelve casi trivial.
   `Fuente: gate-review M4 / C-5` · `Esfuerzo: medio` · `Depende de: 19`
 
-- [ ] **34. Métricas por epic `docs/.specture-meta/build-metrics.jsonl` + lector (D20, §6.5, C-6, G7)**
+- [x] **34. Métricas por epic `docs/.specture-meta/build-metrics.jsonl` + lector (D20, §6.5, C-6, G7)** · hecho 2026-09-07, v1.18.0 (`11db77a`) — A7 = **trackear**: migración mecánica `1.18-metrics-tracked` (`docs/.specture-meta/*` + `!build-metrics.jsonl`, con `1.7-meta-gitignore` aceptando ambas formas); `hooks/lib/metrics-report.js` (resumen gate vs baseline + lectura §6.5 mecanizada; `--baseline --write` reconstruye desde reviews, `_planning.md` y git log); `code-reviewer` gana `CAUSE:` parseable; nuevo modo `knowledge stats`; campo `tokens` opcional (la regla de tokens queda como juicio: no hay harness)
   El coordinador registra una línea por epic (append-only, nunca bloquea): `ts, epic,
   specs, planner_dispatches, open_questions, resolved_alone, c7_rejections,
   mech_check_failures, validator_dispatches, validator_verdict, needs_context_spec,
@@ -489,7 +495,7 @@ verificadas por el reviewer, métricas que decidan. Escenarios 2, 3, 9-12.*
   con veredicto parseable (ítem 5): en Psikora 26 no lo tienen.
   `Fuente: gate-design §6.5, D20; gate-review C-6 / G7` · `Esfuerzo: bajo-medio` · `Depende de: 5, 21`
 
-- [ ] **35. Protocolo de supersesión de tests sellados y RED-fix; renombrar la referencia del framework (N6)**
+- [x] **35. Protocolo de supersesión de tests sellados y RED-fix; renombrar la referencia del framework (N6)** · hecho 2026-09-07, v1.18.0 (`ee3278c`) — sección "Supersesiones de tests sellados" en los dos templates de spec + fila `sup:` + C-sup mecánico; commit `test(supersede)` previo al RED por el `tdd-test-writer` (`SUPERSEDE_SHA`), `seal-cli supersede` levanta el deny solo para esos paths durante el dispatch; registro por epic en `_planning.md` § SUPERSESIONES + índice `docs/05-specs/_supersessions.md`; RED-fix y remediación retroactiva formalizados en `docs/tdd-honesty-reference.md` (renombrado; citas con `$SPECTURE_ROOT`)
   Formaliza lo que Psikora inventó en un ledger de 9.463 líneas: (1) supersesión sancionada
   de tests de un epic anterior por un epic posterior, (2) remediación retroactiva de epics
   cerrados sin RED real, (3) RED-fix auditado cuando el test sellado estaba mal.
@@ -502,14 +508,14 @@ verificadas por el reviewer, métricas que decidan. Escenarios 2, 3, 9-12.*
   ledger del proyecto, no la referencia de 75 líneas.
   `Fuente: psikora-review N6 / §2.6` · `Esfuerzo: medio` · `Depende de: 21, 31`
 
-- [ ] **36. Hook `allowed_paths`: "cero código sin spec" mecánico durante GREEN (G5)**
+- [x] **36. Hook `allowed_paths`: "cero código sin spec" mecánico durante GREEN (G5)** · hecho 2026-09-07, v1.18.0 (`2846723`, junto al 31) — `allowed_paths` = unión de `Crea:`/`Modifica:` (`spec-set-check.js --allowed-paths`; `Modifica:` es línea nueva del template); deny "Allowed Paths" en los tres hooks solo fuera de `docs/**` y `.specture/**` y solo si el sello los lleva (fail open); escape = `BLOCKED: spec <ID>` → loop de corrección; Iron Rule nueva en `implementer` y `ux-implementer`; riesgo vigilado: `blocked_spec` en las métricas (si sube por archivos de wiring, `always_allowed` por proyecto en un patch)
   `integration-claude-native.md:179` lo listó como #7. El hook bloquea tests; nada impide
   escribir fuera de los paths del spec. La Superficie ya declara `Crea:`/`Llama a:` con
   paths → `build-locked.json` lleva `allowed_paths` y el hook (guard + matcher existentes)
   deniega `Write` fuera de ellos durante GREEN. Misma release que extiende el sello.
   `Fuente: gate-review G5` · `Esfuerzo: 1 día` · `Depende de: 31`
 
-- [ ] **37. Baseline `write-skill` — escenarios 2, 3, 9, 10, 11, 12 (§6.1) + huecos menores (C-9)**
+- [x] **37. Baseline `write-skill` — escenarios 2, 3, 9, 10, 11, 12 (§6.1) + huecos menores (C-9)** · hecho 2026-09-07, v1.18.0 (RED `4bc30c3` → C-9a `05385da` → GREEN `de4d104`, REFACTOR `1adba3e`; `docs/spec-planning-baseline-stage2.md`) — 6/6 PASAN: 2/3/11/12 mecánicos, 9/10 conductuales con el planner v1.18.0; el RED de 9 mostró el código moldeando preguntas y ACs, el de 10 la gramática inventada; C-9a = `GAP-nnn` + `gap:` + `AC-n` en el template de migración; C-9b = brecha de espejos documentada en `docs/copilot-cli-plugin.md` (generarlos es el ítem 40)
   (2) Hueco de cobertura: epic con 3 `operationId`s, specs implementan 2 → C1 en 4a sin
   gastar validator. (3) Handoff de firmas: spec 2 consume `crearCita(paciente, fecha)`,
   spec 1 crea `crearCita(dto)` → C4. (9) Superficie sin comportamiento → C8 limpio. (10)
@@ -568,8 +574,9 @@ teniendo verdad viva, reglas cortas y paridad entre plataformas.*
 - [ ] **41. RED de todos los specs en paralelo tras el sello**
   El gate lo habilita (los tests solo necesitan los specs); requiere sello **por lista de
   archivos, no por glob** (con varios RED commits, `git diff RED_SHA_1..HEAD -- <globs>`
-  vería los tests de los specs siguientes como violación). Optimización de wall-clock;
-  medir primero.
+  vería los tests de los specs siguientes como violación) — **ya cumplido en v1.18.0**
+  (ítem 31: `seal-cli merge-spec` guarda la lista de archivos del RED commit). Optimización
+  de wall-clock; medir primero.
   `Fuente: gate-review §3 P4` · `Esfuerzo: medio` · `Depende de: 31, 34`
 
 - [ ] **42. `docs/worktree-epic-isolation-design.md` — rama por epic**
@@ -584,8 +591,10 @@ teniendo verdad viva, reglas cortas y paridad entre plataformas.*
 ## Apéndice A — Decisiones que condicionan el orden
 
 > **A1-A5 cerradas el 2026-08-28** (la recomendación fue aceptada en las cinco; ver
-> `docs/doctor-and-migrations-design.md`). **A6 y A7 siguen abiertas** — se deciden con
-> datos de la etapa 1 del gate (M3).
+> `docs/doctor-and-migrations-design.md`). **A6 y A7 cerradas el 2026-09-07** sin los ~10
+> epics de datos (no existían): A6 = dims 1-6 por spec + un dispatch de set (C3/C7/C8/C2-fallback),
+> con la consolidación en un dispatch único diferida a `reviewer_rejected_major_spec_defect`;
+> A7 = trackear (migración `1.18-metrics-tracked`).
 
 | # | Decisión | Opciones | Recomendación | Bloquea |
 |---|---|---|---|---|
@@ -594,8 +603,8 @@ teniendo verdad viva, reglas cortas y paridad entre plataformas.*
 | A3 | Alcance de `doctor` v1 | `check` + catálogo + `mechanical` + las dos `assisted` de v1.6, `content` solo agendado · incluir ya el backfill lazy | agendar; el backfill (38) es release propia | 7, 8 |
 | A4 | `doctor sync` en CI | sí (falla en ERROR, avisa en WARNING) · no | sí | 8, 12 |
 | A5 | Orden doctor → gate | confirmar que el doctor (Milestone 1) va antes de los prerrequisitos y del gate | confirmar — sin doctor el gate llega "a medias" por cuarta vez | 13-37 |
-| A6 | Validator de set vs por spec (etapa 2) | un dispatch por epic (dims 1-6 + 7) · dims 1-6 por spec + set solo para C3/C7/C8 | decidir con `reviewer_rejected_major_spec_defect` de ~10 epics | 30 |
-| A7 | `build-metrics.jsonl` trackeado o local | trackear (evidencia de proceso) · gitignoreado como el resto de `.specture-meta/` | trackear | 34 |
+| A6 | Validator de set vs por spec (etapa 2) | un dispatch por epic (dims 1-6 + 7) · dims 1-6 por spec + set solo para C3/C7/C8 | **cerrada (v1.18.0): por spec + set reducido**; consolidar solo si `reviewer_rejected_major_spec_defect` no sube tras ~10 epics con gate | 30 |
+| A7 | `build-metrics.jsonl` trackeado o local | trackear (evidencia de proceso) · gitignoreado como el resto de `.specture-meta/` | **cerrada (v1.18.0): trackear** — migración `1.18-metrics-tracked` | 34 |
 
 ## Apéndice B — Acciones sobre el proyecto Psikora
 
