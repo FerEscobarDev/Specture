@@ -80,6 +80,36 @@ test("classify: precedence test → spec → allowed, docs/ and .specture/ never
   assert.equal(seal.classify("archivador_api\\src\\pagos\\x.js", s).kind, "allowed", "backslashes normalized");
 });
 
+test("classify: a sealed test INSIDE an allowed_paths directory is still a test deny (precedence over the allow-list union)", () => {
+  const s = seal.readSeal(projectWith({ ...V3, allowed_paths: ["tests/notas/", "archivador_api/src/notas/"] }));
+  const hit = seal.classify("tests/notas/modelo-nota.test.js", s);
+  assert.equal(hit.kind, "test");
+  assert.equal(hit.spec.red_sha, "red111");
+  assert.equal(seal.classify("tests/notas/otro.test.js", s), null, "an unsealed test under the allowed dir is writable");
+  const specInAllowed = seal.readSeal(projectWith({ ...V3, allowed_paths: ["docs/05-specs/"] }));
+  assert.equal(seal.classify("docs/05-specs/epic-1.2-notas/01-modelo-nota.spec.md", specInAllowed).kind, "spec", "spec seal wins over allowed_paths too");
+});
+
+test("relativize: inside the root, the root itself, outside the root — native and backslash separators", () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "specture-rel-"));
+  temporaryDirectories.push(root);
+  assert.equal(seal.relativize(path.join(root, "tests", "a.test.js"), root), "tests/a.test.js");
+  assert.equal(seal.relativize(root, root), "");
+  const outside = path.join(path.dirname(root), "elsewhere", "b.js");
+  assert.equal(seal.relativize(outside, root), path.resolve(outside).replace(/\\/g, "/"), "outside the root the absolute path is kept, posix-style");
+  if (process.platform === "win32") {
+    assert.equal(seal.relativize(root + "\\tests\\notas\\c.test.js", root), "tests/notas/c.test.js");
+    assert.equal(seal.relativize(root.replace(/\\/g, "/") + "/tests/d.test.js", root), "tests/d.test.js", "forward slashes on Windows");
+  }
+  // a path outside the project is never governed by the seal — not even by a matching glob
+  const s = seal.readSeal(projectWith({ ...V3, specs: [{ slug: "01", red_sha: "r", test_paths: ["tests/**"] }] }));
+  assert.equal(seal.isOutsideProject("/other/tests/a.test.js"), true);
+  assert.equal(seal.isOutsideProject("C:/other/tests/a.test.js"), true);
+  assert.equal(seal.isOutsideProject("tests/a.test.js"), false);
+  assert.equal(seal.classify("/other/tests/a.test.js", s), null);
+  assert.equal(seal.classify("C:/other/src/x.js", s), null);
+});
+
 test("without allowed_paths nothing outside the surface is denied (fail open, as before)", () => {
   const s = seal.readSeal(projectWith({ ...V3, allowed_paths: [] }));
   assert.equal(seal.classify("archivador_api/src/pagos/service.js", s), null);

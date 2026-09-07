@@ -143,4 +143,13 @@ test("v3: denies a sealed spec and a write outside allowed_paths with the shared
     input: JSON.stringify({ hook_event_name: "PreToolUse", tool_input: { TargetFile: path.join(projectRoot, "src", "billing", "y.js") } })
   });
   assert.match(JSON.parse(agy.stdout).permissionDecisionReason, /Allowed Paths/);
+
+  // stale v3 seal (no epic [/]) → all three kinds fail open with the reason on stderr
+  fs.writeFileSync(path.join(projectRoot, "docs", "04-roadmap", "ROADMAP.md"), "- [x] **Epic 1.2:** notas\n");
+  for (const rel of [["docs", "05-specs", "epic-1.2-notas", "01-modelo-nota.spec.md"], ["src", "billing", "x.js"], ["tests", "notas", "modelo-nota.test.js"]]) {
+    const stale = runHook(projectRoot, path.join(projectRoot, ...rel));
+    assert.equal(stale.status, 0);
+    assert.equal(stale.stdout, "", rel.join("/"));
+    assert.match(stale.stderr, /stale seal/);
+  }
 });

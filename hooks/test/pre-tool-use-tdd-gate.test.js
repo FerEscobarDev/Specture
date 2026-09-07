@@ -134,6 +134,19 @@ test("v3: allowed_paths denies production code outside the declared surface, nev
   assert.match(reason("docs/05-specs/epic-1.2-notas/01-modelo-nota.spec.md"), /Spec Seal/);
 });
 
+test("v3: an absolute file_path with the platform's native separators is relativized before matching", () => {
+  const projectRoot = createProject({ state: V3_STATE, roadmap: IN_PROGRESS });
+  const native = path.join(projectRoot, "tests", "notas", "modelo-nota.test.js"); // backslashes on Windows, slashes on posix
+  const { json } = runHook(projectRoot, native);
+  assert.equal(json.hookSpecificOutput.permissionDecision, "deny");
+  assert.match(json.hookSpecificOutput.permissionDecisionReason, /`tests\/notas\/modelo-nota\.test\.js`/, "the message always shows the posix project-relative path");
+  if (process.platform === "win32") {
+    const forward = projectRoot.replace(/\\/g, "/") + "/docs/05-specs/epic-1.2-notas/01-modelo-nota.spec.md";
+    assert.match(runHook(projectRoot, forward).json.hookSpecificOutput.permissionDecisionReason, /Spec Seal/, "forward-slash absolute paths on Windows");
+  }
+  assert.equal(runHook(projectRoot, path.join(path.dirname(projectRoot), "elsewhere", "x.test.js")).stdout, "", "a path outside the project never matches");
+});
+
 test("v3: a stale seal fails open with a reason for all three kinds; supersede_paths lifts only the test deny", () => {
   const stale = createProject({ state: V3_STATE, roadmap: "- [x] **Epic 1.2:** notas\n" });
   for (const rel of ["tests/notas/modelo-nota.test.js", "docs/05-specs/epic-1.2-notas/01-modelo-nota.spec.md", "src/billing/x.js"]) {

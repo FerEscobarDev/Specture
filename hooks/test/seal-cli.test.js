@@ -98,6 +98,23 @@ test("merge-spec without a seal creates a specs[]-only seal; write over another 
   assert.deepEqual(state.specs, []);
 });
 
+test("show prints the seal (or 'no seal'); supersede accepts comma lists and repeated flags", () => {
+  const root = createProject();
+  assert.equal(cli(root, "show").stdout.trim(), "no seal");
+  cli(root, "write", "--epic", "e", "--spec-sha", "s1", "--spec-paths", "docs/05-specs/e/*.spec.md");
+  const shown = JSON.parse(cli(root, "show").stdout);
+  assert.equal(shown.epic, "e");
+  assert.equal(shown.spec_sha, "s1");
+  assert.deepEqual(shown.specs, []);
+
+  assert.equal(cli(root, "supersede", "--paths", "tests/old/a.test.js, tests/old/b.test.js").status, 0);
+  assert.deepEqual(readState(root).supersede_paths, ["tests/old/a.test.js", "tests/old/b.test.js"]);
+  assert.equal(cli(root, "supersede", "--paths", "tests/old/c.test.js", "--paths", "tests\\old\\d.test.js").status, 0);
+  assert.deepEqual(readState(root).supersede_paths, ["tests/old/c.test.js", "tests/old/d.test.js"], "repeated flags accumulate; backslashes become posix");
+  assert.equal(cli(root, "supersede", "--clear").status, 0);
+  assert.deepEqual(readState(root).supersede_paths, []);
+});
+
 test("corrupt seal → exit 1; missing required flag or unknown command → exit 2", () => {
   const root = createProject();
   fs.mkdirSync(path.join(root, ".specture", "state"), { recursive: true });

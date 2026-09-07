@@ -110,6 +110,34 @@ test("a seal whose epic is [/] is accepted; a project without settings.yml is re
   assert.equal(json.findings.filter((f) => f.check.startsWith("seal-")).length, 0);
 });
 
+test("a v3 seal (spec_sha/spec_paths/allowed_paths, no specs[]) is accepted while its epic is [/] and reported stale afterwards", () => {
+  const V3 = JSON.stringify({
+    epic: "epic-1.1-scaffold",
+    sealed_at: "2026-09-07T10:00:00Z",
+    spec_sha: "abc1234",
+    spec_paths: ["docs/05-specs/epic-1.1-scaffold/*.spec.md"],
+    test_globs: ["tests/**/*.test.js", "tests/**"],
+    allowed_paths: ["src/scaffold/"],
+    supersede_paths: [],
+    specs: []
+  });
+  const inProgress = createProject({ ...CLEAN, ".specture/state/build-locked.json": V3, "docs/04-roadmap/ROADMAP.md": "### Milestone 1: Foundation\n\n- [/] **Epic 1.1:** Scaffold\n" });
+  assert.deepEqual(runDoctor(inProgress).json.findings.filter((f) => f.check.startsWith("seal-")), []);
+
+  const otherEpic = createProject({ ...CLEAN, ".specture/state/build-locked.json": V3, "docs/04-roadmap/ROADMAP.md": "### Milestone 1: Foundation\n\n- [x] **Epic 1.1:** Scaffold\n- [/] **Epic 1.2:** Notas\n" });
+  const mismatch = runDoctor(otherEpic).json.findings.find((f) => f.check === "seal-mismatch");
+  assert.ok(mismatch, "a seal for epic 1.1 while epic 1.2 is [/] is a mismatch");
+  assert.match(mismatch.action, /seal-cli\.js show/);
+
+  const closed = createProject({ ...CLEAN, ".specture/state/build-locked.json": V3, "docs/04-roadmap/ROADMAP.md": "### Milestone 1: Foundation\n\n- [x] **Epic 1.1:** Scaffold\n" });
+  const { status, json } = runDoctor(closed);
+  const stale = json.findings.find((f) => f.check === "seal-stale");
+  assert.equal(status, 1);
+  assert.ok(stale, JSON.stringify(json.findings));
+  assert.match(stale.detail, /sealed tests, specs and allowed paths/);
+  assert.match(stale.action, /seal-cli\.js.*release/);
+});
+
 test("--brief prints a one-line summary", () => {
   const projectRoot = createProject(CLEAN);
   const result = spawnSync(process.execPath, [doctorPath, "check", "--project", projectRoot, "--brief"], { encoding: "utf8" });
