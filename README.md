@@ -163,6 +163,7 @@ $SPECTURE_ROOT/
 ├── scripts/bump-version.js            # Sincroniza la versión en los 4 manifiestos; --check · --title · --notes
 ├── scripts/doctor.js                  # CLI del doctor: check · migrate · sync (también usable desde la CI de un proyecto)
 ├── scripts/schema-manifest.js         # Hash de los archivos que definen el esquema del proyecto (gate de release)
+├── scripts/baseline-fixture.js        # Regenera el scratch "Archivador" de los baselines del gate (--stage 1|2, --git); árbol en scripts/baseline-fixture/
 ├── migrations/                        # Catálogo de migraciones <since>-<slug>.js + schema-manifest.json + tests
 ├── hooks/
 │   ├── README.md                      # Cómo funcionan, schema de build-locked.json, troubleshooting

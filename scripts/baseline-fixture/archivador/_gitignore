@@ -1,0 +1,4 @@
+node_modules/
+.specture/state/
+docs/.specture-meta/*
+!docs/.specture-meta/build-metrics.jsonl

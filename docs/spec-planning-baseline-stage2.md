@@ -30,8 +30,10 @@ carnada del escenario 2), **Epic 1.2 Notas** (2 specs a mano: el spec 1 crea
 — escenario 9), **Epic 2.1** con `Template: MIGRATION_SPEC_TEMPLATE.md` + `gap_analysis.md`
 (escenario 10), **Epic 3.1** página frontend que consume `listarArchivos` (escenario 11). Los
 actores juegan su rol con el `AGENT.md` real de v1.17.0 leído desde disco y reportan un
-`DEBRIEF` en primera persona — esas son las racionalizaciones RED. El fixture vive fuera del
-repo (scratchpad de la sesión), como el "Archivador" de la etapa 1.
+`DEBRIEF` en primera persona — esas son las racionalizaciones RED. El fixture se regenera con
+`node scripts/baseline-fixture.js <dir> --git` (árbol fuente en `scripts/baseline-fixture/archivador/`,
+desde v1.18.1; el generador imprime los comandos de los escenarios mecánicos) — hasta v1.18.0
+vivía solo en el scratchpad de la sesión, como el "Archivador" de la etapa 1.
 
 ## Escenario 2 — Hueco de cobertura (epic con 3 `operationId`s, specs implementan 2)
 

@@ -1,0 +1,7 @@
+schema_version: "[PLUGIN_VERSION]"
+profile: custom
+hooks.enabled: false
+context7.enabled: false
+docs_index.enabled: false
+docs_index.max_entries_per_dispatch: 3
+knowledge.enabled: false

@@ -4,7 +4,8 @@
 > operaciones, carnadas descritas por escenario). Metodología: `skills/write-skill/SKILL.md`
 > (RED → GREEN → REFACTOR). Los escenarios son los 1/4/5/6/7/8 de
 > `docs/spec-planning-gate-design.md` §6.1 (2/3/9-12 son de la etapa 2, ítem 37 —
-> baseline propio en `docs/spec-planning-baseline-stage2.md`, v1.18.0).
+> baseline propio en `docs/spec-planning-baseline-stage2.md`, v1.18.0). El scratch se
+> regenera con `node scripts/baseline-fixture.js <dir> --stage 1 --git` (v1.18.1).
 
 # Baseline del Spec Planning Gate — escenarios de presión, etapa 1
 

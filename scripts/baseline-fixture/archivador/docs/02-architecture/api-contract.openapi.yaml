@@ -1,0 +1,57 @@
+openapi: 3.1.0
+info: { title: Archivador API, version: 1.0.0 }
+components:
+  parameters:
+    EmployeeId: { name: X-Employee-Id, in: header, required: true, schema: { type: string } }
+  schemas:
+    ErrorEnvelope:
+      type: object
+      properties: { error: { type: object, properties: { code: { type: string }, message: { type: string } } } }
+    Archivo:
+      type: object
+      properties: { id: { type: string }, nombre: { type: string }, tipo: { type: string }, tamanoBytes: { type: integer }, subidoEn: { type: string, format: date-time } }
+    Nota:
+      type: object
+      properties: { id: { type: string }, titulo: { type: string }, cuerpo: { type: string }, creadaEn: { type: string, format: date-time } }
+paths:
+  /archivos:
+    post:
+      operationId: subirArchivo
+      parameters: [ { $ref: "#/components/parameters/EmployeeId" } ]
+      requestBody: { content: { application/json: { schema: { type: object, required: [nombre, tipo, contenidoBase64], properties: { nombre: { type: string }, tipo: { type: string }, contenidoBase64: { type: string } } } } } }
+      responses:
+        "201": { content: { application/json: { schema: { $ref: "#/components/schemas/Archivo" } } } }
+        "400": { content: { application/json: { schema: { $ref: "#/components/schemas/ErrorEnvelope" } } } }
+        "401": { content: { application/json: { schema: { $ref: "#/components/schemas/ErrorEnvelope" } } } }
+    get:
+      operationId: listarArchivos
+      parameters: [ { $ref: "#/components/parameters/EmployeeId" } ]
+      responses:
+        "200": { content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/Archivo" } } } } }
+        "401": { content: { application/json: { schema: { $ref: "#/components/schemas/ErrorEnvelope" } } } }
+  /archivos/{id}:
+    delete:
+      operationId: eliminarArchivo
+      parameters: [ { $ref: "#/components/parameters/EmployeeId" }, { name: id, in: path, required: true, schema: { type: string } } ]
+      responses:
+        "204": { description: eliminado }
+        "404": { content: { application/json: { schema: { $ref: "#/components/schemas/ErrorEnvelope" } } } }
+  /archivos/{id}/etiquetas:
+    post:
+      operationId: asignarEtiqueta
+      parameters: [ { $ref: "#/components/parameters/EmployeeId" }, { name: id, in: path, required: true, schema: { type: string } } ]
+      requestBody: { content: { application/json: { schema: { type: object, required: [nombre], properties: { nombre: { type: string } } } } } }
+      responses:
+        "201": { content: { application/json: { schema: { type: object, properties: { id: { type: string }, nombre: { type: string } } } } } }
+        "400": { content: { application/json: { schema: { $ref: "#/components/schemas/ErrorEnvelope" } } } }
+        "404": { content: { application/json: { schema: { $ref: "#/components/schemas/ErrorEnvelope" } } } }
+        "409": { content: { application/json: { schema: { $ref: "#/components/schemas/ErrorEnvelope" } } } }
+  /notas:
+    post:
+      operationId: crearNota
+      parameters: [ { $ref: "#/components/parameters/EmployeeId" } ]
+      requestBody: { content: { application/json: { schema: { type: object, required: [titulo, cuerpo], properties: { titulo: { type: string }, cuerpo: { type: string } } } } } }
+      responses:
+        "201": { content: { application/json: { schema: { $ref: "#/components/schemas/Nota" } } } }
+        "400": { content: { application/json: { schema: { $ref: "#/components/schemas/ErrorEnvelope" } } } }
+        "409": { content: { application/json: { schema: { $ref: "#/components/schemas/ErrorEnvelope" } } } }

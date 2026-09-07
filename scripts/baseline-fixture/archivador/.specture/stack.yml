@@ -1,0 +1,64 @@
+# Specture — Project Stack Configuration (fixture Archivador v2)
+project:
+  name: "Archivador"
+  slug: "archivador"
+  type: "web"
+  description: "Archivo personal de documentos y notas por empleado"
+
+backend:
+  language: "javascript"
+  runtime: "node 22"
+  framework: "express"
+  package_manager: "npm"
+  testing_framework: "vitest"
+
+database:
+  primary: "postgresql"
+  orm_or_driver: "pg"
+  cache: "none"
+  search: "none"
+
+frontend:
+  framework: "react"
+  language: "typescript"
+  ui_library: "tailwind-only"
+  styling: "tailwind"
+  state_management: "none"
+  testing_framework: "vitest"
+  ui_defined: false
+
+api:
+  style: "rest"
+  contract_file: "docs/02-architecture/api-contract.openapi.yaml"
+
+architecture:
+  pattern: "modular-monolith"
+  module_strategy: "by-feature"
+  uses_ddd: false
+  uses_cqrs: false
+  uses_event_driven: false
+
+structure:
+  root_layout: by-app-suffix
+  apps:
+    api: "{slug}_api"
+    app: "{slug}_app"
+
+devops:
+  containerization: "docker"
+  ci_cd: "github-actions"
+  hosting: "self-hosted"
+
+quality:
+  linter: "eslint"
+  formatter: "prettier"
+  type_checker: "none"
+
+migration:
+  source: "node callbacks (errback) en archivador_api/src/tags"
+  target: "async/await con Promises nativas"
+  characterization_sha: "c0ffee0"
+  scope: "solo el modulo tags"
+
+conventions_file: ".specture/conventions.md"
+decisions_dir: ".specture/decisions/"
