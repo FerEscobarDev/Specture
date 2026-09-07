@@ -80,7 +80,7 @@ node "${PLUGIN_ROOT}/hooks/lib/seal-cli.js" write|merge-spec|unseal-spec|superse
 node "${PLUGIN_ROOT}/hooks/lib/metrics-report.js" --project . [--baseline --write]                                        # knowledge stats
 ```
 
-**Brecha conocida de los espejos (C-9b):** `copilot/agents/*.agent.md` tienen 16-30 líneas frente a las 100-300 de `agents/*/AGENT.md`; llevan las reglas de significado (no leer código, gramática de la `COVERAGE_TABLE`, chequeos de set, firmas `Crea:` + `CAUSE:`), pero no las tablas de racionalizaciones ni los worked examples. Generarlos desde `AGENT.md` es el ítem 40 del roadmap del framework.
+**Brecha conocida de los espejos (C-9b):** `copilot/agents/*.agent.md` tienen 16-30 líneas frente a las 100-300 de `agents/*/AGENT.md`. Desde v1.18.1 los seis llevan las reglas de significado de v1.18.0 (planner: no leer código y gramática de la `COVERAGE_TABLE`; validator: `MECH_CHECK` y chequeos de set; reviewer: firmas `Crea:` + `CAUSE:`; tdd-test-writer: supersesiones declaradas y `SUPERSEDE:`; implementer y ux-implementer: escribir solo dentro de `Crea:`/`Modifica:`), pero no las tablas de racionalizaciones, los worked examples ni los formatos completos de salida — y `hooks/test/copilot-plugin-contract.test.js` solo verifica que cada espejo exista, no que diga lo mismo. Generarlos desde `AGENT.md` es el ítem 40 del roadmap del framework.
 
 ---
 
