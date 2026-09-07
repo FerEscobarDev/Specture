@@ -35,6 +35,8 @@ This skill **fuses** what was previously split into "planificación", "ejecució
 | `.specture/docs-index.yml` with `docs_index.enabled` | Docs Index Resolution passes `[]`. |
 | The contract file (`stack.yml.api.contract_file`) + its readable companion `docs/02-architecture/api-contract.md` | Validator Dimension 6 cannot run; frontend epics cannot slice the contract. |
 | `.specture/settings.yml` | Toggles are read from the legacy `conventions.md` §10; if absent there too, defaults apply (hooks off, knowledge off). |
+| Node ≥ 22 on `PATH` | Gate step 4a falls back to the three `grep` checks (`MECH_CHECK: MANUAL`); the seal cannot be written (`seal-cli.js`) — and the hooks, node scripts themselves, are inert anyway — so the epic runs without mechanical denies: the `git diff <RED_SHA>..HEAD` of Step 5.5, the `git diff <SPEC_SHA>..HEAD` of report processing and reviewer Dimension 1 remain the defenses; `metrics-report.js` cannot run (the metrics line is still appended by hand). Say it once: *"Node ≥ 22 no disponible — sin sello ni chequeo mecánico; quedan los git diff"*. |
+| `templates/PLANNING_TEMPLATE.md` (framework file) | The planner cannot write `_planning.md` with the parseable grammar → 4a `UNVERIFIABLE`. A missing framework template is a broken install — reinstall the plugin; never hand-write the grammar. |
 
 **Zero silent fallbacks.** Every resolver (in this file and in `build/EPIC_LOOP.md`) keeps its fallback behaviour, but the **first** time in a session it returns empty because the artifact is missing, print one line and continue:
 
@@ -47,6 +49,7 @@ This skill **fuses** what was previously split into "planificación", "ejecució
 Before proceeding, you must ensure specialized agents are registered in your environment. Check your available tools:
 - **If you have the `define_subagent` tool (Antigravity CLI):** You MUST dynamically register the subagents before doing anything else. Read the `name`, `description`, and content (`system_prompt`) of the `AGENT.md` files located in the `agents/` directory (for `spec-planner`, `architecture-validator`, `tdd-test-writer`, `implementer`, `ux-implementer`, and `code-reviewer`), and call `define_subagent` for each one to make them available to this session.
 - **If you do NOT have the `define_subagent` tool (Claude Code):** The agents are already statically registered by the system. You may proceed directly.
+- **Script paths:** every `node "${CLAUDE_PLUGIN_ROOT}/…"` in this file and in `build/EPIC_LOOP.md` (`hooks/lib/spec-set-check.js`, `hooks/lib/seal-cli.js`, `hooks/lib/metrics-report.js`, `scripts/doctor.js`) is `${PLUGIN_ROOT}` on Copilot / Antigravity and `$SPECTURE_ROOT` in manual `@import` setups — the same rule as `start` Step 0.
 
 ## Execution Model — Sequential Queue
 

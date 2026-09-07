@@ -1,5 +1,5 @@
 > **Estado: IMPLEMENTADO en v1.4.0; consolidado en v1.8.0; partido en v1.16.0** (el
-> procedimiento del epic-agent — Steps 2–8, Manifest, resoluciones, gate 5.5, Iteration Cap,
+> procedimiento del epic-agent — Steps 2–8 (4–8 desde v1.17.0), Manifest, resoluciones, gate 5.5, Iteration Cap,
 > anti-patterns — vive ahora en `skills/build/EPIC_LOOP.md`, único archivo que recibe el
 > epic-agent; `build/SKILL.md` queda solo coordinador). **Desde v1.17.0 el epic-agent ya
 > no genera specs**: ejecuta Steps 4-8 — la planificación vive en el Spec Planning Gate del

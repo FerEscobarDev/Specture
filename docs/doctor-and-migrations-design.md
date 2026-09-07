@@ -37,7 +37,7 @@ recibe la mitad de la feature.
 | 2026-08-21 | `fb0530da` "pone al día para v1.13.0": sintaxis parseable de `Dependencias`, retiro de `max_parallel_epics` | v1.13 | 2 meses después de v1.9 |
 | 2026-08-27 | lápidas "adoptadas a medias"; el intento del 08-22 **perdió 94 IDs de epic** | v1.14 | lápidas apuntan a `archive/`, no a `_current/` (inexistente) |
 | **nunca** | v1.6 **"Capacidades de Frontera"** + marca `Exposición` en HU (0 ocurrencias en `business_requirements.md`) | — | la Dimensión 6 del validator (cobertura bidireccional) **jamás pudo correr**; `conventions.md` §14 documenta el resultado: el contrato describía el 0 % de las respuestas durante meses |
-| **nunca** | v1.7 gitignore de `docs/.specture-meta/` | — | `learn-history.jsonl` está trackeado |
+| **nunca** | v1.7 gitignore de `docs/.specture-meta/` | — | `learn-history.jsonl` está trackeado *(desde v1.18.0 la forma es `docs/.specture-meta/*` + `!build-metrics.jsonl`: las métricas del build sí se trackean — migración `1.18-metrics-tracked`)* |
 
 Tres instancias de "mitad de feature = peor que nada":
 1. **Lápidas sin `_current/`**: `ROADMAP_TEMPLATE.md` manda apuntar la lápida a `_current/`;
@@ -101,7 +101,7 @@ Catálogo inicial (lo que Psikora necesitaría hoy):
 | `1.2-state-gitignore` | mechanical | `.specture/state/` ∉ `.gitignore` | agregar |
 | `1.6-boundary-capabilities` | assisted | `business_requirements.md` sin "Capacidades de Frontera" / HU sin `Exposición` | proponer la sección derivándola de las HU + las operaciones del contrato (traza inversa `operationId → HU`) |
 | `1.6-contract-companion` | assisted | `api.contract_file` existe y no hay compañero legible | generar `api-contract.md` desde el OpenAPI (tabla de operaciones + trazabilidad vacía para completar) |
-| `1.7-meta-gitignore` | mechanical | `docs/.specture-meta/` ∉ `.gitignore` | agregar (+ `git rm --cached` propuesto, no ejecutado) |
+| `1.7-meta-gitignore` | mechanical | ni `docs/.specture-meta/` ni `docs/.specture-meta/*` ∈ `.gitignore` | agregar (+ `git rm --cached` propuesto, no ejecutado); no re-agrega la forma directorio sobre la forma glob de 1.18 |
 | `1.8-drop-parallel-toggle` | mechanical | `build.max_parallel_epics` presente | eliminar la línea |
 | `1.9-dependencies-syntax` | assisted | líneas `Dependencias:` que no parsean | proponer reescritura línea a línea |
 | `1.9-current-state-init` | **content** | `_current/` ausente ∧ milestones `[x]` > 0 | agendar backfill **lazy por componente** (N1) — el doctor solo lo reporta con dueño |
@@ -111,6 +111,9 @@ Catálogo inicial (lo que Psikora necesitaría hoy):
 | `1.12-structure-block` | assisted | `stack.yml` sin `structure` | proponer `slug` + `apps` desde las carpetas existentes que calcen `{slug}_<rol>` |
 | `1.15-settings-file` | mechanical | toggles en `conventions.md` §10 o "Settings" | mover a `.specture/settings.yml` (N8); dejar puntero |
 | `1.15-schema-version` | mechanical | sin `schema_version` | inferir por `detect()` de todas las anteriores y escribir |
+| `1.16-requirements-ids` *(v1.16.0)* | assisted | reglas/casos/exclusiones sin `RN/CL/FA-nnn` | proponer los IDs estables en Plan mode |
+| `1.16-requirements-merge` *(v1.16.0)* | assisted | `feature-*.md` o secciones "Adenda" | fusionar por sección en `business_requirements.md`, borrar borradores |
+| `1.18-metrics-tracked` *(v1.18.0)* | mechanical | `.gitignore` sin `docs/.specture-meta/*` + `!docs/.specture-meta/build-metrics.jsonl` | reescribir la entrada (git no re-incluye bajo un directorio ignorado) y sugerir `git add` del archivo si existe |
 
 ### 4.3 Enganche en `start` (Step 0, una lectura de un campo)
 

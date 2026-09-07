@@ -196,7 +196,7 @@ $SPECTURE_ROOT/
 │   ├── new-feature/SKILL.md
 │   ├── verify/SKILL.md
 │   ├── write-skill/SKILL.md
-│   ├── knowledge/SKILL.md             # Higiene de conocimiento — modos capture (ex-learn) + audit (ex-audit-knowledge)
+│   ├── knowledge/SKILL.md             # Higiene de conocimiento — modos capture (ex-learn) + audit (ex-audit-knowledge) + stats (métricas del build)
 │   ├── learn/SKILL.md                 # Alias → knowledge (capture), backward-compat
 │   ├── audit-knowledge/SKILL.md       # Alias → knowledge (audit), backward-compat
 │   ├── modernize/SKILL.md
@@ -221,6 +221,9 @@ $SPECTURE_ROOT/
 │   ├── api-contract.openapi.template.yaml
 │   ├── ROADMAP_TEMPLATE.md
 │   ├── SPEC_TEMPLATE.md
+│   ├── MIGRATION_SPEC_TEMPLATE.md     # Specs de epics de migración (modernize): AC-n, gaps GAP-nnn, supersesiones
+│   ├── PLANNING_TEMPLATE.md           # Gramática de docs/05-specs/<epic>/_planning.md (COVERAGE_TABLE, MECH_CHECK, veredictos, SPEC_SHA)
+│   ├── CURRENT_CAPABILITY_TEMPLATE.md # Verdad viva por componente en docs/05-specs/_current/
 │   ├── BUSINESS_REQUIREMENTS_TEMPLATE.md
 │   ├── DESIGN_SYSTEM_TEMPLATE.md
 │   ├── DEBUG_LOG_TEMPLATE.md
@@ -425,7 +428,7 @@ Output: `.specture/docs-index.yml` + bridges en `docs/0X-*/` + ADRs Proposed en 
 #### `/specture:knowledge` (modos `capture` | `audit` | `stats`)
 **Higiene de conocimiento del proyecto, unificada en una skill con tres modos** (v1.11.0; `stats` desde v1.18.0). Los aliases `/specture:learn` → `capture` y `/specture:audit-knowledge` → `audit` siguen funcionando.
 
-**Modo `capture`** (ex-`/specture:learn`): captura post-sesión opt-in del conocimiento descubierto. Se activa al final de un epic (build Step 8.5), tras confirmar una causa raíz (debug Phase 4.5), manualmente, o con `--teach <concepto>`. Filtra relevancia, recolecta evidencia, cross-referencia el `docs-index.yml`, y genera hasta **3 drafts** por invocación (entrada de índice `ai_categorized`, ADR `Status: Proposed`, patch a `conventions.md`/bridge, o test de characterization pendiente). El usuario **aprueba en bloque vía Plan mode**. Hard token budget ~30K. **Nunca escribe a la memoria personal de Claude.** Gate: `knowledge.enabled` (§10). Output: drafts + log en `docs/.specture-meta/learn-history.jsonl`.
+**Modo `capture`** (ex-`/specture:learn`): captura post-sesión opt-in del conocimiento descubierto. Se activa al final de un epic (build Step 8.5), tras confirmar una causa raíz (debug Phase 4.5), manualmente, o con `--teach <concepto>`. Filtra relevancia, recolecta evidencia, cross-referencia el `docs-index.yml`, y genera hasta **3 drafts** por invocación (entrada de índice `ai_categorized`, ADR `Status: Proposed`, patch a `conventions.md`/bridge, o test de characterization pendiente). El usuario **aprueba en bloque vía Plan mode**. Hard token budget ~30K. **Nunca escribe a la memoria personal de Claude.** Gate: `knowledge.enabled` en `.specture/settings.yml`. Output: drafts + log en `docs/.specture-meta/learn-history.jsonl`.
 
 **Modo `audit`** (ex-`/specture:audit-knowledge`): auditoría periódica read-only del `docs-index.yml`. Detecta **ORPHAN** (HIGH), **DUPLICATE_CANDIDATE** (MEDIUM), **STALE/VERY_STALE** (LOW/MEDIUM), **UNCOVERED** (LOW), **UNKNOWN_AGE** (LOW); calcula un **health score 0-100**. **Nunca auto-corrige** — propone acciones y el usuario decide. Output: `docs/.specture-meta/last-audit.md` + `audit-history.jsonl`.
 
@@ -436,7 +439,7 @@ Output: `.specture/docs-index.yml` + bridges en `docs/0X-*/` + ADRs Proposed en 
 ---
 
 #### `/specture:doctor` (modos `check` | `migrate` | `sync`)
-**Diagnóstico mecánico del proyecto y migraciones de esquema.** Specture versiona el plugin; el doctor versiona el **proyecto**. `check` (solo lectura) lintea el corpus documental — rutas citadas que no existen, placeholders `...`, ADRs con número duplicado o sin `Status`, reviews sin veredicto, specs sin `AC/BR/EC`, sobre 300 líneas o con secciones fuera del template, citas por número de línea a documentos vivos —, lintea los requerimientos — placeholders sin resolver, HUs sin `Exposición`, historias de frontera sin consolidar, reglas/casos/exclusiones sin IDs `RN/CL/FA` —, revisa el estado — sello `build-locked.json` huérfano, más de un epic `[/]`, `_current/` ausente con milestones cerrados, `docs-index.yml` vs toggle, residuos de worktrees — y compara `schema_version` (`.specture/settings.yml`) con la versión del plugin para listar las migraciones pendientes por tipo. `migrate` aplica las **mecánicas** (idempotentes, verificadas, registradas en `.specture/migrations.log`), lleva las **asistidas** a Plan mode y registra las de **contenido** con su skill dueño; `sync` = mecánicas + check (para CI). Nunca commitea; nunca toca specs cerrados, reviews ni debug logs.
+**Diagnóstico mecánico del proyecto y migraciones de esquema.** Specture versiona el plugin; el doctor versiona el **proyecto**. `check` (solo lectura) lintea el corpus documental — rutas citadas que no existen, placeholders `...`, ADRs con número duplicado o sin `Status`, reviews sin veredicto, specs sin `AC/BR/EC`, sobre 300 líneas o con secciones fuera del template, citas por número de línea a documentos vivos —, lintea los requerimientos — placeholders sin resolver, HUs sin `Exposición`, historias de frontera sin consolidar, reglas/casos/exclusiones sin IDs `RN/CL/FA` —, revisa el estado — sello `build-locked.json` huérfano, más de un epic `[/]`, `_current/` ausente con milestones cerrados, `docs-index.yml` vs toggle, residuos de worktrees — y compara `schema_version` (`.specture/settings.yml`) con la versión del plugin para listar las migraciones pendientes por tipo (cada minor embarca las suyas — la última, `1.18-metrics-tracked` en v1.18.0, que deja `build-metrics.jsonl` trackeado). `migrate` aplica las **mecánicas** (idempotentes, verificadas, registradas en `.specture/migrations.log`), lleva las **asistidas** a Plan mode y registra las de **contenido** con su skill dueño; `sync` = mecánicas + check (para CI). Nunca commitea; nunca toca specs cerrados, reviews ni debug logs.
 
 > Úsalo después de actualizar el plugin, cuando `/specture:start` avise migraciones pendientes, o cuando sospeches referencias rotas. Catálogo de migraciones: `migrations/`; detalle: `skills/doctor/SKILL.md` y `docs/doctor-and-migrations-design.md`.
 

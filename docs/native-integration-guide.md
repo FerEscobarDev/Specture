@@ -32,7 +32,7 @@ El principio core de Specture — **contexto restringido por agente** — se man
 Editá `.specture/settings.yml` (v1.15.0+ — lo crea `/specture:setup`; es el archivo **del framework** dentro de `.specture/`):
 
 ```yaml
-schema_version: 1.15.0       # versión del esquema de proyecto; la avanza /specture:doctor migrate
+schema_version: 1.18.1       # versión del esquema de proyecto; la avanza /specture:doctor migrate
 profile: custom              # lean | full | custom
 hooks.enabled: true          # activa el TDD Honesty Gate (PreToolUse). SessionStart ya no existe (v1.5.0).
 context7.enabled: true       # activa Context7 en code-reviewer y modernize
@@ -44,7 +44,7 @@ Cualquier capacidad podés dejarla en `false` (o ausente) y el resto sigue funci
 
 1. Confirmá que el plugin está instalado: `/plugin list` debe mostrar `specture` activo.
 2. Confirmá que `.specture/stack.yml` existe en la raíz del proyecto.
-3. Confirmá que `.specture/conventions.md` sección 10 tiene `hooks.enabled: true`.
+3. Confirmá que `.specture/settings.yml` tiene `hooks.enabled: true` (o `profile: lean | full`); en un proyecto anterior a v1.15.0 sin migrar, el toggle vive en `.specture/conventions.md` §10.
 4. Probá el TDD Honesty Gate: durante un epic activo del build loop, intentá editar un archivo de test sellado — la edición debe rechazarse. (En v1.5.0 ya no hay `additionalContext` de routing al abrir la sesión: el routing se invoca con `/specture:start`.)
 
 Si no se dispara, ver `hooks/README.md` sección Troubleshooting.
@@ -74,7 +74,7 @@ El usuario ve el mensaje y entiende por qué el modelo no pudo hacer esa escritu
 Ver `hooks/README.md` — tabla de síntomas y causas. Los más comunes:
 
 1. Plugin no instalado (`/plugin list`).
-2. `hooks.enabled` no está en `true` literal en conventions.md.
+2. `hooks.enabled` no está en `true` literal en `.specture/settings.yml` (ni en `conventions.md` §10 para proyectos sin migrar).
 3. `.specture/stack.yml` no existe en cwd (o existe solo en un subdirectorio).
 
 ---
@@ -221,7 +221,7 @@ Cuatro casos posibles:
 
 Tenés tres opciones según el alcance:
 
-- **Solo desactivar hooks**: setá `hooks.enabled: false` en conventions.md. Specture sigue funcionando (skills, agentes, slash commands) pero sin gates mecánicos.
+- **Solo desactivar hooks**: setá `hooks.enabled: false` en `.specture/settings.yml`. Specture sigue funcionando (skills, agentes, slash commands) pero sin gates mecánicos — quedan los `git diff` del coordinador y del epic-agent y la Dimensión 1 del reviewer como defensa.
 - **Desactivar todo en este proyecto**: borrá `.specture/stack.yml`. El `specture-router` detecta la ausencia y no se activa. Recordá que perdés todo el contexto del proyecto.
 - **Desactivar globalmente**: deshabilitá el plugin con `/plugin disable specture`. Vuelve a activarse cuando lo reactives.
 

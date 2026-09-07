@@ -493,6 +493,7 @@ verificadas por el reviewer, métricas que decidan. Escenarios 2, 3, 9-12.*
   `docs/.specture-meta/` es gitignoreado (comparación por máquina, no por proyecto):
   decidir si `build-metrics.jsonl` se trackea (es evidencia de proceso). Requiere reviews
   con veredicto parseable (ítem 5): en Psikora 26 no lo tienen.
+  *(Resuelto en v1.18.0: A7 = trackeado — migración `1.18-metrics-tracked`; el baseline se reconstruye con `metrics-report.js --baseline --write` sobre el proyecto real, no a mano; los reviews nuevos llevan `CAUSE:` parseable y los viejos se leen por heurística.)*
   `Fuente: gate-design §6.5, D20; gate-review C-6 / G7` · `Esfuerzo: bajo-medio` · `Depende de: 5, 21`
 
 - [x] **35. Protocolo de supersesión de tests sellados y RED-fix; renombrar la referencia del framework (N6)** · hecho 2026-09-07, v1.18.0 (`ee3278c`) — sección "Supersesiones de tests sellados" en los dos templates de spec + fila `sup:` + C-sup mecánico; commit `test(supersede)` previo al RED por el `tdd-test-writer` (`SUPERSEDE_SHA`), `seal-cli supersede` levanta el deny solo para esos paths durante el dispatch; registro por epic en `_planning.md` § SUPERSESIONES + índice `docs/05-specs/_supersessions.md`; RED-fix y remediación retroactiva formalizados en `docs/tdd-honesty-reference.md` (renombrado; citas con `$SPECTURE_ROOT`)
@@ -506,6 +507,7 @@ verificadas por el reviewer, métricas que decidan. Escenarios 2, 3, 9-12.*
   framework cita `$SPECTURE_ROOT/docs/tdd-honesty-violations.md` explícito (o renombra a
   `tdd-honesty-reference.md`): hoy `build/SKILL.md:377` en el cwd del proyecto abre el
   ledger del proyecto, no la referencia de 75 líneas.
+  *(Resuelto en v1.18.0: se renombró a `docs/tdd-honesty-reference.md` y el framework lo cita con `$SPECTURE_ROOT` / `${CLAUDE_PLUGIN_ROOT}`; `build/SKILL.md:377` ya no existe — el gate 5.5 vive en `build/EPIC_LOOP.md`.)*
   `Fuente: psikora-review N6 / §2.6` · `Esfuerzo: medio` · `Depende de: 21, 31`
 
 - [x] **36. Hook `allowed_paths`: "cero código sin spec" mecánico durante GREEN (G5)** · hecho 2026-09-07, v1.18.0 (`2846723`, junto al 31) — `allowed_paths` = unión de `Crea:`/`Modifica:` (`spec-set-check.js --allowed-paths`; `Modifica:` es línea nueva del template); deny "Allowed Paths" en los tres hooks solo fuera de `docs/**` y `.specture/**` y solo si el sello los lleva (fail open); escape = `BLOCKED: spec <ID>` → loop de corrección; Iron Rule nueva en `implementer` y `ux-implementer`; riesgo vigilado: `blocked_spec` en las métricas (si sube por archivos de wiring, `always_allowed` por proyecto en un patch)
@@ -527,6 +529,7 @@ verificadas por el reviewer, métricas que decidan. Escenarios 2, 3, 9-12.*
   epic-agent intenta editar un spec → deny; sin hooks → `git diff <SPEC_SHA>..HEAD` no
   vacío → `REJECTED_MAJOR`. Espejo Copilot de `spec-planner` (C-9b): documentar la brecha
   o generar (ítem 40).
+  *(Resuelto en v1.18.0: la `COVERAGE_TABLE` de migración lleva una fila `gap:` por `GAP-nnn` del bloque del epic, `op:` solo con operaciones, `oos:` de §7; el template gana `AC-n` y la línea "Gaps cubiertos"; el escenario 12 se verificó con los hooks reales y el `git diff` del coordinador; el fixture se regenera con `scripts/baseline-fixture.js` desde v1.18.1.)*
   `Fuente: gate-design §6.1; gate-review C-9` · `Esfuerzo: medio` · `Depende de: 29-36`
 
 ---

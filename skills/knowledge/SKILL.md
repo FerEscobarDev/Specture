@@ -1,14 +1,15 @@
 ---
 name: knowledge
-description: 'Use to keep the project''s knowledge healthy — TWO modes. `capture` (alias `/specture:learn`): at the end of a non-trivial session — after an epic closes, a root cause is confirmed, a feature is roadmapped, or on demand — turn ephemeral discoveries into durable artifacts (docs-index entries, ADR drafts, conventions patches, bridge docs); max 3 drafts, granular approval. `audit` (alias `/specture:audit-knowledge`): periodically (every 1-3 months) detect docs-index drift (orphans, stale, duplicates, uncovered) and report — read-only. Never writes Claude''s personal memory.'
+description: 'Use to keep the project''s knowledge healthy — THREE modes. `capture` (alias `/specture:learn`): at the end of a non-trivial session — after an epic closes, a root cause is confirmed, a feature is roadmapped, or on demand — turn ephemeral discoveries into durable artifacts (docs-index entries, ADR drafts, conventions patches, bridge docs); max 3 drafts, granular approval. `audit` (alias `/specture:audit-knowledge`): periodically (every 1-3 months) detect docs-index drift (orphans, stale, duplicates, uncovered) and report — read-only. `stats`: read the per-epic build metrics (`docs/.specture-meta/build-metrics.jsonl`) and apply the Spec Planning Gate reading — read-only. Never writes Claude''s personal memory.'
 ---
 
-# Transversal — Knowledge Hygiene (capture + audit)
+# Transversal — Knowledge Hygiene (capture + audit + stats)
 
-You manage the project's durable knowledge. Two modes, one domain (the `docs-index` and the repo's documentation truth):
+You manage the project's durable knowledge. Three modes, one domain (the `docs-index`, the repo's documentation truth, and the evidence the build leaves behind):
 
 - **`capture`** — convert ephemeral session knowledge into durable artifacts without polluting the repo with low-signal noise. (Was `/specture:learn`.)
 - **`audit`** — detect and report the drift the index accumulates as docs are added/renamed/deleted. (Was `/specture:audit-knowledge`.)
+- **`stats`** — read `docs/.specture-meta/build-metrics.jsonl` (one line per epic, tracked since v1.18.0) and turn it into the gate's §6.5 reading. (New in v1.18.0.)
 
 ## Shared Iron Rules (both modes)
 

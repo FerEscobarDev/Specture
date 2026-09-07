@@ -450,16 +450,21 @@ flowchart TD
     RG -->|"solo queda cleanup"| S8["Step 8 · Completion Gate · correr cleanup<br/>· quitar sección migration: · ADR de cierre"]
 ```
 
-### 5.5 Knowledge — captura + auditoría (una skill, dos modos)
+### 5.5 Knowledge — captura + auditoría + stats (una skill, tres modos)
 
 Higiene de conocimiento. **Nunca escribe a la memoria personal de Claude.** Captura genera drafts con
-aprobación atómica vía Plan mode; auditoría es read-only y nunca auto-corrige.
+aprobación atómica vía Plan mode; auditoría y stats son read-only y nunca auto-corrigen.
 
 ```mermaid
 flowchart TD
     M{"Elegir modo (si no se da, preguntar)"}
 
-    M -->|"capture"| C0{"§10 knowledge.enabled ?"}
+    M -->|"stats"| ST0{"¿docs/.specture-meta/build-metrics.jsonl existe?"}
+    ST0 -->|No| ST1(["Ofrecer metrics-report.js --baseline --write<br/>(reconstruye los epics [x] desde reviews, _planning.md y git log)"])
+    ST0 -->|Sí| ST2["metrics-report.js: tabla por epic · gate vs baseline<br/>· lectura §6.5 (defectos aguas abajo · ¿pregunta el planner? · spec_defect → A6)"]
+    ST2 --> ST3(["Una recomendación por regla que dispara · nunca edita el archivo"])
+
+    M -->|"capture"| C0{"settings.yml knowledge.enabled ?"}
     C0 -->|"false (sin --force)"| STOP1(["Mensaje 'deshabilitado' · parar"])
     C0 -->|"true / --force"| C1["Filtro de relevancia → recolectar evidencia<br/>→ cross-reference (budget ~30K tokens)"]
     C1 --> C3["Generar máx 3 drafts (prioridad: ADR Proposed ><br/>entrada de índice > patch conventions > bridge > test TODO)"]
