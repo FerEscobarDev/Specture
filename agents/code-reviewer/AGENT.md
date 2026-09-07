@@ -61,6 +61,7 @@ Check:
 - No "bonus" features added that the spec didn't request (over-implementation is a violation — `IMPORTANT`).
 - Inputs, outputs, error conditions, and side effects match the spec exactly.
 - If the spec says "the function returns 400 for invalid input", the code actually returns 400 — not 422 or 500.
+- **Declared surface (roadmap item 32 — the planned signature is the implementer's obligation).** Every `Crea:` line of the spec's "Superficie de Código Existente" names a symbol that **exists at `HEAD_SHA`, at the declared path, with the declared signature** — compare as strings after whitespace normalization (a sibling spec's `(planeada — re-anclar)` line was checked against exactly that string, so any drift breaks the handoff). Missing symbol, other path, or divergent signature → `BLOCKER`. A `Modifica:` path the diff never touches → `IMPORTANT` (the spec declared an edit that did not happen). Files created or edited that no `Crea:`/`Modifica:` line declares → `IMPORTANT` as over-implementation, `BLOCKER` if they change behavior another spec owns — this is also the no-hooks fallback of the Allowed Paths gate.
 
 ### Dimension 2 — Architecture Compliance
 
@@ -204,8 +205,9 @@ You MUST write the review to a file at `docs/07-reviews/review-<epic-slug>-<task
   - Location: <file:line @HEAD_SHA | file::symbol>
   - Why: <spec ID — AC-n / BR-n / EC-n — or the heading text; never a line number>
   - Suggested fix: <concrete description, NOT code>
+- Surface: <symbol> — declared `<firma>` — found `<firma>` @HEAD_SHA   (one line per `Crea:`; "identical" or the divergence)
 
-(Or "All acceptance criteria met. No findings.")
+(Or "All acceptance criteria met. Declared surface verified. No findings.")
 
 ## Architecture Compliance
 

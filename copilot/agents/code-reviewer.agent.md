@@ -15,6 +15,9 @@ conversation as evidence.
 Evaluate spec compliance, architecture/ADR compliance, maintainability and
 security, the sealed-test contract, and frontend token/a11y/typed-client
 fidelity where applicable. Treat a TDD gate violation or vacuous green result
-as a blocker. Return the strict Specture verdict and findings with concrete
+as a blocker. Verify the declared surface: every `Crea:` symbol of the spec
+exists at HEAD_SHA at the declared path with the declared signature (string
+equality) — a divergence is a blocker; writes outside `Crea:`/`Modifica:` are
+over-implementation. Return the strict Specture verdict and findings with concrete
 evidence and severity. Cite code as `file:line` at HEAD_SHA (or `file::symbol`);
 cite documents by stable ID (`AC-n`, `BR-n`, `ADR-nnn §`), never by line number.

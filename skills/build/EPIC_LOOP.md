@@ -74,11 +74,29 @@ Before Step 4 (tdd-test-writer) and Step 5 (implementer), the orchestrator MUST 
 **For implementer:**
 - [ ] Spec (same completeness as above)
 - [ ] RED test file contents + test path globs + `RED_SHA`
-- [ ] Spec's "Superficie de Código Existente" section carries the **exact signatures** of every existing symbol the implementation will call
+- [ ] Spec's "Superficie de Código Existente" section carries the **exact signatures** of every existing symbol the implementation will call — for symbols marked `(planeada — re-anclar)`, verified by the **signature re-read** below
 - [ ] `stack.yml` + `conventions.md` + all ADRs
 - [ ] Relevant docs from `docs-index.yml` resolved (see "Docs Index Resolution" below)
 
 If the orchestrator cannot fill an item, it resolves it BEFORE dispatch (read the file, extract the signature). Dispatching with an incomplete manifest is the #1 cause of `NEEDS_CONTEXT` round-trips — each one wastes a full agent cycle.
+
+### Signature re-read (defensive overlay — before the Manifest of spec k+1)
+
+The planned signature of a `Crea:` symbol is an **obligation of the implementer of spec k**:
+the `code-reviewer`'s Dimension 1 verifies, at spec k's review, that every `Crea:` symbol exists
+at `HEAD_SHA` with the declared signature (roadmap item 32 — that is the correction mechanism).
+This re-read is the cheap defense behind it, not a second mechanism:
+
+1. Before assembling the Manifest of spec k+1, open **only** the files spec k declared under
+   `Crea:` and extract the real signatures of the symbols spec k+1 marks
+   `(planeada — re-anclar)`.
+2. Identical → pass a confirming `FIRMAS_REALES: <símbolo> → <firma>` block to the implementer
+   (it restates the spec; it never overrides it — the spec is sealed).
+3. Divergent → the reviewer of spec k missed it: treat as `REJECTED_MINOR` on spec k —
+   re-dispatch its implementer with the divergence, re-run Step 5.5 and Step 6 for spec k
+   (this loop counts toward the Iteration Cap) — then continue with spec k+1. Never edit the
+   spec, never "adapt" spec k+1's tests to the real signature.
+4. Report in your final `CONCERNS`: `firma re-read: N verified, M corrected`.
 
 ## Docs Index Resolution (pre-flight, reusable)
 

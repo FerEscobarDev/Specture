@@ -50,7 +50,7 @@
 ## Superficie de Código Existente (para el implementer — lo llena el spec-planner)
 > Los `<path>` de archivos nuevos se anclan a la **carpeta raíz del componente** del epic (campo "Carpeta raíz" en `architecture.md`, respaldado por `stack.yml.structure`). Si es "n/a" (`root_layout` flat/custom o componente no desplegable), usar el layout del proyecto.
 - Llama a: `<símbolo existente>` en `<path>` — firma: `[...]`
-- Crea: `<símbolo nuevo>` en `<path>`
+- Crea: `<símbolo nuevo>` en `<path>` — firma: `[...]` *(obligatoria: es el contrato de handoff que un spec hermano cita como `(planeada — re-anclar)` y que el code-reviewer verifica en HEAD)*
 - Modifica: `<símbolo o archivo existente>` en `<path>` *(todo archivo existente que la implementación edita — routers, registros DI, barrels, config; con hooks activos, escribir fuera de `Crea:`/`Modifica:` se deniega)*
 - Crea (spec hermano anterior): `<símbolo>` — firma: `[...]` `(planeada — re-anclar)`
 - Fixtures disponibles: `<path>` (no duplicar)
