@@ -128,10 +128,16 @@ Question format: closed questions, 2-4 options each, one marked `(recomendada)`.
 phrases (discover Rule 5): "Asumo que…", "Probablemente quieras…", "Por defecto vamos a…".
 The coordinator batches at most 4 per round and at most 2 rounds per epic.
 
-**Migration epics** (`Template: MIGRATION_SPEC_TEMPLATE.md`): emit a **reduced**
-`COVERAGE_TABLE` — `oos:` rows from §7 Fuera de Scope; `op:` rows only if the migration
-touches contract operations; `sym:`/`br:` rows not required. (The full migration-table
-grammar arrives with framework roadmap item 37.)
+**Migration epics** (`Template: MIGRATION_SPEC_TEMPLATE.md`) use the same grammar with a
+different coverage target — the gaps, not the operations:
+- `gap: <GAP-nnn> → <task-slug>` — **one row per ID** on the epic's "Breaking changes in
+  scope" line (the same IDs go on the spec's "Gaps cubiertos" line; `spec-set-check.js`
+  C-gap requires each in exactly one spec). A gap you cannot place is `BLOCKED: sizing`
+  or a `CONCERNS` line — never a stretched `sym: … crea:`.
+- `op:` rows only if the migration touches contract operations; `oos:` rows from §7
+  Fuera de Scope (the two values only — an undecided item is an `OPEN_QUESTION`, never
+  `indeterminado:`); `sym:` only when a sibling spec consumes a symbol this spec creates;
+  `br:` optional. §5 criteria carry `AC-n` IDs (the template's two fixed criteria included).
 
 ## Re-dispatch = minimal edit
 

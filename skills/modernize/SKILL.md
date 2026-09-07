@@ -50,6 +50,8 @@ Announce the detected type before continuing. Ask for confirmation.
 
 Produce `docs/migration/gap_analysis.md` using the structure below. Do NOT propose solutions in this step — only document the gaps.
 
+**Stable gap IDs (v1.18.0, framework roadmap item 37 / C-9a):** every gap bullet, in every category, carries a sequential ID `**GAP-nnn:**` (three digits, never renumbered or reused — a domain prefix such as `GAP-AUTH-003` is allowed). The IDs are what the rest of the chain traces: the migration epic lists its gaps in `**Breaking changes in scope:**`, each migration spec lists the ones it covers in `**Gaps cubiertos (gap_analysis.md):**`, the `spec-planner` emits one `gap:` row per ID in the `COVERAGE_TABLE`, and `hooks/lib/spec-set-check.js` (C-gap) verifies every gap of the epic lands in exactly one spec — a gap without a spec is a hole, a gap in two specs is an overlap.
+
 ### Sourcing the facts: Context7 (when available)
 
 Migration knowledge depends on **current** documentation, not on the model's training cutoff. If `context7.enabled: true` in `.specture/settings.yml` (or in `conventions.md` §10 for projects not yet migrated) AND the Context7 MCP server is reachable in this session, use it as the primary source for:
@@ -67,16 +69,16 @@ Analyze the official migration/changelog/upgrade guide for the target version. D
 
 ```markdown
 ## Breaking Changes
-- [API or behavior that is removed/changed, with old → new pattern]
+- **GAP-001:** [API or behavior that is removed/changed, with old → new pattern] — módulos: [A, B]
 
 ## Deprecated Patterns Found in This Codebase
-- [Pattern X used in modules A, B — must be replaced before target version]
+- **GAP-002:** [Pattern X used in modules A, B — must be replaced before target version]
 
 ## Tooling Changes
-- [Build tool, CLI, config file format changes]
+- **GAP-003:** [Build tool, CLI, config file format changes]
 
 ## Dependency Compatibility
-- [lib@version is not compatible with target — alternative: lib@newversion]
+- **GAP-004:** [lib@version is not compatible with target — alternative: lib@newversion]
 ```
 
 ### For Tech Migration
@@ -91,7 +93,7 @@ Document the equivalence map and identify orphan patterns:
 | [NgModule] | [No equivalent — tree-shaking native] | [Manual decomposition needed] |
 
 ## Patterns Without Direct Equivalent
-- [Source pattern X] — must be re-implemented as [approach] in target tech
+- **GAP-001:** [Source pattern X] — must be re-implemented as [approach] in target tech — módulos: [A]
 
 ## Third-Party Libraries
 | Current Library | Compatible with Target? | Replacement |
@@ -217,7 +219,7 @@ Add a new milestone to `docs/04-roadmap/ROADMAP.md` following the existing miles
 - [ ] **Epic N.1: [Module Name] — [brief description]**
   - **Dependencias:** [previous epic or "Characterization tests committed (Step 5)"]
   - **Descripción:** Migrate [module] from [source pattern] to [target pattern].
-  - **Breaking changes in scope:** [from gap_analysis.md]
+  - **Breaking changes in scope:** GAP-001, GAP-004 *(only `GAP-nnn` IDs from gap_analysis.md, comma-separated — the planner emits one `gap:` row per ID and `spec-set-check.js` C-gap requires each in exactly one spec)*
   - **Coexistence strategy:** [adapter/facade/none]
   - **Specs estimados:** 1
   - **Template:** MIGRATION_SPEC_TEMPLATE.md
@@ -248,11 +250,15 @@ coordinator hand the `spec-planner` that template plus the migration conditional
 `gap_analysis.md` section of the module and the `migration:` section of `stack.yml`.
 
 The planner fills every template section (exact source patterns replaced, exact target
-patterns, explicit coexistence strategy, out-of-scope list) and emits a **reduced**
-`COVERAGE_TABLE` for migration epics: `oos:` rows from §7 Fuera de Scope; `op:` rows only
-if the migration touches contract operations; `sym:`/`br:` rows not required. (The full
-migration-table grammar arrives with framework roadmap item 37.) Validation runs inside the
-gate — per spec, with the migration inputs — exactly as for feature epics.
+patterns, explicit coexistence strategy, out-of-scope list, `AC-n` IDs in §5, the
+`**Gaps cubiertos (gap_analysis.md):**` line) and emits the migration `COVERAGE_TABLE`
+(v1.18.0, roadmap item 37 / C-9a): one `gap: <GAP-nnn> → <task-slug>` row per ID on the
+epic's "Breaking changes in scope" line, `op:` rows only if the migration touches contract
+operations, `oos:` rows from §7, `sym:` only for symbols a sibling spec consumes, `br:`
+optional. The coordinator's mechanical check (`spec-set-check.js`, gate step 4a) runs
+**C-gap** — every gap of the epic in exactly one spec — instead of C2/C4, then the set
+dispatch and the per-spec validation run exactly as for feature epics, with the migration
+inputs.
 
 ### 7.3 TDD RED Phase
 

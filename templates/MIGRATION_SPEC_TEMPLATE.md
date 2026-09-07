@@ -7,6 +7,7 @@
 - **Módulo:** [módulo de arquitectura según `docs/02-architecture/architecture.md`]
 - **Characterization SHA:** [valor de `migration.characterization_sha` en `stack.yml`]
 - **Gap analysis reference:** [`docs/migration/gap_analysis.md` § sección de este módulo]
+- **Gaps cubiertos (gap_analysis.md):** GAP-001, GAP-004 *(solo IDs `GAP-nnn` del gap analysis — cada gap que el bloque del epic lista en "Breaking changes in scope" debe aparecer en exactamente un spec; `spec-set-check.js` C-gap lo cruza con la fila `gap:` de la COVERAGE_TABLE)*
 
 ---
 
@@ -53,14 +54,16 @@
 
 ---
 
-## 5. Criterios de Aceptación
+## 5. Criterios de Aceptación (≥1 test por ID)
 
-> Sin código. Solo comportamiento observable verificable. Cada criterio se convierte en un test.
+> Sin código. Solo comportamiento observable verificable. Cada criterio se convierte en un test y
+> lleva un ID estable `AC-n` (el Manifest del epic-agent y el `COVERAGE_MAP` del tdd-test-writer
+> cuelgan de él; nunca se renumera). Los dos últimos son fijos en toda migración.
 
-- [ ] [Comportamiento funcional A que debe seguir igual tras la migración]
-- [ ] [Comportamiento funcional B]
-- [ ] Los characterization tests de este módulo pasan al 100% con el nuevo stack
-- [ ] No quedan imports, tipos, ni patrones del source tech dentro del módulo (verificable con grep)
+- **AC-1:** [Comportamiento funcional A que debe seguir igual tras la migración]
+- **AC-2:** [Comportamiento funcional B]
+- **AC-N-1:** Los characterization tests de este módulo pasan al 100% con el nuevo stack
+- **AC-N:** No quedan imports, tipos, ni patrones del source tech dentro del módulo (verificable con grep)
 
 ---
 
