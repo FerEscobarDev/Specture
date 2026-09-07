@@ -104,7 +104,9 @@ function parseRoadmap(text) {
       current = {
         title: line.replace(/^#+\s*/, "").trim(),
         lineNo: index + 1,
-        tombstone: /archivad|✅/i.test(heading[1]),
+        // A tombstone heading says "archivado <fecha>" (or carries ✅) — whole word, so a
+        // milestone named "Núcleo del archivador" is not mistaken for an archived one.
+        tombstone: /\barchivad[oa]s?\b|✅/i.test(heading[1]),
         epics: []
       };
       milestones.push(current);

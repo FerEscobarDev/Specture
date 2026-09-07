@@ -110,6 +110,21 @@ test("a seal whose epic is [/] is accepted; a project without settings.yml is re
   assert.equal(json.findings.filter((f) => f.check.startsWith("seal-")).length, 0);
 });
 
+test("a milestone whose title merely contains 'archivador' is not a tombstone; 'archivado <fecha>' is", () => {
+  const { parseRoadmap } = require("../lib/doctor/project");
+  const open = parseRoadmap("### Milestone 1: Núcleo del archivador\n\n- [ ] **Epic 1.1:** Archivos\n");
+  assert.equal(open.milestones[0].tombstone, false);
+  assert.equal(open.milestones[0].closed, false);
+  const tomb = parseRoadmap("### Milestone 3: Billing  ✅ archivado 2026-08-01 · verdad viva → docs/05-specs/_current/billing.md\n- [x] Epic 3.1, Epic 3.2\n");
+  assert.equal(tomb.milestones[0].tombstone, true);
+  const plain = parseRoadmap("### Milestone 2: Reportes archivados\n- [ ] **Epic 2.1:** A\n");
+  assert.equal(plain.milestones[0].tombstone, true, "the word form still counts (heading text is the marker the template prescribes)");
+
+  const projectRoot = createProject({ ...CLEAN, "docs/04-roadmap/ROADMAP.md": "# ROADMAP\n\n### Milestone 1: Núcleo del archivador\n\n- [ ] **Epic 1.1:** Archivos\n  - **Dependencias:** Ninguna\n" });
+  const { json } = runDoctor(projectRoot);
+  assert.ok(!json.findings.some((f) => f.check === "current-state-missing"), JSON.stringify(json.findings));
+});
+
 test("a v3 seal (spec_sha/spec_paths/allowed_paths, no specs[]) is accepted while its epic is [/] and reported stale afterwards", () => {
   const V3 = JSON.stringify({
     epic: "epic-1.1-scaffold",
