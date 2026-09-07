@@ -42,10 +42,11 @@
 
 - [ ] **Epic 1.1:** [Nombre del Epic]
   - **Dependencias:** Ninguna
+  - **Template:** MIGRATION_SPEC_TEMPLATE.md *(solo epics de migración creados por `modernize`; omitir en el resto — sin esta línea el spec-planner usa `SPEC_TEMPLATE.md`)*
   - **Descripción:** [1-2 frases.]
-  - **Reglas de negocio clave:** [IDs `RN-nnn` de `business_requirements.md`, ej. RN-001, RN-014]
+  - **Reglas de negocio clave:** RN-001, RN-014 *(solo IDs `RN-nnn` de `business_requirements.md`, separados por coma — los lee `spec-set-check.js` C2)*
   - **Componentes de arquitectura involucrados:** [Links a secciones de `architecture.md`]
-  - **Operaciones del contrato:** [`operationId`s que este epic *implementa* (backend) o *consume* (frontend), de `api-contract.md`. Omitir si el epic no toca el boundary HTTP. Un epic de página frontend que consume una operación debe depender del epic backend que la implementa.]
+  - **Operaciones del contrato:** `operationId` *(en backticks, separados por coma; sufijo `(consume)` en epics frontend, ej. `` `listarArchivos` (consume) `` — por defecto el epic las *implementa*. Omitir la línea si el epic no toca el boundary HTTP. Un epic de página frontend que consume una operación debe depender del epic backend que la implementa; `spec-set-check.js` C1 exige que ese backend esté `[x]`.)*
   - **Specs estimados:** [N — orientativo, se concretará en Fase 4]
 
 - [ ] **Epic 1.2:** [Nombre del Epic]

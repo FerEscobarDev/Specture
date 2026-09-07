@@ -130,9 +130,10 @@ Generate `docs/04-roadmap/ROADMAP.md` from `templates/ROADMAP_TEMPLATE.md`. Stat
 Each epic must specify:
 - **Nombre**
 - **Dependencias** (otros epics)
-- **Reglas clave de negocio que aplican** (links a secciones de `business_requirements.md`)
+- **Reglas de negocio clave**: solo IDs `RN-nnn` de `business_requirements.md`, separados por coma (los lee `hooks/lib/spec-set-check.js` C2 durante `build`)
 - **Componentes de arquitectura involucrados** (links a secciones de `architecture.md`)
-- **Operaciones del contrato** (cuando aplique): los `operationId` que el epic **implementa** (backend) o **consume** (frontend), referenciando `api-contract.md`.
+- **Operaciones del contrato** (cuando aplique): los `operationId` que el epic **implementa** (backend) o **consume** (frontend), en backticks y separados por coma, con sufijo `(consume)` en epics frontend (ej. `` `listarArchivos` (consume) ``), referenciando `api-contract.md`. Grammar parseable — la lee `spec-set-check.js` C1.
+- **Template** (solo epics de migración): `MIGRATION_SPEC_TEMPLATE.md`.
 
 ### Self-Review of ROADMAP (cheap pre-check before spending a dispatch)
 

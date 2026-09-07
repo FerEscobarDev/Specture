@@ -100,7 +100,8 @@ locked `[/]`:
    epic's `operationId`s; `stack.yml`, `conventions.md` (§8, §12, file-org), `Accepted`
    ADRs; resolved docs-index and `_current/` files (run "Docs Index Resolution" and
    "Current-State Resolution" as defined in `build/EPIC_LOOP.md` — same algorithms, you
-   have the file); the template per the epic's `Template:` field; the component root
+   have the file); the template per the epic's `Template:` field plus
+   `templates/PLANNING_TEMPLATE.md` (the `_planning.md` grammar); the component root
    paths; the frontend/migration conditionals. A missing item costs a `NEEDS_CONTEXT`
    round-trip.
 2. **Stage, don't commit**: `git add docs/05-specs/<epic-slug>/` after each planner pass,
@@ -126,11 +127,39 @@ locked `[/]`:
    the `CHANGELOG`** to the chat ("así quedó — …") without waiting for confirmation.
    Contrast `git diff -- docs/05-specs/<epic-slug>/` against the `CHANGELOG`: a diff that
    exceeds it is a finding → re-dispatch with "revertí lo no listado".
+4a. **Mechanical set check — after every planner pass, before any validator dispatch**
+   (no agent involved; roadmap item 29):
+   ```
+   node "${CLAUDE_PLUGIN_ROOT}/hooks/lib/spec-set-check.js" docs/05-specs/<epic-slug> --roadmap docs/04-roadmap/ROADMAP.md --epic <X.Y>
+   ```
+   It reads the `COVERAGE_TABLE` of `_planning.md` (grammar: `templates/PLANNING_TEMPLATE.md`)
+   plus the epic block and cross-checks the spec files: **C1** every `operationId` of the
+   epic in exactly one spec (hole / overlap; a consumed op needs its backend epic `[x]`),
+   **C2** every linked `RN-nnn` cited by ≥1 spec, **C4** every `(planeada — re-anclar)`
+   symbol created by an *earlier* spec with a string-identical signature, **C5** ≤3 specs /
+   ≤15 IDs per spec (WARNING), **C6** no consumer before its creator, plus `C-path` (every
+   `Crea:`/`Modifica:` carries `en <path>`), `C-gap` (migration epics) and `C-sup`
+   (declared supersessions). The first stdout line is the **token**:
+   - `MECH_CHECK: PASS <sha>` → append the line to `## MECH_CHECK` of `_planning.md` (date +
+     run number). The sha covers only the table rows: answers and verdicts never invalidate
+     it, any table edit does.
+   - `MECH_CHECK: FAIL <sha>` (exit 1) → re-dispatch the planner with `VIOLATIONS` = the
+     finding lines verbatim (step 4). No validator dispatch is spent on evident errors; each
+     FAIL counts toward the 3-rejection cap of step 5. A `C5 WARNING` is the
+     `BLOCKED: sizing` escalation below.
+   - `MECH_CHECK: UNVERIFIABLE <reason>` (exit 2) → a malformed table is a planner defect →
+     `VIOLATIONS`; a missing input is yours to fix. Only if it stays unverifiable, append the
+     line as-is: the validator then runs its C2 fallback.
+   - No node available → the same three checks by hand with `grep` (epic ops vs `op:` rows,
+     `RN-nnn` vs `br:` rows, `(planeada — re-anclar)` vs `sym:` rows) and append
+     `MECH_CHECK: MANUAL <fecha>`; the validator accepts it with a note.
 5. **Validate per spec**: dispatch the `architecture-validator` once per spec (dims 1-6,
-   unchanged). **Only the first dispatch of the set** additionally carries `_planning.md`
+   unchanged). **Every** validator dispatch of the gate carries the **last `MECH_CHECK:`
+   line** of `_planning.md` verbatim — a required input: without it the validator answers
+   `BLOCKED`. **Only the first dispatch of the set** additionally carries `_planning.md`
    and the source excerpts cited in `RESOLVED_ALONE` — that activates its C7 check
    ("aclaraciones sin sustento"). On `REJECTED` → re-dispatch the planner with
-   `VIOLATIONS` (step 4). **Anti-cascade**: if C7 rejects the **same item a second time**,
+   `VIOLATIONS` (step 4), then 4a again. **Anti-cascade**: if C7 rejects the **same item a second time**,
    convert it into an `OPEN_QUESTION` (back to step 3) — no third attempt between two
    models arguing over a plausible quote. **3 accumulated rejections** for the epic →
    escalate to the user.
@@ -140,10 +169,14 @@ locked `[/]`:
    revisión de specs"): stop here and wait for confirmation in chat. There is no toggle,
    and Plan mode is not used.
 7. **Commit** `docs(specs): plan <epic-slug> — N specs validados` (specs +
-   `_planning.md`). Then append to `_planning.md` the validator verdict **verbatim** and
-   the commit's `SPEC_SHA`; that append rides with the epic's next commit.
-   `_planning.md` ownership is split: the planner wrote `COVERAGE_TABLE` /
-   `OPEN_QUESTIONS` / `RESOLVED_ALONE`; you append answers, verdicts and `SPEC_SHA` —
+   `_planning.md`). Before committing, run `spec-set-check.js <epic-dir> --hash-only`: its
+   sha must equal the last `MECH_CHECK: PASS` line — a different sha means a planner pass
+   was never re-checked → back to 4a. Then append to `_planning.md` the validator verdicts
+   **verbatim** (`## VEREDICTOS`) and the commit's `SPEC_SHA` (`## SPEC_SHA`); that append
+   rides with the epic's next commit. `_planning.md` ownership is split
+   (`templates/PLANNING_TEMPLATE.md`): the planner wrote `COVERAGE_TABLE` /
+   `OPEN_QUESTIONS` / `RESOLVED_ALONE` / `SUPERSESIONES`; you write the sections marked
+   *(coordinador)* — answers, `CODE_SURFACE`, `MECH_CHECK`, `VEREDICTOS`, `SPEC_SHA` —
    sequential writers, never concurrent.
 8. **`TaskCreate` one task per spec** (subject `<epic-slug> / <task-slug>`, start
    `pending`) — user-visible progress for the epic-agent's Steps 4-8; `ROADMAP.md`
@@ -214,7 +247,7 @@ If DONE: update ROADMAP.md to [x] for this epic and commit BEFORE reporting.
 - **BLOCKED: spec <AC-n/BR-n/EC-n>** (also the Iteration Cap's spec-problem exit) → run the **spec-correction loop**, in this order:
   1. **Unseal only that spec's TDD entry**: remove the affected spec's `{slug, red_sha, test_paths}` object from `specs[]` in `.specture/state/build-locked.json` — never delete the whole file (that unseals the sibling specs), never leave the entry (the hook would deny the re-written RED).
   2. Re-dispatch the `spec-planner` with `VIOLATIONS` naming the affected ID (minimal edit; `CHANGELOG` contrasted against `git diff` as in the gate).
-  3. Re-validate the corrected spec (per-spec dispatch; include the C7 inputs only if `RESOLVED_ALONE` changed).
+  3. Run the mechanical set check (gate step 4a) and, on `PASS`, re-validate the corrected spec (per-spec dispatch with the new `MECH_CHECK:` line; include the C7 inputs only if `RESOLVED_ALONE` changed).
   4. Commit the corrected spec and append the **new `SPEC_SHA`** + verdict to `_planning.md`.
   5. **`git revert`** the affected spec's RED commit — never `reset`: history is append-only.
   6. Re-dispatch the epic-agent **from the affected spec**, not from spec 1, with the new `SPEC_SHA` + verbatim verdict.
@@ -258,8 +291,10 @@ The queue only takes `[ ]` epics, so an orphaned `[/]` from a dead session is re
 here, by evidence, before building the queue:
 
 - **Exactly one `[/]`, AND `docs/05-specs/<epic-slug>/_planning.md` records an `APPROVED`
-  verdict, AND the specs are committed** → skip planning: dispatch the epic-agent
-  (Steps 4-8) with the recorded `SPEC_SHA` + verbatim verdict.
+  verdict AND a `MECH_CHECK: PASS` whose sha equals `spec-set-check.js <epic-dir>
+  --hash-only`, AND the specs are committed** → skip planning: dispatch the epic-agent
+  (Steps 4-8) with the recorded `SPEC_SHA` + verbatim verdict. A stale or missing
+  `MECH_CHECK` → run gate step 4a first (and re-validate only if it fails).
 - **One `[/]` with specs only in staging / the working tree** (planning was interrupted
   before the commit) → they are not validated. **Ask the user**: discard and re-plan, or
   resume from the validation step with what is there. Never discard files without asking.

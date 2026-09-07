@@ -27,7 +27,8 @@
    que las anteriores). El texto tras ` — ` es el título del GitHub Release.
 4. **Si la release cambia el esquema del proyecto** — cualquier archivo de
    `templates/project-config/`, `ROADMAP_TEMPLATE.md`, `SPEC_TEMPLATE.md`,
-   `MIGRATION_SPEC_TEMPLATE.md`, `CURRENT_CAPABILITY_TEMPLATE.md`, o la sección
+   `MIGRATION_SPEC_TEMPLATE.md`, `CURRENT_CAPABILITY_TEMPLATE.md`, `PLANNING_TEMPLATE.md`,
+   `BUSINESS_REQUIREMENTS_TEMPLATE.md`, o la sección
    "Required Inputs" de un skill —: decidí si hace falta una migración
    (`migrations/<since>-<slug>.js`, registrada en `migrations/index.js`, con su test en
    `migrations/test/catalog.test.js`) y corré `npm run schema:sync`. `npm test` falla mientras

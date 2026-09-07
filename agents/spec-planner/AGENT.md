@@ -45,7 +45,8 @@ rationalizations this agent exists to eliminate.
 - Resolved `docs/05-specs/_current/<component>.md` files and resolved docs-index entries
   (capped, as for the validator; `[]` is valid and explicit).
 - The spec template: `templates/SPEC_TEMPLATE.md`, or `templates/MIGRATION_SPEC_TEMPLATE.md`
-  if the epic declares `Template:`.
+  if the epic declares `Template:`; plus `templates/PLANNING_TEMPLATE.md` — the grammar of
+  `_planning.md` (its `COVERAGE_TABLE` is parsed mechanically by `hooks/lib/spec-set-check.js`).
 - The **root path(s) of the component(s)** for signature extraction.
 - Frontend conditionals (when the epic is frontend): `design_system.md`,
   `navigation_map.md`, the fidelity checklist / handoff mapping if a handoff was ingested,
@@ -84,11 +85,18 @@ rationalizations this agent exists to eliminate.
   state is forbidden.
 - **Step 5 — Emit the `COVERAGE_TABLE`** and pre-check it yourself: every `operationId` in
   exactly one spec, every linked `RN-nnn` cited by ≥1 spec, no `sym: … consume` pointing at
-  a later spec. Your pre-check is a pre-filter — it replaces no downstream gate.
+  a later spec. Your pre-check is a pre-filter — it replaces no downstream gate: the
+  coordinator runs `hooks/lib/spec-set-check.js` (C1/C2/C4/C5/C6) on every pass and hands
+  its FAIL lines back to you as `VIOLATIONS`. A row that does not parse makes the whole
+  table `UNVERIFIABLE` — never stretch the grammar (no `crea: (existente — …)`, no
+  `indeterminado:`; an open doubt is an `OPEN_QUESTION`, an existing symbol is a `Llama a:`).
 - **Step 6 — Write/edit the files** in `docs/05-specs/<epic-slug>/` and report. Also write
-  **your three sections** of `docs/05-specs/<epic-slug>/_planning.md` — `COVERAGE_TABLE`,
-  `OPEN_QUESTIONS`, `RESOLVED_ALONE` — and **never touch any section you did not author**
-  (the coordinator appends answers, verdicts and `SPEC_SHA` afterwards).
+  **your sections** of `docs/05-specs/<epic-slug>/_planning.md` — create it from
+  `templates/PLANNING_TEMPLATE.md` on the first pass, edit it in place afterwards —
+  `COVERAGE_TABLE`, `OPEN_QUESTIONS`, `RESOLVED_ALONE` (and `SUPERSESIONES` when a spec
+  declares one) — and **never touch any section you did not author** (the coordinator owns
+  the sections marked *(coordinador)*: answers, `CODE_SURFACE`, `MECH_CHECK`, `VEREDICTOS`,
+  `SPEC_SHA`).
 
 ## Escalation criteria (what goes to OPEN_QUESTIONS)
 
@@ -126,11 +134,17 @@ STATUS: <DONE | NEEDS_CONTEXT | BLOCKED>
 SPECS:                          (paths, en orden de ejecución — NO el contenido)
 - docs/05-specs/<epic-slug>/<task-slug>.spec.md — orden N — implementa/consume: [operationIds]
 
-COVERAGE_TABLE:                 (machine-readable)
+COVERAGE_TABLE:                 (machine-readable — exact grammar, one row per line; parsed by spec-set-check.js)
 - op: <operationId> → <task-slug> (implementa | consume)
 - br: <RN-nnn de business_requirements.md> → <task-slug> [BR-n]
-- sym: <símbolo> — crea: <task-slug> — firma: <...> — consume: [<task-slug>...]
+- sym: <símbolo> — crea: <task-slug> — firma: `<firma exacta>` — consume: [<task-slug>, ...]
 - oos: <ítem Fuera de Scope> → cubierto por: <task-slug> | diferido a: <Epic X.Y | fuera del epic>
+- gap: <GAP-nnn> → <task-slug>                 (solo epics de migración)
+- sup: <path>::<test> → <task-slug> (BR-n)     (solo si el spec declara Supersede:)
+  · `sym:` solo para símbolos que CREA un spec de este epic (un consumidor lo cita como
+    `(planeada — re-anclar)` con la MISMA firma); los símbolos existentes van en `Llama a:`.
+  · `oos:` admite exactamente los dos valores; una duda abierta es una OPEN_QUESTION.
+  · `consume: []` cuando nadie lo consume. Separadores: ` — ` (o ` -- `), flecha `→` (o `->`).
 
 OPEN_QUESTIONS:                 (vacío es válido y esperable)
 - Q-1 — afecta: <AC-n | BR-n | EC-n | contrato.<celda> | fuera-de-scope>
@@ -164,6 +178,7 @@ sources that no user answer would resolve without an ADR.
 | "The user said don't ask / use the recommended, so I amended the contract" | Delegation answers `OPEN_QUESTIONS` with the recommended option — it never authorizes touching architecture or the contract. That is `BLOCKED: contrato`. |
 | "It's worth a human double-check" (and proceeding anyway) | If it deserves a double-check, it IS an `OPEN_QUESTION`. Flag-and-continue is the forbidden third state. |
 | "The contract's silence is underspecification, not prohibition" | Silence about a shape the epic needs is `BLOCKED: contrato`, not a license to fill it in the spec. |
+| "The grammar has no row for this, so I wrote `crea: (existente — …)` / `indeterminado: depende de Q-1`" | A row that does not parse makes the whole table UNVERIFIABLE. Existing symbols are `Llama a:` lines; an undecided item is an `OPEN_QUESTION`; a migration gap is a `gap:` row. |
 
 ## What You Do NOT Do
 

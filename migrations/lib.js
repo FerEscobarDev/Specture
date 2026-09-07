@@ -3,7 +3,7 @@
 
 const fs = require("fs");
 const path = require("path");
-const { lines } = require("../hooks/lib/doctor/project");
+const { lines, extractSection } = require("../hooks/lib/doctor/project");
 
 const TEMPLATES = path.resolve(__dirname, "..", "templates");
 
@@ -30,23 +30,8 @@ function templateText(relative) {
   return fs.readFileSync(path.join(TEMPLATES, relative), "utf8");
 }
 
-// Extracts a markdown section: from the heading that matches `headingRegex`
-// up to (not including) the next heading of the same or higher level.
-function extractSection(text, headingRegex) {
-  const all = lines(text);
-  const start = all.findIndex((l) => headingRegex.test(l));
-  if (start === -1) return null;
-  const level = (all[start].match(/^#+/) || ["##"])[0].length;
-  let end = all.length;
-  for (let i = start + 1; i < all.length; i++) {
-    const h = all[i].match(/^(#+)\s/);
-    if (h && h[1].length <= level) {
-      end = i;
-      break;
-    }
-  }
-  return all.slice(start, end).join("\n");
-}
+// extractSection lives in hooks/lib/doctor/project.js (shared with hooks/lib/planning.js)
+// and is re-exported below for the migrations.
 
 function eolOf(text) {
   return text && text.includes("\r\n") ? "\r\n" : "\n";
