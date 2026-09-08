@@ -164,6 +164,7 @@ $SPECTURE_ROOT/
 ├── scripts/doctor.js                  # CLI del doctor: check · migrate · sync (también usable desde la CI de un proyecto)
 ├── scripts/schema-manifest.js         # Hash de los archivos que definen el esquema del proyecto (gate de release)
 ├── scripts/baseline-fixture.js        # Regenera el scratch "Archivador" de los baselines del gate (--stage 1|2, --git); árbol en scripts/baseline-fixture/
+├── scripts/copilot-mirrors.js         # Genera copilot/agents/*.agent.md desde agents/*/AGENT.md (mirrors:sync · --check en los tests)
 ├── migrations/                        # Catálogo de migraciones <since>-<slug>.js + schema-manifest.json + tests
 ├── hooks/
 │   ├── README.md                      # Cómo funcionan, schema de build-locked.json, troubleshooting
@@ -180,7 +181,7 @@ $SPECTURE_ROOT/
 │   ├── lib/doctor/                    # Chequeos del doctor: corpus · estado · drift · migrate
 │   └── test/                          # Tests de contrato del plugin, hooks, settings y doctor
 ├── copilot/
-│   ├── agents/*.agent.md              # Espejos de los agentes para Copilot CLI
+│   ├── agents/*.agent.md              # Espejos de los agentes para Copilot CLI — GENERADOS desde agents/*/AGENT.md, no editar
 │   └── compatibility-matrix.json      # Paridad skills/agentes/gates por plataforma
 ├── skills/
 │   ├── start/SKILL.md                 # Router: detecta el estado y enruta

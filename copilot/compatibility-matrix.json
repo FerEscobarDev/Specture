@@ -48,7 +48,16 @@
     "schema-drift"
   ],
   "platformAdaptations": {
-    "agentFiles": "copilot/agents/*.agent.md",
+    "agentFiles": "copilot/agents/*.agent.md — generated from agents/<name>/AGENT.md by scripts/copilot-mirrors.js (npm run mirrors:sync); never edited by hand",
+    "agentTools": {
+      "architecture-validator": ["read", "search"],
+      "code-reviewer": ["read", "search", "edit", "execute"],
+      "implementer": ["read", "search", "edit", "execute"],
+      "spec-planner": ["read", "search", "edit"],
+      "specture-router": ["read", "search"],
+      "tdd-test-writer": ["read", "search", "edit", "execute"],
+      "ux-implementer": ["read", "search", "edit", "execute"]
+    },
     "hooks": "hooks.json",
     "tasks": "Copilot task tracking is advisory; ROADMAP.md remains authoritative.",
     "approval": "Use Copilot plan workflow and explicit user approval before write operations.",

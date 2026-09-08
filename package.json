@@ -12,6 +12,8 @@
     "check:release": "node scripts/bump-version.js --check",
     "schema:sync": "node scripts/schema-manifest.js",
     "schema:check": "node scripts/schema-manifest.js --check",
+    "mirrors:sync": "node scripts/copilot-mirrors.js",
+    "mirrors:check": "node scripts/copilot-mirrors.js --check",
     "doctor": "node scripts/doctor.js",
     "baseline:fixture": "node scripts/baseline-fixture.js"
   }

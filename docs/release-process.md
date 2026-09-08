@@ -20,6 +20,8 @@
 ## Paso a paso
 
 1. `npm test` en verde local (Node ≥ 22; `node --test` auto-descubre `hooks/test/*.test.js`).
+   Si la release tocó `agents/*/AGENT.md`, antes `npm run mirrors:sync`: los espejos Copilot
+   se generan desde ahí y el test de contrato falla si están desactualizados.
 2. `npm run bump -- X.Y.Z` — escribe la versión en los cuatro manifiestos (idempotente,
    conserva el formato de cada archivo).
 3. Agregar al `README.md`, al inicio de `## Changelog`, la entrada
@@ -53,6 +55,8 @@
   script existente, `--check` en 0.
 - **`migrations/test/*.test.js`**: catálogo (pending → apply → done, idempotente), invariante
   setup ↔ migraciones, manifest de esquema sincronizado.
+- **`hooks/test/copilot-plugin-contract.test.js`**: cada `copilot/agents/*.agent.md` es la
+  salida exacta de `scripts/copilot-mirrors.js` sobre su `AGENT.md` (`mirrors:check`).
 
 ## Reglas
 
@@ -78,6 +82,7 @@
 ```
 npm test                                   # todos los tests
 npm run check:release                      # contrato de release, sin escribir
+npm run mirrors:sync                       # regenera los espejos Copilot tras editar agents/*/AGENT.md
 node scripts/bump-version.js --title 1.14.1   # "v1.14.1 — <título>"
 node scripts/bump-version.js --notes 1.14.1   # cuerpo de la entrada del changelog
 gh run watch                               # seguir el run de CI del último push

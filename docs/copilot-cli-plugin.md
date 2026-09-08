@@ -62,7 +62,7 @@ copilot --plugin-dir C:\Proyectos\VibeCoding
    Las habilidades mantienen sus nombres estándar (`start`, `setup`, `discover`, `architecture`, `ux-design`, `build`, `debug`, `knowledge`). Copilot puede inferir la habilidad requerida o puedes nombrarla explícitamente.
 
 4. **Preguntas del Spec Planning Gate**:
-   En `build`, las tandas del `spec-planner` llegan como **preguntas cerradas en el chat** (2-4 opciones, una recomendada, ≤4 por tanda, ≤2 tandas por epic) — mismas reglas que `AskUserQuestion` en Claude Code. `copilot/agents/` incluye los 7 espejos de agentes.
+   En `build`, las tandas del `spec-planner` llegan como **preguntas cerradas en el chat** (2-4 opciones, una recomendada, ≤4 por tanda, ≤2 tandas por epic) — mismas reglas que `AskUserQuestion` en Claude Code. `copilot/agents/` incluye los 7 espejos de agentes, **generados** desde `agents/*/AGENT.md` (`npm run mirrors:sync`, ver abajo).
 
 ---
 
@@ -80,7 +80,7 @@ node "${PLUGIN_ROOT}/hooks/lib/seal-cli.js" write|merge-spec|unseal-spec|superse
 node "${PLUGIN_ROOT}/hooks/lib/metrics-report.js" --project . [--baseline --write]                                        # knowledge stats
 ```
 
-**Brecha conocida de los espejos (C-9b):** `copilot/agents/*.agent.md` tienen 16-30 líneas frente a las 100-300 de `agents/*/AGENT.md`. Desde v1.18.1 los seis llevan las reglas de significado de v1.18.0 (planner: no leer código y gramática de la `COVERAGE_TABLE`; validator: `MECH_CHECK` y chequeos de set; reviewer: firmas `Crea:` + `CAUSE:`; tdd-test-writer: supersesiones declaradas y `SUPERSEDE:`; implementer y ux-implementer: escribir solo dentro de `Crea:`/`Modifica:`), pero no las tablas de racionalizaciones, los worked examples ni los formatos completos de salida — y `hooks/test/copilot-plugin-contract.test.js` solo verifica que cada espejo exista, no que diga lo mismo. Generarlos desde `AGENT.md` es el ítem 40 del roadmap del framework.
+**Espejos generados (v1.19.0, ítem 40 del roadmap — cierra la brecha C-9b):** `copilot/agents/*.agent.md` se generan desde `agents/<name>/AGENT.md` con `scripts/copilot-mirrors.js` (`npm run mirrors:sync`; `npm run mirrors:check` en los tests). El cuerpo viaja **completo** — Required Inputs, Iron Rules, tablas de racionalizaciones, worked examples y formatos de salida —: el formato de agentes de Copilot admite hasta 30.000 caracteres por prompt y el `AGENT.md` más grande (`code-reviewer`) ronda los 19.000. El generador se **niega** (exit 2) si una fuente supera el tope; nunca trunca — se recorta la fuente. El frontmatter conserva `name`, toma `description` de la fuente, `tools` de `compatibility-matrix.json → platformAdaptations.agentTools` y fija `disable-model-invocation: true` (`model` se descarta: los nombres de modelo de Copilot son otros). Sustituciones de plataforma, aplicadas al cuerpo: `${CLAUDE_PLUGIN_ROOT}` → `${PLUGIN_ROOT}`; `AskUserQuestion` → "pregunta cerrada en el chat (2-4 opciones, una recomendada)"; `EnterPlanMode` / `ExitPlanMode` → "propuesta cerrada en el chat" + "aprobación explícita". **Nunca editar un espejo a mano**: `hooks/test/copilot-plugin-contract.test.js` corre el `--check` y falla si un espejo difiere de su fuente, falta o quedó huérfano. Antes de v1.19.0 los espejos eran resúmenes de 16-30 líneas escritos a mano y el test solo verificaba su existencia.
 
 ---
 

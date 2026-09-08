@@ -2,6 +2,7 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const { test } = require("node:test");
+const { spawnSync } = require("node:child_process");
 
 const root = path.resolve(__dirname, "..", "..");
 
@@ -43,6 +44,27 @@ test("provides a Copilot profile for every Claude specialist", () => {
 
   assert.deepEqual(matrix.agents.slice().sort(), claudeAgents);
   assert.deepEqual(copilotAgents, claudeAgents);
+  assert.deepEqual(Object.keys(matrix.platformAdaptations.agentTools).sort(), claudeAgents, "every agent needs a tools entry for its mirror");
+});
+
+test("every Copilot mirror is generated from its AGENT.md and carries the full body", () => {
+  const { BODY_CAP, FRONTMATTER_KEYS, notice } = require("../../scripts/copilot-mirrors");
+  const check = spawnSync(process.execPath, [path.join(root, "scripts", "copilot-mirrors.js"), "--check"], { encoding: "utf8" });
+  assert.equal(check.status, 0, `${check.stdout}${check.stderr}`);
+
+  for (const name of directoryNames("agents", "AGENT.md")) {
+    const mirror = fs.readFileSync(path.join(root, "copilot", "agents", `${name}.agent.md`), "utf8").replace(/\r\n/g, "\n");
+    const [, frontmatter, ...rest] = mirror.split("---\n");
+    const keys = frontmatter.trim().split("\n").map((line) => line.split(":")[0]);
+    assert.deepEqual(keys, FRONTMATTER_KEYS, name);
+    assert.match(frontmatter, new RegExp(`^name: ${name}$`, "m"));
+    const body = rest.join("---\n");
+    assert.ok(body.includes(notice(name)), `${name}: mirror must carry the generation notice`);
+    assert.ok(body.length <= BODY_CAP, `${name}: mirror body over the Copilot cap`);
+    const source = fs.readFileSync(path.join(root, "agents", name, "AGENT.md"), "utf8").replace(/\r\n/g, "\n");
+    const lastHeading = source.split("\n").filter((line) => /^## /.test(line)).pop();
+    if (lastHeading) assert.ok(body.includes(lastHeading), `${name}: mirror must reach the last section of AGENT.md (${lastHeading})`);
+  }
 });
 
 test("tracks every Specture skill in the compatibility matrix", () => {
