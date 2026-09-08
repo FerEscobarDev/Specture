@@ -104,7 +104,7 @@ Catálogo inicial (lo que Psikora necesitaría hoy):
 | `1.7-meta-gitignore` | mechanical | ni `docs/.specture-meta/` ni `docs/.specture-meta/*` ∈ `.gitignore` | agregar (+ `git rm --cached` propuesto, no ejecutado); no re-agrega la forma directorio sobre la forma glob de 1.18 |
 | `1.8-drop-parallel-toggle` | mechanical | `build.max_parallel_epics` presente | eliminar la línea |
 | `1.9-dependencies-syntax` | assisted | líneas `Dependencias:` que no parsean | proponer reescritura línea a línea |
-| `1.9-current-state-init` | **content** | `_current/` ausente ∧ milestones `[x]` > 0 | agendar backfill **lazy por componente** (N1) — el doctor solo lo reporta con dueño |
+| `1.9-current-state-init` | **content** | `_current/` ausente ∧ milestones `[x]` > 0 | agendar backfill **lazy por componente** (N1) — el doctor lo reporta con dueño y, desde v1.19.0, nombra los componentes (`current-state-missing` / `current-state-partial`); lo ejecuta `knowledge reconcile --component <slug>` y `migrate --verify` lo registra |
 | `1.9-tombstones` | mechanical | milestones cerrados > 2 sin lápida, o lápidas sin IDs | script que colapsa **preservando IDs por construcción** y apunta a `_current/` solo si existe (si no, a la carpeta de specs, con marca `pending:_current`) |
 | `1.10-rules-sections` | mechanical | sin §12/§13 | insertar stubs del template |
 | `1.11-profile-and-knowledge` | mechanical | `learn.enabled` presente / `specture.profile` ausente | renombrar / agregar |
@@ -146,7 +146,7 @@ Frontera"; validator Dim 6 → `api.contract_file` + compañero.
 | Este diseño | Absorbe |
 |---|---|
 | `doctor check` | N5 (lint), N7 (sello huérfano como chequeo), G1 parcial (los tests del doctor corren en CI) |
-| `1.9-current-state-init` | N1 (backfill lazy) — el doctor lo **agenda**, N1 lo **hace** |
+| `1.9-current-state-init` | N1 (backfill lazy) — el doctor lo **agenda**, N1 lo **hace** (`knowledge reconcile`, v1.19.0) |
 | `1.15-settings-file` | N8 |
 | `1.9-tombstones` | la mitad mecánica de N1 |
 | Principio 4 | cambia **todos** los skills con fallback silencioso (build, architecture, validator, reviewer, new-feature) |

@@ -3,8 +3,14 @@
 // (docs/spec-planning-baseline.md — stage 1; docs/spec-planning-baseline-stage2.md — stage 2),
 // so the RED/GREEN scenarios can be re-run instead of recreated from prose.
 //
-//   node scripts/baseline-fixture.js <dir> [--stage 1|2] [--git] [--force]
+//   node scripts/baseline-fixture.js <dir> [--stage 1|2|3] [--git] [--force]
 //
+//   --stage 3            the stage-3 fixture (docs/knowledge-reconcile-baseline.md, v1.19.0): the
+//                        stage-2 tree with Milestone 1 closed (Epics 1.1-1.3 [x] + a new Epic 1.4
+//                        "Cuota por tipo" [x] whose spec supersedes the 10 MB limit of spec 1.1/01 —
+//                        the "último gana" bait), no docs/05-specs/_current/, and a component
+//                        "Auditoría" with inherited code under archivador_api/src/auditoria/ and no
+//                        specs at all (the `characterize` bait).
 //   --stage 2 (default)  the stage-2 fixture ("Archivador v2"): 5 epics, 5-operation contract,
 //                        hand-written baits for scenarios 2/3/11/12, existing code in
 //                        archivador_api/src/tags/ (scenario 9), migration epic + gap_analysis.md
@@ -28,7 +34,7 @@ const PLUGIN_VERSION = JSON.parse(fs.readFileSync(path.resolve(__dirname, "..", 
 
 function usage(message) {
   if (message) process.stderr.write(`baseline-fixture: ${message}\n`);
-  process.stderr.write("usage: node scripts/baseline-fixture.js <dir> [--stage 1|2] [--git] [--force]\n");
+  process.stderr.write("usage: node scripts/baseline-fixture.js <dir> [--stage 1|2|3] [--git] [--force]\n");
   process.exit(2);
 }
 
@@ -44,7 +50,7 @@ function parseArgs(argv) {
     else usage(`unexpected argument ${a}`);
   }
   if (!args.dir) usage("missing <dir>");
-  if (![1, 2].includes(args.stage)) usage("--stage must be 1 or 2");
+  if (![1, 2, 3].includes(args.stage)) usage("--stage must be 1, 2 or 3");
   return args;
 }
 
@@ -100,6 +106,219 @@ function stage1Files(files) {
   return out;
 }
 
+// Stage 3 = the stage-2 tree with Milestone 1 closed and the two baits of the knowledge
+// reconcile / characterize baseline (docs/knowledge-reconcile-baseline.md).
+function stage3Files(files) {
+  const out = { ...files };
+  out["docs/04-roadmap/ROADMAP.md"] = out["docs/04-roadmap/ROADMAP.md"]
+    .replace("- [ ] **Epic 1.1:**", "- [x] **Epic 1.1:**")
+    .replace("- [ ] **Epic 1.2:**", "- [x] **Epic 1.2:**")
+    .replace("- [ ] **Epic 1.3:**", "- [x] **Epic 1.3:**")
+    .replace(
+      "\n### Milestone 2:",
+      [
+        "",
+        "- [x] **Epic 1.4:** Cuota por tipo",
+        "  - **Dependencias:** Epic 1.1",
+        "  - **Descripción:** Los PDF pueden pesar hasta 25 MB; las imágenes siguen en 10 MB. Cambia el tope de `subirArchivo`.",
+        "  - **Reglas de negocio clave:** RN-007",
+        "  - **Componentes de arquitectura involucrados:** Archivos",
+        "  - **Operaciones del contrato:** `subirArchivo`",
+        "  - **Specs estimados:** 1",
+        "",
+        "### Milestone 2:"
+      ].join("\n")
+    );
+  out["docs/01-requirements/business_requirements.md"] = out["docs/01-requirements/business_requirements.md"].replace(
+    /^(- \*\*RN-006:\*\*.*)$/m,
+    "$1\n- **RN-007:** Un PDF pesa como máximo 25 MB; una imagen (`image/png`, `image/jpeg`) como máximo 10 MB. Reemplaza el tope único de 10 MB de RN-001 (aclarado en Epic 1.4, 2026-09-08)."
+  );
+  out["docs/02-architecture/architecture.md"] = out["docs/02-architecture/architecture.md"].replace(
+    "\n## Identidad",
+    [
+      "",
+      "### Auditoría",
+      "- **Responsabilidad:** registro de eventos por empleado — código heredado, anterior a Specture; sin specs ni epic (se caracteriza desde el código).",
+      "- **Carpeta raíz:** `archivador_api/`",
+      "- **Ubicación:** `archivador_api/src/auditoria/`",
+      "",
+      "## Identidad"
+    ].join("\n")
+  );
+  out["docs/05-specs/epic-1.3-etiquetas/01-asignar-etiqueta.spec.md"] = [
+    "# SPEC: Asignar etiqueta — id: epic-1.3-etiquetas/01-asignar-etiqueta",
+    "",
+    "**Epic:** Epic 1.3 Etiquetas   **Módulo:** Etiquetas (`archivador_api/src/tags/`)",
+    "",
+    "## Objetivo",
+    "Un empleado asigna una etiqueta normalizada a un archivo propio reutilizando `TagRepository`.",
+    "",
+    "## Fuera de Scope (NO testear, NO implementar)",
+    "- Quitar etiquetas.",
+    "- Listar archivos por etiqueta.",
+    "",
+    "## Operaciones del Contrato de API (si el spec toca un boundary HTTP)",
+    "- **Implementa** (spec de backend): `operationId` — `[asignarEtiqueta]`",
+    "",
+    "## Contrato (machine-readable — identificadores en el idioma de conventions.md §8)",
+    "| Aspecto | Detalle |",
+    "|---------|---------|",
+    "| Entradas | header `X-Employee-Id`; path `id` del archivo; body `nombre`: string (RN-002) |",
+    "| Salidas (éxito) | 200 `Archivo` con `etiquetas: string[]` |",
+    "| Salidas (error) | archivo ajeno o inexistente → 404 `ARCHIVO_NO_ENCONTRADO`; undécima etiqueta → 409 `LIMITE_ETIQUETAS`; nombre inválido → 400 `VALIDATION_ERROR` |",
+    "| Efectos secundarios | inserta en `tags` (si no existe una casi-duplicada) y en `file_tags` |",
+    "| Idempotencia | sí: repetir la misma etiqueta no la duplica |",
+    "",
+    "## Reglas de Negocio",
+    "- **BR-1:** El nombre se normaliza a minúsculas y sin acentos antes de guardarse — fuente: `RN-005` de business_requirements.md",
+    "- **BR-2:** Un archivo admite como máximo 10 etiquetas — fuente: `RN-005` de business_requirements.md",
+    "- **BR-3:** Solo el dueño del archivo puede etiquetarlo — fuente: `RN-006` de business_requirements.md",
+    "",
+    "## Criterios de Aceptación (≥1 test por ID)",
+    "- **AC-1:** Asignar `Facturación` guarda `facturacion` y devuelve 200 con la etiqueta en `etiquetas`.",
+    "- **AC-2:** La undécima etiqueta distinta devuelve 409 `LIMITE_ETIQUETAS`.",
+    "- **AC-3:** Etiquetar un archivo de otro empleado devuelve 404 `ARCHIVO_NO_ENCONTRADO`.",
+    "",
+    "## Edge Cases (los que cambian comportamiento — NO exhaustivo)",
+    "- **EC-1:** Un nombre casi duplicado (`facturacion` vs `facturación`) reutiliza la etiqueta existente en vez de crear otra.",
+    "",
+    "## Aclaraciones (resueltas en planificación)",
+    "- R-1: ¿casi-duplicados cuentan como la misma etiqueta? → sí — fuente: RN-005 \"se normaliza a minúsculas y sin acentos antes de guardarse\"",
+    "",
+    "## Superficie de Código Existente (para el implementer — lo llena el spec-planner)",
+    "- Crea: `asignarEtiqueta` en `archivador_api/src/tags/service.js` — firma: `asignarEtiqueta(employeeId: string, fileId: string, nombre: string): Promise<Archivo>`",
+    "- Llama a: `TagRepository.findOrCreate(name, cb)` en `archivador_api/src/tags/tag-repository.js`",
+    "- Llama a: `TagRepository.attach(fileId, tagId, cb)` en `archivador_api/src/tags/tag-repository.js`",
+    ""
+  ].join("\n");
+  out["docs/05-specs/epic-1.3-etiquetas/_planning.md"] = [
+    "# Planning — epic-1.3-etiquetas",
+    "",
+    "COVERAGE_TABLE:",
+    "- op: asignarEtiqueta → 01-asignar-etiqueta (implementa)",
+    "- br: RN-002 → 01-asignar-etiqueta [contrato]",
+    "- br: RN-005 → 01-asignar-etiqueta [BR-1, BR-2]",
+    "- sym: asignarEtiqueta — crea: 01-asignar-etiqueta — firma: asignarEtiqueta(employeeId: string, fileId: string, nombre: string): Promise<Archivo>",
+    "",
+    "OPEN_QUESTIONS: (ninguna)",
+    "",
+    "RESOLVED_ALONE:",
+    "- R-1 — casi-duplicados = misma etiqueta — fuente: RN-005 — cita: \"se normaliza a minúsculas y sin acentos antes de guardarse\"",
+    ""
+  ].join("\n");
+  out["docs/05-specs/epic-1.4-cuota/01-cuota-por-tipo.spec.md"] = [
+    "# SPEC: Cuota por tipo — id: epic-1.4-cuota/01-cuota-por-tipo",
+    "",
+    "**Epic:** Epic 1.4 Cuota por tipo   **Módulo:** Archivos (`archivador_api/src/archivos/`)",
+    "",
+    "## Objetivo",
+    "`subirArchivo` acepta PDF de hasta 25 MB; las imágenes conservan el tope de 10 MB.",
+    "",
+    "## Fuera de Scope (NO testear, NO implementar)",
+    "- Tipos de archivo nuevos.",
+    "- Cuota total por empleado.",
+    "",
+    "## Operaciones del Contrato de API (si el spec toca un boundary HTTP)",
+    "- **Implementa** (spec de backend): `operationId` — `[subirArchivo]`",
+    "",
+    "## Contrato (machine-readable — identificadores en el idioma de conventions.md §8)",
+    "| Aspecto | Detalle |",
+    "|---------|---------|",
+    "| Entradas | las de `subirArchivo` (Epic 1.1): header `X-Employee-Id`, `nombre`, `tipo`, `contenidoBase64` |",
+    "| Salidas (éxito) | 201 `Archivo` |",
+    "| Salidas (error) | PDF de más de 25 MB o imagen de más de 10 MB → 400 `VALIDATION_ERROR` |",
+    "| Efectos secundarios | ninguno nuevo |",
+    "| Idempotencia | sin cambio (no idempotente) |",
+    "",
+    "## Reglas de Negocio",
+    "- **BR-1:** PDF ≤ 25 MB; `image/png` e `image/jpeg` ≤ 10 MB — fuente: `RN-007` de business_requirements.md (reemplaza el tope único de 10 MB de RN-001)",
+    "",
+    "## Criterios de Aceptación (≥1 test por ID)",
+    "- **AC-1:** Un PDF de 20 MB devuelve 201.",
+    "- **AC-2:** Un PDF de 25 MB + 1 byte devuelve 400 `VALIDATION_ERROR`.",
+    "- **AC-3:** Un PNG de 12 MB devuelve 400 `VALIDATION_ERROR`.",
+    "",
+    "## Edge Cases (los que cambian comportamiento — NO exhaustivo)",
+    "- **EC-1:** `tipo` en mayúsculas (`APPLICATION/PDF`) se normaliza antes de elegir el tope.",
+    "",
+    "## Aclaraciones (resueltas en planificación)",
+    "- R-1: ¿el tope de PDF aplica al tamaño decodificado? → sí — fuente: RN-001 \"pesa como máximo\" (mismo criterio que el tope anterior)",
+    "",
+    "## Superficie de Código Existente (para el implementer — lo llena el spec-planner)",
+    "- Modifica: `subirArchivo` en `archivador_api/src/archivos/service.js`",
+    "- Llama a: `ArchivoRepository.insert(row)` en `archivador_api/src/archivos/repository.js`",
+    ""
+  ].join("\n");
+  out["docs/05-specs/epic-1.4-cuota/_planning.md"] = [
+    "# Planning — epic-1.4-cuota",
+    "",
+    "COVERAGE_TABLE:",
+    "- op: subirArchivo → 01-cuota-por-tipo (implementa)",
+    "- br: RN-007 → 01-cuota-por-tipo [BR-1]",
+    "",
+    "OPEN_QUESTIONS: (ninguna)",
+    "",
+    "RESOLVED_ALONE:",
+    "- R-1 — tope sobre el tamaño decodificado — fuente: RN-001 — cita: \"pesa como máximo\"",
+    ""
+  ].join("\n");
+  out["archivador_api/src/auditoria/audit-log.js"] = [
+    "'use strict';",
+    "// Registro de auditoría por empleado — código heredado (anterior a Specture), sin specs.",
+    "",
+    "const EVENT_TYPES = ['archivo.subido', 'archivo.eliminado', 'nota.creada', 'etiqueta.asignada'];",
+    "const RETENTION_DAYS = 90;",
+    "const MAX_PAYLOAD_BYTES = 4096;",
+    "const DEFAULT_LIMIT = 50;",
+    "const MAX_LIMIT = 200;",
+    "",
+    "class AuditError extends Error {",
+    "  constructor(code, message) {",
+    "    super(message);",
+    "    this.code = code;",
+    "  }",
+    "}",
+    "",
+    "class AuditLog {",
+    "  constructor(db) {",
+    "    this.db = db;",
+    "  }",
+    "",
+    "  // Inserta un evento. Rechaza tipos fuera de EVENT_TYPES (TIPO_EVENTO_DESCONOCIDO) y",
+    "  // payloads serializados de más de 4 KB (PAYLOAD_DEMASIADO_GRANDE). Devuelve el id.",
+    "  async registrarEvento(employeeId, tipo, payload = {}) {",
+    "    if (!EVENT_TYPES.includes(tipo)) throw new AuditError('TIPO_EVENTO_DESCONOCIDO', `unknown event type ${tipo}`);",
+    "    const json = JSON.stringify(payload);",
+    "    if (Buffer.byteLength(json) > MAX_PAYLOAD_BYTES) throw new AuditError('PAYLOAD_DEMASIADO_GRANDE', 'payload over 4 KB');",
+    "    const rows = await this.db.query('INSERT INTO audit_events(employee_id, tipo, payload) VALUES ($1, $2, $3) RETURNING id', [employeeId, tipo, json]);",
+    "    return rows[0].id;",
+    "  }",
+    "",
+    "  // Lista los eventos del empleado, más recientes primero, nunca más de RETENTION_DAYS atrás;",
+    "  // `limite` por defecto 50 y como máximo 200 (un valor mayor se recorta en silencio).",
+    "  async listarEventos(employeeId, { desde, hasta, limite = DEFAULT_LIMIT } = {}) {",
+    "    const floor = new Date(Date.now() - RETENTION_DAYS * 86400000);",
+    "    const from = desde && desde > floor ? desde : floor;",
+    "    const to = hasta || new Date();",
+    "    const size = Math.min(Math.max(1, limite), MAX_LIMIT);",
+    "    return this.db.query('SELECT id, tipo, payload, created_at FROM audit_events WHERE employee_id = $1 AND created_at BETWEEN $2 AND $3 ORDER BY created_at DESC LIMIT $4', [employeeId, from, to, size]);",
+    "  }",
+    "",
+    "  // Borra los eventos con más de RETENTION_DAYS días. Devuelve cuántos borró.",
+    "  async purgar(now = new Date()) {",
+    "    const floor = new Date(now.getTime() - RETENTION_DAYS * 86400000);",
+    "    const rows = await this.db.query('DELETE FROM audit_events WHERE created_at < $1 RETURNING id', [floor]);",
+    "    return rows.length;",
+    "  }",
+    "}",
+    "",
+    "module.exports = { AuditLog, AuditError, EVENT_TYPES, RETENTION_DAYS, MAX_PAYLOAD_BYTES, DEFAULT_LIMIT, MAX_LIMIT };",
+    ""
+  ].join("\n");
+  out["archivador_api/src/auditoria/index.js"] = "'use strict';\nmodule.exports = require('./audit-log');\n";
+  return out;
+}
+
 function write(dir, files) {
   for (const [rel, text] of Object.entries(files)) {
     const abs = path.join(dir, ...rel.split("/"));
@@ -125,6 +344,18 @@ function scenarioHints(dir, stage) {
       `  doctor:  node "${root}/scripts/doctor.js" check --project "${d}"`
     ];
   }
+  if (stage === 3) {
+    return [
+      "Stage-3 scenarios (docs/knowledge-reconcile-baseline.md): Milestone 1 closed, no docs/05-specs/_current/.",
+      `  doctor:      node "${root}/scripts/doctor.js" check --project "${d}"                                   # current-state-missing → knowledge reconcile`,
+      `  components:  node "${root}/hooks/lib/current-state.js" components --project "${d}"`,
+      `  sc.1  /specture:knowledge reconcile --component archivos      # 3 specs [x]; spec 1.4/01 supersedes the 10 MB limit of 1.1/01 (último gana → Historial)`,
+      `  sc.2  /specture:knowledge reconcile --component archiv        # ambiguous/unknown slug → the helper exits 2 and the skill asks`,
+      `  sc.3  /specture:knowledge characterize --component auditoria  # no specs: read-only from archivador_api/src/auditoria/ → Confianza: ai_characterized`,
+      `  sc.4  build on Epic 2.1 (Etiquetas has 1 spec [x] and no _current/etiquetas.md) → Current-State Resolution warns once, does not block`,
+      `  sc.5  re-run sc.1 after editing _current/archivos.md by hand → incremental merge, bounded git diff`
+    ];
+  }
   return [
     "Stage-2 mechanical scenarios (docs/spec-planning-baseline-stage2.md):",
     `  sc.2  node "${root}/hooks/lib/spec-set-check.js" "${d}/docs/05-specs/epic-1.1-archivos" --roadmap "${d}/docs/04-roadmap/ROADMAP.md" --epic 1.1   # C1 hueco eliminarArchivo`,
@@ -141,7 +372,7 @@ if (require.main === module) {
   const args = parseArgs(process.argv.slice(2));
   const dir = path.resolve(args.dir);
   if (fs.existsSync(dir) && fs.readdirSync(dir).length > 0 && !args.force) usage(`${dir} is not empty (use --force)`);
-  const files = args.stage === 1 ? stage1Files(stage2Files()) : stage2Files();
+  const files = args.stage === 1 ? stage1Files(stage2Files()) : args.stage === 3 ? stage3Files(stage2Files()) : stage2Files();
   fs.mkdirSync(dir, { recursive: true });
   write(dir, files);
   let sha = null;
@@ -150,4 +381,4 @@ if (require.main === module) {
   for (const line of scenarioHints(dir, args.stage)) process.stdout.write(line + "\n");
 }
 
-module.exports = { stage2Files, stage1Files, write, SOURCE, PLUGIN_VERSION };
+module.exports = { stage2Files, stage1Files, stage3Files, write, SOURCE, PLUGIN_VERSION };

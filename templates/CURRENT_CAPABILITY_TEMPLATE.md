@@ -2,12 +2,15 @@
 
 > **Verdad viva del comportamiento de este componente.** Vista materializada *sobre*
 > los specs (inmutables) que lo construyeron — NO los reemplaza, los consolida en
-> presente. La **regenera el coordinador** de `build` al cerrar cada milestone que
-> toca este componente (Step 8.7). **NO editar a mano.**
+> presente. La escriben **solo** el coordinador de `build` al cerrar cada milestone que
+> toca este componente (Step 8.7) y `/specture:knowledge reconcile|characterize
+> --component <slug>` (backfill lazy, un componente por vez, con aprobación en Plan mode).
+> **NO editar a mano** — salvo para promover `Confianza` a `user_confirmed`.
 >
-> - **Componente:** [slug de `architecture.md` § High-Level Components]
-> - **Specs de origen:** [lista de `docs/05-specs/<epic>/<task>.spec.md` que contribuyeron]
-> - **Última reconciliación:** [Milestone N — fecha]
+> - **Componente:** [slug de `architecture.md` § Componentes]
+> - **Specs de origen:** [lista de `docs/05-specs/<epic>/<task>.spec.md` que contribuyeron — `(ninguno — caracterizado desde código)` en characterize]
+> - **Última reconciliación:** [Milestone N — fecha | fecha — knowledge reconcile|characterize]
+> - **Confianza:** [spec_reconciled (Step 8.7, desde los specs del milestone) | ai_reconciled (knowledge reconcile, desde specs [x]) | ai_characterized (knowledge characterize, desde código — informativo) | user_confirmed (un humano lo validó)]
 
 ## Reglas de negocio vigentes
 > Solo las que rigen HOY. Las superseded bajan a "Historial".

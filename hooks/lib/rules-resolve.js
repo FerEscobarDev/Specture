@@ -55,9 +55,19 @@ function main(argv) {
     }
     const legacy = legacyRules(conventions);
     if (legacy.length > 0) {
-      process.stderr.write(`⚠ Specture: \`${RULES_FILE.split(path.sep).join("/")}\` no inicializado — conventions.md §12 declara ${legacy.length} regla(s) que no se inyectan; corré /specture:doctor migrate (1.19-rules-file)\n`);
+      // Tolerant read during a release (same as settings.js with §10): the old §12 rules are
+      // injected whole (they carry no tags → `all`) so a project keeps its enforcement until
+      // `1.19-rules-file` moves them; the warning names the migration.
+      process.stderr.write(`⚠ Specture: \`${RULES_FILE.split(path.sep).join("/")}\` no inicializado — conventions.md §12 declara ${legacy.length} regla(s); se inyectan todas sin filtrar por tag hasta migrar: corré /specture:doctor migrate (1.19-rules-file)\n`);
+      const resolved = resolveRules(legacy, args.tags, { all: true });
+      if (args.json) {
+        process.stdout.write(JSON.stringify({ file: ".specture/conventions.md#12", legacy: true, total: legacy.length, tags: args.tags, all: true, resolved }) + "\n");
+      } else {
+        process.stdout.write(formatBlock(resolved, { total: legacy.length, all: true }) + "\n");
+      }
+      return 0;
     }
-    process.stdout.write((args.json ? JSON.stringify({ file: null, total: 0, tags: args.tags, all: args.all, resolved: [], legacy: legacy.length }) : "RULES_RESOLVED: []") + "\n");
+    process.stdout.write((args.json ? JSON.stringify({ file: null, legacy: false, total: 0, tags: args.tags, all: args.all, resolved: [] }) : "RULES_RESOLVED: []") + "\n");
     return 0;
   }
   if (rules.error) {

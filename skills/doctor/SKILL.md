@@ -13,7 +13,7 @@ Three modes:
 
 | Mode | What it does | Writes |
 |---|---|---|
-| `check` (default) | corpus lint (broken paths, `...` placeholders, duplicate ADRs, ADRs without Status, reviews without verdict, specs without IDs, over 300 lines or with off-template sections, line-number citations), requirements lint (unresolved placeholders, HUs without `Exposición`, boundary stories not consolidated, rules/edge cases/exclusions without `RN/CL/FA` IDs), rules lint (`.specture/rules.yml` that does not parse or with duplicate ids / missing fields / unknown severity — `rules-schema`; a `rule` over 240 characters or a §4 deny-list item over 2 lines — `rule-length`), state (stale seal, >1 `[/]`, missing `_current/`, docs-index vs toggle, worktree leftovers), schema drift (pending migrations by kind) | nothing |
+| `check` (default) | corpus lint (broken paths, `...` placeholders, duplicate ADRs, ADRs without Status, reviews without verdict, specs without IDs, over 300 lines or with off-template sections, line-number citations), requirements lint (unresolved placeholders, HUs without `Exposición`, boundary stories not consolidated, rules/edge cases/exclusions without `RN/CL/FA` IDs), rules lint (`.specture/rules.yml` that does not parse or with duplicate ids / missing fields / unknown severity — `rules-schema`; a `rule` over 240 characters or a §4 deny-list item over 2 lines — `rule-length`), state (stale seal, >1 `[/]`, missing `_current/` or a component with `[x]` specs and no `_current/<slug>.md` — both name the `knowledge reconcile` command —, docs-index vs toggle, worktree leftovers), schema drift (pending migrations by kind) | nothing |
 | `migrate` | applies pending **mechanical** migrations (with `--apply`), drafts the **assisted** ones in Plan mode, records **content** ones as deferred with their owner; advances `schema_version` | `.specture/`, `.gitignore`, ROADMAP, requirements/architecture docs, `.specture/migrations.log` |
 | `sync` | `migrate --apply` (mechanical only) + `check` — for CI and for `start` | mechanical only |
 
@@ -48,7 +48,7 @@ Show the script's table as-is (severity, check, detail, suggested action) and th
    - `migrate --plan <id> --json` gives you the material (`planInputs`) and the target file.
    - **`EnterPlanMode`**, write **one** plan with **all** assisted deltas (per migration: file, exact delta, rationale — the format `knowledge` capture uses), **`ExitPlanMode`**. The user approves atomically; approve-some means re-run with the rejected ones excluded.
    - Apply the approved deltas with `Edit`, then `migrate --verify <id> --by skill` for each. `verify()` must pass before it is logged; if it fails, the migration is not done — fix the delta, do not log by hand.
-4. **Content** — never applied here. The script records them as `deferred` with their owner skill; tell the user which skill owns it and when it will run (e.g. `1.9-current-state-init` → `knowledge reconcile --component <slug>`, lazily, the first time an epic touches a component).
+4. **Content** — never applied here. The script records them as `deferred` with their owner skill; tell the user which skill owns it and when it will run (e.g. `1.9-current-state-init` → `/specture:knowledge reconcile --component <slug>`, one component at a time, with Plan-mode approval — `check` names the components in `current-state-missing` / `current-state-partial`; `characterize` for a component that has code but no specs).
 5. Re-run `check`. Then propose the commit — the doctor **never commits on its own**:
    > "Migración aplicada hasta schema `<version>`. Commit sugerido: `chore(specture): migrate to schema <version>` — ¿lo hago?"
 
@@ -66,7 +66,7 @@ Used by CI and by `start` Step 0. Mechanical migrations are applied and the chec
 | `1.7-meta-gitignore` | mechanical | `docs/.specture-meta/` in `.gitignore` (suggests `git rm --cached` if tracked) |
 | `1.8-drop-parallel-toggle` | mechanical | removes `build.max_parallel_epics` |
 | `1.9-dependencies-syntax` | assisted | `Dependencias:` lines rewritten in the parseable grammar |
-| `1.9-current-state-init` | content | `_current/` backfill — owned by `knowledge reconcile`, lazy |
+| `1.9-current-state-init` | content | `_current/` backfill — owned by `knowledge reconcile --component <slug>` (v1.19.0), lazy, one component per run; `check` lists the components with `[x]` specs and no file |
 | `1.9-tombstones` | mechanical | collapses older closed milestones to tombstones, IDs preserved, bodies archived |
 | `1.10-rules-sections` | mechanical | §12 / §13 stubs in `conventions.md` |
 | `1.11-profile-and-knowledge` | mechanical | `learn.enabled` → `knowledge.enabled`; explicit profile |

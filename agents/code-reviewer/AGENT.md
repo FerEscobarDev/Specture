@@ -149,7 +149,7 @@ This dimension does **not** judge subjective aesthetics — that is the user's v
 
 ### Dimension 7 — Project Invariants (active only when the `RULES_RESOLVED` block has rules)
 
-This dimension is **active only when** the dispatch's `RULES_RESOLVED` block lists `R-*` rules — the orchestrator resolved them from `.specture/rules.yml` by tag intersection with the spec (Rules Resolution). If the block is `RULES_RESOLVED: []`, skip it. Read the rules **from the block only**: never open `rules.yml` or `conventions.md` §12 yourself (in a project not yet migrated, §12 may still hold the old table — it is not your input).
+This dimension is **active only when** the dispatch's `RULES_RESOLVED` block lists `R-*` rules — the orchestrator resolved them from `.specture/rules.yml` by tag intersection with the spec (Rules Resolution). If the block is `RULES_RESOLVED: []`, skip it. Read the rules **from the block only**: never open `rules.yml` or `conventions.md` §12 yourself (in a project not yet migrated the orchestrator injects the old §12 table through the same block — it is still not your input to read directly).
 
 Question: **Does the code honor every project invariant (`R-*`) in scope?**
 

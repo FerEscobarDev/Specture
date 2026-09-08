@@ -229,7 +229,7 @@ $SPECTURE_ROOT/
 │   ├── SPEC_TEMPLATE.md
 │   ├── MIGRATION_SPEC_TEMPLATE.md     # Specs de epics de migración (modernize): AC-n, gaps GAP-nnn, supersesiones
 │   ├── PLANNING_TEMPLATE.md           # Gramática de docs/05-specs/<epic>/_planning.md (COVERAGE_TABLE, MECH_CHECK, veredictos, SPEC_SHA)
-│   ├── CURRENT_CAPABILITY_TEMPLATE.md # Verdad viva por componente en docs/05-specs/_current/
+│   ├── CURRENT_CAPABILITY_TEMPLATE.md # Verdad viva por componente en docs/05-specs/_current/ (Confianza: spec_reconciled | ai_reconciled | ai_characterized | user_confirmed)
 │   ├── BUSINESS_REQUIREMENTS_TEMPLATE.md
 │   ├── DESIGN_SYSTEM_TEMPLATE.md
 │   ├── DEBUG_LOG_TEMPLATE.md
@@ -268,6 +268,7 @@ $SPECTURE_ROOT/
 | `knowledge` (capture) | `/specture:knowledge` · alias `/specture:learn` | Captura post-sesión opt-in (post-epic, post-debug, manual). Propone drafts de ADRs/índice/conventions con aprobación granular |
 | `knowledge` (audit) | `/specture:knowledge audit` · alias `/specture:audit-knowledge` | Auditoría periódica (1-3 meses) del `docs-index.yml`: detecta orphans, duplicates, stale, uncovered. Read-only |
 | `knowledge` (stats) | `/specture:knowledge stats` | Lee `docs/.specture-meta/build-metrics.jsonl` (una línea por epic, trackeada) y aplica la lectura del gate: ¿bajan los defectos aguas abajo? ¿pregunta el planner? ¿sube `spec_defect`? Ofrece reconstruir el baseline de los epics previos al gate. Read-only |
+| `knowledge` (reconcile) | `/specture:knowledge reconcile --component <slug>` · `characterize --component <slug>` | Backfill lazy de la verdad viva `docs/05-specs/_current/<slug>.md` desde los specs `[x]` del componente (último gana; lo superseded baja a Historial) — un componente por vez, aprobación en Plan mode, `Confianza: ai_reconciled`. `characterize` la deriva del código (read-only) cuando el componente no tiene specs (Adopt), `Confianza: ai_characterized`. Lo piden el doctor, `build` y `new-feature` cuando falta el archivo |
 | `doctor` | `/specture:doctor` · `check` \| `migrate` \| `sync` | Después de actualizar el plugin, cuando `start` avisa migraciones pendientes, o para lintear el corpus (rutas rotas, ADRs duplicados, reviews sin veredicto, sello huérfano). `check` es solo lectura; `migrate` aplica las migraciones mecánicas y lleva las asistidas a Plan mode |
 
 ---
@@ -431,8 +432,8 @@ Output: `.specture/docs-index.yml` + bridges en `docs/0X-*/` + ADRs Proposed en 
 
 ---
 
-#### `/specture:knowledge` (modos `capture` | `audit` | `stats`)
-**Higiene de conocimiento del proyecto, unificada en una skill con tres modos** (v1.11.0; `stats` desde v1.18.0). Los aliases `/specture:learn` → `capture` y `/specture:audit-knowledge` → `audit` siguen funcionando.
+#### `/specture:knowledge` (modos `capture` | `audit` | `stats` | `reconcile`)
+**Higiene de conocimiento del proyecto, unificada en una skill con cuatro modos** (v1.11.0; `stats` desde v1.18.0; `reconcile` desde v1.19.0). Los aliases `/specture:learn` → `capture` y `/specture:audit-knowledge` → `audit` siguen funcionando.
 
 **Modo `capture`** (ex-`/specture:learn`): captura post-sesión opt-in del conocimiento descubierto. Se activa al final de un epic (build Step 8.5), tras confirmar una causa raíz (debug Phase 4.5), manualmente, o con `--teach <concepto>`. Filtra relevancia, recolecta evidencia, cross-referencia el `docs-index.yml`, y genera hasta **3 drafts** por invocación (entrada de índice `ai_categorized`, ADR `Status: Proposed`, patch a `conventions.md`/bridge, o test de characterization pendiente). El usuario **aprueba en bloque vía Plan mode**. Hard token budget ~30K. **Nunca escribe a la memoria personal de Claude.** Gate: `knowledge.enabled` en `.specture/settings.yml`. Output: drafts + log en `docs/.specture-meta/learn-history.jsonl`.
 
@@ -440,7 +441,9 @@ Output: `.specture/docs-index.yml` + bridges en `docs/0X-*/` + ADRs Proposed en 
 
 **Modo `stats`** (v1.18.0): lee `docs/.specture-meta/build-metrics.jsonl` — la línea por epic que el coordinador de `build` anexa y commitea (`planner_dispatches`, `open_questions`, `c7_rejections`, `mech_check_failures`, `needs_context_spec`, `iteration_cap_spec`, `blocked_spec`, `reviewer_rejected_major_spec_defect`, `review_rejections`, `supersessions`, `outcome`, `tokens` opcional) — vía `hooks/lib/metrics-report.js`, y aplica la lectura del diseño del gate: bajan los defectos aguas abajo → el gate atrapa ambigüedad real; no bajan y `open_questions ≈ 0` → el planner no pregunta; sube `spec_defect` → mantener la validación por spec (decisión A6). Si no hay archivo, ofrece `--baseline --write`: reconstruye una línea por epic cerrado desde los veredictos de `docs/07-reviews/`, los contadores de `_planning.md` y el `git log`. Read-only.
 
-> Úsalo (capture) cuando termine un epic / se confirme un root cause / quieras formalizar lo descubierto; (audit) cada 1-3 meses o cuando el índice parezca desfasado; (stats) cada ~10 epics con gate para decidir sobre él con datos.
+**Modo `reconcile`** (v1.19.0, ítem 38 del roadmap): backfill **lazy, por componente**, de la verdad viva `docs/05-specs/_current/<slug>.md`. `hooks/lib/current-state.js` lista los componentes de `architecture.md` y los specs `[x]` que citan a cada uno (por `Módulo:` del spec o por el bloque del epic), en orden de ROADMAP; el modo lee **solo** esos specs, aplica "último gana" por `operationId` / sujeto de regla (lo superseded baja a "Historial"), hace merge incremental si el archivo ya existe y escribe con **aprobación en Plan mode** y `Confianza: ai_reconciled`. Un slug ambiguo se pregunta, nunca se adivina. **`characterize --component <slug>`** es la variante para proyectos Adopt o código heredado sin specs: un subagente read-only (haiku) extrae del código de la "Carpeta raíz" filas `KIND | STATEMENT | path::símbolo` y el archivo nace con `Confianza: ai_characterized` (informativo para el reviewer). El doctor (`current-state-missing` / `current-state-partial`), `build` (Current-State Resolution) y `new-feature` nombran el comando cuando un componente con specs cerrados no tiene archivo; `build` Step 8.7 sigue reconciliando al cerrar cada milestone (`Confianza: spec_reconciled`). Un proyecto maduro obtiene verdad viva sin consolidar cientos de specs de golpe.
+
+> Úsalo (capture) cuando termine un epic / se confirme un root cause / quieras formalizar lo descubierto; (audit) cada 1-3 meses o cuando el índice parezca desfasado; (stats) cada ~10 epics con gate para decidir sobre él con datos; (reconcile) cuando el doctor o el build avisen de un componente con specs cerrados y sin `_current/`, o (characterize) antes de la primera feature sobre código heredado.
 
 ---
 
@@ -554,7 +557,7 @@ Cada proyecto que use Specture tiene una carpeta `.specture/`:
 
 `settings.yml` (desde v1.15.0) es el único archivo **del framework** dentro de `.specture/`: `schema_version` (la versión del esquema de proyecto que el plugin espera), `profile` (`lean | full | custom`) y los toggles (`hooks.enabled`, `context7.enabled`, `docs_index.*`, `knowledge.enabled`). Lo escribe `/specture:setup`; cuando actualizás el plugin, `/specture:start` compara `schema_version` con la versión instalada y, si hay migraciones pendientes, ofrece `/specture:doctor migrate`. Proyectos creados antes de v1.15.0 conservan los toggles en `conventions.md` §10 — se siguen leyendo hasta que el doctor los mueva.
 
-`rules.yml` (desde v1.19.0) guarda las **invariantes del proyecto** `R-*` — **una línea por regla** (≤ 240 caracteres) con `tags`, `severity` (`BLOCKER | IMPORTANT`) y `source` (el ADR o debug log donde vive la historia; nunca inline). No hay toggle: la presencia de reglas es el switch. El coordinador de `build` corre `hooks/lib/rules-resolve.js --tags <módulo,componente,backend|frontend>` antes de cada dispatch y entrega **solo** las reglas que cruzan (`RULES_RESOLVED`) al planner, al implementer y al reviewer, que las enforça por ID (Dimensión 7). `/specture:knowledge capture` escribe las nuevas ahí y rechaza cualquier draft que supere el largo; el doctor marca `rule-length` y `rules-schema`. Proyectos anteriores conservan la tabla en `conventions.md` §12 hasta que `/specture:doctor migrate` (`1.19-rules-file`) la mueva.
+`rules.yml` (desde v1.19.0) guarda las **invariantes del proyecto** `R-*` — **una línea por regla** (≤ 240 caracteres) con `tags`, `severity` (`BLOCKER | IMPORTANT`) y `source` (el ADR o debug log donde vive la historia; nunca inline). No hay toggle: la presencia de reglas es el switch. El coordinador de `build` corre `hooks/lib/rules-resolve.js --tags <módulo,componente,backend|frontend>` antes de cada dispatch y entrega **solo** las reglas que cruzan (`RULES_RESOLVED`) al planner, al implementer y al reviewer, que las enforça por ID (Dimensión 7). `/specture:knowledge capture` escribe las nuevas ahí y rechaza cualquier draft que supere el largo; el doctor marca `rule-length` y `rules-schema`. Proyectos anteriores conservan la tabla en `conventions.md` §12 hasta que `/specture:doctor migrate` (`1.19-rules-file`) la mueva; mientras tanto el resolver inyecta esas reglas enteras (sin filtro por tag, como antes) y avisa.
 
 **Doctor en la CI del proyecto (opcional):** un job que clona el plugin a la versión instalada y corre el chequeo — falla en `ERROR` (rutas rotas, ADR duplicado, sello huérfano):
 
@@ -569,7 +572,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with: { node-version: 22 }
-      - run: git clone --depth 1 --branch v1.18.1 https://github.com/FerEscobarDev/Specture.git .specture-plugin
+      - run: git clone --depth 1 --branch v1.19.0 https://github.com/FerEscobarDev/Specture.git .specture-plugin
       - run: node .specture-plugin/scripts/doctor.js check --project .
 ```
 
@@ -655,6 +658,22 @@ Specture está en desarrollo activo. Para decisiones arquitectónicas internas, 
 ---
 
 ## Changelog
+
+### v1.19.0 — Escala y madurez: verdad viva por componente, reglas de una línea, espejos generados
+
+**Motivación:** es la Milestone 5 de `docs/framework-roadmap.md` (ítems 38-40): que un proyecto con veinte milestones cerrados y quinientas líneas de convenciones siga teniendo verdad viva, reglas cortas y paridad entre plataformas. Las tres evidencias venían de Psikora (`docs/psikora-scale-review.md`): `_current/` nunca existió y 29 análisis de impacto re-derivaron la verdad desde los specs; `conventions.md` de 518 líneas viajaba entero a cuatro workers por spec, con reglas que narraban el bug de origen; y los espejos Copilot eran resúmenes escritos a mano que el test solo verificaba por existencia.
+
+**Cambios:**
+- **`/specture:knowledge reconcile --component <slug>` (ítem 38):** backfill lazy de `docs/05-specs/_current/<slug>.md` desde los specs `[x]` que citan el componente, un componente por vez, "último gana" por `operationId`/sujeto de regla (lo superseded baja a Historial), merge incremental si el archivo existe y aprobación en Plan mode; `Confianza: ai_reconciled`. Variante **`characterize`** para componentes sin specs (Adopt, código heredado): subagente read-only sobre la "Carpeta raíz", filas `KIND | STATEMENT | path::símbolo`, `Confianza: ai_characterized`. Nuevo `hooks/lib/current-state.js` (`components` / `specs --component`: slugs de `architecture.md`, specs por `Módulo:` o por el bloque del epic, en orden de ROADMAP; un slug ambiguo se pregunta). `CURRENT_CAPABILITY_TEMPLATE.md` gana `Confianza` (`spec_reconciled` lo escribe `build` Step 8.7). Current-State Resolution, `new-feature` y el doctor (`current-state-missing` con los slugs; nuevo `current-state-partial`) nombran el comando cuando falta el archivo y nunca bloquean. Fixture `scripts/baseline-fixture.js --stage 3` y baseline `docs/knowledge-reconcile-baseline.md`.
+- **Reglas de una línea + `.specture/rules.yml` (ítem 39):** las invariantes `R-*` salen de `conventions.md` §12 (que queda como puntero, igual que §10 → `settings.yml`) a `rules.yml`: `id`, `tags`, `rule` ≤ 240 caracteres sin salto, `verify`, `severity`, `source` con la historia (ADR / debug log) — nunca inline. `hooks/lib/rules-resolve.js --tags <módulo,componente,backend|frontend>` resuelve el bloque `RULES_RESOLVED` que el coordinador pega en cada dispatch ("Rules Resolution" en `build/EPIC_LOOP.md`; `--all` para los dispatches de proyecto de `architecture`); lo reciben planner, implementer/ux-implementer, reviewer (Dimensión 7 lee solo el bloque) y validator; el test-writer no. Doctor: `rules-schema` (ERROR) y `rule-length` (WARNING, también para ítems del deny-list §4 de más de 2 líneas). `knowledge capture` escribe drafts `rules.yml entry` y rechaza antes de Plan mode uno que supere el largo. `setup` copia `rules.template.yml`.
+- **Espejos Copilot generados (ítem 40, cierra C-9b):** `scripts/copilot-mirrors.js` (`npm run mirrors:sync` / `mirrors:check`) genera `copilot/agents/*.agent.md` desde `agents/*/AGENT.md` con el cuerpo completo (el formato admite 30.000 caracteres; el mayor ronda 19.000), `tools` desde `compatibility-matrix.json → platformAdaptations.agentTools`, `disable-model-invocation: true` y sustituciones de plataforma (`${CLAUDE_PLUGIN_ROOT}` → `${PLUGIN_ROOT}`, `AskUserQuestion` → pregunta cerrada en chat, `EnterPlanMode`/`ExitPlanMode` → propuesta cerrada + aprobación). Se niega a truncar. El test de contrato exige paridad exacta; `code-reviewer` gana `edit` en su espejo (escribe su reporte).
+- **`build`:** `templates/PLANNING_TEMPLATE.md` y `.specture/rules.yml` en sus Required Inputs (el primero, diferido desde v1.18.1); filas nuevas en Preconditions.
+- **Docs:** `docs/rules-registry-design.md` y `docs/reconciliation-design.md` pasan a "implementado" con la graduación de v1.19.0; catálogo del doctor con `1.19-rules-file`; `docs/copilot-cli-plugin.md`, `docs/execution-flows.md` (Rules Resolution en el gate, cuatro modos de `knowledge`), `docs/native-integration-guide.md`, `docs/release-process.md` (`mirrors:sync` antes de `npm test`), README.
+- Tests: 137 (111 → 137).
+
+**Migración para proyectos existentes:** `1.19-rules-file` (mecánica): mueve las filas reales de `conventions.md` §12 (tabla de seis columnas o bullets `- **R-n:** …`; placeholders omitidos) a `.specture/rules.yml` y deja §12 como puntero; las reglas sin tags o severidad quedan `all` / `IMPORTANT` y las de más de 240 caracteres se anotan (el doctor las marca `rule-length`) — `/specture:doctor migrate`. El backfill de `_current/` (`1.9-current-state-init`, contenido) sigue siendo lazy y manual: `/specture:knowledge reconcile --component <slug>` por cada componente que `doctor check` liste.
+
+**Backward-compat:** sin `rules.yml`, `RULES_RESOLVED: []` y la Dimensión 7 del reviewer es no-op, como un §12 vacío hoy; un proyecto con la tabla vieja en §12 sigue recibiendo esas reglas enteras (sin filtro por tag) hasta migrar, con aviso. Un `_current/` sin `Confianza` se lee como `spec_reconciled`. Los espejos conservan `name` y `tools` (más `edit` en `code-reviewer`); Antigravity lee `agents/*/AGENT.md` directo y no cambia. Sin cambios en el sello, los hooks ni el gate.
 
 ### v1.18.1 — Cierre de huecos de la Milestone 4
 

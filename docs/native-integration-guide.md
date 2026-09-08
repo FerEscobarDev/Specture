@@ -32,7 +32,7 @@ El principio core de Specture — **contexto restringido por agente** — se man
 Editá `.specture/settings.yml` (v1.15.0+ — lo crea `/specture:setup`; es el archivo **del framework** dentro de `.specture/`):
 
 ```yaml
-schema_version: 1.18.1       # versión del esquema de proyecto; la avanza /specture:doctor migrate
+schema_version: 1.19.0       # versión del esquema de proyecto; la avanza /specture:doctor migrate
 profile: custom              # lean | full | custom
 hooks.enabled: true          # activa el TDD Honesty Gate (PreToolUse). SessionStart ya no existe (v1.5.0).
 context7.enabled: true       # activa Context7 en code-reviewer y modernize
@@ -40,7 +40,7 @@ context7.enabled: true       # activa Context7 en code-reviewer y modernize
 
 Cualquier capacidad podés dejarla en `false` (o ausente) y el resto sigue funcionando. Con todos los toggles en `false`, Specture funciona exactamente como v1.1.0. Proyectos creados antes de v1.15.0 tienen los toggles en `conventions.md` §10; `hooks/lib/settings.js` los lee de ahí como fallback hasta que `/specture:doctor migrate` los mueva (migración `1.15-settings-file`).
 
-Las **invariantes del proyecto** (`R-*`) viven desde v1.19.0 en `.specture/rules.yml` — una regla por línea (≤ 240 caracteres) con `tags`, `severity` y `source` (el ADR o debug log con la historia). No hay toggle: la presencia de reglas es el switch. El coordinador de `build` corre `hooks/lib/rules-resolve.js --tags <módulo,componente,backend|frontend>` antes de cada dispatch y pasa solo las reglas que cruzan (`RULES_RESOLVED`); el `code-reviewer` las enforça por ID (Dimensión 7). Proyectos anteriores conservan la tabla en `conventions.md` §12 hasta que `/specture:doctor migrate` (`1.19-rules-file`) la mueva; mientras tanto el resolver avisa y no inyecta nada.
+Las **invariantes del proyecto** (`R-*`) viven desde v1.19.0 en `.specture/rules.yml` — una regla por línea (≤ 240 caracteres) con `tags`, `severity` y `source` (el ADR o debug log con la historia). No hay toggle: la presencia de reglas es el switch. El coordinador de `build` corre `hooks/lib/rules-resolve.js --tags <módulo,componente,backend|frontend>` antes de cada dispatch y pasa solo las reglas que cruzan (`RULES_RESOLVED`); el `code-reviewer` las enforça por ID (Dimensión 7). Proyectos anteriores conservan la tabla en `conventions.md` §12 hasta que `/specture:doctor migrate` (`1.19-rules-file`) la mueva; mientras tanto el resolver inyecta esas reglas enteras (sin filtro por tag, como antes de v1.19.0) y avisa.
 
 ### 2.2 Cómo verificar que un hook está activo
 

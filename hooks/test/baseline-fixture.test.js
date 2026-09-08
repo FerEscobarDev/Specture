@@ -108,6 +108,42 @@ test("stage 1: only Epics 1.1/1.2, 4-operation contract, RN-001 ambiguous, no sp
   assert.equal(doc.status, 0, doc.stderr || doc.stdout);
 });
 
+test("stage 3: Milestone 1 closed, Epic 1.4 supersedes the 10 MB limit, Auditoría has code and no specs; the doctor asks for the backfill", () => {
+  const dir = tmp();
+  const result = generate(dir, "--stage", "3");
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /stage 3 written/);
+  assert.match(result.stdout, /knowledge reconcile --component archivos/);
+  for (const rel of [
+    "docs/05-specs/epic-1.3-etiquetas/01-asignar-etiqueta.spec.md", "docs/05-specs/epic-1.4-cuota/01-cuota-por-tipo.spec.md",
+    "docs/05-specs/epic-1.4-cuota/_planning.md", "archivador_api/src/auditoria/audit-log.js", "archivador_api/src/tags/tag-repository.js"
+  ]) {
+    assert.ok(fs.existsSync(path.join(dir, ...rel.split("/"))), rel);
+  }
+  assert.ok(!fs.existsSync(path.join(dir, "docs", "05-specs", "_current")), "no living-behaviour dir yet");
+  const roadmap = read(dir, "docs/04-roadmap/ROADMAP.md");
+  for (const id of ["1.1", "1.2", "1.3", "1.4"]) assert.match(roadmap, new RegExp(`^- \\[x\\] \\*\\*Epic ${id.replace(".", "\\.")}:\\*\\*`, "m"), `Epic ${id} closed`);
+  assert.match(roadmap, /^- \[ \] \*\*Epic 2\.1:\*\*/m);
+  assert.match(read(dir, "docs/01-requirements/business_requirements.md"), /^- \*\*RN-007:\*\* Un PDF pesa como máximo 25 MB/m);
+  assert.match(read(dir, "docs/02-architecture/architecture.md"), /### Auditoría\n- \*\*Responsabilidad:\*\* registro de eventos[\s\S]*?- \*\*Ubicación:\*\* `archivador_api\/src\/auditoria\/`\n\n## Identidad/);
+  assert.match(read(dir, "docs/05-specs/epic-1.4-cuota/01-cuota-por-tipo.spec.md"), /\*\*Módulo:\*\* Archivos/);
+
+  const doc = spawnSync(process.execPath, [doctor, "check", "--project", dir, "--json"], { encoding: "utf8" });
+  assert.equal(doc.status, 0, doc.stderr || doc.stdout);
+  const findings = JSON.parse(doc.stdout).findings;
+  assert.deepEqual(findings.filter((f) => f.severity === "ERROR"), [], JSON.stringify(findings));
+  const missing = findings.find((f) => f.check === "current-state-missing");
+  assert.ok(missing, JSON.stringify(findings));
+  assert.match(missing.action, /knowledge reconcile --component archivos, notas, etiquetas/);
+  assert.ok(findings.some((f) => f.check === "content-migration-deferred" && /1\.9-current-state-init/.test(f.file)), "the backfill migration is reported as deferred");
+  assert.ok(!findings.some((f) => f.check === "migrations-pending" && /1\.19|1\.18/.test(f.detail)), JSON.stringify(findings));
+
+  const stage2 = tmp();
+  assert.equal(generate(stage2).status, 0);
+  assert.ok(!fs.existsSync(path.join(stage2, "archivador_api", "src", "auditoria")), "stage 2 has no Auditoría");
+  assert.doesNotMatch(read(stage2, "docs/04-roadmap/ROADMAP.md"), /Epic 1\.4/);
+});
+
 test("refuses a non-empty directory without --force; --git leaves one commit", () => {
   const dir = tmp();
   fs.writeFileSync(path.join(dir, "keep.txt"), "x");

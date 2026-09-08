@@ -147,10 +147,10 @@ When `docs/05-specs/_current/` exists, the orchestrator resolves the living-beha
 
 ### Resolution algorithm
 
-1. **Check existence**: if `docs/05-specs/_current/` does not exist (no milestone has reconciled yet), the resolved list is **empty**. Continue; do NOT block dispatch. If the ROADMAP already has closed milestones, this is a missing initialisation, not a young project — print once: *⚠ Specture: `docs/05-specs/_current/` no inicializado — corré `/specture:doctor`* (migration `1.9-current-state-init`).
-2. **Identify component(s)**: from the spec header's `Módulo` ref and the epic's "Componentes de arquitectura involucrados" — these are the `<component-slug>`s.
-3. **Resolve files**: for each component, read `docs/05-specs/_current/<component-slug>.md` if it exists. A missing file means that component has no reconciled behavior yet — skip it, not an error.
-4. **Cap**: pass only the files for the components the spec actually touches (usually 1-2), never the whole `_current/` directory.
+1. **Check existence**: if `docs/05-specs/_current/` does not exist (no milestone has reconciled yet), the resolved list is **empty**. Continue; do NOT block dispatch. If the ROADMAP already has closed milestones, this is a missing initialisation, not a young project — print once: *⚠ Specture: `docs/05-specs/_current/` no inicializado — corré `/specture:knowledge reconcile --component <slug>` (un componente por vez; `/specture:doctor check` lista cuáles)* (migration `1.9-current-state-init`, owned by that mode since v1.19.0).
+2. **Identify component(s)**: from the spec header's `Módulo` ref and the epic's "Componentes de arquitectura involucrados" — these are the `<component-slug>`s (`node "${CLAUDE_PLUGIN_ROOT}/hooks/lib/current-state.js" components --project .` prints the slugs `architecture.md` declares).
+3. **Resolve files**: for each component, read `docs/05-specs/_current/<component-slug>.md` if it exists. A missing file means that component has no reconciled behavior yet — skip it, not an error — **unless** `node "${CLAUDE_PLUGIN_ROOT}/hooks/lib/current-state.js" specs --project . --component <slug>` lists ≥ 1 `[x]` spec: then the truth exists and nobody consolidated it. Print once per session *⚠ Specture: `_current/<slug>.md` ausente con N specs cerrados — corré `/specture:knowledge reconcile --component <slug>`* and continue: never block, never reconcile inline (that is a Plan-mode job of `knowledge`, not of the build).
+4. **Cap**: pass only the files for the components the spec actually touches (usually 1-2), never the whole `_current/` directory. A file whose header says `Confianza: ai_characterized` was written from code, not from specs — pass it flagged as informational.
 
 When empty, dispatch normally and pass `current_state_resolved: []` so the agent knows the resolver ran — it is strictly additive context.
 
@@ -169,7 +169,7 @@ Since v1.19.0 the project's invariants `R-*` live in `.specture/rules.yml` (one 
    ```
    (`${PLUGIN_ROOT}` in Copilot / Antigravity; `$SPECTURE_ROOT` in manual setups.) It prints the block — `RULES_RESOLVED: N of M (tags: …)` + one line per rule (`id [tags] SEVERITY — rule · verificar: … · fuente: …`) — or exactly `RULES_RESOLVED: []`. A rule tagged `all` is always included. `--all` returns the whole registry (project-level validator dispatches in `architecture`). Exit 1 = the file does not parse: **stop and report it** (`/specture:doctor check` names the line) — never dispatch with a silently empty block when rules exist.
 3. **No Node**: `grep -n "tags:" .specture/rules.yml`, intersect by hand, copy the matching entries verbatim.
-4. **No `.specture/rules.yml`**: the block is `RULES_RESOLVED: []`. If the resolver warns that `conventions.md` §12 still declares rules (project not yet migrated), print once per session: *⚠ Specture: `.specture/rules.yml` no inicializado — corré `/specture:doctor migrate`* (migration `1.19-rules-file`) and continue.
+4. **No `.specture/rules.yml`**: the block is `RULES_RESOLVED: []` — unless `conventions.md` §12 still declares rules (project not yet migrated): then the resolver injects **all** of them, unfiltered (they carry no tags), so the project keeps the enforcement it had, and warns. Print once per session: *⚠ Specture: `.specture/rules.yml` no inicializado — las reglas de §12 se inyectan enteras hasta migrar; corré `/specture:doctor migrate`* (migration `1.19-rules-file`) and continue.
 5. **Pass the block verbatim** in the dispatch. Empty is valid and explicit: Dimension 7 of the reviewer is a no-op when the block is empty — the presence of rules is the switch, there is no toggle.
 
 ## Step 4 — Write Tests (TDD RED phase)

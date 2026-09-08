@@ -33,6 +33,8 @@ function seal(project) {
   return [];
 }
 
+const { missingCurrent } = require("../../current-state");
+
 function roadmap(project) {
   if (!project.roadmap) return [];
   const out = [];
@@ -41,8 +43,14 @@ function roadmap(project) {
     out.push(finding("WARNING", "roadmap-multiple-in-progress", "docs/04-roadmap/ROADMAP.md", `${inProgress.length} epics are [/] (${inProgress.map((e) => e.id || "?").join(", ")}); the queue runs one at a time`, "leave exactly one [/] epic; the coordinator asks which one to continue"));
   }
   const closed = project.roadmap.milestones.filter((m) => m.closed).length;
+  const missing = missingCurrent(project.root);
   if (closed > 0 && !project.exists("docs/05-specs/_current")) {
-    out.push(finding("WARNING", "current-state-missing", "docs/05-specs/_current/", `${closed} closed milestone(s) but no living-behaviour directory — reviewers and impact analyses see no current behaviour`, "schedule the lazy backfill (migration 1.9-current-state-init → knowledge reconcile)"));
+    const hint = missing.length > 0 ? missing.map((c) => c.slug).join(", ") : "<slug>";
+    out.push(finding("WARNING", "current-state-missing", "docs/05-specs/_current/", `${closed} closed milestone(s) but no living-behaviour directory — reviewers and impact analyses see no current behaviour`, `run /specture:knowledge reconcile --component ${hint} (one component at a time — migration 1.9-current-state-init)`));
+  } else if (project.exists("docs/05-specs/_current")) {
+    for (const c of missing) {
+      out.push(finding("WARNING", "current-state-partial", `docs/05-specs/_current/${c.slug}.md`, `component "${c.name}" has ${c.specsDone} [x] spec(s) but no living-behaviour file — its reviewers and impact analyses see no current behaviour`, `run /specture:knowledge reconcile --component ${c.slug}`));
+    }
   }
   return out;
 }

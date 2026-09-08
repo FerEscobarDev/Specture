@@ -1,8 +1,13 @@
-> **Estado: DISEÑO — no implementado aún.** Documento de diseño de la Fase 2 del
-> plan maestro (reconciliación: verdad viva + ROADMAP-como-cola). Objetivo de
-> release: **v1.9.0**. Las decisiones aquí están cerradas (forks A/C/D resueltos
-> con el usuario el 2026-06-19); la implementación ocurre en una fase posterior
-> siguiendo la disciplina `write-skill` (baseline → cambio → verify).
+> **Estado: IMPLEMENTADO — v1.9.0 (verdad viva + Step 8.7 + Current-State Resolution +
+> lápidas) y v1.19.0 (backfill lazy por componente: `knowledge reconcile --component <slug>`
+> y su variante `characterize` para componentes sin specs — ítem 38 del roadmap del
+> framework; helper `hooks/lib/current-state.js`; hallazgo `current-state-partial` del
+> doctor; campo `Confianza` en el template).** Documento de diseño de la Fase 2 del plan
+> maestro (reconciliación: verdad viva + ROADMAP-como-cola). Las decisiones aquí están
+> cerradas (forks A/C/D resueltos con el usuario el 2026-06-19). El diferimiento de §7
+> ("caracterización one-shot… diferida") se resolvió en v1.19.0; el grep sweep de §9 admite
+> desde entonces un segundo lector/escritor legítimo de `_current/`: el modo `reconcile`
+> de `knowledge`, siempre con aprobación en Plan mode.
 
 # Plan de diseño: Reconciliación — verdad viva del comportamiento + ROADMAP-como-cola
 
@@ -128,7 +133,7 @@ El Impact Ripple Analysis (`skills/new-feature/SKILL.md` Step 2) hoy relee `docs
 - **`_current/` es verdad trackeada**, NO se gitignorea (a diferencia de `.specture/state/`). Se commitea con cada reconciliación.
 - **Creación:** lazy — el directorio `_current/` y cada archivo nacen en la primera reconciliación que toca el componente. `setup` no necesita pre-crearlos.
 - **`architecture/SKILL.md`:** los slugs de componente de "High-Level Components" son la clave de `_current/`; conviene que sean estables (como los `operationId`). Nota menor a agregar ahí.
-- **Adopt (proyecto existente):** sin specs Specture, `_current/` arranca vacío y se llena al construir. Una caracterización one-shot del comportamiento existente hacia `_current/` queda **diferida** (enhancement futuro, no v1.9.0).
+- **Adopt (proyecto existente):** sin specs Specture, `_current/` arranca vacío y se llena al construir. ~~Una caracterización one-shot del comportamiento existente hacia `_current/` queda **diferida** (enhancement futuro, no v1.9.0).~~ **Hecho en v1.19.0:** `/specture:knowledge characterize --component <slug>` puebla `_current/<slug>.md` desde el código (subagente read-only sobre la "Carpeta raíz"/"Ubicación" del componente, filas `KIND | STATEMENT | path::símbolo`, `Confianza: ai_characterized`), un componente por vez y con Plan mode; y `reconcile --component <slug>` hace el backfill retroactivo desde los specs `[x]` que citan el componente (`Confianza: ai_reconciled`) — el doctor (`current-state-missing` / `current-state-partial`), `build` (Current-State Resolution) y `new-feature` nombran el comando cuando falta el archivo.
 - **Relación con la Fase 3 (registro de reglas):** ortogonal. `_current/` = comportamiento (qué hace el sistema); reglas = invariantes (cómo debe escribirse). No se mezclan.
 
 ## 8. Alcance de implementación (para la fase de build futura)
@@ -149,4 +154,4 @@ El Impact Ripple Analysis (`skills/new-feature/SKILL.md` Step 2) hoy relee `docs
    - Una dependencia de M3 → epic de M1 (lápida) **resuelve como satisfecha**.
    - Un epic con `operationId` cuyo comportamiento cambia un BR vigente → el BR viejo baja a "Historial" en `_current/`.
    - Dispatch de code-reviewer en un epic que toca un componente con `_current/` previo → el reviewer recibe el slice y puede citar comportamiento vigente.
-3. Grep sweep: ninguna skill operativa lee `_current/` directamente salvo el orquestador (preservación de contexto restringido).
+3. Grep sweep: ninguna skill operativa lee `_current/` directamente salvo el orquestador (preservación de contexto restringido) — y, desde v1.19.0, el modo `reconcile` de `knowledge`, que lo **escribe** (nunca lo inyecta a un agente) con aprobación en Plan mode.

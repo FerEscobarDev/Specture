@@ -245,6 +245,33 @@ test("a business_requirements.md following the template produces no requirements
   assert.deepEqual(json.findings.filter((f) => f.group === "requirements"), []);
 });
 
+test("current-state-partial: a component with [x] specs and no _current/<slug>.md is reported with the reconcile command", () => {
+  const files = {
+    ...CLEAN,
+    "docs/02-architecture/architecture.md": "# Arquitectura\n\n## Componentes\n\n### Archivos\n- **Carpeta raíz:** `demo_api/`\n\n### Notas\n- **Carpeta raíz:** `demo_api/`\n",
+    "docs/04-roadmap/ROADMAP.md": "# ROADMAP\n\n### Milestone 1: Foundation\n\n- [x] **Epic 1.1:** Archivos\n  - **Dependencias:** Ninguna\n  - **Componentes de arquitectura involucrados:** Archivos\n- [x] **Epic 1.2:** Notas\n  - **Dependencias:** Ninguna\n  - **Componentes de arquitectura involucrados:** Notas\n",
+    "docs/05-specs/epic-1.1-archivos/01-subir.spec.md": "# SPEC: Subir\n\n**Epic:** Epic 1.1 Archivos   **Módulo:** Archivos (`demo_api/src/archivos/`)\n\n## Criterios de Aceptación (≥1 test por ID)\n- **AC-1:** sube\n",
+    "docs/05-specs/epic-1.2-notas/01-crear.spec.md": "# SPEC: Crear\n\n**Epic:** Epic 1.2 Notas   **Módulo:** Notas (`demo_api/src/notas/`)\n\n## Criterios de Aceptación (≥1 test por ID)\n- **AC-1:** crea\n"
+  };
+  const withoutDir = createProject(files);
+  const missing = runDoctor(withoutDir).json.findings.find((f) => f.check === "current-state-missing");
+  assert.ok(missing, "closed milestone without the directory");
+  assert.match(missing.action, /knowledge reconcile --component archivos, notas/);
+
+  const partial = createProject({ ...files, "docs/05-specs/_current/notas.md": "# Estado actual — Notas\n\n> - **Confianza:** spec_reconciled\n" });
+  const { json } = runDoctor(partial);
+  assert.ok(!json.findings.some((f) => f.check === "current-state-missing"));
+  const partials = json.findings.filter((f) => f.check === "current-state-partial");
+  assert.equal(partials.length, 1, JSON.stringify(json.findings));
+  assert.equal(partials[0].file, "docs/05-specs/_current/archivos.md");
+  assert.equal(partials[0].severity, "WARNING");
+  assert.match(partials[0].detail, /"Archivos" has 1 \[x\] spec\(s\)/);
+  assert.match(partials[0].action, /knowledge reconcile --component archivos/);
+
+  const complete = createProject({ ...files, "docs/05-specs/_current/notas.md": "# Notas\n", "docs/05-specs/_current/archivos.md": "# Archivos\n" });
+  assert.ok(!runDoctor(complete).json.findings.some((f) => f.check.startsWith("current-state")));
+});
+
 test("rules lint: schema errors and over-long rules in rules.yml, over-long deny-list items in conventions §4", () => {
   const conventions = [
     "# Convenciones",

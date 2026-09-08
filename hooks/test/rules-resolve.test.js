@@ -68,12 +68,19 @@ test("prints the RULES_RESOLVED block for the tags that intersect, plus `all` ru
   assert.match(all.stdout, /^RULES_RESOLVED: 3 of 3 \(all rules\)/);
 });
 
-test("no rules.yml → RULES_RESOLVED: [] and a warning only when conventions §12 still declares rules", () => {
+test("no rules.yml → the legacy §12 rules are injected whole with a migration warning; nothing declared → RULES_RESOLVED: []", () => {
   const legacy = project({ ".specture/stack.yml": STACK, ".specture/conventions.md": "## 12. Invariantes\n- **R-1:** algo\n- **R-2:** otra cosa\n" });
   const result = run(legacy, "--tags", "dto");
   assert.equal(result.status, 0);
-  assert.equal(result.stdout.trim(), "RULES_RESOLVED: []");
-  assert.match(result.stderr, /rules\.yml` no inicializado — conventions\.md §12 declara 2 regla\(s\).*1\.19-rules-file/);
+  const lines = result.stdout.trim().split("\n");
+  assert.equal(lines[0], "RULES_RESOLVED: 2 of 2 (all rules)", "tolerant read: every legacy rule, tag filter ignored");
+  assert.match(lines[1], /^- R-1 \[all\] IMPORTANT — algo$/);
+  assert.match(lines[2], /^- R-2 \[all\] IMPORTANT — otra cosa$/);
+  assert.match(result.stderr, /rules\.yml` no inicializado — conventions\.md §12 declara 2 regla\(s\); se inyectan todas.*1\.19-rules-file/);
+  const json = JSON.parse(run(legacy, "--tags", "dto", "--json").stdout);
+  assert.equal(json.legacy, true);
+  assert.equal(json.file, ".specture/conventions.md#12");
+  assert.deepEqual(json.resolved.map((r) => r.id), ["R-1", "R-2"]);
 
   const fresh = project({ ".specture/stack.yml": STACK, ".specture/conventions.md": "## 12. Invariantes\n\n> puntero\n" });
   const quiet = run(fresh, "--tags", "dto", "--json");

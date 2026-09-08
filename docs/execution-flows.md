@@ -53,7 +53,7 @@ flowchart TB
       T2["new-feature"]
       T3["verify"]
       T4["modernize"]
-      T5["knowledge<br/>capture · audit"]
+      T5["knowledge<br/>capture · audit · stats · reconcile"]
       T6["handoff-ingest"]
       T7["contract-sync-audit"]
       T8["setup-docs-bridge"]
@@ -397,7 +397,7 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    S1["Step 1 · Mini-discovery socrático scopeado<br/>(borrador feature-<slug>.md — se fusiona y borra en Step 4)"] --> S2{"Step 2 · Impact Ripple Analysis<br/>EnterPlanMode · lee _current/ (verdad viva)"}
+    S1["Step 1 · Mini-discovery socrático scopeado<br/>(borrador feature-<slug>.md — se fusiona y borra en Step 4)"] --> S2{"Step 2 · Impact Ripple Analysis<br/>EnterPlanMode · lee _current/ (verdad viva)<br/>(falta el archivo → avisa: knowledge reconcile / characterize)"}
     S2 -.->|"contradice un ADR Accepted"| ADR["Rechazar la feature como incompatible<br/>o crear un ADR que lo supersede"]
     S2 --> EX["ExitPlanMode (pide aprobación)<br/>Edit/Write/ROADMAP bloqueados hasta aprobar"]
     EX --> S3{"Step 3 · Validación del usuario<br/>(coste declarado honestamente)"}
@@ -450,14 +450,22 @@ flowchart TD
     RG -->|"solo queda cleanup"| S8["Step 8 · Completion Gate · correr cleanup<br/>· quitar sección migration: · ADR de cierre"]
 ```
 
-### 5.5 Knowledge — captura + auditoría + stats (una skill, tres modos)
+### 5.5 Knowledge — captura + auditoría + stats + reconcile (una skill, cuatro modos)
 
 Higiene de conocimiento. **Nunca escribe a la memoria personal de Claude.** Captura genera drafts con
-aprobación atómica vía Plan mode; auditoría y stats son read-only y nunca auto-corrigen.
+aprobación atómica vía Plan mode; auditoría y stats son read-only y nunca auto-corrigen; reconcile
+escribe un solo archivo (`_current/<slug>.md`) con aprobación en Plan mode.
 
 ```mermaid
 flowchart TD
     M{"Elegir modo (si no se da, preguntar)"}
+
+    M -->|"reconcile / characterize --component"| R0["current-state.js components → specs --component <slug><br/>(slug exacto; ambiguo → preguntar con candidatos)"]
+    R0 -->|"specs [x]"| R1["Leer SOLO esos specs, en orden de ROADMAP<br/>último gana por operationId / sujeto → lo viejo a Historial<br/>merge incremental si el archivo existe"]
+    R0 -->|"NONE (sin specs · Adopt)"| R2["characterize: subagente haiku read-only sobre la Carpeta raíz<br/>KIND | STATEMENT | path::símbolo (máx 60 filas)"]
+    R1 --> R3{"Plan mode · el archivo completo es el plan"}
+    R2 --> R3
+    R3 -->|"aprueba"| R4(["Escribir _current/<slug>.md (Confianza: ai_reconciled | ai_characterized)<br/>doctor migrate --verify 1.9-current-state-init · commit docs(knowledge)"])
 
     M -->|"stats"| ST0{"¿docs/.specture-meta/build-metrics.jsonl existe?"}
     ST0 -->|No| ST1(["Ofrecer metrics-report.js --baseline --write<br/>(reconstruye los epics [x] desde reviews, _planning.md y git log)"])
