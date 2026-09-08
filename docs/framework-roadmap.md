@@ -4,7 +4,7 @@
 > (revisión: C-1…C-9, M1-M7, G1-G12), `psikora-scale-review.md` (N1-N10) y
 > `doctor-and-migrations-design.md` (doctor, catálogo de migraciones, principios). Cada
 > ítem cita su fuente; las definiciones son las de origen, no reinterpretaciones. Estado:
-> **M0 hecho (v1.14.1) · M1 hecho (v1.15.0) · M2 hecho (v1.16.0) · M3 hecho (v1.17.0) · M4 hecho (v1.18.0)**. Las **decisiones** que
+> **M0 hecho (v1.14.1) · M1 hecho (v1.15.0) · M2 hecho (v1.16.0) · M3 hecho (v1.17.0) · M4 hecho (v1.18.0) · M5 hecho (v1.19.0)**. Las **decisiones** que
 > condicionan el orden están en el Apéndice A (A1-A7 cerradas). **Solo contiene ajustes del framework**: las acciones sobre el proyecto
 > Psikora viven en su propio repo (`C:\Proyectos\Psikora\PLAN-SANEAMIENTO-SPECTURE-2026-08-28.md`).
 
@@ -534,12 +534,17 @@ verificadas por el reviewer, métricas que decidan. Escenarios 2, 3, 9-12.*
 
 ---
 
-## Milestone 5 — Escala y madurez (v1.19+)
+## Milestone 5 — Escala y madurez (v1.19.0)
 
 *Objetivo: que un proyecto con 20 milestones cerrados y 500 líneas de convenciones siga
 teniendo verdad viva, reglas cortas y paridad entre plataformas.*
 
-- [ ] **38. Backfill lazy de `_current/` por componente (N1, doctor `1.9-current-state-init`, G8)**
+> **Hecho el 2026-09-08 (v1.19.0)**, una release para los tres ítems más el pendiente de v1.18.1
+> (`PLANNING_TEMPLATE.md` en los Required Inputs de `build`). Orden de construcción: 40 → 39 → 38,
+> porque con los espejos generados los cambios de `AGENT.md` de 39 y 38 se espejaron solos. Baseline
+> RED→GREEN del ítem 38 en `docs/knowledge-reconcile-baseline.md` (fixture `--stage 3`).
+
+- [x] **38. Backfill lazy de `_current/` por componente (N1, doctor `1.9-current-state-init`, G8)** · hecho 2026-09-08, v1.19.0 (`ebdcbb4`) — modo `reconcile --component <slug>` + variante `characterize` en `skills/knowledge/SKILL.md` (un componente por invocación, Plan mode obligatorio, `Confianza: ai_reconciled | ai_characterized`); helper `hooks/lib/current-state.js` (`components` / `specs --component`: slugs de `architecture.md` — encabezados numerados o planos —, specs `[x]` por `Módulo:` del spec o por el bloque del epic, en orden de ROADMAP; slug ambiguo → exit 2 con candidatos, el skill pregunta); campo `Confianza` en `CURRENT_CAPABILITY_TEMPLATE.md` (`spec_reconciled` lo escribe `build` Step 8.7); trigger en Current-State Resolution y en `new-feature` (avisan una vez, nunca bloquean ni reconcilian inline); doctor: `current-state-missing` nombra los componentes y nuevo `current-state-partial`; `characterize` = cuarta aplicación de "el orquestador resuelve, el agente nunca lee" (subagente haiku read-only sobre la Carpeta raíz, filas `KIND | STATEMENT | path::símbolo`)
   Modo `knowledge reconcile --component <slug>`: lee solo los specs `[x]` que citan ese
   componente (por "Módulo"/"Componentes"), aplica "último gana" por `operationId`/sujeto de
   regla, marca `confidence: ai_reconciled`, pide confirmación por Plan mode. Se dispara la
@@ -552,7 +557,7 @@ teniendo verdad viva, reglas cortas y paridad entre plataformas.*
   que en Adopt no existe.
   `Fuente: psikora-review N1 / §2.1; doctor §4.2; gate-review G8` · `Esfuerzo: medio` · `Depende de: 7`
 
-- [ ] **39. Reglas de una línea + `rules.yml` con inyección por tag (N3)**
+- [x] **39. Reglas de una línea + `rules.yml` con inyección por tag (N3)** · hecho 2026-09-08, v1.19.0 (`01b7edc`) — `.specture/rules.yml` canónico (`templates/project-config/rules.template.yml`: `id`, `tags`, `rule` ≤ 240 chars sin salto, `verify`, `severity`, `source` con la historia) y §12 de `conventions.md` como puntero (migración mecánica `1.19-rules-file`: tabla de 6 columnas o bullets `- **R-n:** …`, placeholders omitidos, reglas sin tags/severidad → `all`/IMPORTANT anotadas); `hooks/lib/rules.js` + `rules-resolve.js` (bloque `RULES_RESOLVED` por intersección de tags, `all` siempre, `--all` para dispatches de proyecto; sin `rules.yml` inyecta el §12 viejo entero y avisa); sección "Rules Resolution" en `build/EPIC_LOOP.md` y dispatches de planner, implementer/ux, reviewer (Dim 7 lee solo el bloque) y validator (5a/5b + Parts A/B/C de `architecture`); doctor `rules-schema` (ERROR) / `rule-length` (WARNING, también deny-list §4 > 2 líneas); `knowledge capture` con draft `rules.yml entry` y rechazo mecánico del largo antes de Plan mode; §13 `W-*` se queda en `conventions.md`
   Graduación diferida en `rules-registry-design.md:104`; la condición se cumplió (Psikora:
   `conventions.md` 518 líneas entregadas enteras a 4 workers por spec; deny-list con
   párrafos de 300 palabras narrando el bug de origen; R-9 ≈ 150 palabras; la misma regla
@@ -563,7 +568,7 @@ teniendo verdad viva, reglas cortas y paridad entre plataformas.*
   Index Resolution).
   `Fuente: psikora-review N3 / §2.3` · `Esfuerzo: medio` · `Depende de: 5, 7 (migración)`
 
-- [ ] **40. Espejos Copilot generados desde `AGENT.md` (G9, C-9b)**
+- [x] **40. Espejos Copilot generados desde `AGENT.md` (G9, C-9b)** · hecho 2026-09-08, v1.19.0 (`8d5ac3c`) — el formato de agentes de Copilot admite hasta 30.000 caracteres por prompt y el `AGENT.md` mayor tiene ~19.000: `scripts/copilot-mirrors.js` (`npm run mirrors:sync` / `mirrors:check`) genera los 7 espejos con el cuerpo completo, `description` de la fuente, `tools` desde `compatibility-matrix.json → platformAdaptations.agentTools` (`code-reviewer` gana `edit`: escribe su reporte), `disable-model-invocation: true` y sustituciones de plataforma (`${CLAUDE_PLUGIN_ROOT}`, `AskUserQuestion`, `EnterPlanMode`/`ExitPlanMode`); se niega (exit 2) a truncar; el test de contrato exige paridad exacta (`--check`), frontmatter fijo y notice de generación. Al hacerlo los espejos tenían 19-29 líneas y las fuentes 74-287 (los "16-19" / "63-274" del enunciado eran de v1.16)
   `copilot/agents/*.agent.md` tienen 16-19 líneas vs 63-274 del `AGENT.md`; pierden
   Manifest, racionalizaciones, formatos, worked examples; el test de contrato solo verifica
   existencia. Si el formato admite cuerpos largos, **generar** los espejos con un script;
