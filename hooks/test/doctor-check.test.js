@@ -33,7 +33,8 @@ const CLEAN = {
   ".gitignore": ".specture/state/\ndocs/.specture-meta/*\n!docs/.specture-meta/build-metrics.jsonl\n",
   ".specture/stack.yml": 'project:\n  name: "Demo"\n  slug: "demo"\napi:\n  style: "rest"\n  contract_file: "docs/02-architecture/api-contract.openapi.yaml"\nstructure:\n  root_layout: custom\n',
   ".specture/settings.yml": `schema_version: ${pluginVersion}\nprofile: custom\nhooks.enabled: true\n`,
-  ".specture/conventions.md": "# Convenciones\n\n## 10. Specture\n\n> ver settings.yml\n\n## 12. Invariantes del Proyecto (R-*)\n\n| ID | Regla |\n|----|-------|\n\n## 13. Workflow / Proceso (W-*)\n\n- W-3: Conventional Commits\n",
+  ".specture/conventions.md": "# Convenciones\n\n## 10. Specture\n\n> ver settings.yml\n\n## 12. Invariantes del Proyecto (R-*)\n\n> ver .specture/rules.yml\n\n## 13. Workflow / Proceso (W-*)\n\n- W-3: Conventional Commits\n",
+  ".specture/rules.yml": "schema: 1\nrules: []\n",
   ".specture/decisions/001-initial-stack.md": "# ADR-001\n\n## Status\n\nAccepted\n",
   "docs/04-roadmap/ROADMAP.md": "# ROADMAP\n\n### Milestone 1: Foundation\n\n- [ ] **Epic 1.1:** Scaffold\n  - **Dependencias:** Ninguna\n"
 };
@@ -242,6 +243,59 @@ test("a business_requirements.md following the template produces no requirements
   const { json } = runDoctor(projectRoot);
 
   assert.deepEqual(json.findings.filter((f) => f.group === "requirements"), []);
+});
+
+test("rules lint: schema errors and over-long rules in rules.yml, over-long deny-list items in conventions §4", () => {
+  const conventions = [
+    "# Convenciones",
+    "",
+    "## 4. Patrones Prohibidos (Deny-list)",
+    "",
+    "- Repositorios genéricos `Repository<T>`",
+    "- Singletons mutables porque en 2024",
+    "  tuvimos un bug en el módulo de pagos",
+    "  que tardó tres días en diagnosticarse",
+    "",
+    "## 10. Specture",
+    "",
+    "> ver settings.yml",
+    "",
+    "## 12. Invariantes del Proyecto (R-*)",
+    "",
+    "> ver .specture/rules.yml",
+    "",
+    "## 13. Workflow / Proceso (W-*)",
+    "",
+    "- W-3: Conventional Commits",
+    ""
+  ].join("\n");
+  const projectRoot = createProject({
+    ...CLEAN,
+    ".specture/conventions.md": conventions,
+    ".specture/rules.yml": ["schema: 1", "rules:", "  - id: R-1", "    tags: [dto]", `    rule: "${"x".repeat(300)}"`, "    severity: BLOCKER", "  - id: R-1", "    tags: [naming]", '    rule: "corta"', "    severity: MAYBE", ""].join("\n")
+  });
+  const { status, json } = runDoctor(projectRoot);
+  const rules = json.findings.filter((f) => f.group === "rules");
+
+  assert.equal(status, 1, "schema errors are ERROR");
+  const lengths = rules.filter((f) => f.check === "rule-length");
+  assert.equal(lengths.length, 2, JSON.stringify(rules));
+  assert.ok(lengths.some((f) => f.file === ".specture/rules.yml" && /R-1: rule is 300 characters/.test(f.detail) && /\(line 3\)/.test(f.detail)));
+  assert.ok(lengths.some((f) => f.file === ".specture/conventions.md" && /Singletons mutables/.test(f.detail) && /spans 3 lines/.test(f.detail)));
+  assert.ok(lengths.every((f) => f.severity === "WARNING"));
+  const schema = rules.filter((f) => f.check === "rules-schema");
+  assert.equal(schema.length, 2, JSON.stringify(schema));
+  assert.ok(schema.some((f) => /duplicate id/.test(f.detail)));
+  assert.ok(schema.some((f) => /severity must be/.test(f.detail)));
+  assert.ok(schema.every((f) => f.severity === "ERROR"));
+
+  const broken = createProject({ ...CLEAN, ".specture/rules.yml": "schema: 1\nrules:\n  - id: R-1\n    rule: |\n      multi\n" });
+  const parse = runDoctor(broken).json.findings.find((f) => f.check === "rules-schema");
+  assert.ok(parse, "unparseable file is reported");
+  assert.match(parse.detail, /does not parse: multi-line values are not supported.*\(line 4\)/);
+
+  const clean = createProject({ ...CLEAN, ".specture/rules.yml": 'schema: 1\nrules:\n  - id: R-1\n    tags: [dto]\n    rule: "Los DTOs son inmutables"\n    severity: BLOCKER\n' });
+  assert.deepEqual(runDoctor(clean).json.findings.filter((f) => f.group === "rules"), []);
 });
 
 test("flags off-template spec sections with a suggested destination; template sections pass", () => {

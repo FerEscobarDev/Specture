@@ -53,7 +53,7 @@ Generate `docs/02-architecture/architecture.md` from the template.
 **Pre-flight: Docs Index Resolution.** If `.specture/docs-index.yml` exists and `docs_index.enabled` is not `false`, resolve up to `docs_index.max_entries_per_dispatch` entries (default 3; both read from `.specture/settings.yml`) whose tags intersect with the high-level components and architectural concerns of the document. Use the same algorithm documented in `skills/build/EPIC_LOOP.md` § "Docs Index Resolution". The resolved entries become additional input to the validator (informational context, not binding — only `Accepted` ADRs bind validation).
 
 Once written, **dispatch the `architecture-validator` agent** (`agents/architecture-validator/AGENT.md`) with:
-- Input: `architecture.md` + `.specture/stack.yml` + `.specture/conventions.md` + `.specture/decisions/` + the resolved docs-index entries (with their content; pass `docs_index_resolved: []` if empty).
+- Input: `architecture.md` + `.specture/stack.yml` + `.specture/conventions.md` + `.specture/decisions/` + the resolved docs-index entries (with their content; pass `docs_index_resolved: []` if empty) + the `RULES_RESOLVED` block (`node "${CLAUDE_PLUGIN_ROOT}/hooks/lib/rules-resolve.js" --project . --all` — project-level dispatch, whole registry; `RULES_RESOLVED: []` if `.specture/rules.yml` is absent).
 - Expected output: `APPROVED` or `REJECTED` with specific violations.
 
 If `REJECTED`, fix the architecture document and re-dispatch. Do NOT proceed to Part B until `APPROVED`.
@@ -90,7 +90,7 @@ Generate both, from the templates in `$SPECTURE_ROOT/templates/`:
 **Pre-flight: Docs Index Resolution.** If `.specture/docs-index.yml` exists and `docs_index.enabled` (`.specture/settings.yml`) is not `false`, resolve entries with tags like `external-integration`, `security`, or any `backend`/`frontend` tag relevant to the contract's boundary capabilities. Cap at `docs_index.max_entries_per_dispatch` (default 3). Use the algorithm in `skills/build/EPIC_LOOP.md` § "Docs Index Resolution".
 
 Dispatch the `architecture-validator` agent with:
-- Input: the contract file (`stack.yml.api.contract_file`) + `api-contract.md` + `architecture.md` + **the `Capacidades de Frontera` section of `business_requirements.md`** + `.specture/stack.yml` + `.specture/conventions.md` + `.specture/decisions/` + the resolved docs-index entries (pass `docs_index_resolved: []` if empty).
+- Input: the contract file (`stack.yml.api.contract_file`) + `api-contract.md` + `architecture.md` + **the `Capacidades de Frontera` section of `business_requirements.md`** + `.specture/stack.yml` + `.specture/conventions.md` + `.specture/decisions/` + the resolved docs-index entries (pass `docs_index_resolved: []` if empty) + the `RULES_RESOLVED` block (`rules-resolve.js --all`, as in Part A).
 - Expected output: `APPROVED` or `REJECTED`. The validator checks contract conformance: **every boundary capability maps to ≥1 operation and every operation traces back to a capability** (bidirectional coverage), every operation traces to a component that owns it, the error envelope is uniform, no technology outside `stack.yml`, and (once the ROADMAP exists) every `operationId` traces to an epic.
 
 If `REJECTED`, fix the contract and re-dispatch. Do NOT proceed to Part C until `APPROVED`.
@@ -157,7 +157,7 @@ intersect the milestones' domains. Cap at `docs_index.max_entries_per_dispatch` 
 Use the algorithm in `skills/build/EPIC_LOOP.md` § "Docs Index Resolution".
 
 Dispatch the `architecture-validator` agent with:
-- Input: `ROADMAP.md` + the contract file (`stack.yml.api.contract_file`) + `api-contract.md` + `business_requirements.md` (the ROADMAP cites its `RN-nnn` IDs) + `architecture.md` + `.specture/stack.yml` + `.specture/conventions.md` + `.specture/decisions/` + the resolved docs-index entries (pass `docs_index_resolved: []` if empty).
+- Input: `ROADMAP.md` + the contract file (`stack.yml.api.contract_file`) + `api-contract.md` + `business_requirements.md` (the ROADMAP cites its `RN-nnn` IDs) + `architecture.md` + `.specture/stack.yml` + `.specture/conventions.md` + `.specture/decisions/` + the resolved docs-index entries (pass `docs_index_resolved: []` if empty) + the `RULES_RESOLVED` block (`rules-resolve.js --all`, as in Part A).
 - Expected output: `APPROVED` or `REJECTED`. The validator runs the ROADMAP branch of its Dimension 6: parseable `Dependencias` grammar, dependency order, every `operationId` implemented by exactly one backend epic (no orphans), every `RN-nnn` covered by ≥1 epic, epic sizing 1-3 specs, architecture alignment.
 
 If `REJECTED`, fix the ROADMAP and re-dispatch. Do NOT announce the documents as done until `APPROVED`.

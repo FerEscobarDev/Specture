@@ -1,9 +1,15 @@
-> **Estado: DISEÑO — no implementado aún.** Documento de diseño de la Fase 3 del
-> plan maestro (registro de reglas invariantes + reglas de proceso). Objetivo de
-> release: **v1.10.0**. Decisiones cerradas con el usuario el 2026-06-19 (forks
-> Q1/Q2); la implementación ocurre en una fase posterior con la disciplina
-> `write-skill` (baseline → cambio → verify). Independiente de la Fase 2 — se
-> puede construir antes o después.
+> **Estado: IMPLEMENTADO — v1.10.0 (§12/§13 en `conventions.md`) y graduación en v1.19.0
+> (`.specture/rules.yml` + Rules Resolution, ítem 39 del roadmap del framework).** Documento
+> de diseño de la Fase 3 del plan maestro (registro de reglas invariantes + reglas de
+> proceso). Decisiones cerradas con el usuario el 2026-06-19 (forks Q1/Q2). La condición de
+> graduación de §5 se cumplió (Psikora: `conventions.md` de 518 líneas entregado entero a
+> cuatro workers por spec, reglas de 150-300 palabras narrando el bug de origen): desde
+> v1.19.0 las invariantes `R-*` viven en `.specture/rules.yml` (una línea por regla, ≤ 240
+> caracteres, `tags`, `severity`, `source`), el coordinador de `build` inyecta solo las que
+> cruzan con el spec (`hooks/lib/rules-resolve.js` → bloque `RULES_RESOLVED`), el doctor
+> lintea largo y esquema (`rule-length`, `rules-schema`), `knowledge capture` rechaza un
+> draft que exceda el largo y la migración mecánica `1.19-rules-file` mueve la tabla de §12
+> (o sus bullets) al archivo dejando un puntero. §13 `W-*` sigue en `conventions.md`.
 
 # Plan de diseño: Registro de reglas invariantes + reglas de proceso
 
@@ -101,7 +107,7 @@ Reglas de flujo que **sigue el orquestador del build**. No son reglas de código
 
 ## 5. Diferido (graduación futura, fuera de v1)
 
-- **`.specture/rules.yml` + "Rules Resolution"** (inyección selectiva por tag, clon de Docs Index Resolution) — graduar cuando §12 crezca lo suficiente como para que pasar todo en cada dispatch sea caro. Medir antes (como la decisión de modularización de v1.7.0).
+- ~~**`.specture/rules.yml` + "Rules Resolution"** (inyección selectiva por tag, clon de Docs Index Resolution) — graduar cuando §12 crezca lo suficiente como para que pasar todo en cada dispatch sea caro. Medir antes (como la decisión de modularización de v1.7.0).~~ **Hecho en v1.19.0** (la medición la dio Psikora — ver `docs/psikora-scale-review.md` N3): `templates/project-config/rules.template.yml`, `hooks/lib/rules.js` + `rules-resolve.js`, `hooks/lib/doctor/checks/rules.js`, migración `1.19-rules-file`, sección "Rules Resolution" en `skills/build/EPIC_LOOP.md`.
 - **Generación de lint/analyzer** desde §12 (enforcement mecánico de invariantes de código).
 - **Hook de git** que enforça la regla de rama (W-*) mecánicamente, estilo TDD Honesty Gate.
 - **Auto-merge / creación de PR.**

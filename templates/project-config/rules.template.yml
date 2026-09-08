@@ -1,0 +1,37 @@
+# Specture — Project Rules (invariantes R-*)
+# Owner: the team (content) · the framework (schema). Read by the build coordinator
+# (Rules Resolution → a `RULES_RESOLVED` block per dispatch), the doctor (`rules-schema`,
+# `rule-length`) and knowledge capture (new invariants land here, never inline in
+# conventions.md). Agents never open this file: the orchestrator injects only the rules
+# whose tags intersect the spec's tags (module, component, backend/frontend/mobile).
+#
+# ONE RULE = ONE LINE. `rule` is at most 240 characters with no line break. The story
+# behind it (the bug, the incident, the reasoning) lives in an ADR or a debug log and is
+# LINKED from `source` — the doctor flags `rule-length` when a rule tells the story.
+#
+# Grammar (deliberately small — no YAML library; multi-line values are not supported):
+#   rules:
+#     - id: R-<n>               # stable and unique; the reviewer cites it (R-1, R-SEG-3, …)
+#       tags: [a, b]            # inline list, lowercase; `all` = injected into every dispatch
+#       rule: "…"               # the invariant, one sentence, ≤ 240 characters
+#       verify: "…"             # how the reviewer checks it (optional)
+#       severity: BLOCKER       # BLOCKER | IMPORTANT (the reviewer uses it as declared)
+#       source: "ADR-004 §DTOs" # where the story lives: ADR, debug log, conventions § (optional)
+
+schema: 1
+rules: []
+
+# Examples — remove the leading `# ` (and the `rules: []` line above) to activate:
+# rules:
+#   - id: R-1
+#     tags: [dto, domain]
+#     rule: "Los DTOs son inmutables: sin setters, campos readonly/final"
+#     verify: "sin setters públicos ni mutación post-construcción"
+#     severity: BLOCKER
+#     source: "ADR-004 §DTOs"
+#   - id: R-2
+#     tags: [naming, all]
+#     rule: "Métodos de consulta = sustantivo; comandos = verbo imperativo"
+#     verify: "nombres de métodos nuevos"
+#     severity: IMPORTANT
+#     source: "conventions.md §1 Naming"

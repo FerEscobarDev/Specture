@@ -173,12 +173,15 @@ $SPECTURE_ROOT/
 │   ├── copilot-pre-tool-use-tdd-gate.js   # Shim de compatibilidad → specture-pre-tool-use-tdd-gate.js
 │   ├── lib/specture-guard.js          # Guard compartido (opt-in por hooks.enabled)
 │   ├── lib/settings.js                # Lector de .specture/settings.yml (fallback a conventions §10, perfiles)
+│   ├── lib/rules.js                   # Parser/lint de .specture/rules.yml (invariantes R-*, una línea por regla) + lectura del §12 legacy
+│   ├── lib/rules-resolve.js           # Rules Resolution: --tags a,b | --all → bloque RULES_RESOLVED por dispatch (v1.19.0)
+│   ├── lib/current-state.js           # Componentes de architecture.md y specs [x] por componente — knowledge reconcile (v1.19.0)
 │   ├── lib/seal.js                    # Sello del build (schema v3: spec_sha/spec_paths/allowed_paths + specs[]; v2/v1 legacy; clasificación de denies)
 │   ├── lib/seal-cli.js                # Único escritor del sello: write · merge-spec · unseal-spec · supersede · release · show
 │   ├── lib/planning.js                # Parser de _planning.md (COVERAGE_TABLE + hash), del bloque de epic y de los specs
 │   ├── lib/spec-set-check.js          # Gate 4a: C1/C2/C4/C5/C6 (+ C-path/C-gap/C-sup) sobre el set de specs → MECH_CHECK token
 │   ├── lib/metrics-report.js          # Lector de docs/.specture-meta/build-metrics.jsonl (+ --baseline) — knowledge stats
-│   ├── lib/doctor/                    # Chequeos del doctor: corpus · estado · drift · migrate
+│   ├── lib/doctor/                    # Chequeos del doctor: corpus · requirements · rules · estado · drift · migrate
 │   └── test/                          # Tests de contrato del plugin, hooks, settings y doctor
 ├── copilot/
 │   ├── agents/*.agent.md              # Espejos de los agentes para Copilot CLI — GENERADOS desde agents/*/AGENT.md, no editar
@@ -215,7 +218,8 @@ $SPECTURE_ROOT/
 │   ├── project-config/                # Plantillas de .specture/ del proyecto destino
 │   │   ├── stack.template.yml
 │   │   ├── settings.template.yml      # schema_version + perfil + toggles (archivo del framework)
-│   │   ├── conventions.template.md
+│   │   ├── conventions.template.md    # §12 es un puntero desde v1.19.0 — las invariantes viven en rules.yml
+│   │   ├── rules.template.yml         # Invariantes R-* (una línea por regla, tags, severidad, source) — inyección por tag
 │   │   ├── docs-index.template.yml    # Catálogo machine-readable de docs preexistentes
 │   │   └── decisions/000-template.md
 │   ├── ARCHITECTURE_TEMPLATE.md
@@ -441,7 +445,7 @@ Output: `.specture/docs-index.yml` + bridges en `docs/0X-*/` + ADRs Proposed en 
 ---
 
 #### `/specture:doctor` (modos `check` | `migrate` | `sync`)
-**Diagnóstico mecánico del proyecto y migraciones de esquema.** Specture versiona el plugin; el doctor versiona el **proyecto**. `check` (solo lectura) lintea el corpus documental — rutas citadas que no existen, placeholders `...`, ADRs con número duplicado o sin `Status`, reviews sin veredicto, specs sin `AC/BR/EC`, sobre 300 líneas o con secciones fuera del template, citas por número de línea a documentos vivos —, lintea los requerimientos — placeholders sin resolver, HUs sin `Exposición`, historias de frontera sin consolidar, reglas/casos/exclusiones sin IDs `RN/CL/FA` —, revisa el estado — sello `build-locked.json` huérfano, más de un epic `[/]`, `_current/` ausente con milestones cerrados, `docs-index.yml` vs toggle, residuos de worktrees — y compara `schema_version` (`.specture/settings.yml`) con la versión del plugin para listar las migraciones pendientes por tipo (cada minor embarca las suyas — la última, `1.18-metrics-tracked` en v1.18.0, que deja `build-metrics.jsonl` trackeado). `migrate` aplica las **mecánicas** (idempotentes, verificadas, registradas en `.specture/migrations.log`), lleva las **asistidas** a Plan mode y registra las de **contenido** con su skill dueño; `sync` = mecánicas + check (para CI). Nunca commitea; nunca toca specs cerrados, reviews ni debug logs.
+**Diagnóstico mecánico del proyecto y migraciones de esquema.** Specture versiona el plugin; el doctor versiona el **proyecto**. `check` (solo lectura) lintea el corpus documental — rutas citadas que no existen, placeholders `...`, ADRs con número duplicado o sin `Status`, reviews sin veredicto, specs sin `AC/BR/EC`, sobre 300 líneas o con secciones fuera del template, citas por número de línea a documentos vivos —, lintea los requerimientos — placeholders sin resolver, HUs sin `Exposición`, historias de frontera sin consolidar, reglas/casos/exclusiones sin IDs `RN/CL/FA` —, lintea las reglas — `.specture/rules.yml` que no parsea, ids duplicados o severidad desconocida (`rules-schema`); una regla de más de 240 caracteres o un ítem del deny-list §4 de más de 2 líneas (`rule-length`: la historia va a un ADR/debug log enlazado) —, revisa el estado — sello `build-locked.json` huérfano, más de un epic `[/]`, `_current/` ausente con milestones cerrados (acción: `knowledge reconcile --component <slug>`), `docs-index.yml` vs toggle, residuos de worktrees — y compara `schema_version` (`.specture/settings.yml`) con la versión del plugin para listar las migraciones pendientes por tipo (cada minor embarca las suyas — la última, `1.19-rules-file` en v1.19.0, que mueve las invariantes de `conventions.md` §12 a `rules.yml`). `migrate` aplica las **mecánicas** (idempotentes, verificadas, registradas en `.specture/migrations.log`), lleva las **asistidas** a Plan mode y registra las de **contenido** con su skill dueño; `sync` = mecánicas + check (para CI). Nunca commitea; nunca toca specs cerrados, reviews ni debug logs.
 
 > Úsalo después de actualizar el plugin, cuando `/specture:start` avise migraciones pendientes, o cuando sospeches referencias rotas. Catálogo de migraciones: `migrations/`; detalle: `skills/doctor/SKILL.md` y `docs/doctor-and-migrations-design.md`.
 
@@ -530,7 +534,8 @@ Cada proyecto que use Specture tiene una carpeta `.specture/`:
 ├── CLAUDE.md                  # Importa Specture vía @import (solo modo manual)
 ├── .specture/
 │   ├── stack.yml              # Stack tecnológico (fuente de verdad)
-│   ├── conventions.md         # Naming, patrones, estilo
+│   ├── conventions.md         # Naming, patrones, estilo (§12 es un puntero a rules.yml desde v1.19.0)
+│   ├── rules.yml              # Invariantes R-*: una línea por regla + tags + severidad + source (v1.19.0)
 │   ├── settings.yml           # Del framework: schema_version, perfil, toggles (lo escribe setup, lo migra doctor)
 │   ├── migrations.log         # Registro append-only de migraciones aplicadas / diferidas
 │   └── decisions/             # ADRs versionados, nunca borrados
@@ -548,6 +553,8 @@ Cada proyecto que use Specture tiene una carpeta `.specture/`:
 `stack.yml` es **leído por todos los skills y agentes** antes de generar nada. Cambia el stack → cambian las decisiones, sin tocar el framework.
 
 `settings.yml` (desde v1.15.0) es el único archivo **del framework** dentro de `.specture/`: `schema_version` (la versión del esquema de proyecto que el plugin espera), `profile` (`lean | full | custom`) y los toggles (`hooks.enabled`, `context7.enabled`, `docs_index.*`, `knowledge.enabled`). Lo escribe `/specture:setup`; cuando actualizás el plugin, `/specture:start` compara `schema_version` con la versión instalada y, si hay migraciones pendientes, ofrece `/specture:doctor migrate`. Proyectos creados antes de v1.15.0 conservan los toggles en `conventions.md` §10 — se siguen leyendo hasta que el doctor los mueva.
+
+`rules.yml` (desde v1.19.0) guarda las **invariantes del proyecto** `R-*` — **una línea por regla** (≤ 240 caracteres) con `tags`, `severity` (`BLOCKER | IMPORTANT`) y `source` (el ADR o debug log donde vive la historia; nunca inline). No hay toggle: la presencia de reglas es el switch. El coordinador de `build` corre `hooks/lib/rules-resolve.js --tags <módulo,componente,backend|frontend>` antes de cada dispatch y entrega **solo** las reglas que cruzan (`RULES_RESOLVED`) al planner, al implementer y al reviewer, que las enforça por ID (Dimensión 7). `/specture:knowledge capture` escribe las nuevas ahí y rechaza cualquier draft que supere el largo; el doctor marca `rule-length` y `rules-schema`. Proyectos anteriores conservan la tabla en `conventions.md` §12 hasta que `/specture:doctor migrate` (`1.19-rules-file`) la mueva.
 
 **Doctor en la CI del proyecto (opcional):** un job que clona el plugin a la versión instalada y corre el chequeo — falla en `ERROR` (rutas rotas, ADR duplicado, sello huérfano):
 

@@ -1,0 +1,18 @@
+# Specture — Project Rules (invariantes R-*) — Archivador
+# One rule = one line (≤ 240 characters). The story lives in the linked source, never here.
+# The build coordinator injects only the rules whose tags intersect the spec (Rules Resolution).
+
+schema: 1
+rules:
+  - id: R-1
+    tags: [backend, api, http]
+    rule: "Toda operación HTTP identifica al empleado por el header X-Employee-Id; sin header → 401 UNAUTHENTICATED"
+    verify: "cada handler lee el header antes de tocar el dominio; test de 401 por operación"
+    severity: BLOCKER
+    source: "docs/02-architecture/api-contract.md §Errores"
+  - id: R-2
+    tags: [backend, api, http]
+    rule: "Ninguna respuesta de error usa un shape distinto del envelope { error: { code, message } }"
+    verify: "los tests de error asserten el envelope; ningún res.status(4xx).json fuera del traductor"
+    severity: BLOCKER
+    source: "docs/02-architecture/api-contract.md §Errores"

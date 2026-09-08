@@ -1,7 +1,7 @@
 {
   "files": {
     "skills/architecture/SKILL.md#required-inputs": "3ca81e44ce5435c14d6c2b0dd6c87ac6b91cbbc70c9d09c5ea4d8451e939956f",
-    "skills/build/SKILL.md#required-inputs": "9fa81213c49e93da39e6205842f40001491b9ae0e1751ef4a341d7f036abdd55",
+    "skills/build/SKILL.md#required-inputs": "5270bd62a935d50cc028111d2793b83ff65e4e7671a5537c438c6141fb1c1e9a",
     "skills/contract-sync-audit/SKILL.md#required-inputs": "8e0e5960283a11cc8b6f8d271777a105f3951a004876c9df72c1ee5c6ea45592",
     "skills/discover/SKILL.md#required-inputs": "891bbe500e062f890fbee530e7ce3cdb3eeb2893b5b73647aac69562b0c163f6",
     "skills/handoff-ingest/SKILL.md#required-inputs": "63836d9d3840217a9cd713d4a8d709901cb3a4316c3a9195eab08acd4b678303",
@@ -13,9 +13,10 @@
     "templates/CURRENT_CAPABILITY_TEMPLATE.md": "52b0dcec13c79fa7041db8e6f8cfa748067d682355d57ab5290c885a365a22d7",
     "templates/MIGRATION_SPEC_TEMPLATE.md": "806ac96cefafb64ec89f391d2beffddda99a45dacd7286e9e819756b1fd4e89c",
     "templates/PLANNING_TEMPLATE.md": "76ed6eba03f75762200fdc3a98656e3b09b088f0e3699fc324de0cc35ac63a6f",
-    "templates/project-config/conventions.template.md": "9d839586ef9adc19fe1603d73d85569befc57628f018b1b6898614fe6c5ee517",
+    "templates/project-config/conventions.template.md": "e443397970539686db0cdf104705330743bcf2bd491ff1012b58a073172eb8d1",
     "templates/project-config/decisions/000-template.md": "1a39576f4a0e7b4f69ba3bbe9ac4aa4b438ab6091c26a53dac58d4b425f11972",
     "templates/project-config/docs-index.template.yml": "a7dcdefb59a1589cb6a3b0d400952039a9fbebcce41b637b256bca7cacd25419",
+    "templates/project-config/rules.template.yml": "a17c8e77ecb6ec8a9c639f355b14007f88d01deae422ced566d874cbc8e536e4",
     "templates/project-config/settings.template.yml": "c1b0765e237d6a5f775dac44cd9ec3ea7a0a7f5eaca57ec2e8bd4a25fca3560a",
     "templates/project-config/stack.template.yml": "e8c249d7de5a4a59f055f44495156823d864eb8686bd1e5ebc23934e90e1dc3f",
     "templates/ROADMAP_TEMPLATE.md": "d38ebee715d2b0cb7172eb9b5c5b3fb84e6218fbb58ecc31316c6c235c0123c9",

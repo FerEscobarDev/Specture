@@ -40,7 +40,7 @@ The user is starting from scratch. You will create the configuration through an 
    - Patrón arquitectónico (sugiere uno apropiado al stack y deja al usuario validar).
    - **Apps del proyecto (estructura de carpetas raíz):** qué apps tendrá — backend/API, web público, app/SPA/móvil, landing. Determina qué entradas de `structure.apps` quedan en `stack.yml` (ver paso 4).
    - Convenciones de naming, organización por feature/layer, patrones permitidos/prohibidos.
-   - **Invariantes (§12, opcional):** reglas que nunca cambian (ej. "DTOs inmutables", naming de métodos). **Workflow (§13, opcional):** de dónde nace cada rama por tipo de trabajo, formato de commit. Si el usuario no tiene reglas claras, deja las filas de ejemplo del template para editar luego — sin reglas, ambas secciones son no-op (ni enforcement de invariantes ni creación de ramas).
+   - **Invariantes (`.specture/rules.yml`, opcional — desde v1.19.0):** reglas que nunca cambian (ej. "DTOs inmutables", naming de métodos), **una línea cada una** (`rule` ≤ 240 caracteres) con `tags` (módulo / componente / `backend`·`frontend`·`mobile` — el coordinador de `build` inyecta solo las que cruzan con el spec), `severity` y `source` (ADR o debug log con la historia). **Workflow (§13 de `conventions.md`, opcional):** de dónde nace cada rama por tipo de trabajo, formato de commit. Si el usuario no tiene reglas claras, deja `rules: []` (los ejemplos del template van comentados) y las filas de ejemplo de §13 — sin reglas, ambos son no-op (ni enforcement de invariantes ni creación de ramas). `conventions.md` §12 es solo un puntero.
    - **Perfil de capacidades (`.specture/settings.yml` → `profile`):** `lean` (huella mínima — hooks on, docs-index/knowledge/context7 off), `full` (todo on), o `custom` + toggles individuales. Si el usuario no opina, `custom` con los defaults del template (comportamiento conservador).
 
 3. **Validate coherence** before writing files. Examples of incoherence to flag:
@@ -51,6 +51,7 @@ The user is starting from scratch. You will create the configuration through an 
 4. **Generate the configuration files** by populating these templates from `$SPECTURE_ROOT`:
    - `templates/project-config/stack.template.yml` → `.specture/stack.yml`
    - `templates/project-config/conventions.template.md` → `.specture/conventions.md`
+   - `templates/project-config/rules.template.yml` → `.specture/rules.yml` — las invariantes `R-*` (una por línea, con `tags`/`severity`/`source`); `rules: []` si el usuario no declaró ninguna. Nunca escribas reglas en `conventions.md` §12 (puntero desde v1.19.0).
    - `templates/project-config/decisions/000-template.md` → `.specture/decisions/001-initial-stack.md` (registra la decisión inicial del stack)
    - `templates/project-config/settings.template.yml` → `.specture/settings.yml` — el archivo **del framework**: `schema_version` = la versión del plugin instalado (leé `version` de `${CLAUDE_PLUGIN_ROOT}/plugin.json`, o de `$SPECTURE_ROOT/plugin.json` en setup manual; nunca dejes el placeholder `[X.Y.Z]`), `profile` y toggles según lo que respondió el usuario. Los toggles **no** van en `conventions.md` §10 (esa sección es solo un puntero desde v1.15.0).
 
@@ -137,7 +138,7 @@ The user has an existing codebase. You will **detect** the stack from files and 
    - Naming conventions actually in use.
    - Patterns observed (Result type? Exceptions? DI? Repositories?).
    - Test style.
-   - **§12 Invariantes / §13 Workflow:** leave the template's example rows for the user to confirm or replace — don't invent invariants. For §13 branching, **infer the base branch from git**: if a `develop` branch exists, suggest feature→`develop`; otherwise feature→`main`. Empty §12/§13 = no-op (no invariant enforcement, no auto-branching).
+   - **Invariants (`.specture/rules.yml`) / §13 Workflow:** create `rules.yml` from the template with `rules: []` — don't invent invariants; a rule you *observe* in the code (e.g. every DTO is immutable) may be proposed to the user as a one-line entry with `tags`, `severity` and `source` pointing at the code convention. For §13 branching, **infer the base branch from git**: if a `develop` branch exists, suggest feature→`develop`; otherwise feature→`main`. Empty `rules.yml` / §13 = no-op (no invariant enforcement, no auto-branching). `conventions.md` §12 stays a pointer.
    - Show the inferred conventions to the user for validation.
 
 7. **Generate `decisions/001-adopted-stack.md`** documenting:

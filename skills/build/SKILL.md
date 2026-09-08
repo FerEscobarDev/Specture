@@ -20,12 +20,14 @@ This skill **fuses** what was previously split into "planificación", "ejecució
 
 - `.specture/stack.yml` — for routing decisions and to know testing framework, language, etc.
 - `.specture/conventions.md` — for context to pass to agents.
+- `.specture/rules.yml` — the project invariants `R-*` (since v1.19.0); never passed whole — resolved per dispatch by "Rules Resolution" (`build/EPIC_LOOP.md`) into a `RULES_RESOLVED` block. Absent = `RULES_RESOLVED: []`.
 - `.specture/decisions/` — all ADRs.
 - `docs/01-requirements/business_requirements.md` — ground truth for business rules.
 - `docs/02-architecture/architecture.md` — boundaries.
 - `docs/04-roadmap/ROADMAP.md` — what to build next.
 - The contract file (`stack.yml.api.contract_file`) + its readable companion `docs/02-architecture/api-contract.md` — to slice each epic's `operationId`s for the `spec-planner`.
 - `templates/SPEC_TEMPLATE.md` / `templates/MIGRATION_SPEC_TEMPLATE.md` — handed to the `spec-planner` per the epic's `Template:` field.
+- `templates/PLANNING_TEMPLATE.md` — the grammar of `docs/05-specs/<epic>/_planning.md` (`COVERAGE_TABLE`, `MECH_CHECK`, verdicts, `SPEC_SHA`); handed to the `spec-planner` and parsed by `hooks/lib/spec-set-check.js`.
 
 ## Preconditions (what degrades when an artifact is missing)
 
@@ -33,6 +35,7 @@ This skill **fuses** what was previously split into "planificación", "ejecució
 |---|---|
 | `docs/05-specs/_current/` (once ≥ 1 milestone is closed) | Current-State Resolution passes `[]` — validator and reviewer never see the component's current behaviour; Step 8.7 has nothing to merge into. |
 | `.specture/docs-index.yml` with `docs_index.enabled` | Docs Index Resolution passes `[]`. |
+| `.specture/rules.yml` (v1.19.0+) | Rules Resolution passes `RULES_RESOLVED: []` — implementer and reviewer see no project invariants (Dimension 7 no-op). A project whose `conventions.md` §12 still holds the old table is not migrated: the resolver warns; `/specture:doctor migrate` (`1.19-rules-file`) moves it. |
 | The contract file (`stack.yml.api.contract_file`) + its readable companion `docs/02-architecture/api-contract.md` | Validator Dimension 6 cannot run; frontend epics cannot slice the contract. |
 | `.specture/settings.yml` | Toggles are read from the legacy `conventions.md` §10; if absent there too, defaults apply (hooks off, knowledge off). |
 | Node ≥ 22 on `PATH` | Gate step 4a falls back to the three `grep` checks (`MECH_CHECK: MANUAL`); the seal cannot be written (`seal-cli.js`) — and the hooks, node scripts themselves, are inert anyway — so the epic runs without mechanical denies: the `git diff <RED_SHA>..HEAD` of Step 5.5, the `git diff <SPEC_SHA>..HEAD` of report processing and reviewer Dimension 1 remain the defenses; `metrics-report.js` cannot run (the metrics line is still appended by hand). Say it once: *"Node ≥ 22 no disponible — sin sello ni chequeo mecánico; quedan los git diff"*. |
@@ -128,10 +131,13 @@ files**: you hand it a table `SYMBOL | PATH | SIGNATURE` of the component's exis
    Inputs manifest, assembled by you: the full epic block; the linked
    `business_requirements.md` sections + Capacidades de Frontera; the `architecture.md`
    sections of the involved components (incl. "Carpeta raíz"); the contract slice with the
-   epic's `operationId`s; `stack.yml`, `conventions.md` (§8, §12, file-org), `Accepted`
-   ADRs; resolved docs-index and `_current/` files (run "Docs Index Resolution" and
-   "Current-State Resolution" as defined in `build/EPIC_LOOP.md` — same algorithms, you
-   have the file); the template per the epic's `Template:` field plus
+   epic's `operationId`s; `stack.yml`, `conventions.md` (§8, file-org), `Accepted`
+   ADRs; the `RULES_RESOLVED` block (run "Rules Resolution" of `build/EPIC_LOOP.md` with
+   the epic's component slugs + `backend`/`frontend`/`mobile` as tags — the planner cites
+   the rules a spec must honor, never the whole registry); resolved docs-index and
+   `_current/` files (run "Docs Index Resolution" and "Current-State Resolution" as
+   defined in `build/EPIC_LOOP.md` — same algorithms, you have the file); the template
+   per the epic's `Template:` field plus
    `templates/PLANNING_TEMPLATE.md` (the `_planning.md` grammar); the **Code Surface
    table** from the pre-flight above (`(vacío)` / `UNAVAILABLE` are valid and explicit — the
    planner never reads code); the frontend/migration conditionals. A missing item costs a
@@ -198,7 +204,9 @@ files**: you hand it a table `SYMBOL | PATH | SIGNATURE` of the component's exis
      `CODE_SURFACE` table. It runs first because a C3/C7 rejection reshuffles content across
      specs — the per-spec dispatches then run once, on the stabilized set.
    - **5b — one dispatch per spec** (dims 1-6, unchanged; **never** `_planning.md` — Dimension
-     7 does not run per spec).
+     7 does not run per spec). Both 5a and 5b carry the `RULES_RESOLVED` block of the gate
+     (Rules Resolution with the epic's tags) so a spec that contradicts a `BLOCKER` invariant
+     is rejected by rule ID before any test is written.
    - On `REJECTED` (5a or 5b) → re-dispatch the planner with `VIOLATIONS` (step 4) → 4a →
      5a again only if the `CHANGELOG` touched `COVERAGE_TABLE`, `RESOLVED_ALONE`, a "Fuera
      de Scope" or a Superficie → 5b only for the specs the `CHANGELOG` touched.

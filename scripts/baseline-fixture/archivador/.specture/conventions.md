@@ -30,9 +30,9 @@
 ## 8. Idioma del Código
 - **Identificadores:** inglés · **Prosa de negocio, specs y ADRs:** español
 
-## 12. Invariantes del proyecto
-- **R-1:** toda operación HTTP identifica al empleado por el header `X-Employee-Id`; sin header → 401 `UNAUTHENTICATED`.
-- **R-2:** ninguna respuesta de error usa un shape distinto del envelope `{ error: { code, message } }`.
+## 12. Invariantes del Proyecto (R-*)
+
+> **Desde v1.19.0 las invariantes viven en `.specture/rules.yml`** (R-1 header `X-Employee-Id`, R-2 envelope de error — tags `backend, api, http`). El coordinador de `build` inyecta solo las reglas cuyos tags cruzan con el spec (Rules Resolution); el `code-reviewer` las enforça por ID (Dimensión 7). Esta sección es solo un **puntero** — no declares reglas aquí.
 
 ## 13. Workflow / Proceso (W-*)
 

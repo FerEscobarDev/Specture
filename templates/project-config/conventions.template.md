@@ -47,6 +47,8 @@
 ## 4. Patrones Prohibidos (Deny-list)
 
 > Estas son cosas que **explícitamente no queremos** en este proyecto, aunque el lenguaje las permita o sean comunes en otros proyectos.
+>
+> Cada ítem ocupa **≤ 2 líneas**: el patrón prohibido y, si hace falta, el enlace a la historia (ADR o debug log). El relato del bug de origen nunca va inline — el doctor lo marca (`rule-length`).
 
 - [ej. Repositorios genéricos `Repository<T>`]
 - [ej. Singletons mutables]
@@ -114,12 +116,9 @@
 
 ## 12. Invariantes del Proyecto (R-*)
 
-> Reglas que **nunca cambian** y aplican en todo el proyecto. Las **aplica** el `implementer`/`ux-implementer` al escribir código; las **enforça** el `code-reviewer` (Dimensión 7), citándolas por ID. Para patrones de más alto nivel usá §3 (allow-list) / §4 (deny-list). Si no hay reglas aquí, la Dimensión 7 del reviewer no encuentra nada (no-op) — comportamiento por defecto.
-
-| ID  | Ámbito (tag) | Regla | Cómo verificar | Severidad | Racional / ADR |
-|-----|--------------|-------|----------------|-----------|----------------|
-| R-1 | dto, domain  | [ej. Los DTOs son inmutables: sin setters, campos readonly/final] | [ej. sin setters públicos ni mutación post-construcción] | BLOCKER | [ej. DDD — ADR-00X] |
-| R-2 | naming       | [ej. Métodos de consulta = sustantivo; comandos = verbo imperativo] | [ej. nombres de métodos nuevos] | IMPORTANT | §1 Naming |
+> **Desde v1.19.0 las invariantes viven en `.specture/rules.yml`** — una entrada por regla (`id`, `tags`, `rule` ≤ 240 caracteres, `verify`, `severity`, `source`). El coordinador de `build` inyecta en cada dispatch **solo** las reglas cuyos tags cruzan con el spec (Rules Resolution, `hooks/lib/rules-resolve.js`); las **aplica** el `implementer`/`ux-implementer` y las **enforça** el `code-reviewer` (Dimensión 7) citándolas por ID. La historia de cada regla (el bug, el incidente, el porqué) vive en un ADR o debug log **enlazado** desde `source`, nunca inline — el doctor marca `rule-length`. Esta sección es solo un **puntero** — no declares reglas aquí; `/specture:knowledge capture` las escribe en `rules.yml`. Para patrones de más alto nivel usá §3 (allow-list) / §4 (deny-list). Sin reglas en `rules.yml`, la Dimensión 7 del reviewer no encuentra nada (no-op) — comportamiento por defecto.
+>
+> Proyectos creados antes de v1.19.0 pueden conservar aquí la tabla `| ID | Ámbito (tag) | Regla | … |` (o bullets `- **R-n:** …`); `/specture:doctor migrate` (`1.19-rules-file`) la mueve a `rules.yml` y deja este puntero.
 
 ## 13. Workflow / Proceso (W-*)
 

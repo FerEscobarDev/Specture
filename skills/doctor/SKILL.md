@@ -13,7 +13,7 @@ Three modes:
 
 | Mode | What it does | Writes |
 |---|---|---|
-| `check` (default) | corpus lint (broken paths, `...` placeholders, duplicate ADRs, ADRs without Status, reviews without verdict, specs without IDs, over 300 lines or with off-template sections, line-number citations), requirements lint (unresolved placeholders, HUs without `Exposición`, boundary stories not consolidated, rules/edge cases/exclusions without `RN/CL/FA` IDs), state (stale seal, >1 `[/]`, missing `_current/`, docs-index vs toggle, worktree leftovers), schema drift (pending migrations by kind) | nothing |
+| `check` (default) | corpus lint (broken paths, `...` placeholders, duplicate ADRs, ADRs without Status, reviews without verdict, specs without IDs, over 300 lines or with off-template sections, line-number citations), requirements lint (unresolved placeholders, HUs without `Exposición`, boundary stories not consolidated, rules/edge cases/exclusions without `RN/CL/FA` IDs), rules lint (`.specture/rules.yml` that does not parse or with duplicate ids / missing fields / unknown severity — `rules-schema`; a `rule` over 240 characters or a §4 deny-list item over 2 lines — `rule-length`), state (stale seal, >1 `[/]`, missing `_current/`, docs-index vs toggle, worktree leftovers), schema drift (pending migrations by kind) | nothing |
 | `migrate` | applies pending **mechanical** migrations (with `--apply`), drafts the **assisted** ones in Plan mode, records **content** ones as deferred with their owner; advances `schema_version` | `.specture/`, `.gitignore`, ROADMAP, requirements/architecture docs, `.specture/migrations.log` |
 | `sync` | `migrate --apply` (mechanical only) + `check` — for CI and for `start` | mechanical only |
 
@@ -76,6 +76,7 @@ Used by CI and by `start` Step 0. Mechanical migrations are applied and the chec
 | `1.16-requirements-ids` | assisted | stable `RN-nnn` / `CL-nnn` / `FA-nnn` IDs on rules, edge cases and out-of-scope in `business_requirements.md` |
 | `1.16-requirements-merge` | assisted | `feature-*.md` drafts / "Adenda" sections merged per-section into `business_requirements.md`, drafts deleted |
 | `1.18-metrics-tracked` | mechanical | `.gitignore`: `docs/.specture-meta/` → `docs/.specture-meta/*` + `!docs/.specture-meta/build-metrics.jsonl` (the build metrics are tracked — decision A7); suggests `git add` when the file exists |
+| `1.19-rules-file` | mechanical | invariants `R-*` from `conventions.md` §12 (table or bullets; placeholders skipped) → `.specture/rules.yml`; §12 becomes a pointer; notes the rules that were tagged `all` / IMPORTANT by default or exceed 240 characters (the doctor then flags `rule-length`) |
 
 ## Red Flags — STOP
 

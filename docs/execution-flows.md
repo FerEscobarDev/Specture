@@ -171,7 +171,7 @@ planificación validada, RED commit, TDD Honesty Gate, code review y verificaci�
 flowchart TD
     S1["Step 1 · Pick & Lock (coordinador)<br/>epic → [/] · commit"] --> SP
     subgraph GATE ["coordinador · Spec Planning Gate"]
-    CS["Pre-flight · Code Surface Resolution<br/>SYMBOL | PATH | SIGNATURE (haiku / grep) — el planner no lee código"]
+    CS["Pre-flights · Code Surface Resolution (SYMBOL | PATH | SIGNATURE, haiku / grep — el planner no lee código)<br/>+ Rules Resolution (rules-resolve.js --tags → RULES_RESOLVED) + docs-index + _current/"]
     CS --> SP["spec-planner · Opus<br/>1-3 specs + COVERAGE_TABLE + OPEN_QUESTIONS / RESOLVED_ALONE"]
     SP --> SQ{"¿OPEN_QUESTIONS?"}
     SQ -->|"sí"| ASKQ["AskUserQuestion ≤4/tanda · ≤2 tandas<br/>respuestas → BR in place · re-dispatch"]
@@ -193,7 +193,7 @@ flowchart TD
     S4c -->|Sí| S5["Step 5 · GREEN · implementer / ux-implementer<br/>código mínimo · tests sellados · solo paths Crea:/Modifica:<br/>(re-lectura de firmas del spec anterior antes del Manifest)"]
     S5 --> S55{"Step 5.5 · TDD Honesty Gate (mecánico)<br/>git diff RED_SHA..HEAD -- tests"}
     S55 -->|"diff ≠ vacío ❌"| VIOL["Violación TDD →<br/>$SPECTURE_ROOT/docs/tdd-honesty-reference.md"]
-    S55 -->|"vacío ✅"| S6{"Step 6 · GATE · code-reviewer<br/>(+ linter + type-check en paralelo)<br/>Dim 1 verifica firmas Crea: en HEAD · CAUSE: parseable"}
+    S55 -->|"vacío ✅"| S6{"Step 6 · GATE · code-reviewer<br/>(+ linter + type-check en paralelo)<br/>Dim 1 verifica firmas Crea: en HEAD · Dim 7 solo con RULES_RESOLVED · CAUSE: parseable"}
     S6 -->|REJECTED_MINOR| S5
     S6 -->|REJECTED_MAJOR| ESC["Fix grande con contexto fresco<br/>o escalar al usuario"]
     S6 -.->|"3 loops sin APPROVED"| CAP["Iteration Cap → arreglar spec<br/>o invocar debug"]

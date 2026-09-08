@@ -114,6 +114,7 @@ Catálogo inicial (lo que Psikora necesitaría hoy):
 | `1.16-requirements-ids` *(v1.16.0)* | assisted | reglas/casos/exclusiones sin `RN/CL/FA-nnn` | proponer los IDs estables en Plan mode |
 | `1.16-requirements-merge` *(v1.16.0)* | assisted | `feature-*.md` o secciones "Adenda" | fusionar por sección en `business_requirements.md`, borrar borradores |
 | `1.18-metrics-tracked` *(v1.18.0)* | mechanical | `.gitignore` sin `docs/.specture-meta/*` + `!docs/.specture-meta/build-metrics.jsonl` | reescribir la entrada (git no re-incluye bajo un directorio ignorado) y sugerir `git add` del archivo si existe |
+| `1.19-rules-file` *(v1.19.0)* | mechanical | `conventions.md` existe y no hay `.specture/rules.yml` | mover las filas reales de §12 (tabla o bullets) a `rules.yml` (una regla por línea, `tags`/`severity`/`source`), dejar §12 como puntero; anotar las reglas con tags/severidad por defecto o > 240 caracteres |
 
 ### 4.3 Enganche en `start` (Step 0, una lectura de un campo)
 

@@ -15,6 +15,7 @@ The orchestrator MUST give you:
 - The candidate document (an `architecture.md`, a `.spec.md`, a `ROADMAP.md`, or a section of a plan).
 - `.specture/stack.yml`.
 - `.specture/conventions.md`.
+- The `RULES_RESOLVED` block (optional) — the project invariants `R-*` of `.specture/rules.yml` in scope for the candidate (by tag for a spec; the whole registry for project-level candidates). A candidate that contradicts a `BLOCKER` rule is a violation cited by rule ID; `RULES_RESOLVED: []` means none apply. Never open `rules.yml` yourself.
 - All files inside `.specture/decisions/` (every ADR, regardless of status).
 - The relevant section of `docs/02-architecture/architecture.md` if the candidate is not the architecture itself.
 - The API contract — the file declared in `stack.yml.api.contract_file` (default `docs/02-architecture/api-contract.openapi.yaml`; `.json`, SDL or `.proto` per `api.style`) **and** its readable companion `docs/02-architecture/api-contract.md` — **when the candidate is the API contract itself, a navigation map, or a spec that touches an HTTP boundary.** Without it, Dimension 6 cannot run — say so in NOTES rather than guessing.

@@ -44,8 +44,10 @@ rationalizations this agent exists to eliminate.
 - The `architecture.md` sections of the involved components, **including "Carpeta raíz"**.
 - The **contract slice** with the epic's `operationId`s (from `stack.yml.api.contract_file`
   and its readable companion).
-- `.specture/stack.yml`; `.specture/conventions.md` (§8 identifier language, §12 invariants,
-  file-org); the `Accepted` ADRs.
+- `.specture/stack.yml`; `.specture/conventions.md` (§8 identifier language, file-org); the
+  **`RULES_RESOLVED` block** (the `R-*` invariants of `.specture/rules.yml` whose tags match
+  the epic — cite the ones a spec must honor; `RULES_RESOLVED: []` is valid); the `Accepted`
+  ADRs.
 - Resolved `docs/05-specs/_current/<component>.md` files and resolved docs-index entries
   (capped, as for the validator; `[]` is valid and explicit).
 - The spec template: `templates/SPEC_TEMPLATE.md`, or `templates/MIGRATION_SPEC_TEMPLATE.md`

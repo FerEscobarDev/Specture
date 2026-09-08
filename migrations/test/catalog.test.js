@@ -137,6 +137,64 @@ test("1.10-rules-sections appends §12 and §13 from the template", () => {
   });
 });
 
+test("1.19-rules-file moves the §12 table to rules.yml, leaves the pointer, skips placeholders, is idempotent", () => {
+  const { parseRulesYaml } = require("../../hooks/lib/rules");
+  const conventions = [
+    "# Convenciones",
+    "",
+    "## 4. Patrones Prohibidos",
+    "",
+    "- Singletons mutables",
+    "",
+    "## 12. Invariantes del Proyecto (R-*)",
+    "",
+    "> Reglas que nunca cambian.",
+    "",
+    "| ID  | Ámbito (tag) | Regla | Cómo verificar | Severidad | Racional / ADR |",
+    "|-----|--------------|-------|----------------|-----------|----------------|",
+    "| R-1 | dto, domain  | Los DTOs son inmutables: sin setters | sin setters públicos | BLOCKER | DDD — ADR-004 |",
+    "| R-2 | naming       | [ej. Métodos de consulta = sustantivo] | [ej. nombres de métodos nuevos] | IMPORTANT | §1 Naming |",
+    "",
+    "## 13. Workflow / Proceso (W-*)",
+    "",
+    "- W-3: Conventional Commits",
+    ""
+  ].join("\n");
+  mechanicalLifecycle("1.19-rules-file", { ".specture/stack.yml": STACK, ".specture/conventions.md": conventions }, (root) => {
+    const yml = fs.readFileSync(path.join(root, ".specture", "rules.yml"), "utf8");
+    const parsed = parseRulesYaml(yml);
+    assert.equal(parsed.schema, "1");
+    assert.deepEqual(parsed.rules.map((r) => r.id), ["R-1"], "placeholder row skipped");
+    assert.deepEqual(parsed.rules[0].tags, ["dto", "domain"]);
+    assert.equal(parsed.rules[0].rule, "Los DTOs son inmutables: sin setters");
+    assert.equal(parsed.rules[0].verify, "sin setters públicos");
+    assert.equal(parsed.rules[0].severity, "BLOCKER");
+    assert.equal(parsed.rules[0].source, "DDD — ADR-004");
+    assert.match(yml, /^# Specture — Project Rules/, "template header kept");
+    const text = fs.readFileSync(path.join(root, ".specture", "conventions.md"), "utf8");
+    assert.match(text, /^## 12\. Invariantes del Proyecto \(R-\*\)\n\n> \*\*Desde v1\.19\.0 las invariantes viven en `\.specture\/rules\.yml`\*\*/m);
+    assert.ok(!/\| R-1 \|/.test(text), "table rows leave conventions.md");
+    assert.match(text, /## 4\. Patrones Prohibidos\n\n- Singletons mutables\n\n## 12\./, "§4 untouched");
+    assert.match(text, /## 13\. Workflow \/ Proceso \(W-\*\)\n\n- W-3: Conventional Commits\n$/, "§13 untouched");
+  });
+
+  const bullets = makeProject({ ".specture/stack.yml": STACK, ".specture/conventions.md": "## 12. Invariantes del proyecto\n- **R-1:** toda operación HTTP lleva `X-Employee-Id`.\n- **R-2:** el envelope de error es único.\n\n## 13. Workflow\n\n- W-3: cc\n" });
+  const result = byId["1.19-rules-file"].apply(contextFor(bullets));
+  const parsedBullets = parseRulesYaml(fs.readFileSync(path.join(bullets, ".specture", "rules.yml"), "utf8"));
+  assert.deepEqual(parsedBullets.rules.map((r) => [r.id, r.tags, r.severity]), [["R-1", ["all"], "IMPORTANT"], ["R-2", ["all"], "IMPORTANT"]]);
+  assert.ok(result.notes.some((n) => /2 rule\(s\) moved/.test(n)));
+  assert.ok(result.notes.some((n) => /tagged `all` and IMPORTANT — review them/.test(n)));
+  assert.equal(byId["1.19-rules-file"].detect(contextFor(bullets)), "done");
+
+  const none = makeProject({ ".specture/stack.yml": STACK, ".specture/conventions.md": "# Convenciones\n\n## 1. Naming\n\n- x\n" });
+  const empty = byId["1.19-rules-file"].apply(contextFor(none));
+  assert.match(fs.readFileSync(path.join(none, ".specture", "rules.yml"), "utf8"), /^rules: \[\]$/m);
+  assert.equal(fs.readFileSync(path.join(none, ".specture", "conventions.md"), "utf8"), "# Convenciones\n\n## 1. Naming\n\n- x\n", "no §12 → conventions untouched");
+  assert.ok(empty.notes.some((n) => /created empty/.test(n)));
+
+  assert.equal(byId["1.19-rules-file"].detect(contextFor(makeProject({ ".specture/stack.yml": STACK }))), "n/a", "no conventions.md → n/a");
+});
+
 test("1.11-profile-and-knowledge renames learn.enabled and adds a profile (conventions and settings variants)", () => {
   mechanicalLifecycle("1.11-profile-and-knowledge", { ".specture/conventions.md": "## 10. Specture\n\n- **hooks.enabled**: true\n- **learn.enabled**: true\n" }, (root) => {
     const text = fs.readFileSync(path.join(root, ".specture", "conventions.md"), "utf8");
@@ -214,6 +272,7 @@ test("1.15-schema-version records the plugin version when nothing is pending, el
     ".specture/stack.yml": STACK,
     ".specture/settings.yml": "profile: custom\nhooks.enabled: true\n",
     ".specture/conventions.md": "## 12. Invariantes\n\n## 13. Workflow\n",
+    ".specture/rules.yml": "schema: 1\nrules: []\n",
     ".gitignore": ".specture/state/\ndocs/.specture-meta/*\n!docs/.specture-meta/build-metrics.jsonl\n"
   });
   assert.equal(m.detect(contextFor(clean)), "pending");
