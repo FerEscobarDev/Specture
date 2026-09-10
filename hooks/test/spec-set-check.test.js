@@ -52,6 +52,7 @@ function roadmap(epics) {
     [
       `- [${e.state || " "}] **Epic ${e.id}:** ${e.name || "Epic"}`,
       "  - **Dependencias:** Ninguna",
+      e.tipo !== undefined ? `  - **Tipo:** ${e.tipo}` : null,
       e.template ? `  - **Template:** ${e.template}` : null,
       "  - **Descripción:** d",
       e.rules !== undefined ? `  - **Reglas de negocio clave:** ${e.rules}` : null,
@@ -403,4 +404,81 @@ test("planning.js parses the four core row kinds, the epic block and a spec's su
   assert.deepEqual(parsed.modifiedPaths, ["src/app.js"]);
   assert.equal(parsed.idCount, 4);
   assert.deepEqual(planning.lastMechCheck("x\n- MECH_CHECK: FAIL aaa — 1\n- MECH_CHECK: PASS bbb — 2\n"), { status: "PASS", value: "bbb", line: "- MECH_CHECK: PASS bbb — 2" });
+});
+
+// ---------------------------------------------------------------------------------------
+// C-design — the design system was visually approved before any page epic
+// ---------------------------------------------------------------------------------------
+
+// A page epic that declares no operations, so C1 stays out of the way.
+const PAGE_ROWS = ["- br: RN-001 → 01-subir [BR-1]", "- oos: nada → diferido a: fuera del epic"].join("\n");
+const PAGE_SPECS = { "01-subir": spec({ slug: "01-subir", rules: ["RN-001"] }) };
+
+function pageProject({ providerTipo = "design-system", providerPlanning = null, dsEpicDir = "epic-1.0-ds" } = {}) {
+  const files = {};
+  if (providerPlanning !== null) files[`docs/05-specs/${dsEpicDir}/_planning.md`] = providerPlanning;
+  return createProject({
+    roadmap: roadmap([
+      { id: "1.0", state: "x", tipo: providerTipo, name: "Design System", rules: "RN-001" },
+      { id: "1.1", tipo: "pagina", name: "Pantalla", rules: "RN-001" }
+    ]),
+    epic: "epic-1.1-x",
+    planning: planningDoc(PAGE_ROWS),
+    specs: PAGE_SPECS,
+    files
+  });
+}
+
+test("C-design: a roadmap without `Tipo:` never fires the check (every pre-v1.20.0 project)", () => {
+  const { status, lines } = runCheck(createProject());
+  assert.equal(status, 0);
+  assert.equal(lines.filter((l) => l.startsWith("C-design")).length, 0);
+});
+
+test("C-design: a page epic passes when the design-system epic records VISUAL_APPROVAL", () => {
+  const project = pageProject({ providerPlanning: "# Planning\n\n## VISUAL_APPROVAL\n- VISUAL_APPROVAL: abc123def456 — 2026-09-09 — rondas: 2 — ruta: /dev/design-system\n" });
+  const { status, lines, stderr } = runCheck(project);
+  assert.equal(status, 0, stderr);
+  assert.equal(lines.filter((l) => l.startsWith("C-design") && / BLOCKER /.test(l)).length, 0);
+});
+
+test("C-design: a page epic is BLOCKED when the design-system epic has no VISUAL_APPROVAL", () => {
+  const project = pageProject({ providerPlanning: "# Planning\n\n## MECH_CHECK\n- MECH_CHECK: PASS abc123def456 — 2026-09-09 — corrida 1\n" });
+  const { status, token, lines } = runCheck(project);
+  assert.equal(status, 1);
+  assert.match(token, /^MECH_CHECK: FAIL /);
+  const finding = lines.find((l) => l.startsWith("C-design"));
+  assert.match(finding, /BLOCKER/);
+  assert.match(finding, /1\.0 \(design system\) no registra `VISUAL_APPROVAL`/);
+});
+
+test("C-design: a page epic is BLOCKED when the design-system epic's _planning.md is unreachable", () => {
+  const { status, lines } = runCheck(pageProject({ providerPlanning: null }));
+  assert.equal(status, 1);
+  assert.match(lines.find((l) => l.startsWith("C-design")), /BLOCKER.*no se encontró el `_planning\.md`/);
+});
+
+test("C-design: a page epic with no design-system epic declared is INFO, not BLOCKER (fails open)", () => {
+  const { status, lines } = runCheck(pageProject({ providerTipo: "backend", providerPlanning: null }));
+  assert.equal(status, 0);
+  assert.match(lines.find((l) => l.startsWith("C-design")), /INFO.*ningún epic declara/);
+});
+
+test("C-design: an unknown `Tipo:` is a WARNING and falls back to backend, never a silent default", () => {
+  const project = createProject({
+    roadmap: roadmap([{ id: "1.1", tipo: "frontend", ops: "`subir`, `listar`", rules: "RN-001, RN-002" }])
+  });
+  const { status, lines } = runCheck(project);
+  assert.equal(status, 0);
+  assert.match(lines.find((l) => l.startsWith("C-design")), /WARNING.*`Tipo: frontend` no es un tipo conocido/);
+});
+
+test("planning.epicKind normalises the four kinds, defaults to backend, and rejects the rest", () => {
+  assert.equal(planning.epicKind(null), "backend");
+  assert.equal(planning.epicKind(""), "backend");
+  assert.equal(planning.epicKind("  `design-system` "), "design-system");
+  assert.equal(planning.epicKind("PAGINA"), "pagina");
+  assert.equal(planning.epicKind("frontend"), null);
+  assert.deepEqual(planning.lastVisualApproval("x\n- VISUAL_APPROVAL: aaa — 1\n- VISUAL_APPROVAL: bbb — 2\n"), { sha: "bbb", line: "- VISUAL_APPROVAL: bbb — 2" });
+  assert.equal(planning.lastVisualApproval("nada"), null);
 });

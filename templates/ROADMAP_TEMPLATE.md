@@ -42,6 +42,7 @@
 
 - [ ] **Epic 1.1:** [Nombre del Epic]
   - **Dependencias:** Ninguna
+  - **Tipo:** backend *(`design-system` | `pagina` | `backend` | `migracion`. Omitir equivale a `backend`. Lo lee `spec-set-check.js` C-design: un epic `pagina` no arranca hasta que el epic `design-system` registre `VISUAL_APPROVAL` en su `_planning.md`. Un ROADMAP sin esta línea no activa el check.)*
   - **Template:** MIGRATION_SPEC_TEMPLATE.md *(solo epics de migración creados por `modernize`; omitir en el resto — sin esta línea el spec-planner usa `SPEC_TEMPLATE.md`)*
   - **Descripción:** [1-2 frases.]
   - **Reglas de negocio clave:** RN-001, RN-014 *(solo IDs `RN-nnn` de `business_requirements.md`, separados por coma — los lee `spec-set-check.js` C2)*

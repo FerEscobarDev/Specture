@@ -123,6 +123,18 @@ function lastMechCheck(text) {
   return last;
 }
 
+// The last `VISUAL_APPROVAL: <sha> — …` line of a design-system epic's `_planning.md`, or
+// null. Written by the coordinator when the user approves the showcase (build/SKILL.md
+// "Coordinator processes the report"); it is the only durable record of the visual gate.
+function lastVisualApproval(text) {
+  let last = null;
+  for (const line of lines(text)) {
+    const m = line.match(/VISUAL_APPROVAL\s*:\s*(\S+)/);
+    if (m) last = { sha: m[1], line: collapse(line) };
+  }
+  return last;
+}
+
 // ---------------------------------------------------------------------------
 // ROADMAP epic block
 // ---------------------------------------------------------------------------
@@ -160,17 +172,34 @@ function fieldValue(blockLines, label) {
   return null;
 }
 
-// { id, state, template, operations: [{id, mode}], rules: [RN…], gaps: [GAP…], text }
+// Epic kinds (roadmap `- **Tipo:**`). Absent → "backend": every roadmap authored before
+// v1.20.0 has no line, so nothing is a page epic and the design-system gate stays silent.
+const EPIC_KINDS = ["design-system", "pagina", "backend", "migracion"];
+
+// "design-system" | "pagina" | "backend" | "migracion" when recognised; null when the line
+// is present but says something else (the caller reports it — never silently a default).
+function epicKind(value) {
+  if (value === null || value === undefined) return "backend";
+  const raw = String(value).replace(/[`*]/g, "").trim().toLowerCase();
+  if (raw === "") return "backend";
+  return EPIC_KINDS.includes(raw) ? raw : null;
+}
+
+// { id, state, template, tipo, operations: [{id, mode}], rules: [RN…], gaps: [GAP…], text }
 function parseEpicBlock(text) {
   const all = lines(text);
   const head = all.find((l) => /\bEpic\b/i.test(l)) || "";
   const stateMatch = head.match(/\[( |\/|x)\]/);
   const opsValue = fieldValue(all, "Operaciones del contrato");
   const gapsValue = fieldValue(all, "Breaking changes in scope") || fieldValue(all, "Gaps");
+  const tipoValue = fieldValue(all, "Tipo");
   return {
     id: epicIdFrom(head),
     state: !stateMatch ? null : stateMatch[1] === "x" ? "done" : stateMatch[1] === "/" ? "in-progress" : "pending",
     template: (fieldValue(all, "Template") || "").replace(/`/g, "").trim() || null,
+    tipo: epicKind(tipoValue),
+    tipoRaw: tipoValue,
+    hasTipoLine: tipoValue !== null,
     operations: parseOperations(opsValue),
     hasOperationsLine: opsValue !== null,
     rules: idList(fieldValue(all, "Reglas de negocio clave"), RN_ID),
@@ -290,10 +319,13 @@ module.exports = {
   ROW_KINDS,
   RN_ID,
   GAP_ID,
+  EPIC_KINDS,
+  epicKind,
   normalizeSignature,
   parseCoverageTable,
   coverageHash,
   lastMechCheck,
+  lastVisualApproval,
   parseOperations,
   parseEpicBlock,
   parseRoadmapEpics,

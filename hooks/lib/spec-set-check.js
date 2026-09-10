@@ -12,6 +12,8 @@
 // Checks (framework roadmap item 29 / gate design §4.4):
 //   C1  every operationId of the epic in exactly one spec (hole / overlap)    BLOCKER
 //       C1-consume: a consumed op is implemented by another epic in [x]      BLOCKER
+//   C-design  a `Tipo: pagina` epic requires the `Tipo: design-system` epic to record
+//       VISUAL_APPROVAL in its `_planning.md` (never the `[x]` checkbox)        BLOCKER
 //   C2  every RN-nnn linked by the epic is cited by >= 1 spec                  BLOCKER
 //   C4  every `(planeada — re-anclar)` symbol is created by an EARLIER spec
 //       with a string-identical signature                                     BLOCKER
@@ -93,6 +95,33 @@ function loadEpic(opts) {
   return { error: "epic block not provided (pass <epic-block-file> or --roadmap <ROADMAP.md> --epic <X.Y>)" };
 }
 
+// Does the design-system epic `providerId` record a VISUAL_APPROVAL?
+// null = its spec directory or `_planning.md` could not be read (not verifiable);
+// true / false = the line is present / absent.
+function visualApprovalOf(epicDir, providerId) {
+  const specsRoot = path.dirname(path.resolve(epicDir));
+  const wanted = String(providerId || "").trim();
+  let entries;
+  try {
+    entries = fs.readdirSync(specsRoot, { withFileTypes: true });
+  } catch {
+    return null;
+  }
+  const dir = entries.find((e) => {
+    if (!e.isDirectory()) return false;
+    const m = e.name.match(/^epic[-\s]*(\d+\.\d+)/i);
+    return m ? m[1] === wanted : false;
+  });
+  if (!dir) return null;
+  let text;
+  try {
+    text = fs.readFileSync(path.join(specsRoot, dir.name, "_planning.md"), "utf8");
+  } catch {
+    return null;
+  }
+  return planning.lastVisualApproval(text) !== null;
+}
+
 function runChecks({ table, specs, epic, roadmapEpics, epicDir }) {
   const findings = [];
   const add = (check, severity, slug, detail) => findings.push({ check, severity, slug: slug || "-", detail });
@@ -143,6 +172,31 @@ function runChecks({ table, specs, epic, roadmapEpics, epicDir }) {
     for (const row of rows.op) {
       if (!declared.has(row.operationId)) {
         add("C1", "WARNING", row.slug, `fila op: \`${row.operationId}\` no está en "Operaciones del contrato" del epic`);
+      }
+    }
+  }
+
+  // ---- C-design — the design system was visually approved before any page epic --------
+  // Anchored on the VISUAL_APPROVAL record, never on the `[x]` checkbox: the epic-agent
+  // writes the checkbox itself, so a checkbox proves nothing about the human gate.
+  if (epic.hasTipoLine && epic.tipo === null) {
+    add("C-design", "WARNING", null, `\`Tipo: ${String(epic.tipoRaw).trim()}\` no es un tipo conocido (${planning.EPIC_KINDS.join(" | ")}) — se trata como backend`);
+  }
+  if (epic.tipo !== "pagina") {
+    // Only page epics are gated. Roadmaps without `Tipo:` never reach this branch.
+  } else if (!roadmapEpics) {
+    add("C-design", "INFO", null, "sin --roadmap no se verifica la aprobación visual del design system");
+  } else {
+    const providers = roadmapEpics.filter((e) => e.tipo === "design-system");
+    if (providers.length === 0) {
+      add("C-design", "INFO", null, "ningún epic declara `Tipo: design-system` — C-design omitido");
+    } else {
+      const provider = providers[0];
+      const approval = visualApprovalOf(epicDir, provider.id);
+      if (approval === null) {
+        add("C-design", "BLOCKER", null, `no se encontró el \`_planning.md\` del epic ${provider.id} (design system): la aprobación visual no es verificable`);
+      } else if (!approval) {
+        add("C-design", "BLOCKER", null, `el epic ${provider.id} (design system) no registra \`VISUAL_APPROVAL\` en su \`_planning.md\`: el gate visual no ha pasado y ningún epic de página puede arrancar`);
       }
     }
   }

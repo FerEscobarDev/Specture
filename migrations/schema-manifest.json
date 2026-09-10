@@ -19,7 +19,7 @@
     "templates/project-config/rules.template.yml": "a17c8e77ecb6ec8a9c639f355b14007f88d01deae422ced566d874cbc8e536e4",
     "templates/project-config/settings.template.yml": "c1b0765e237d6a5f775dac44cd9ec3ea7a0a7f5eaca57ec2e8bd4a25fca3560a",
     "templates/project-config/stack.template.yml": "e8c249d7de5a4a59f055f44495156823d864eb8686bd1e5ebc23934e90e1dc3f",
-    "templates/ROADMAP_TEMPLATE.md": "d38ebee715d2b0cb7172eb9b5c5b3fb84e6218fbb58ecc31316c6c235c0123c9",
+    "templates/ROADMAP_TEMPLATE.md": "46f686d645aff17e3d1c9f1964448e990dd7c4e1fd1e5a9ae7959d0afe5a86cc",
     "templates/SPEC_TEMPLATE.md": "bb9ac554bf75dbf6c11f7a8ebdd84b77aa4980e860bafc34f3c92f3d321c9ca6"
   }
 }
