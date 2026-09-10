@@ -34,6 +34,12 @@
 ## MECH_CHECK (coordinador — una línea por corrida; la última es la vigente)
 - MECH_CHECK: PASS <sha12> — <ISO-8601> — corrida N (<primera pasada | ANSWERS Q-n | VIOLATIONS>)
 
+## VISUAL_APPROVAL (coordinador — sólo epics de design system; una línea por aprobación)
+> La escribe el coordinador cuando el usuario aprueba el showcase, en el mismo commit que el
+> `[x]` del epic. Es el único registro durable del gate visual: sin ella, los epics de página
+> no arrancan. Nunca la escribe el epic-agent.
+- VISUAL_APPROVAL: <sha12> — <ISO-8601> — rondas: N — ruta: <ruta del showcase>
+
 ## VEREDICTOS (coordinador — verbatim)
 ### set — dispatch 1 — <fecha>
 ```

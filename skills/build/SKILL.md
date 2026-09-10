@@ -68,6 +68,8 @@ Read **N** from the user's request at the start of the session:
 
 N bounds the session: the coordinator builds a queue of up to N ready epics and **stops when the queue drains** — it does NOT spill over into the rest of the ROADMAP.
 
+**Cap for the design-system foundation epic: if it enters the queue, N = 1 for that batch.** Its Visual Approval Gate waits on a human, and the epic stays `[/]` until they answer. With N > 1 the rest of the queue would sit trapped behind a chat question — or the coordinator would be pushed to flip `[x]` "provisionally" and start the page epics, which is exactly the failure the gate exists to prevent. Announce the cap when you build the queue.
+
 ### Dependency parsing (deterministic)
 
 For each epic read **only** its checkbox line and its `**Dependencias:**` line:
@@ -255,7 +257,9 @@ files**: you hand it a table `SYMBOL | PATH | SIGNATURE` of the component's exis
 split to the user (it touches `ROADMAP.md`); `contrato`: the epic needs a contract change
 → `architecture`/ADR, never a spec; `contradicción`: escalate for an ADR.
 
-**Human contacts** (none routine — a doubt-free epic runs to `[x]` without interruption):
+**Human contacts** (one is routine on any project with a frontend — the Visual Approval Gate;
+a doubt-free backend epic still runs to `[x]` without interruption):
+**`DONE: pendiente de aprobación visual`** (the design-system foundation epic — you run the gate) ·
 `OPEN_QUESTIONS` (incl. C7 conversions) · 3 accumulated validator rejections ·
 `BLOCKED: sizing` · `BLOCKED: contrato` · resumption with unvalidated specs ·
 `BLOCKED` / `REJECTED_MAJOR` downstream · review mode on request.
@@ -306,7 +310,9 @@ writes outside the declared surface.
 
 ## Required final report
 Report exactly one of: DONE | BLOCKED | REJECTED_MAJOR
-(BLOCKED: spec <AC-n/BR-n/EC-n> when a sealed spec is unexecutable.)
+(BLOCKED: spec <AC-n/BR-n/EC-n> when a sealed spec is unexecutable.
+ DONE: pendiente de aprobación visual — design-system foundation epic only; include the dev
+ command and the showcase route so the coordinator can run the gate.)
 Plus: which specs were executed, which tests pass, what remains.
 METRICS (mandatory — the coordinator appends them to build-metrics.jsonl):
   needs_context_spec: N · iteration_cap_spec: N · blocked_spec: N ·
@@ -314,6 +320,8 @@ METRICS (mandatory — the coordinator appends them to build-metrics.jsonl):
   supersessions: N · firma re-read: N verified / M corrected
 SUPERSESSIONS: <none | one line per declared test: <path>::<test> → <SUPERSEDE_SHA>>
 If DONE: update ROADMAP.md to [x] for this epic and commit BEFORE reporting.
+If DONE: pendiente de aprobación visual: do NOT touch the checkbox — leave the epic [/].
+The coordinator flips it after the user approves the showcase.
 ~~~
 
 ### Coordinator processes the report
@@ -326,6 +334,12 @@ If DONE: update ROADMAP.md to [x] for this epic and commit BEFORE reporting.
   edited during the epic: treat the report as **`REJECTED_MAJOR`**, show the diff verbatim
   and escalate to the user. No automatic action — a `[x]` commit that already landed is
   reverted only on the user's decision. Empty → process the status below.
+- **`DONE: pendiente de aprobación visual`** (design-system foundation epic) → **you run the Visual Approval Gate.** The epic-agent is non-interactive, so it built the showcase, left the epic `[/]` on purpose and handed the gate to you. In order:
+  1. **Show it.** If the Playwright MCP is available in this session, start the app with the dev command the report names, navigate to the showcase route and capture screenshots so the user reviews without leaving the chat. If it is not available, give the user the command and the route and ask them to open it.
+  2. **Ask, verbatim:** *"¿Apruebas el design system para construir las páginas sobre esta base, o quieres ajustes?"* Ask this **before** surfacing any advisory finding (screenshot critique, lint warnings). A list of defects presented alongside the question turns advice into a veto — advisory output goes after an approval, as the next epic's to-do list.
+  3. **Adjustments** → re-dispatch a **fresh epic-agent** for the same epic with the user's feedback verbatim as the change request (you never dispatch `ux-implementer` yourself — see "Execution Model"). Repeat from 1, counting the rounds.
+  4. **On approval** → append `VISUAL_APPROVAL: <fecha> <sha>` to the epic's `_planning.md` (the one-line-per-run mould of `MECH_CHECK`; `<sha>` is HEAD at approval), flip the epic to `[x]` in `ROADMAP.md`, and commit both in one commit. Then release the seal and mark the task `completed` exactly as in the **DONE** branch below. In the metrics line record `outcome: DONE` plus `visual_approval_rounds: N`.
+  5. **Outright rejection** (the user wants a different direction, not adjustments) → that is a Phase 03 decision, not an epic defect: leave the epic `[/]`, stop the queue and escalate to `ux-design`.
 - **DONE** → verify the epic is `[x]` in `ROADMAP.md` and the commit landed (don't trust the report — `git log`/read the checkbox). **Release the seal yourself**: `node "${CLAUDE_PLUGIN_ROOT}/hooks/lib/seal-cli.js" release` and confirm `.specture/state/build-locked.json` is gone — do not rely on the epic-agent's Step 8 (a leftover seal blocks the next epic's tests; the hook only fails open on it once no epic is `[/]`). Mark that epic's task `completed`. **Supersessions** (roadmap item 35): if the report lists any, fill the `commit:` of each line of `## SUPERSESIONES` in `_planning.md` with its `SUPERSEDE_SHA` and append one line to `docs/05-specs/_supersessions.md` (create it lazily; it is an index, one line per epic, never a narrative): `- <epic-slug> (<fecha>) — N tests supersedidos — ver docs/05-specs/<epic-slug>/_planning.md § SUPERSESIONES`. Continue with the next queued epic.
 - **BLOCKED: spec <AC-n/BR-n/EC-n>** (also the Iteration Cap's spec-problem exit) → run the **spec-correction loop**, in this order:
   1. **Unseal only that spec's TDD entry**: `seal-cli.js unseal-spec --slug <task-slug>` removes the affected spec's `{slug, red_sha, test_paths}` object from `specs[]` — never delete the whole file (that unseals the sibling specs and the spec seal), never leave the entry (the hook would deny the re-written RED). The epic-level `spec_paths` stay in place until step 4 re-seals.
@@ -361,9 +375,12 @@ Frontend epics must be built in this order — the ROADMAP should already encode
 
 If a page epic becomes "ready" before the design-system epic is approved, it is **not** actually ready — treat the design-system approval as an implicit dependency of every page epic.
 
-> The per-epic execution of this policy — the design-system epic procedure, the page-epic rules,
-> the `ux-implementer` dispatch and the visual approval gate — lives in `build/EPIC_LOOP.md`
-> § "Frontend Epics — execution". The epic-agent receives it as part of its procedure.
+> The per-epic execution of this policy — the design-system epic procedure, the page-epic rules
+> and the `ux-implementer` dispatch — lives in `build/EPIC_LOOP.md` § "Frontend Epics —
+> execution"; the epic-agent receives it as part of its procedure. **The Visual Approval Gate
+> itself does not live there**: it needs a channel to the user, which a subagent does not have.
+> The epic-agent stops at it and reports `DONE: pendiente de aprobación visual`; you run the
+> gate in § "Coordinator processes the report".
 
 ## Step 1 — Pick & Lock the Epic
 

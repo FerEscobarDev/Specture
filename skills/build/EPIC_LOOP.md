@@ -23,10 +23,14 @@ Ground rules:
   `code-reviewer`) are already registered by the coordinator — dispatch them by name with
   the restricted context each step defines.
 - Do not touch `ROADMAP.md` except Step 8's `[/]` → `[x]` flip for **your** epic. Never
-  pick, unlock, or modify another epic.
+  pick, unlock, or modify another epic. **Exception:** when you report
+  `DONE: pendiente de aprobación visual` you leave the epic `[/]` — the coordinator flips it
+  after the user approves.
 - When you finish, report exactly one of `DONE | BLOCKED | REJECTED_MAJOR` in the shape the
-  dispatch prompt defines (`BLOCKED: spec <ID>` is the sub-form for an unexecutable spec —
-  the coordinator runs the spec-correction loop).
+  dispatch prompt defines. Two sub-forms exist: `BLOCKED: spec <ID>` for an unexecutable spec
+  (the coordinator runs the spec-correction loop) and `DONE: pendiente de aprobación visual`
+  for the design-system foundation epic (the coordinator runs the Visual Approval Gate — see
+  "Frontend Epics" below). Both are handled by the coordinator, not by you.
 
 ## Frontend Epics — execution (design-system epic and page epics)
 
@@ -42,12 +46,12 @@ When the locked epic is the design-system foundation:
 1. **The spec(s) were already planned by the gate**, sourced from `docs/03-ux-ui/design_system.md`. They cover: token definitions (color/type/spacing/radii/shadows in the stack's token mechanism), the base components the navigation map implies (with variants/states/a11y), and the dev showcase route.
 2. **Dispatch the `ux-implementer` agent** (`agents/ux-implementer/AGENT.md`), NOT the generic `implementer`. Pass it: the spec, `design_system.md`, the relevant tokens/brand rules, any failing tests (component logic / a11y), and — if a Claude Design handoff was ingested — the fidelity checklist from `handoff-ingest`.
 3. The agent builds tokens + components + a **`/dev/design-system` page** (guarded so it only mounts in development) that renders every component in every variant/state, the full token palette, and type/spacing scales.
-4. **Visual Approval Gate (mandatory human gate):**
-   - If Playwright MCP is available in the session, navigate to the running `/dev/design-system` route and capture screenshots so the user can review without leaving the chat. If it is not available, instruct the user how to run the app and open the route.
-   - Present the showcase to the user and ask explicitly: *"¿Apruebas el design system para construir las páginas sobre esta base, o quieres ajustes?"*
-   - **Do not mark the epic `[x]`, and do not start any page epic, until the user approves.** Approval is a human decision; Claude never self-certifies visual quality.
-   - Iterate on adjustments through the `ux-implementer` until approved.
-5. The standard gates still run on the logic/code: architecture-validator on the spec, RED/GREEN for any tested logic, TDD Honesty Gate, code-reviewer (with the frontend dimension), verification. The visual approval is **in addition to**, not instead of, these.
+4. **Stop at the Visual Approval Gate — you cannot run it.** You are a non-interactive subagent: you have no channel to the user, so the gate belongs to the coordinator. Your job is to hand it something showable:
+   - Leave the app **buildable and runnable**, with the showcase mounting at its route.
+   - **Do not flip the epic to `[x]`.** Leave it `[/]`.
+   - Report **`DONE: pendiente de aprobación visual`**, and include in the report the dev command to start the app and the showcase route, so the coordinator can present it without re-deriving them.
+   - The coordinator presents the showcase, asks the user, re-dispatches you for adjustments if needed, and only then records the approval and flips the checkbox. Approval is a human decision; Claude never self-certifies visual quality.
+5. The standard gates still run on the logic/code: architecture-validator on the spec, RED/GREEN for any tested logic, TDD Honesty Gate, code-reviewer (with the frontend dimension), verification. The visual approval is **in addition to**, not instead of, these — run them all before reporting.
 
 ### Page epics
 
