@@ -1,9 +1,16 @@
-# Design System y Navegación: [Nombre del Proyecto]
+# Design System — [Nombre del Proyecto]
 
-> El Design System (§1-§3) y el Mapa de Navegación (§5) son **deliverables universales**: se llenan en **ambas rutas** de la Fase 3 (desde v1.6.0). La ruta solo decide quién renderiza el Design System a código:
-> - **Ruta 1 (Delegada):** además se llena §4 (Specs para IA de Diseño) — un brief que **exige** a la IA externa entregar un Design System. El handoff que vuelva se convierte con `handoff-ingest`.
-> - **Ruta 2 (Specture renderiza):** el Design System aquí descrito se codifica en los epics de frontend de la Fase 4.
-> Excepción Adopt-con-UI: el Design System se documenta a partir del código existente (reverse-engineering), no se diseña de cero.
+> Deliverable universal de la Fase 3 (`ux-design`), en ambas rutas: la ruta sólo decide quién
+> lo renderiza a código, nunca si existe.
+> - **Ruta 1 (Delegada):** además se llena §4 (Specs para IA de Diseño) — un brief que **exige**
+>   a la IA externa entregar un Design System. El handoff que vuelva se convierte con `handoff-ingest`.
+> - **Ruta 2 (Specture renderiza):** el Design System aquí descrito se codifica en los epics de
+>   frontend de la Fase 4.
+> - Excepción Adopt-con-UI: se documenta a partir del código existente, no se diseña de cero.
+>
+> El **Mapa de Navegación** ya no vive aquí: tiene archivo y plantilla propios
+> (`docs/03-ux-ui/navigation_map.md`, `NAVIGATION_MAP_TEMPLATE.md`). Tener dos gramáticas en dos
+> archivos era la razón de que ningún script pudiera leerlo.
 
 ## 1. Identidad de Marca
 
@@ -95,29 +102,7 @@
 - **Modo oscuro:** [sí/no]
 - **Stack que consumirá la UI:** [`frontend.framework` + `frontend.ui_library`] (de `.specture/stack.yml`)
 
-## 5. Mapa de Navegación (Ambas Rutas)
-
-> Cada pantalla principal con su path, autenticación, propósito y conexiones.
-
-### `/` — [Nombre]
-- **Auth requerida:** [Sí (rol X) / No]
-- **Propósito:** [una frase]
-- **Elementos clave:** [header, sidebar, etc. — texto, no diseño]
-- **Historias de usuario que cubre:** [referencia a `business_requirements.md`]
-- **Operaciones que consume:** [`operationId` de `docs/02-architecture/api-contract.md` — ej. `obtenerDisponibilidad`, `crearCita`. NO inventes URLs ni shapes aquí; si la pantalla necesita un dato que el contrato no expone, falta una operación en el contrato → escálalo a la Fase 2.]
-
-### `/dashboard` — Dashboard
-*(repetir patrón)*
-
-### Flujos críticos
-
-> Diagrama de flujo entre pantallas para los caminos más importantes (registro, compra, recuperación de password, etc.).
-
-```
-[Landing] → [Sign Up] → [Verificación] → [Onboarding] → [Dashboard]
-```
-
-## 6. Reglas de Accesibilidad y Responsividad
+## 5. Reglas de Accesibilidad y Responsividad
 
 - **Nivel WCAG mínimo:** [AA recomendado]
 - **Modo oscuro:** [sí/no, con qué tokens cambia]
@@ -126,6 +111,6 @@
 - **Patrones requeridos:** focus visible, navegación por teclado completa, aria-labels en iconos sin texto, contraste validado
 - **Reducción de movimiento:** respetar `prefers-reduced-motion`
 
-## 7. Notas de Decisión
+## 6. Notas de Decisión
 
 > Si elegiste cierta librería, paleta, o patrón sobre otro, registra el "por qué" aquí. Si la decisión es importante, conviértela en un ADR en `.specture/decisions/`.

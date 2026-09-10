@@ -52,7 +52,7 @@ function compute() {
   for (const abs of walk(path.join(ROOT, "templates", "project-config"))) {
     files[rel(abs)] = sha256(fs.readFileSync(abs, "utf8"));
   }
-  for (const name of ["ROADMAP_TEMPLATE.md", "SPEC_TEMPLATE.md", "MIGRATION_SPEC_TEMPLATE.md", "CURRENT_CAPABILITY_TEMPLATE.md", "BUSINESS_REQUIREMENTS_TEMPLATE.md", "PLANNING_TEMPLATE.md"]) {
+  for (const name of ["ROADMAP_TEMPLATE.md", "SPEC_TEMPLATE.md", "MIGRATION_SPEC_TEMPLATE.md", "CURRENT_CAPABILITY_TEMPLATE.md", "BUSINESS_REQUIREMENTS_TEMPLATE.md", "PLANNING_TEMPLATE.md", "NAVIGATION_MAP_TEMPLATE.md", "DESIGN_SYSTEM_TEMPLATE.md"]) {
     const abs = path.join(ROOT, "templates", name);
     if (fs.existsSync(abs)) files[rel(abs)] = sha256(fs.readFileSync(abs, "utf8"));
   }

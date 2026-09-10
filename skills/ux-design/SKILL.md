@@ -79,7 +79,7 @@ Specture produces `navigation_map.md` + `design_system.md`. The frontend epics i
 
 ### Navigation Map (both routes)
 
-Use `templates/DESIGN_SYSTEM_TEMPLATE.md` section "Navigation Map" or write directly to `docs/03-ux-ui/navigation_map.md`. For each screen:
+Use `templates/NAVIGATION_MAP_TEMPLATE.md` and write `docs/03-ux-ui/navigation_map.md`. There is exactly one grammar — the five-column table of §1 is what `scripts/design-inventory.js --verify` parses, so a screen that is not a row in it does not exist for the coverage gate. Per screen:
 
 - Path (`/`, `/dashboard`, `/users/:id`)
 - Authentication required? (yes/no, which roles)
