@@ -29,7 +29,8 @@ const catalog = [
   require("./1.16-requirements-merge"),
   require("./1.18-metrics-tracked"),
   require("./1.19-rules-file"),
-  require("./1.20-brand-brief")
+  require("./1.20-brand-brief"),
+  require("./1.20-design-system-layers")
 ];
 
 // Stable sort by `since` only: entries that share a version keep their declared

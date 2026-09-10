@@ -104,13 +104,15 @@ Generate `docs/03-ux-ui/design_specs_for_ai.md` with:
 
 ### Design System (both routes)
 
-Use `templates/DESIGN_SYSTEM_TEMPLATE.md` to produce `docs/03-ux-ui/design_system.md` with:
-- **Color tokens** — primary, secondary, accent, semantic (success/warning/error/info), neutrals (defined as scales). Always with HEX or design-token format. Validate WCAG AA contrast.
-- **Typography tokens** — font families, scales (display/h1/h2/body/caption), line-heights.
-- **Spacing scale** — `xs/sm/md/lg/xl` mapped to concrete values.
-- **Base components specification** (NOT code) — Button (variants: primary/secondary/ghost/danger; states: default/hover/disabled/loading; sizes), Input, Card, Modal, Toast — described textually with references to the chosen UI library.
-- **Accessibility & Responsivity rules**.
-- **Dark mode**: yes/no and how tokens map.
+Use `templates/DESIGN_SYSTEM_TEMPLATE.md` to produce `docs/03-ux-ui/design_system.md`:
+
+- **§1 Dirección** — the chosen direction, what it deliberately sacrifices, and the signature element (exactly one, on ≥3 surfaces, encoded as a token). Brand fields come from `business_requirements.md` §Identidad de Marca (`MK-nnn`); they are **not re-invented here**, and `sin definir` there is `sin definir` here.
+- **§2 Tokens, in three layers** — component → semantic → primitive, referenced one way only. The semantic layer (`bg.*`, `text.*`, `border.*`, `on-accent`, `focus.ring`) is what makes "every colour comes from a token" satisfiable at all, and it carries **both a light and a dark column**: dark mode is enumerated, never derived in prose, or the contrast matrix certifies half the palette. Neutrals are derived by desaturating the brand hue, never copied from a factory scale.
+- **§3 Inventory** — the roster, with the **`domain` tier required** (≥1 per major aggregate of the contract). Depth per component lives in `docs/03-ux-ui/components/<Nombre>.md`, authored lazily.
+- **§4-§6** — motion, elevation, density, iconography; content and voice; accessibility and responsiveness.
+- **§7 Governance** — the delta log, and where a missing semantic token gets recorded.
+
+> **Same bar for both routes.** Whatever this skill demands of an external design AI, it demands of its own deliverable: every reusable component the navigation map implies — **plus the domain-specific ones the screens need** — each with variants, states and accessibility. A design system that specifies five primitives while the brief asked the external AI for ten plus domain is the framework holding itself to a lower standard than the tool it means to replace.
 
 ## Step 4 — Self-Review
 

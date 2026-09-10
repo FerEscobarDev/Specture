@@ -32,3 +32,23 @@ test("1.20-brand-brief is n/a without a frontend, without requirements, or on an
   assert.equal(detect(FRONTEND, null), "n/a", "no requirements document yet");
   assert.equal(detect(UNFILLED, "# Req\n"), "n/a", "`[e.g. …]` placeholder is not a frontend");
 });
+
+// ---------------------------------------------------------------------------------------
+
+const layers = Object.fromEntries(catalog.map((m) => [m.id, m]))["1.20-design-system-layers"];
+const DESIGN_SYSTEM = "docs/03-ux-ui/design_system.md";
+
+test("1.20-design-system-layers is pending on a single-layer design system", () => {
+  const ctx = contextFor(makeProject({ [DESIGN_SYSTEM]: "## Tokens\n| `color.primary.500` | #0D9488 |\n| `color.neutral.900` | #0F172A |\n" }));
+  assert.equal(layers.detect(ctx), "pending");
+});
+
+test("1.20-design-system-layers is done once a semantic role is named", () => {
+  const ctx = contextFor(makeProject({ [DESIGN_SYSTEM]: "| `color.bg.surface` | `neutral.0` | `neutral.900` |\n" }));
+  assert.equal(layers.detect(ctx), "done");
+  assert.equal(layers.verify(ctx), true);
+});
+
+test("1.20-design-system-layers is n/a without a design system", () => {
+  assert.equal(layers.detect(contextFor(makeProject({}))), "n/a");
+});

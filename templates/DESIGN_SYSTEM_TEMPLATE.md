@@ -1,116 +1,199 @@
 # Design System — [Nombre del Proyecto]
 
-> Deliverable universal de la Fase 3 (`ux-design`), en ambas rutas: la ruta sólo decide quién
-> lo renderiza a código, nunca si existe.
-> - **Ruta 1 (Delegada):** además se llena §4 (Specs para IA de Diseño) — un brief que **exige**
->   a la IA externa entregar un Design System. El handoff que vuelva se convierte con `handoff-ingest`.
-> - **Ruta 2 (Specture renderiza):** el Design System aquí descrito se codifica en los epics de
->   frontend de la Fase 4.
-> - Excepción Adopt-con-UI: se documenta a partir del código existente, no se diseña de cero.
+> Deliverable universal de la Fase 3 (`ux-design`). Es el contrato del look & feel: lo obedecen
+> `ux-implementer` al construir y el `code-reviewer` al revisar.
 >
-> El **Mapa de Navegación** ya no vive aquí: tiene archivo y plantilla propios
-> (`docs/03-ux-ui/navigation_map.md`, `NAVIGATION_MAP_TEMPLATE.md`). Tener dos gramáticas en dos
-> archivos era la razón de que ningún script pudiera leerlo.
+> El **Mapa de Navegación** vive aparte (`docs/03-ux-ui/navigation_map.md`,
+> `NAVIGATION_MAP_TEMPLATE.md`) y es la fuente legible por máquina del verificador de cobertura.
+> El **detalle de cada componente** vive en `docs/03-ux-ui/components/<Nombre>.md`
+> (`COMPONENT_REFERENCE_TEMPLATE.md`): aquí va el roster, allá la anatomía.
 
-## 1. Identidad de Marca
+## 1. Dirección
 
-- **Nombre del producto:** [Nombre]
-- **Voz y tono:** [ej. profesional pero cercana, técnica, lúdica]
-- **Audiencia:** [perfil del usuario objetivo]
-- **Referencias visuales:** [URLs que el usuario provea — no inventar]
+> De dónde sale la identidad. Los campos `MK-nnn` vienen de `business_requirements.md`
+> §Identidad de Marca — **no se re-inventan aquí**. Si allá dicen `sin definir`, aquí se escribe
+> `sin definir` y la procedencia se marca como propuesta por el agente.
 
-## 2. Tokens del Design System (Ambas rutas)
+- **Dirección elegida:** [nombre] — [tesis en una frase]
+- **Qué sacrifica deliberadamente:** [a qué renuncia esta dirección. Sin esto no es una dirección, es un promedio.]
+- **Direcciones descartadas:** [nombres] — registradas en `.specture/decisions/<ADR>.md`
+- **Procedencia de la marca:** `usuario` | `PROPUESTO_POR_EL_AGENTE` *(si es lo segundo, el gate visual de la Fase 4 debe confirmarlo explícitamente antes de construir páginas)*
+- **Voz y tono:** [MK-005]
+- **Audiencia:** [de `business_requirements.md` §Actores]
+- **Anti-referencias:** [MK-004 — a qué NO debe parecerse, y por qué]
 
-> Los tokens son la fuente de verdad del estilo. La librería UI declarada en `.specture/stack.yml` (`frontend.ui_library`) los consumirá.
+### 1.1 Elemento firma
 
-### 2.1 Color
+> **Exactamente uno**, presente en **≥3 superficies** del inventario, codificado como token o
+> utilidad nombrada — no como prosa. Es lo que hace reconocible al producto sin el logo.
+> Ejemplos, y la lista **no es cerrada**: identidad de radio · tratamiento de borde · textura de
+> superficie · movimiento tipográfico · identidad de focus-ring · identidad de trazo de ícono ·
+> motivo de ángulo · un acento saturado reservado a un solo trabajo.
+> **Ilegales por ser defaults:** "un gradiente", "esquinas redondeadas", "sombras".
 
-| Token | Valor (HEX) | Uso |
-|-------|-------------|-----|
-| `color.primary.500` | [#XXXXXX] | Acción principal, links activos |
-| `color.primary.600` | [#XXXXXX] | Hover de acción principal |
-| `color.secondary.500` | [#XXXXXX] | Acción secundaria |
-| `color.success` | [#XXXXXX] | Estados de éxito |
-| `color.warning` | [#XXXXXX] | Estados de advertencia |
-| `color.error` | [#XXXXXX] | Estados de error |
-| `color.info` | [#XXXXXX] | Estados informativos |
-| `color.neutral.0` | [#FFFFFF] | Fondo claro |
-| `color.neutral.900` | [#0A0A0A] | Texto principal modo claro |
-| `color.neutral.50..800` | [escala] | Grises intermedios |
+- **Firma:** [nombre] — token o utilidad: `[token]`
+- **Superficies donde aparece:** [componente 1], [componente 2], [componente 3]
+- **Coherencia con el sacrificio:** [una firma no puede contradecir aquello a lo que la dirección renunció]
 
-> **Validación:** todos los pares texto/fondo usados en componentes deben cumplir contraste WCAG AA (4.5:1 para texto normal, 3:1 para texto grande).
+## 2. Tokens
 
-### 2.2 Tipografía
+> **Tres capas con referencia unidireccional:** componente → semántico → primitivo. Un componente
+> nunca cita un primitivo directamente. Es lo que hace mecánicamente posibles el modo oscuro, el
+> theming, la validación de contraste y el lint de tokens.
 
-| Token | Familia | Tamaño | Line-height | Peso | Uso |
-|-------|---------|--------|-------------|------|-----|
-| `text.display` | [Familia] | [px/rem] | [valor] | [peso] | Headers de hero |
-| `text.h1` | ... | ... | ... | ... | Título de página |
-| `text.h2` | ... | ... | ... | ... | Subtítulo de sección |
-| `text.body` | ... | ... | ... | ... | Texto general |
-| `text.caption` | ... | ... | ... | ... | Texto auxiliar / labels |
-| `text.code` | [monospace] | ... | ... | ... | Inline code |
+### 2.1 Primitivos — la rampa
 
-### 2.3 Spacing
+> Valores crudos, sin significado. Nadie los usa directamente en un componente.
+>
+> **Derivación:** toma 1-2 hues semilla de la dirección y genera la rampa pisando L a incrementos
+> fijos, con croma atenuado en los extremos. **Los neutros se derivan desaturando el hue de marca**,
+> no se copian de una escala de fábrica: un gris entibiado o enfriado es el diferenciador más
+> barato que existe, y es la diferencia medible entre un sistema con marca y uno genérico.
 
-| Token | Valor |
-|-------|-------|
-| `space.xs` | [4px / 0.25rem] |
-| `space.sm` | [8px / 0.5rem] |
-| `space.md` | [16px / 1rem] |
-| `space.lg` | [24px / 1.5rem] |
-| `space.xl` | [32px / 2rem] |
-| `space.2xl` | [48px / 3rem] |
+| Token | Valor claro | Valor oscuro | Notas |
+|---|---|---|---|
+| `brand.50` … `brand.900` | [#XXXXXX] | [#XXXXXX] | rampa de marca |
+| `neutral.0` … `neutral.1000` | [#XXXXXX] | [#XXXXXX] | **teñidos con el hue de marca** — declarar hue y croma |
+| `accent.*` | [#XXXXXX] | [#XXXXXX] | sólo si la dirección declara un acento reservado |
 
-### 2.4 Otros
+### 2.2 Semánticos — los que se usan
 
-- **Border radius:** `xs/sm/md/lg/full` → [valores]
-- **Shadows:** `sm/md/lg/focus` → [valores]
-- **Breakpoints:** `sm/md/lg/xl` → [valores]
-- **Z-index:** convención (ej. modal=1000, toast=2000, tooltip=3000)
+> La capa que suele faltar, y sin la cual la regla "todo color sale de tokens" es insatisfacible
+> para superficies, bordes y texto sobre color. **Ambas columnas son obligatorias:** el modo
+> oscuro se enumera, no se deriva en prosa. Una matriz de contraste con sólo la columna clara
+> certifica media paleta y lo comunica como cobertura completa.
 
-## 3. Especificación de Componentes Base (Ambas rutas)
+| Token semántico | Claro → primitivo | Oscuro → primitivo | Uso |
+|---|---|---|---|
+| `color.bg.canvas` | `neutral.0` | `neutral.1000` | fondo de página |
+| `color.bg.surface` | `neutral.0` | `neutral.900` | tarjetas, paneles |
+| `color.bg.surface.raised` | `neutral.0` | `neutral.800` | escalón de elevación |
+| `color.text.primary` | `neutral.900` | `neutral.50` | texto principal |
+| `color.text.muted` | `neutral.600` | `neutral.400` | texto auxiliar |
+| `color.text.on-accent` | `neutral.0` | `neutral.1000` | texto sobre color de acción |
+| `color.border.subtle` | `neutral.200` | `neutral.700` | separadores |
+| `color.border.strong` | `neutral.400` | `neutral.600` | bordes de control |
+| `color.action.primary` | `brand.600` | `brand.400` | acción principal |
+| `color.focus.ring` | `brand.500` | `brand.400` | anillo de foco |
+| `color.status.success` | … | … | ver §2.3 |
+| `color.status.warning` | … | … | |
+| `color.status.error` | … | … | |
+| `color.status.info` | … | … | |
 
-> Texto descriptivo, NO código. La implementación se hará en los epics de frontend del ROADMAP.
+**Piso obligatorio** — el sistema no está completo hasta que existan `bg.canvas`, `bg.surface`, un
+`text.*` por cada superficie, `text.on-accent` por cada color de acción, `border.subtle` y
+`focus.ring`. El verificador de contraste falla si un par obligatorio no está declarado, con un
+mensaje distinto al de "ratio insuficiente": son causas distintas con arreglos distintos.
 
-### Button
-- **Variantes:** primary | secondary | ghost | danger | link
-- **Estados:** default | hover | focus | active | disabled | loading
-- **Tamaños:** sm | md | lg
-- **Iconos:** soporta icono a la izquierda, derecha, o solo icono
-- **Accesibilidad:** focus visible, aria-disabled cuando aplica, role implícito
+### 2.3 Colores de estado
 
-### Input
-- **Variantes:** text | email | password | number | search
-- **Estados:** default | hover | focus | error | disabled | readonly
-- **Affordances:** label encima, helper text debajo, mensaje de error
-- **Iconos:** prefix/suffix opcionales
+> Se derivan rotando hue desde la rampa de marca con **croma igualado**, para que se lean como
+> familia y no como el rojo/verde/ámbar de Bootstrap.
+>
+> **Excepción obligatoria:** la luminosidad NO se iguala entre `error` y `success`. Para
+> deficiencia de visión cromática rojo-verde (~8% de los hombres), una vez que el hue deja de
+> separar, la única separación que queda es la diferencia de luminosidad. Piso: **ΔL ≥ 0.12 en
+> OKLCH**, y `error` puede romper el techo de croma — debe ser *más* saliente que el resto, no
+> igual de saliente.
 
-### Card, Modal, Toast, Avatar, Badge, Tabs, Tooltip, Table…
-*(repetir patrón con variantes/estados/accesibilidad)*
+| Par | ΔL | ¿Cumple el piso? |
+|---|---|---|
+| `error` ↔ `success` | [valor] | [sí / no] |
 
-## 4. Specs para IA de Diseño (Solo Ruta 1)
+### 2.4 Tipografía, espaciado y el resto
 
-> Este bloque se entrega a la IA externa (Claude Design, v0, Lovable). Después se trae el código generado y se valida contra `architecture.md` y `conventions.md`.
+| Token | Valor | Notas |
+|---|---|---|
+| `text.display` / `h1` / `h2` / `body` / `caption` / `code` | [familia · tamaño · line-height · peso] | declarar el **bucket** de la display: neo-grotesca / humanista / geométrica / transicional / serif display / slab / mono-como-display |
+| `space.xs` … `space.2xl` | [valores] | la base la fija la densidad (§4) |
+| `radius.*` | [valores] | declarar el **perfil**: uniforme / asimétrico / cero |
+| `shadow.*` | [valores] | incluido `shadow.focus` |
+| `breakpoint.*` | [valores] | |
+| `z.*` | [convención] | |
 
-- **Voz/tono:** [§1]
-- **Audiencia:** [§1]
-- **Identidad visual existente:** [logo URL, paleta si ya existe]
-- **Restricciones:** [marca corporativa, requisitos legales, accesibilidad mínima WCAG AA]
-- **Patrones prohibidos:** [ej. "no carousels en home", "no modales para acciones primarias"]
-- **Responsividad:** [mobile-first / desktop-first]
-- **Modo oscuro:** [sí/no]
-- **Stack que consumirá la UI:** [`frontend.framework` + `frontend.ui_library`] (de `.specture/stack.yml`)
+### 2.5 Por qué este proyecto
 
-## 5. Reglas de Accesibilidad y Responsividad
+> Una fila por grupo fundacional. **Racionales rechazados:** "es el default", "limpio y moderno",
+> "accesible" (la accesibilidad es piso, no razón).
+>
+> **El criterio que discrimina:** el racional debe hablar de la **audiencia o el dominio** — por
+> qué esta gente, este contexto de uso, este estado emocional. Un racional que habla de la
+> mecánica interna de la propia paleta ("para no colisionar con el verde del calendario") explica
+> una restricción, no una identidad, y no cuenta.
 
-- **Nivel WCAG mínimo:** [AA recomendado]
-- **Modo oscuro:** [sí/no, con qué tokens cambia]
-- **Mobile-first:** [sí/no]
-- **Tamaño mínimo soportado:** [ej. 320px ancho]
-- **Patrones requeridos:** focus visible, navegación por teclado completa, aria-labels en iconos sin texto, contraste validado
-- **Reducción de movimiento:** respetar `prefers-reduced-motion`
+| Grupo | Decisión | Por qué este proyecto | Cita |
+|---|---|---|---|
+| Hue primario | [valor] | [audiencia / dominio] | [MK-nnn / RN-nnn] |
+| Pareja tipográfica | [valor] | | |
+| Radio base | [valor] | | |
+| Base de densidad | [valor] | | |
+| Duraciones de motion | [valor] | | |
+| Modelo de elevación | [valor] | | |
 
-## 6. Notas de Decisión
+## 3. Inventario de Componentes
 
-> Si elegiste cierta librería, paleta, o patrón sobre otro, registra el "por qué" aquí. Si la decisión es importante, conviértela en un ADR en `.specture/decisions/`.
+> El roster. La anatomía de cada uno vive en `docs/03-ux-ui/components/<Nombre>.md`, que se autora
+> **perezosamente**, justo antes del epic que lo consume — no los cincuenta de golpe en la Fase 3.
+>
+> El inventario **se escribe y se verifica**, no se deriva: `scripts/design-inventory.js --verify`
+> lo cruza contra el mapa de navegación y el contrato y falla si una pantalla, un enum o un estado
+> obligatorio se queda sin componente.
+
+| Componente | Nivel | Deriva de | Estado |
+|---|---|---|---|
+| `Button` | primitive | — | `done` |
+| `EstadoBadge` | domain | enum `estado` de `listarArchivos` | `pending` |
+| `CupoProgress` | domain | agregado `Cupo` | `deferred → Epic 3.4` |
+
+- **Niveles:** `foundation` · `primitive` · `composite` · **`domain`** · `pattern`.
+- **`domain` es obligatorio:** ≥1 por agregado mayor del contrato. Un design system con cero
+  componentes de dominio es genérico por definición, y es el nivel donde vive la identidad del
+  producto: son justo los que ninguna lista copiada nombraría.
+- **`deferred` exige destino:** `deferred → Epic X.Y` o `deferred → fuera del roadmap`, más un
+  motivo de una línea. Sin destino no es diferido, es un bloqueo silencioso. Cuando el epic
+  destino cierra sin que la fila pase a `done`, vuelve a bloquear.
+- Se referencia por **id**, nunca por ruta, mientras el archivo no exista: una ruta citada que no
+  está en disco es un ERROR `broken-path` del corpus lint en cada corrida del doctor.
+
+## 4. Motion, elevación, densidad e iconografía
+
+> Las cuatro dimensiones en las que dos productos con la misma paleta siguen viéndose distintos.
+
+- **Motion:** personalidad (`none` / `functional` / `expressive`) · duraciones · easings · qué
+  hace `prefers-reduced-motion`.
+- **Elevación:** modelo de capas. En modo oscuro la elevación se lee como **claridad de
+  superficie**, no como sombra — declarar la escalera y la separación mínima entre escalones.
+- **Densidad:** `airy-marketing` / `balanced-product` / `dense-professional` → fija la base de
+  espaciado y las alturas de control.
+- **Iconografía:** una familia · grosor de trazo · relleno vs contorno · `aria-label` obligatorio
+  en icon-only · **sin emoji en slots de ícono**.
+
+## 5. Contenido y voz
+
+- Principios de tono · capitalización · gramática de botones (verb-first).
+- Fórmula del mensaje de error: qué pasó y cómo arreglarlo. Sin disculpas ni vaguedad.
+- Formatos de fecha, número y moneda · realidad de locale y script (RTL, CJK, cadenas largas).
+
+## 6. Accesibilidad y responsividad
+
+- Piso: WCAG 2.2 AA. Texto 4.5:1 · texto grande 3:1 · no-texto 3:1 · focus ring ≥3:1 contra
+  **ambos** colores adyacentes. Lo verifica `scripts/design-lint.js contrast`, en los dos modos.
+- **El color nunca es el único portador de un estado** — siempre acompaña etiqueta o ícono.
+- Objetivo táctil ≥24×24 px.
+- Qué cambia **estructuralmente** en cada breakpoint, no sólo qué se apila.
+
+## 7. Gobernanza y log de deltas
+
+> Un design system que se toca durante build sin dejar rastro deja de ser la ley que dice ser.
+
+- **Quién cambia qué:** los tokens fundacionales sólo cambian con aprobación visual nueva; el
+  resto se registra abajo.
+- **Log de deltas** — una línea por cambio posterior a la aprobación:
+
+| Fecha | Epic | Qué cambió | Por qué |
+|---|---|---|---|
+| [ISO] | [Epic X.Y] | [token o componente] | [motivo] |
+
+- **Huecos de token semántico:** cuando `ux-implementer` no encuentra token para un rol, el
+  coordinador apendiza el hueco aquí. Es lo que convierte una inconsistencia acumulada e
+  invisible en deuda contable.
