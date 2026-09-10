@@ -66,7 +66,15 @@ For every "happy path" the user describes, ask "¿qué pasa si…?":
 4. **Reglas de Negocio explícitas** — invariantes que el sistema debe garantizar (ej. "un usuario no puede tener dos suscripciones activas").
 5. **Casos límite** — qué pasa cuando las cosas salen mal.
 6. **Restricciones no funcionales del negocio** — privacidad, regulación, multi-tenancy, idiomas, zonas horarias. (NO performance/escalabilidad técnica — eso es Fase 2.)
-7. **Out of scope** — qué explícitamente NO está en este proyecto (importante para evitar scope creep).
+7. **Identidad de marca** *(sólo si el sistema tiene UI propia)* — es el input que la Fase 3 necesita para tomar una decisión estética en vez de caer en el default del modelo. **Nada más en el flujo pregunta por esto**, así que si no se captura aquí, no se captura. Cinco preguntas, en este orden:
+   - ¿Hay **marca preexistente** que honrar? Logos, colores, un sitio ya vivo. Si la hay, es lo más importante de la sección: pídela y regístrala con su ubicación.
+   - ¿Qué debe **sentir** el usuario a los 5 segundos de abrirlo, y al minuto 30?
+   - Tres a cinco **pares adjetivo/anti-adjetivo** ("cálido, no lindo"; "preciso, no clínico"). El anti-adjetivo es el que aporta la información.
+   - Dos o tres **anti-referencias**: productos a los que NO debe parecerse, y por qué. Son más fáciles de contestar que las referencias y acotan más.
+   - **Tono de voz**, y qué lenguaje está prohibido.
+
+   Si el usuario no sabe qué contestar, **escríbelo como `sin definir` y sigue**. No lo rellenes tú: un hueco visible es información para la Fase 3, un hueco rellenado por ti se vuelve invisible y viaja como si fuera decisión del usuario. Y nunca inventes referencias visuales ni URLs.
+8. **Out of scope** — qué explícitamente NO está en este proyecto (importante para evitar scope creep).
 
 ## Decomposition Check
 
@@ -95,6 +103,7 @@ Once you and the user agree the discovery is sufficient (the user explicitly say
    - ¿Alguna regla de negocio se contradice con otra?
    - ¿Algún actor mencionado en historias no está en la lista de actores?
    - Si el sistema no tiene UI propia, ¿están capturados sus consumidores (actores no-humanos) y sus capacidades como `API-externa`? Un sistema que "no expone nada a nadie" casi siempre es discovery incompleto — vuelve a preguntar.
+   - Si el sistema **sí** tiene UI propia: ¿existe `## Identidad de Marca`, y sus campos son respuestas del usuario o invenciones tuyas? Cada campo o lleva algo que el usuario dijo, o lleva `sin definir`. Nada intermedio.
    - Corrige inline. No hace falta re-revisar.
 
 4. **Ask the user to validate**:

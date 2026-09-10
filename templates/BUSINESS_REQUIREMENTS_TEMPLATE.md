@@ -39,6 +39,21 @@
 - **CL-001:** [caso] → [comportamiento esperado]
 - **CL-002:** [...]
 
+## Identidad de Marca
+> Sólo si el sistema tiene interfaz propia; si no, escribir "N/A — sin UI propia".
+> Es lenguaje de negocio, no de diseño: aquí NO se eligen colores ni tipografías, se captura
+> lo que la Fase 3 necesita para poder elegirlos. Sin esta sección el agente de diseño suple
+> la marca con su propio gusto y el resultado converge al centro de su entrenamiento.
+> Un campo que el usuario no sabe contestar se escribe `sin definir` — un hueco visible es
+> información para la Fase 3; un hueco rellenado por el agente viaja como si fuera decisión
+> del usuario.
+- **MK-001 — Marca preexistente:** [logos, paleta, un sitio ya vivo que hay que honrar · o "ninguna"]
+- **MK-002 — Objetivo emocional:** [qué debe sentir el usuario a los 5 segundos, y al minuto 30]
+- **MK-003 — Atributos:** [3-5 pares adjetivo/anti-adjetivo, ej. "cálido, no lindo" · "preciso, no clínico"]
+- **MK-004 — Anti-referencias:** [2-3 productos a los que NO debe parecerse, y por qué]
+- **MK-005 — Tono de voz:** [cómo habla el producto · y qué lenguaje tiene prohibido]
+- **MK-006 — Referencias:** [URLs que el usuario provea, con la lección de diseño de cada una — nunca inventadas]
+
 ## Restricciones No Funcionales (de Negocio)
 > Privacidad, regulación, multi-tenancy, idiomas, zonas horarias. NO performance técnica.
 - [restricción]

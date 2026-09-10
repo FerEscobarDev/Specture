@@ -77,6 +77,7 @@ Used by CI and by `start` Step 0. Mechanical migrations are applied and the chec
 | `1.16-requirements-merge` | assisted | `feature-*.md` drafts / "Adenda" sections merged per-section into `business_requirements.md`, drafts deleted |
 | `1.18-metrics-tracked` | mechanical | `.gitignore`: `docs/.specture-meta/` → `docs/.specture-meta/*` + `!docs/.specture-meta/build-metrics.jsonl` (the build metrics are tracked — decision A7); suggests `git add` when the file exists |
 | `1.19-rules-file` | mechanical | invariants `R-*` from `conventions.md` §12 (table or bullets; placeholders skipped) → `.specture/rules.yml`; §12 becomes a pointer; notes the rules that were tagged `all` / IMPORTANT by default or exceed 240 characters (the doctor then flags `rule-length`) |
+| `1.20-brand-brief` | content | frontend projects whose `business_requirements.md` predates v1.20.0 have no `## Identidad de Marca` (MK-nnn): nothing in the flow ever asked for brand, so the design agent supplied it from its own taste. Owner: `discover`. Never applied automatically — the fix is a conversation, not a text transform |
 
 ## Red Flags — STOP
 
