@@ -34,6 +34,8 @@ frontend:
   state_management: "[e.g. zustand | redux-toolkit | pinia | provider | none]"
   testing_framework: "[e.g. vitest | jest | playwright | cypress | none]"
   ui_defined: false   # true when adopting a project that already ships a real UI → Phase 3 reverse-engineers the design system instead of authoring it.
+  design_channel: "[claude-design | canvas | none]"   # quién dibuja. NO cambia los entregables ni los gates: la espina corre igual en los tres.
+  design_project_id: ""      # sólo con `claude-design`, si el proyecto remoto tiene id
 
 # --- API Contract (the single source of truth for the backend↔frontend interface)
 api:
