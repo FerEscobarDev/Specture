@@ -92,7 +92,6 @@ These are NOT routed by state — they are activated by symptoms during any phas
 | User wants to add a feature not in the original ROADMAP | `./skills/new-feature/SKILL.md` |
 | About to claim "done", "complete", "passing", "fixed" | `./skills/verify/SKILL.md` |
 | User wants to create or modify a Specture skill | `./skills/write-skill/SKILL.md` |
-| User has a design handoff (Claude Design / v0 / Lovable) to convert into the stack | `./skills/handoff-ingest/SKILL.md` |
 | Frontend & backend are out of sync (wrong URLs, shapes the backend doesn't return) in an existing project | `./skills/contract-sync-audit/SKILL.md` |
 | User wants to capture session learnings, or audit the docs-index (opt-in / periodic) | `./skills/knowledge/SKILL.md` — modes `capture` / `audit` (aliases `/specture:learn`, `/specture:audit-knowledge`) |
 

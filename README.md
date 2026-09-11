@@ -195,7 +195,7 @@ $SPECTURE_ROOT/
 │   ├── ux-design/SKILL.md             # UX/UI: nav map + design system (siempre)
 │   ├── build/SKILL.md                 # Coordinador de la cola de epics + gates de sesión
 │   ├── build/EPIC_LOOP.md             # Procedimiento del epic-agent (Steps 4-8: RED → GREEN → review → verify → [x])
-│   ├── handoff-ingest/SKILL.md        # Convierte un handoff de diseño al stack
+│   ├── ux-design/CHANNELS.md          # Mecánica de los 3 niveles de diseño (Claude Design · canvas nativo · sin externa)
 │   ├── contract-sync-audit/SKILL.md   # Audita sync back/front en proyectos existentes
 │   ├── debug/SKILL.md
 │   ├── new-feature/SKILL.md
@@ -262,7 +262,6 @@ $SPECTURE_ROOT/
 | `verify` | `/specture:verify` | Antes de cualquier "completado", "fixed", "passing" |
 | `write-skill` | `/specture:write-skill` | Crear o modificar skills del framework |
 | `modernize` | `/specture:modernize` | Subir versión de una tecnología o migrar a otro stack |
-| `handoff-ingest` | `/specture:handoff-ingest` | Tienes un handoff de diseño (Claude Design/v0/Lovable) para convertir al stack |
 | `contract-sync-audit` | `/specture:contract-sync-audit` | Frontend y backend desincronizados en un proyecto existente |
 | `setup-docs-bridge` | `/specture:setup-docs-bridge` | Proyecto Adopt con documentación preexistente abundante (≥10 .md). Genera `docs-index.yml` + bridges + ADRs Proposed |
 | `knowledge` (capture) | `/specture:knowledge` · alias `/specture:learn` | Captura post-sesión opt-in (post-epic, post-debug, manual). Propone drafts de ADRs/índice/conventions con aprobación granular |
@@ -332,12 +331,12 @@ Output: `docs/02-architecture/architecture.md` + `docs/02-architecture/api-contr
 
 #### `/specture:ux-design`
 **Define UX e información arquitectónica antes de escribir UI.** Solo se activa si el proyecto tiene frontend declarado en `stack.yml`. **Ambas rutas producen los mismos dos documentos** (`navigation_map.md` + `design_system.md` completo); la ruta solo decide *quién renderiza el design system a código*:
-- **Ruta 1 (Delegada)** — además genera `design_specs_for_ai.md`, un brief para una IA de diseño externa (Claude Design, v0, Lovable) que **exige entregar un design system** con todos los componentes reutilizables. El handoff que vuelva se convierte con `handoff-ingest`.
-- **Ruta 2 (Specture renderiza)** — el design system se codifica en los epics de frontend de la Fase 4 (tokens → componentes → página `/dev/design-system` → aprobación del usuario → páginas).
+- **Nivel A — Claude Design** — el design system ya existe allá; Specture no exporta handoff: tira por componente y bajo demanda, justo antes del epic que lo necesita.
+- **Nivel B — canvas nativo** · **Nivel C — sin herramienta externa** — la espina corre entera y pasa los mismos gates. Mecánica en `skills/ux-design/CHANNELS.md`.
 
 El mapa de navegación referencia las operaciones por `operationId` del contrato — no inventa URLs. No produce código en esta fase. Excepción Adopt-con-UI: el design system se documenta a partir del código existente en vez de diseñarse.
 
-Output: `docs/03-ux-ui/navigation_map.md` + `docs/03-ux-ui/design_system.md` (+ Ruta 1: `design_specs_for_ai.md`).
+Output: `docs/03-ux-ui/brief.md` + `navigation_map.md` + `design_system.md` (+ `components/<Nombre>.md`, autorados perezosamente).
 
 > Úsalo cuando el frontend esté declarado y `docs/03-ux-ui/` no exista.
 
@@ -402,15 +401,6 @@ Flujo en 8 pasos:
 Output: `docs/migration/gap_analysis.md` + milestone de migración en `ROADMAP.md` + código migrado módulo a módulo + ADR de cierre.
 
 > Úsalo cuando digas "migra a X", "sube la versión a Y", "moderniza el stack", "quiero pasar de A a B".
-
----
-
-#### `/specture:handoff-ingest`
-**Convierte un handoff de diseño en los artefactos del proyecto.** Optimizado para handoffs de **Claude Design** (un paquete con README de design system, archivo de tokens, prototipos por pantalla, ui_kit y a veces un `SKILL.md`). Mapea el handoff, **extrae los tokens de forma determinista** a `design_system.md`, convierte las reglas de marca del README en un `fidelity-checklist.md` verificable, y mapea cada pantalla a su ruta y a las operaciones del contrato (`handoff-mapping.md`). Detecta el modo de conversión: **copia literal** si el stack del handoff coincide con el destino, o **traducción por paridad visual** si difiere (preservando tokens y reglas, re-autorando componentes en el framework destino). No escribe código de producción — eso ocurre en la Fase 4 con `ux-implementer`, tras el gate de aprobación visual.
-
-Output: `docs/03-ux-ui/design_system.md` + `fidelity-checklist.md` + `handoff-mapping.md` + assets copiados.
-
-> Úsalo cuando tengas un handoff de diseño (Claude Design, v0, Lovable) que convertir a tu stack.
 
 ---
 

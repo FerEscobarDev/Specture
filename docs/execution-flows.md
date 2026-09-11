@@ -54,7 +54,6 @@ flowchart TB
       T3["verify"]
       T4["modernize"]
       T5["knowledge<br/>capture · audit · stats · reconcile"]
-      T6["handoff-ingest"]
       T7["contract-sync-audit"]
       T8["setup-docs-bridge"]
     end
@@ -352,18 +351,22 @@ La ruta solo decide **quién renderiza** el design system a código; ambas entre
 flowchart TD
     AC{"Activación: frontend en stack<br/>+ docs/03-ux-ui/ incompleto"}
     AC -->|"sin frontend"| BLD[["→ build"]]
-    AC -->|"Adopt con UI existente"| RE["Reverse-engineer design_system.md<br/>+ nav map desde las rutas reales"]
-    AC -->|"ya hay un handoff de diseño"| HI[["→ handoff-ingest"]]
-    AC -->|"greenfield"| L{"Step 1 · confirmar / elegir<br/>la librería de UI"}
-    L --> RT{"Step 2 · elegir ruta"}
-    RT -->|"Ruta 1 · delegar a IA de diseño externa"| SPECS["+ design_specs_for_ai.md<br/>(exige entregar un design system)"]
-    RT -->|"Ruta 2 · Specture renderiza en build"| NAV
-    SPECS --> NAV["Step 3 · navigation_map.md<br/>(referencia operationId del contrato · no inventa URLs)"]
-    NAV --> DS["Step 3 · design_system.md (siempre · completo)"]
-    DS --> SR{"Step 4 · self-review (checklist)"}
-    SR --> HO{"Step 5 · hand-off (espera al usuario)"}
-    HO -->|"Ruta 1 (al volver el handoff)"| HI
-    HO -->|"Ruta 2"| BLD2[["→ build · Modo Frontend"]]
+    AC -->|"Adopt con UI existente"| RE["Step 5 · se DOCUMENTA, no se diseña<br/>(dirección 'no declarado' · G1 N/A)"]
+    AC -->|"greenfield"| N{"Step 0 · detectar nivel<br/>+ sondeo de capacidad"}
+    N -->|"A · Claude Design"| EXT["nav map sí · design_system NO<br/>BLOQUEADA-ESPERANDO-DISEÑO<br/>(build tira por componente)"]
+    N -->|"B · canvas nativo"| L
+    N -->|"C · sin externa"| L{"Step 1 · librería<br/>+ chequeo de colisión con MK-003/MK-004"}
+    L -->|"colisiona con una anti-referencia"| STOP["STOP · cambiar librería<br/>o firmar presupuesto de override"]
+    L --> BR["Step 2 · brief.md"]
+    BR --> MK{"¿≥2 campos MK en 'sin definir'?"}
+    MK -->|"sí"| BLK["BLOQUEADA-MARCA<br/>(no se autora design_system.md)"]
+    MK -->|"no"| D3["3 direcciones divergentes<br/>· el usuario elige un número"]
+    D3 --> ADR["ADR Proposed<br/>(elegida + 2 descartadas)"]
+    ADR --> NAV["Step 3 · navigation_map.md<br/>(operationId del contrato · nunca por plausibilidad)"]
+    NAV --> DS["Step 4 · design_system.md<br/>(3 capas · roster completo · domain obligatorio)"]
+    DS --> CK["Step 6 · design-lint contrast<br/>+ design-inventory --verify"]
+    CK --> SR{"Step 6 · self-review<br/>(procedencia · enums N/N)"}
+    SR --> HO[["Step 7 · hand-off → build"]]
 ```
 
 ---
@@ -486,28 +489,7 @@ flowchart TD
     A2 --> A4(["Health score 0-100 + last-audit.md<br/>(propone acciones · JAMÁS auto-corrige)"])
 ```
 
-### 5.6 Handoff-ingest — convertir un handoff de diseño al stack
-
-Cuatro HARD-GATE gobiernan todo: sin código de producción, extracción de tokens determinista, no
-inventar reglas de marca, fidelidad acotada al stack (copia literal si coincide, paridad visual si no).
-
-```mermaid
-flowchart TD
-    HR["4 HARD-GATE: sin código · tokens deterministas<br/>· no inventar marca · fidelidad acotada al stack"] --> S1["Step 1 · Mapear el handoff (inventario)"]
-    S1 --> S2{"Step 2 · Modo de conversión<br/>¿stack del handoff = stack destino?"}
-    S2 -->|"igual"| V["Copia literal"]
-    S2 -->|"distinto"| P["Traducción por paridad visual<br/>(preserva tokens/estructura/estados/reglas)"]
-    V --> S3
-    P --> S3["Step 3 · Extraer tokens → design_system.md<br/>· validar WCAG AA (flag, no 'arreglar' la marca)"]
-    S3 --> S4["Step 4 · fidelity-checklist.md<br/>(cada ítem cita su línea de origen)"]
-    S4 --> S5{"Step 5 · Mapear pantallas → nav map → contrato"}
-    S5 -.->|"pantalla sin operationId"| GAP["Log de contract gap → escalar a Fase 2"]
-    S5 --> S6["Step 6 · Copiar assets (+ registrar SKILL.md de marca opcional)"]
-    S6 --> S7{"Step 7 · self-review (6 ítems)"}
-    S7 --> S8[["Step 8 · hand-off → build · Modo Frontend (ux-implementer)"]]
-```
-
-### 5.7 Contract-sync-audit — reconciliar backend ↔ frontend desincronizados
+### 5.6 Contract-sync-audit — reconciliar backend ↔ frontend desincronizados
 
 No auto-aplica: reporta y propone contra una **fuente canónica**, luego enruta el trabajo real.
 
@@ -524,7 +506,7 @@ flowchart TD
     S5 -->|"mismatch = bug con causa poco clara"| DBG[["→ debug"]]
 ```
 
-### 5.8 Setup-docs-bridge — integrar docs preexistentes sin duplicarlos
+### 5.7 Setup-docs-bridge — integrar docs preexistentes sin duplicarlos
 
 Cuatro Iron Rules: no reorganizar, no duplicar, ADRs solo `Proposed`, nada categorizado en silencio.
 Genera bridges referenciales que apuntan a los originales y un índice machine-readable.

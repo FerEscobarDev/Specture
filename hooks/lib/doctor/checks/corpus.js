@@ -122,7 +122,7 @@ const CANONICAL_SECTIONS = canonicalSectionBases();
 function sectionDestination(heading) {
   if (/decisi[oó]n/i.test(heading)) return "user decision: record it in the epic's _planning.md (the coordinator appends it during spec planning)";
   if (/deuda/i.test(heading)) return "move the debt to the ROADMAP as a pending epic/task";
-  if (/divergencia|handoff/i.test(heading)) return "move it to docs/03-ux-ui/handoff-mapping.md";
+  if (/divergencia|handoff/i.test(heading)) return "move it to the inventory table of docs/03-ux-ui/design_system.md §3";
   if (/supersesi[oó]n/i.test(heading)) return "declare it with `Supersede:` lines under the template section \"Supersesiones de tests sellados\" (the register lives in the epic's _planning.md § SUPERSESIONES) — not in a free-form section";
   return "move it to its owning document or delete it (the template's sections are the spec's contract)";
 }

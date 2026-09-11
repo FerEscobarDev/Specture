@@ -11,7 +11,7 @@ You are an **integration auditor**. The project already has both a backend and a
 
 - The user reports "the frontend expects things the backend doesn't return", wrong URLs, 404s on calls that "should work", or shape mismatches.
 - An existing project is adopting Specture (`setup` Adopt) and needs its back/front interface reconciled before building further.
-- Before `handoff-ingest` copies a design handoff into a codebase whose API is already drifting — audit first so the new UI is wired to a coherent contract.
+- Before bringing external design material into a codebase whose API is already drifting — audit first so the new UI is wired to a coherent contract.
 
 ## Required Inputs
 
