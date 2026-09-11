@@ -22,7 +22,12 @@
 - **Pantalla** — nombre en lenguaje de negocio.
 - **Auth** — `pública` · `autenticada` · `rol:<rol>` (varios roles separados por coma).
 - **Operaciones consumidas** — `operationId`s del contrato entre backticks, separados por
-  coma, o `—` si la pantalla no consume ninguna. **Nunca URLs ni shapes.**
+  coma; `—` si la pantalla no consume ninguna; **`por-confirmar`** si todavía no se verificaron
+  contra la spec. **Nunca URLs ni shapes.**
+  > **Prohibido asignar operaciones por plausibilidad de nombre.** Que `listarFacturas` exista en
+  > el contrato no lo convierte en la operación correcta para `/facturas`, y el verificador no
+  > distingue esos dos casos: sólo comprueba que el id exista. Una adivinanza con la aprobación
+  > del gate es peor que un hueco declarado. Si no está verificada, es `por-confirmar`.
 - **Estados declarados** — de `vacío` · `cargando` · `error` · `sin-permiso`. Toda pantalla
   que consuma una operación declara al menos `cargando` y `error`; toda pantalla que liste
   una colección declara además `vacío`; toda pantalla tras `rol:` declara `sin-permiso`.

@@ -18,7 +18,7 @@
 //   I1  every screen declares the states its row implies                        BLOCKER
 //   I2  every operationId a screen consumes exists in the contract              BLOCKER
 //   I3  the inventory has at least one `domain` component                       BLOCKER
-//   I4  every `deferred` row names where it is deferred to                      BLOCKER
+//   I4  every `deferred` row names a destination epic that exists in the ROADMAP  BLOCKER
 //   I5  every enum of the contract is accounted for by some inventory row       BLOCKER
 //
 // stdout: `DESIGN_CHECK: inventory PASS <sha12>` | `… FAIL <sha12>` | `… UNVERIFIABLE <reason>`,
@@ -109,7 +109,7 @@ function enumsFrom(text, file) {
 // checks
 // ---------------------------------------------------------------------------------------
 
-function runChecks({ screens, inventory, contract }) {
+function runChecks({ screens, inventory, contract, roadmapEpics }) {
   const findings = [];
   const add = (check, severity, detail) => findings.push({ check, severity, detail });
 
@@ -148,10 +148,23 @@ function runChecks({ screens, inventory, contract }) {
     add("I3", "BLOCKER", `${inventory.length} componente(s) y ninguno de nivel \`domain\`: un design system sin componentes de dominio es genérico por definición`);
   }
 
-  // ---- I4 — a deferral names its destination ------------------------------------------
+  // ---- I4 — a deferral names a destination that exists ---------------------------------
+  // Checking only that *some* text follows the arrow turns an anti-silent-deferral rule into a
+  // form to be filled with invented epics ("deferred → Epic 2.1, se afinará"). The destination
+  // is cross-checked against the ROADMAP; `sin epic asignado` is the honest value when the epic
+  // does not exist yet, and it is visible debt rather than a fake promise.
   for (const component of inventory.filter((c) => /^deferred/i.test(c.status))) {
-    if (!/→\s*\S/.test(component.status)) {
-      add("I4", "BLOCKER", `\`${component.name}\` está \`deferred\` sin destino: usar \`deferred → Epic X.Y\` o \`deferred → fuera del roadmap\``);
+    const destination = (component.status.split("→")[1] || "").trim();
+    if (!destination) {
+      add("I4", "BLOCKER", `\`${component.name}\` está \`deferred\` sin destino: usar \`deferred → Epic X.Y\`, \`deferred → fuera del roadmap\` o \`deferred → sin epic asignado\``);
+      continue;
+    }
+    const epic = (destination.match(/Epic\s+(\d+\.\d+)/i) || [])[1];
+    if (!epic) continue; // `fuera del roadmap` / `sin epic asignado` — declared debt, not a lie
+    if (!roadmapEpics) {
+      add("I4", "INFO", `\`${component.name}\` difiere a Epic ${epic} — sin ROADMAP legible no se verifica que exista`);
+    } else if (!roadmapEpics.includes(epic)) {
+      add("I4", "BLOCKER", `\`${component.name}\` difiere a \`Epic ${epic}\`, que no existe en el ROADMAP: un destino inventado es peor que un hueco declarado — usar \`deferred → sin epic asignado\``);
     }
   }
 
@@ -180,6 +193,18 @@ function findProjectRoot(start) {
     if (up === dir) return null;
     dir = up;
   }
+}
+
+// Epic ids declared in the ROADMAP ("1.1", "3.4"), or null when it cannot be read.
+function readRoadmapEpics(root) {
+  const file = path.join(root, "docs", "04-roadmap", "ROADMAP.md");
+  let text;
+  try {
+    text = fs.readFileSync(file, "utf8");
+  } catch {
+    return null;
+  }
+  return [...text.matchAll(/\*\*Epic\s+(\d+\.\d+)\s*:/gi)].map((m) => m[1]);
 }
 
 function readContract(root) {
@@ -224,7 +249,7 @@ function main(argv) {
   }
 
   const inventory = parseInventory(fs.readFileSync(dsPath, "utf8"));
-  const findings = runChecks({ screens, inventory, contract: readContract(root) });
+  const findings = runChecks({ screens, inventory, contract: readContract(root), roadmapEpics: readRoadmapEpics(root) });
   const status = findings.some((f) => f.severity === "BLOCKER") ? "FAIL" : "PASS";
   const sha = crypto.createHash("sha256").update(JSON.stringify(findings)).digest("hex").slice(0, 12);
 

@@ -164,3 +164,24 @@ test("parseScreens and parseInventory ignore prose tables that are not the gramm
   assert.deepEqual(inventory.parseInventory("| `Button` | inventado | — | `done` |"), [], "nivel desconocido");
   assert.deepEqual(inventory.enumsFrom("paths: {}", "c.yaml"), null, "YAML no se adivina");
 });
+
+test("I4: a destination epic that does not exist in the ROADMAP is a BLOCKER, not a promise", () => {
+  const roadmap = "# ROADMAP\n\n### Milestone 1: M\n\n- [ ] **Epic 1.1:** Base\n  - **Dependencias:** Ninguna\n";
+  const deferred = invTable(["| `EstadoBadge` | domain | enum `estado` | `deferred → Epic 9.9` |"]);
+  const root = makeProject({ nav: CLEAN_NAV, ds: deferred, contract: CLEAN_CONTRACT });
+  fs.mkdirSync(path.join(root, "docs", "04-roadmap"), { recursive: true });
+  fs.writeFileSync(path.join(root, "docs", "04-roadmap", "ROADMAP.md"), roadmap);
+  const { status, lines } = run(root);
+  assert.equal(status, 1);
+  assert.match(lines.find((l) => l.startsWith("I4")), /`Epic 9\.9`, que no existe en el ROADMAP/);
+});
+
+test("I4: `sin epic asignado` is declared debt and passes; a real epic passes too", () => {
+  const roadmap = "# ROADMAP\n\n### Milestone 3: M\n\n- [ ] **Epic 3.4:** Cupos\n  - **Dependencias:** Ninguna\n";
+  for (const status of ["deferred → sin epic asignado", "deferred → fuera del roadmap", "deferred → Epic 3.4"]) {
+    const root = makeProject({ nav: CLEAN_NAV, ds: invTable([`| \`EstadoBadge\` | domain | enum \`estado\` | \`${status}\` |`]), contract: CLEAN_CONTRACT });
+    fs.mkdirSync(path.join(root, "docs", "04-roadmap"), { recursive: true });
+    fs.writeFileSync(path.join(root, "docs", "04-roadmap", "ROADMAP.md"), roadmap);
+    assert.equal(run(root).status, 0, `"${status}" debería pasar`);
+  }
+});

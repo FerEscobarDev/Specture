@@ -123,6 +123,12 @@ mensaje distinto al de "ratio insuficiente": son causas distintas con arreglos d
 > qué esta gente, este contexto de uso, este estado emocional. Un racional que habla de la
 > mecánica interna de la propia paleta ("para no colisionar con el verde del calendario") explica
 > una restricción, no una identidad, y no cuenta.
+>
+> **Excepción Adopt (`ui_defined: true`): esta regla se invierte.** En un proyecto que ya lleva
+> años en producción, *"es el default de la librería"* suele ser la **respuesta verdadera**, y
+> escribirla es obligatorio. Reconstruir un racional de dominio que suena mejor para un valor que
+> nadie eligió es inventar con mejor gramática. Si la decisión no la tomó nadie, la celda dice
+> `no declarado — heredado de <librería>`.
 
 | Grupo | Decisión | Por qué este proyecto | Cita |
 |---|---|---|---|
