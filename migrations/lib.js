@@ -85,7 +85,28 @@ function userStoriesFrom(text) {
   return out;
 }
 
+
+// Inserts rule items into a rules.yml text (LF in, LF out) after the LAST item of the
+// `rules:` list, leaving every comment, every existing rule and the file's own shape
+// byte-for-byte. `rules: []` — the empty placeholder that projects created before
+// v1.20.0 still carry — becomes `rules:` so the appended items parse.
+function insertRuleItems(text, itemLines) {
+  if (itemLines.length === 0) return text;
+  const all = text.split("\n");
+  const start = all.findIndex((l) => /^rules\s*:/.test(l));
+  if (start === -1) throw new Error("rules.yml no declara `rules:`");
+  if (/^rules\s*:\s*\[\s*\]\s*$/.test(all[start])) all[start] = "rules:";
+  let end = start;
+  for (let i = start + 1; i < all.length; i++) {
+    if (/^\s+\S/.test(all[i])) end = i;
+    else if (all[i].trim() !== "") break;
+  }
+  all.splice(end + 1, 0, ...itemLines);
+  return all.join("\n");
+}
+
 module.exports = {
+  insertRuleItems,
   TEMPLATES,
   gitignoreLines,
   hasGitignoreEntry,

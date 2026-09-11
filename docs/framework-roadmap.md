@@ -642,6 +642,11 @@ de verdad pueda ocurrir.
 - [x] **51. Métricas de la Fase 03** · hecho 2026-09-11, v1.20.0 — archivo hermano de las de build, no el mismo: una corrida de diseño no tiene `epic`, el lector descarta toda línea sin ese campo, y si se le inventara uno el agregado falsearía la lectura del Spec Planning Gate. Sin esto, si el gate de cobertura debe bloquear o sólo reportar sólo podría cerrarse por opinión.
   `Fuente: frontend-design-track §13; D5` · `Esfuerzo: bajo` · `Depende de: 47`
 
+- [x] **52. Núcleo de invariantes obligatorias (`framework-core`)** · hecho 2026-09-11, v1.20.0 — pedido del usuario: que un archivo tenga un solo componente, que types/constantes/hooks vivan aparte, que si no hay convención de dónde guardarlos **se pregunte**, y SOLID siempre, front y back. El framework no tenía dónde anclar nada de eso: `rules.template.yml` era `rules: []` por doctrina (*"Owner: the team (content) · the framework (schema)"*), `grep -rn SOLID` daba cero en todo el repo, §2 de `conventions.md` era placeholder puro y la Dimensión 3 del reviewer delegaba el 100% en ese documento vacío.
+  Cuatro reglas que el framework posee: `R-FILE-001` [frontend, mobile], `R-FILE-002` [backend], `R-FILE-003` [all] BLOCKER y `R-SOLID-001` [all] IMPORTANT — IMPORTANT a propósito, porque un BLOCKER que se dispara por criterio se aprende a esquivar. Se pueden **endurecer**, nunca quitar ni ablandar: `rules-core-missing` y `rules-core-weakened` son ERROR del doctor. `lintCore` compara id y severidad y **nunca el texto**: exigir igualdad literal bloquearía una traducción o una adaptación legítima.
+  **Invierte una doctrina declarada** y se dice en voz alta: la línea 3 de `conventions.template.md` prometía que ante un conflicto gana la convención del proyecto. Ahora tiene una excepción. Sin esa frase el núcleo se contradecía en silencio con su propia plantilla. §2 gana el **mapa de ubicaciones** que `R-FILE-003` cita, con `sin definir` como valor legal y visible — la señal de preguntar, nunca un hueco que la IA rellene.
+  `Fuente: pedido del usuario, 2026-09-11` · `Esfuerzo: medio` · `Depende de: 39 (rules.yml)`
+
 ### Lo que este milestone deliberadamente NO envió
 
 - **Un gate de genericidad** (ítem 47): la medida no separa las clases. D8 se cierra como *no medir*.

@@ -1,4 +1,4 @@
-const { templateText, extractSection, eolOf } = require("./lib");
+const { templateText, insertRuleItems, extractSection, eolOf } = require("./lib");
 const { parseConventionsRules, serializeRulesList, parseRulesYaml, replaceSectionBody, RULE_MAX_CHARS, SECTION_12 } = require("../hooks/lib/rules");
 
 // v1.19.0 graduates the invariants R-* from a table in conventions.md §12 (delivered whole to
@@ -10,23 +10,10 @@ const { parseConventionsRules, serializeRulesList, parseRulesYaml, replaceSectio
 const CONVENTIONS = ".specture/conventions.md";
 const RULES = ".specture/rules.yml";
 
-// The template ships the `framework-core` rules already inside `rules:` (v1.20.0), so a
-// project's own rules are APPENDED after the last item of that list — never by replacing a
-// `rules: []` placeholder, which stopped existing and would have dropped every migrated
-// rule in silence. The core stays first; the project's rules follow in the order read.
-function appendRules(template, rules) {
-  const lines = template.split("\n");
-  const start = lines.findIndex((l) => /^rules:/.test(l));
-  if (start === -1) throw new Error("rules.template.yml no declara `rules:`");
-  let end = start;
-  for (let i = start + 1; i < lines.length; i++) {
-    if (/^\s+\S/.test(lines[i])) end = i;
-    else if (lines[i].trim() !== "") break;
-  }
-  const items = serializeRulesList(rules).split("\n").slice(1).filter((l) => l !== "");
-  lines.splice(end + 1, 0, ...items);
-  return lines.join("\n");
-}
+// The template ships the `framework-core` rules inside `rules:` since v1.20.0, so a project's
+// own rules are APPENDED after them — never by replacing a `rules: []` placeholder, which
+// stopped existing and would have dropped every migrated rule in silence.
+const ruleItems = (rules) => serializeRulesList(rules).split("\n").slice(1).filter((l) => l !== "");
 
 module.exports = {
   id: "1.19-rules-file",
@@ -45,7 +32,7 @@ module.exports = {
     const { rules, placeholders, defaulted } = section ? parseConventionsRules(section) : { rules: [], placeholders: 0, defaulted: 0 };
 
     const template = templateText("project-config/rules.template.yml").replace(/\r\n/g, "\n");
-    const yml = rules.length > 0 ? appendRules(template, rules) : template;
+    const yml = rules.length > 0 ? insertRuleItems(template, ruleItems(rules)) : template;
     ctx.write(RULES, yml.replace(/\n/g, eol));
 
     if (section) {
