@@ -60,6 +60,8 @@ Read `frontend.design_channel` from `stack.yml`, and look for `.design-sync/conf
 
 The level never changes the deliverables, the gates, or the standard. If you cannot determine it, say so and ask; **never assume C to avoid asking**.
 
+**Run the capability probe of `ux-design/CHANNELS.md` before drawing or pulling anything** — it is the file that holds the mechanics of each level, and probing after the work is spent is how a user gets promised a round-trip that cannot happen. A channel is never reported absent without its reason.
+
 ### Step 1 — Library, and the collision check
 
 Read `frontend.ui_library`. If unset, propose 2-3 options for the framework and let the user pick. If declared, confirm it briefly.
