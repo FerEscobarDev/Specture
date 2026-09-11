@@ -50,11 +50,14 @@
 > no se copian de una escala de fábrica: un gris entibiado o enfriado es el diferenciador más
 > barato que existe, y es la diferencia medible entre un sistema con marca y uno genérico.
 
-| Token | Valor claro | Valor oscuro | Notas |
-|---|---|---|---|
-| `brand.50` … `brand.900` | [#XXXXXX] | [#XXXXXX] | rampa de marca |
-| `neutral.0` … `neutral.1000` | [#XXXXXX] | [#XXXXXX] | **teñidos con el hue de marca** — declarar hue y croma |
-| `accent.*` | [#XXXXXX] | [#XXXXXX] | sólo si la dirección declara un acento reservado |
+> La rampa es **fija**: un primitivo vale lo mismo en claro y en oscuro. Lo que cambia entre
+> modos es a qué primitivo apunta cada token semántico (§2.2), no el primitivo en sí.
+
+| Token | Valor | Notas |
+|---|---|---|
+| `brand.50` … `brand.900` | [#XXXXXX] | rampa de marca |
+| `neutral.0` … `neutral.1000` | [#XXXXXX] | **teñidos con el hue de marca** — declarar hue y croma |
+| `accent.*` | [#XXXXXX] | sólo si la dirección declara un acento reservado |
 
 ### 2.2 Semánticos — los que se usan
 
