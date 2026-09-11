@@ -6,7 +6,7 @@
 //   rule-length   WARNING  a `rule` exceeds RULE_MAX_CHARS or a §4 deny-list item spans more
 //                          than DENY_LIST_MAX_LINES physical lines — the story belongs in an
 //                          ADR / debug log linked from `source`, never inline (roadmap item 39)
-//   rules-core-missing   ERROR  a `framework-core` invariant is absent (since v1.20.0)
+//   rules-core-missing   ERROR  a `framework-core` invariant is absent (since v2.0.0)
 //   rules-core-weakened  ERROR  a `framework-core` invariant declares a severity below its floor
 //
 // The core is the one thing in this file the framework owns rather than the team: a project may

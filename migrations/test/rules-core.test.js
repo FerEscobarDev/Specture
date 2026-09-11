@@ -8,8 +8,8 @@ const catalog = require("../index");
 const { parseRulesYaml, lintCore, CORE_RULES } = require("../../hooks/lib/rules");
 
 const byId = Object.fromEntries(catalog.map((m) => [m.id, m]));
-const core = byId["1.20-rules-core"];
-const fileOrg = byId["1.20-file-org-conventions"];
+const core = byId["2.0-rules-core"];
+const fileOrg = byId["2.0-file-org-conventions"];
 
 const STACK = 'project:\n  name: "Demo"\n  slug: "demo"\n';
 const RULES = ".specture/rules.yml";
@@ -35,14 +35,14 @@ const ids = (text) => parseRulesYaml(text).rules.map((r) => r.id);
 
 afterEach(cleanup);
 
-// --- 1.20-rules-core ---------------------------------------------------------------------
+// --- 2.0-rules-core ---------------------------------------------------------------------
 
-test("1.20-rules-core is pending on a rules.yml written before the core existed", () => {
+test("2.0-rules-core is pending on a rules.yml written before the core existed", () => {
   const ctx = contextFor(makeProject({ ".specture/stack.yml": STACK, [RULES]: OWN, [CONVENTIONS]: CONV_MIN }));
   assert.equal(core.detect(ctx), "pending");
 });
 
-test("1.20-rules-core restores what is missing and leaves the project's own file alone", () => {
+test("2.0-rules-core restores what is missing and leaves the project's own file alone", () => {
   const root = makeProject({ ".specture/stack.yml": STACK, [RULES]: OWN, [CONVENTIONS]: CONV_MIN });
   const result = core.apply(contextFor(root));
   const text = readRules(root);
@@ -61,7 +61,7 @@ test("1.20-rules-core restores what is missing and leaves the project's own file
   assert.deepEqual(snapshot(root), before, "idempotent");
 });
 
-test("1.20-rules-core raises a weakened severity back to its floor and says so", () => {
+test("2.0-rules-core raises a weakened severity back to its floor and says so", () => {
   const weakened = OWN.replace("rules:\n", "rules:\n  - id: R-FILE-001\n    tags: [frontend]\n    rule: \"Un componente por archivo\"\n    severity: IMPORTANT\n    source: \"framework-core\"\n");
   const root = makeProject({ ".specture/stack.yml": STACK, [RULES]: weakened, [CONVENTIONS]: CONV_MIN });
   const result = core.apply(contextFor(root));
@@ -76,7 +76,7 @@ test("1.20-rules-core raises a weakened severity back to its floor and says so",
   assert.equal((text.match(/R-FILE-001/g) || []).length, 1, "raised in place, not duplicated");
 });
 
-test("1.20-rules-core does not weaken a core rule the project tightened", () => {
+test("2.0-rules-core does not weaken a core rule the project tightened", () => {
   const hardened = OWN.replace("rules:\n", "rules:\n  - id: R-SOLID-001\n    tags: [all]\n    rule: \"SOLID, y lo tomamos en serio\"\n    severity: BLOCKER\n    source: \"framework-core\"\n");
   const root = makeProject({ ".specture/stack.yml": STACK, [RULES]: hardened, [CONVENTIONS]: CONV_MIN });
   core.apply(contextFor(root));
@@ -85,7 +85,7 @@ test("1.20-rules-core does not weaken a core rule the project tightened", () => 
   assert.equal(solid.rule, "SOLID, y lo tomamos en serio");
 });
 
-test("1.20-rules-core converts the legacy `rules: []` placeholder instead of writing broken YAML", () => {
+test("2.0-rules-core converts the legacy `rules: []` placeholder instead of writing broken YAML", () => {
   const root = makeProject({ ".specture/stack.yml": STACK, [RULES]: "schema: 1\nrules: []\n", [CONVENTIONS]: CONV_MIN });
   core.apply(contextFor(root));
   const text = readRules(root);
@@ -94,7 +94,7 @@ test("1.20-rules-core converts the legacy `rules: []` placeholder instead of wri
   assert.deepEqual(lintCore(parseRulesYaml(text).rules), []);
 });
 
-test("1.20-rules-core keeps the file's CRLF", () => {
+test("2.0-rules-core keeps the file's CRLF", () => {
   const root = makeProject({ ".specture/stack.yml": STACK, [RULES]: OWN.replace(/\n/g, "\r\n"), [CONVENTIONS]: CONV_MIN });
   core.apply(contextFor(root));
   const text = readRules(root);
@@ -102,13 +102,13 @@ test("1.20-rules-core keeps the file's CRLF", () => {
   assert.deepEqual(lintCore(parseRulesYaml(text).rules), []);
 });
 
-test("1.20-rules-core is n/a when 1.19-rules-file will create the file, and when the file is broken", () => {
+test("2.0-rules-core is n/a when 1.19-rules-file will create the file, and when the file is broken", () => {
   assert.equal(core.detect(contextFor(makeProject({ ".specture/stack.yml": STACK, [CONVENTIONS]: CONV_MIN }))), "n/a", "no rules.yml but conventions.md exists → 1.19 owns it");
   assert.equal(core.detect(contextFor(makeProject({ ".specture/stack.yml": STACK, [RULES]: "schema: 1\nrules:\n  - id: R-1\n    rule: |\n      multi\n", [CONVENTIONS]: CONV_MIN }))), "n/a", "unparseable → the doctor reports rules-schema, we do not rewrite it");
   assert.equal(core.detect(contextFor(makeProject({ [RULES]: OWN }))), "n/a", "not a Specture project");
 });
 
-test("1.20-rules-core creates the file when there is no conventions.md for 1.19 to read", () => {
+test("2.0-rules-core creates the file when there is no conventions.md for 1.19 to read", () => {
   const root = makeProject({ ".specture/stack.yml": STACK });
   assert.equal(core.detect(contextFor(root)), "pending");
   const result = core.apply(contextFor(root));
@@ -117,33 +117,33 @@ test("1.20-rules-core creates the file when there is no conventions.md for 1.19 
   assert.equal(core.detect(contextFor(root)), "done");
 });
 
-test("a project set up from the templates is born conformant — 1.20-rules-core never fires", () => {
+test("a project set up from the templates is born conformant — 2.0-rules-core never fires", () => {
   const template = fs.readFileSync(path.join(__dirname, "..", "..", "templates", "project-config", "rules.template.yml"), "utf8");
   const root = makeProject({ ".specture/stack.yml": STACK, [RULES]: template, [CONVENTIONS]: CONV_MIN });
   assert.equal(core.detect(contextFor(root)), "done");
 });
 
-// --- 1.20-file-org-conventions -----------------------------------------------------------
+// --- 2.0-file-org-conventions -----------------------------------------------------------
 
 const CONV_NO_MAP = "# Convenciones\n\n## 1. Naming\n\n- camelCase\n\n## 2. Organización de Archivos\n\n- **Estructura por:** feature\n\n## 3. Patrones Permitidos\n\n- x\n";
 
-test("1.20-file-org-conventions is pending while §2 declares no location map", () => {
+test("2.0-file-org-conventions is pending while §2 declares no location map", () => {
   assert.equal(fileOrg.detect(contextFor(makeProject({ [CONVENTIONS]: CONV_NO_MAP }))), "pending");
 });
 
-test("1.20-file-org-conventions is done once the map heading is in §2", () => {
+test("2.0-file-org-conventions is done once the map heading is in §2", () => {
   const withMap = CONV_NO_MAP.replace("- **Estructura por:** feature\n", "- **Estructura por:** feature\n\n### Mapa de ubicaciones\n\n| Qué | Dónde |\n|---|---|\n| Componentes | `src/components/<N>/<N>.tsx` |\n");
   const ctx = contextFor(makeProject({ [CONVENTIONS]: withMap }));
   assert.equal(fileOrg.detect(ctx), "done");
   assert.equal(fileOrg.verify(ctx), true);
 });
 
-test("1.20-file-org-conventions is n/a without conventions.md and without a §2", () => {
+test("2.0-file-org-conventions is n/a without conventions.md and without a §2", () => {
   assert.equal(fileOrg.detect(contextFor(makeProject({ ".specture/stack.yml": STACK }))), "n/a");
   assert.equal(fileOrg.detect(contextFor(makeProject({ [CONVENTIONS]: "# Convenciones\n\n## 1. Naming\n\n- x\n" }))), "n/a", "no §2 to extend");
 });
 
-test("1.20-file-org-conventions proposes from the folders it finds and never decides", () => {
+test("2.0-file-org-conventions proposes from the folders it finds and never decides", () => {
   const root = makeProject({
     [CONVENTIONS]: CONV_NO_MAP,
     "src/components/Card/Card.tsx": "export const Card = () => null;\n",

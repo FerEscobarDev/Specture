@@ -1,7 +1,7 @@
-// 1.20-design-channel — mechanical.
+// 2.0-design-channel — mechanical.
 //
 // Records which design channel a project already uses, in `stack.yml` `frontend.design_channel`,
-// by detecting it from files that are already on disk. Before v1.20.0 the framework had zero
+// by detecting it from files that are already on disk. Before v2.0.0 the framework had zero
 // integration with any design surface (`grep DesignSync|dc.html|claude.ai/design` returned
 // nothing), so projects that were working against one were doing it by hand and the framework
 // could not tell.
@@ -52,8 +52,8 @@ function detectProjectId(ctx) {
 }
 
 module.exports = {
-  id: "1.20-design-channel",
-  since: "1.20.0",
+  id: "2.0-design-channel",
+  since: "2.0.0",
   kind: "mechanical",
   title: "Record the design channel in stack.yml frontend.design_channel (detected from the project)",
   detect(ctx) {
@@ -85,7 +85,7 @@ module.exports = {
     }
     if (insertAt === -1) return { notes: ["`stack.yml` no declara un bloque `frontend:` — nada que registrar"] };
 
-    const added = [`  design_channel: "${channel}"   # claude-design | canvas | none — detectado por la migración 1.20`];
+    const added = [`  design_channel: "${channel}"   # claude-design | canvas | none — detectado por la migración 2.0`];
     if (projectId) added.push(`  design_project_id: "${projectId}"`);
     lines.splice(insertAt, 0, ...added);
     ctx.write(STACK, lines.join(eol));

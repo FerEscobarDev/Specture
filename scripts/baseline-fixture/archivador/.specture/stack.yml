@@ -26,6 +26,7 @@ frontend:
   state_management: "none"
   testing_framework: "vitest"
   ui_defined: false
+  design_channel: "none"   # claude-design | canvas | none — detectado por la migración 2.0
 
 api:
   style: "rest"

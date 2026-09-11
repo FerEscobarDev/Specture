@@ -165,10 +165,10 @@ function lintRules(parsed) {
 }
 
 // ---------------------------------------------------------------------------
-// framework-core — the invariants every Specture project carries (v1.20.0)
+// framework-core — the invariants every Specture project carries (v2.0.0)
 // ---------------------------------------------------------------------------
 //
-// The framework owns the schema of `rules.yml` and, since v1.20.0, these four ids. A project may
+// The framework owns the schema of `rules.yml` and, since v2.0.0, these four ids. A project may
 // TIGHTEN them — raise the severity, add tags, sharpen the wording — and may add rules of its own.
 // Removing an id or lowering a severity is an ERROR of the doctor, restored by `doctor migrate`.
 //

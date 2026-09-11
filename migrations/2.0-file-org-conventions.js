@@ -3,7 +3,7 @@ const path = require("path");
 const { templateText, extractSection } = require("./lib");
 const { IGNORED_DIRS } = require("../hooks/lib/doctor/project");
 
-// v1.20.0's `R-FILE-003` says types, interfaces, constants and hooks live OUTSIDE the component
+// v2.0.0's `R-FILE-003` says types, interfaces, constants and hooks live OUTSIDE the component
 // or class file, "at the location conventions.md §2 declares". Before this migration §2 declared
 // no such location: it had structure-by-feature, test co-location and a max file size, and
 // nothing about where each kind of thing goes. A BLOCKER that points at an undeclared location
@@ -49,8 +49,8 @@ function directories(root, relative = "", depth = 0, out = []) {
 }
 
 module.exports = {
-  id: "1.20-file-org-conventions",
-  since: "1.20.0",
+  id: "2.0-file-org-conventions",
+  since: "2.0.0",
   kind: "assisted",
   title: "`conventions.md` §2: the location map R-FILE-003 cites (components, types, constants, hooks, services, tests)",
   detect(ctx) {

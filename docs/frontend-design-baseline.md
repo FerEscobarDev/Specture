@@ -1,6 +1,6 @@
 # Baseline de la Fase 03 — medición previa al rediseño de frontend
 
-> **Estado:** medición · **Fecha:** 2026-09-11 · **Versión objetivo:** v1.20.0
+> **Estado:** medición · **Fecha:** 2026-09-11 · **Versión objetivo:** v2.0.0
 >
 > El repo persiste cada RED con sus números verbatim (`spec-planning-baseline.md`,
 > `spec-planning-baseline-stage2.md`, `knowledge-reconcile-baseline.md`). La medición que motivó
@@ -122,8 +122,8 @@ BLOCKER par obligatorio no declarado: falta `color.bg.surface`
 … 9 líneas en total
 ```
 
-Ninguno declara la capa semántica: son sistemas de una sola capa, anteriores a v1.20.0. Es
-exactamente lo que la migración `1.20-design-system-layers` existe para nombrar, y la razón de que
+Ninguno declara la capa semántica: son sistemas de una sola capa, anteriores a v2.0.0. Es
+exactamente lo que la migración `2.0-design-system-layers` existe para nombrar, y la razón de que
 el **piso de pares obligatorios** sea imprescindible: sin él, el check itera sobre el conjunto
 vacío y emite PASS sobre un sistema que no declara nada — el mismo fallo de "verde vacuo" contra el
 que `code-reviewer` ya protege en los tests.

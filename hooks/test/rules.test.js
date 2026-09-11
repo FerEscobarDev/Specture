@@ -202,7 +202,7 @@ test("replaceSectionBody keeps the heading, the neighbours and the file's EOL", 
   assert.equal(replaceSectionBody("# C\n\n## 11. Índice\n", /^##\s*12\./m, "x"), "# C\n\n## 11. Índice\n", "absent section → unchanged");
 });
 
-// --- núcleo framework-core (v1.20.0) ---
+// --- núcleo framework-core (v2.0.0) ---
 
 const CORE_YAML = [
   "schema: 1",

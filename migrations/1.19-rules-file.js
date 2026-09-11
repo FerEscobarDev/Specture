@@ -10,7 +10,7 @@ const { parseConventionsRules, serializeRulesList, parseRulesYaml, replaceSectio
 const CONVENTIONS = ".specture/conventions.md";
 const RULES = ".specture/rules.yml";
 
-// The template ships the `framework-core` rules inside `rules:` since v1.20.0, so a project's
+// The template ships the `framework-core` rules inside `rules:` since v2.0.0, so a project's
 // own rules are APPENDED after them — never by replacing a `rules: []` placeholder, which
 // stopped existing and would have dropped every migrated rule in silence.
 const ruleItems = (rules) => serializeRulesList(rules).split("\n").slice(1).filter((l) => l !== "");

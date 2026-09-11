@@ -21,6 +21,14 @@ Cada empleado guarda documentos personales de trabajo (PDF e imágenes) y notas 
 - **HU-NOT-001** — consumidor: app web — crear una nota
 - **HU-ETQ-001** — consumidor: app web — asignar una etiqueta a un archivo
 
+## Identidad de Marca
+
+- **MK-001 — Marca preexistente:** ninguna; Archivador es interno y nace sin manual de marca.
+- **MK-002 — Tono:** sobrio y directo; es una herramienta de trabajo, no un producto de consumo.
+- **MK-003 — Referencias que gustan:** sin definir
+- **MK-004 — Referencias que se rechazan:** sin definir
+- **MK-005 — Restricciones duras:** contraste AA en todo texto; la app se usa a diario y en pantallas de oficina.
+
 ## Reglas de Negocio
 - **RN-001:** Un archivo pesa como máximo 10 MB y su tipo es `application/pdf`, `image/png` o `image/jpeg`; cualquier otro caso se rechaza con un error de validación.
 - **RN-002:** Toda entrada de texto (título, cuerpo, nombre de etiqueta) se recibe sin espacios sobrantes en los extremos, no vacía y de a lo sumo 200 caracteres; si no cumple, se rechaza con un error de validación.

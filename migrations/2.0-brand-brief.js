@@ -1,8 +1,8 @@
-// 1.20-brand-brief — content migration.
+// 2.0-brand-brief — content migration.
 //
-// Before v1.20.0 nothing in the flow asked for brand: `discover` never raised tone or
+// Before v2.0.0 nothing in the flow asked for brand: `discover` never raised tone or
 // identity, and the Phase 3 template only accepted "Referencias visuales: [URLs que el
-// usuario provea — no inventar]". A frontend project whose requirements predate v1.20.0
+// usuario provea — no inventar]". A frontend project whose requirements predate v2.0.0
 // therefore has nowhere for its brand to live, and the design agent supplies it from its
 // own taste. This migration names that gap; the fix is judgment (a conversation with the
 // user), never a text transform, so it has no `apply`.
@@ -22,10 +22,10 @@ function hasFrontend(stackText) {
 }
 
 module.exports = {
-  id: "1.20-brand-brief",
-  since: "1.20.0",
+  id: "2.0-brand-brief",
+  since: "2.0.0",
   kind: "content",
-  title: "Brand identity in business_requirements.md for frontend projects that predate v1.20.0",
+  title: "Brand identity in business_requirements.md for frontend projects that predate v2.0.0",
   ownerSkill: "discover — adds `## Identidad de Marca` (MK-nnn) by asking the user; `ux-design` reads it in Phase 3",
   detect(ctx) {
     if (!ctx.exists(REQUIREMENTS)) return "n/a";

@@ -11,6 +11,17 @@
 - **Co-localización:** tests en carpeta separada `tests/<feature>/`
 - **Tamaño máximo de archivo (líneas):** 300
 
+### Mapa de ubicaciones
+
+| Qué | Dónde |
+|---|---|
+| Componentes | `archivador_app/src/components/<Nombre>/<Nombre>.tsx` |
+| Types e interfaces | `archivador_app/src/components/<Nombre>/<Nombre>.types.ts` · `archivador_api/src/<feature>/types.ts` |
+| Constantes | `archivador_app/src/constants/<dominio>.ts` |
+| Hooks / composables | `archivador_app/src/hooks/use<Nombre>.ts` |
+| Servicios / casos de uso | `archivador_api/src/<feature>/<Nombre>Service.ts` |
+| Tests | `archivador_api/tests/<feature>/` · `archivador_app/src/**/<Nombre>.test.tsx` |
+
 ## 3. Patrones Permitidos
 - Repository pattern para acceso a datos
 - Inyección de dependencias por constructor

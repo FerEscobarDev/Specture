@@ -381,7 +381,7 @@ Frontend epics must be built in this order — the ROADMAP should already encode
 2. **Visual Approval Gate** — the user approves the showcase. **No page epic may start until this gate passes.**
 3. **Page epics** — one screen (or cluster) at a time, each built only **after** the backend epic implementing the `operationId`s it consumes is `[x]`.
 
-If a page epic becomes "ready" before the design-system epic is approved, it is **not** actually ready. Since v1.20.0 that dependency is no longer implicit: `spec-set-check.js` check **C-design** blocks a `Tipo: pagina` epic whose `Tipo: design-system` epic has no `VISUAL_APPROVAL` line in its `_planning.md`. It anchors on the approval record, never on the `[x]` checkbox — the epic-agent writes its own checkbox, so a checkbox proves nothing about the human gate.
+If a page epic becomes "ready" before the design-system epic is approved, it is **not** actually ready. Since v2.0.0 that dependency is no longer implicit: `spec-set-check.js` check **C-design** blocks a `Tipo: pagina` epic whose `Tipo: design-system` epic has no `VISUAL_APPROVAL` line in its `_planning.md`. It anchors on the approval record, never on the `[x]` checkbox — the epic-agent writes its own checkbox, so a checkbox proves nothing about the human gate.
 
 ### Contract drift — block only what it touches
 

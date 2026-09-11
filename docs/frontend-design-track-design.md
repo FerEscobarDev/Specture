@@ -1,6 +1,6 @@
 # Rediseño del flujo de frontend — Design Track y canales de diseño
 
-> **Estado:** propuesta de diseño · **Fecha:** 2026-09-08 · **Versión objetivo:** v1.20.0 (Milestone 7)
+> **Estado:** propuesta de diseño · **Fecha:** 2026-09-08 · **Versión objetivo:** v2.0.0 (Milestone 7)
 >
 > Sucede a [`ui-design-flow-analysis.md`](./ui-design-flow-analysis.md), que produjo el flujo actual (contrato de API + disciplina de frontend + `handoff-ingest`). Aquel documento resolvió la coordinación back↔front. Éste ataca lo que dejó abierto: **la calidad del diseño en sí** y **la integración con el Claude Design de 2026**.
 >
@@ -10,7 +10,7 @@
 
 ---
 
-> ## ⛔ SUPERADO POR LA IMPLEMENTACIÓN (2026-09-11, v1.20.0)
+> ## ⛔ SUPERADO POR LA IMPLEMENTACIÓN (2026-09-11, v2.0.0)
 >
 > Este documento es el **registro de la propuesta**, no la especificación de lo que se construyó.
 > Lo enviado está en el **Milestone 7** de `docs/framework-roadmap.md` (ítems 43-51) y la evidencia
@@ -403,7 +403,7 @@ Ordenado para que **la primera etapa arregle la queja más fuerte** y sea shippa
 
 Requerido, no opcional. El repo lo exige mecánicamente en algunos puntos:
 
-- **`README.md` — seis lugares**, uno de ellos verificado por test (`release-contract.test.js:38-43` falla la build sin entrada de changelog): árbol del framework (~línea 195), tabla de fases (246-274), bloque `#### /specture:design-track` en Referencia de Comandos (~400-420), árbol de `docs/` del proyecto (531-556), tabla de agentes, y entrada `### v1.20.0`.
+- **`README.md` — seis lugares**, uno de ellos verificado por test (`release-contract.test.js:38-43` falla la build sin entrada de changelog): árbol del framework (~línea 195), tabla de fases (246-274), bloque `#### /specture:design-track` en Referencia de Comandos (~400-420), árbol de `docs/` del proyecto (531-556), tabla de agentes, y entrada `### v2.0.0`.
 - **`CLAUDE.md`** — la tabla de Quick command reference colapsa dos filas en una: *"Diseño de frontend, con o sin herramienta externa"* → `design-track`.
 - **`skills/start/SKILL.md`** — el router; y si necesita leer un segundo campo de `stack.yml`, hay que **enmendar explícitamente** su regla de costo de la línea 20, que hoy prohíbe leer más que `frontend.framework`.
 - **`skills/doctor/SKILL.md`** — una fila por migración en la tabla del catálogo (líneas 59-80). Es la **única** explicación humana de qué hace cada id.
@@ -434,7 +434,7 @@ Requerido, no opcional. El repo lo exige mecánicamente en algunos puntos:
 
 Sin estas, la implementación puede tomar dos formas materialmente distintas.
 
-**D1 — Alcance de la primera entrega.** ¿E1+E2+E3 (arreglar P1, sin canales, sin tocar `handoff-ingest`) como v1.20.0 y los canales en v1.21.0? ¿O el Milestone 7 completo de una? *Recomendación: partir.* E1-E3 no depende de nada externo, arregla la queja más fuerte, y es la mitad del riesgo.
+**D1 — Alcance de la primera entrega.** ¿E1+E2+E3 (arreglar P1, sin canales, sin tocar `handoff-ingest`) como v2.0.0 y los canales en v1.21.0? ¿O el Milestone 7 completo de una? *Recomendación: partir.* E1-E3 no depende de nada externo, arregla la queja más fuerte, y es la mitad del riesgo.
 
 **D2 — Topología de skills. → RESUELTA (2026-09-08).** `handoff-ingest` se **elimina por completo** (skill, comando, artefactos y concepto); `ux-design` queda como stub de alias al Design Track. Ver §7.
 

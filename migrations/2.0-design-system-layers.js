@@ -1,6 +1,6 @@
-// 1.20-design-system-layers — content migration.
+// 2.0-design-system-layers — content migration.
 //
-// Before v1.20.0 the design-system template had a single, primitive token layer: `color.primary.500`,
+// Before v2.0.0 the design-system template had a single, primitive token layer: `color.primary.500`,
 // `color.neutral.900`, and semantic tokens only for the four status colours. The family that was
 // missing — surface / text / border / on-accent / focus-ring — is the one that carries dark mode
 // and the one that makes `ux-implementer`'s "every colour comes from a token" rule satisfiable at
@@ -17,8 +17,8 @@ const DESIGN_SYSTEM = "docs/03-ux-ui/design_system.md";
 const SEMANTIC = /`?color\.(bg|text|border|focus)\./i;
 
 module.exports = {
-  id: "1.20-design-system-layers",
-  since: "1.20.0",
+  id: "2.0-design-system-layers",
+  since: "2.0.0",
   kind: "content",
   title: "Semantic token layer (surface / text / border / on-accent / focus) in design_system.md",
   ownerSkill: "ux-design — re-runs the token section with the user; the contrast check needs semantic pairs to have anything to compute",

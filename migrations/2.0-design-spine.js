@@ -1,4 +1,4 @@
-// 1.20-design-spine — mechanical.
+// 2.0-design-spine — mechanical.
 //
 // Moves the per-component documents of a handoff mirror into the spine
 // (`docs/03-ux-ui/components/<Nombre>.md`) and rewrites every citation of the old paths.
@@ -54,7 +54,7 @@ function header(move) {
     "",
     `- **Nivel:** ${move.tier || `[primitive | composite | pattern] — categoría de origen: \`${move.group || "sin agrupar"}\`; el nivel lo decide quien revise`}`,
     "- **Procedencia:** `medido del DOM` — autoritativo: un pull posterior del canal NO lo sobrescribe.",
-    `- **Origen:** movido desde \`${move.source}\` por la migración \`1.20-design-spine\`.`,
+    `- **Origen:** movido desde \`${move.source}\` por la migración \`2.0-design-spine\`.`,
     "",
     "---",
     ""
@@ -62,8 +62,8 @@ function header(move) {
 }
 
 module.exports = {
-  id: "1.20-design-spine",
-  since: "1.20.0",
+  id: "2.0-design-spine",
+  since: "2.0.0",
   kind: "mechanical",
   title: "Handoff mirror → docs/03-ux-ui/components/, with every citation rewritten",
   detect(ctx) {

@@ -29,13 +29,13 @@ const catalog = [
   require("./1.16-requirements-merge"),
   require("./1.18-metrics-tracked"),
   require("./1.19-rules-file"),
-  require("./1.20-rules-core"),
-  require("./1.20-file-org-conventions"),
-  require("./1.20-brand-brief"),
-  require("./1.20-design-system-layers"),
-  require("./1.20-design-channel"),
-  require("./1.20-design-spine"),
-  require("./1.20-design-metrics-tracked")
+  require("./2.0-rules-core"),
+  require("./2.0-file-org-conventions"),
+  require("./2.0-brand-brief"),
+  require("./2.0-design-system-layers"),
+  require("./2.0-design-channel"),
+  require("./2.0-design-spine"),
+  require("./2.0-design-metrics-tracked")
 ];
 
 // Stable sort by `since` only: entries that share a version keep their declared

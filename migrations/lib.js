@@ -89,7 +89,7 @@ function userStoriesFrom(text) {
 // Inserts rule items into a rules.yml text (LF in, LF out) after the LAST item of the
 // `rules:` list, leaving every comment, every existing rule and the file's own shape
 // byte-for-byte. `rules: []` — the empty placeholder that projects created before
-// v1.20.0 still carry — becomes `rules:` so the appended items parse.
+// v2.0.0 still carry — becomes `rules:` so the appended items parse.
 function insertRuleItems(text, itemLines) {
   if (itemLines.length === 0) return text;
   const all = text.split("\n");

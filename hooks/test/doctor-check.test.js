@@ -28,13 +28,13 @@ function runDoctor(projectRoot, ...extra) {
   return { status: result.status, stdout: result.stdout, stderr: result.stderr, json: result.stdout ? JSON.parse(result.stdout) : null };
 }
 
-// `rules.yml` exactly as the template installs it — since v1.20.0 that includes the
+// `rules.yml` exactly as the template installs it — since v2.0.0 that includes the
 // mandatory `framework-core` rules, so a CLEAN project is core-conformant by construction.
 const TEMPLATE_RULES = fs.readFileSync(path.join(__dirname, "..", "..", "templates", "project-config", "rules.template.yml"), "utf8").replace(/\r\n/g, "\n");
 
 // A project exactly as `setup` leaves it at the installed plugin version: no migration pending.
 const CLEAN = {
-  ".gitignore": ".specture/state/\ndocs/.specture-meta/*\n!docs/.specture-meta/build-metrics.jsonl\n",
+  ".gitignore": ".specture/state/\ndocs/.specture-meta/*\n!docs/.specture-meta/build-metrics.jsonl\n!docs/.specture-meta/design-metrics.jsonl\n",
   ".specture/stack.yml": 'project:\n  name: "Demo"\n  slug: "demo"\napi:\n  style: "rest"\n  contract_file: "docs/02-architecture/api-contract.openapi.yaml"\nstructure:\n  root_layout: custom\n',
   ".specture/settings.yml": `schema_version: ${pluginVersion}\nprofile: custom\nhooks.enabled: true\n`,
   ".specture/conventions.md": "# Convenciones\n\n## 10. Specture\n\n> ver settings.yml\n\n## 12. Invariantes del Proyecto (R-*)\n\n> ver .specture/rules.yml\n\n## 13. Workflow / Proceso (W-*)\n\n- W-3: Conventional Commits\n",

@@ -7,6 +7,7 @@ const { pluginVersion, makeProject, contextFor, snapshot, cleanup } = require(".
 const catalog = require("../index");
 const byId = Object.fromEntries(catalog.map((m) => [m.id, m]));
 
+const TEMPLATE_RULES = fs.readFileSync(path.join(__dirname, "..", "..", "templates", "project-config", "rules.template.yml"), "utf8");
 const STACK = 'project:\n  name: "Mi App"\napi:\n  style: "rest"\n  contract_file: "docs/02-architecture/api-contract.openapi.json"\nstructure:\n  root_layout: custom\n';
 const CONTRACT = JSON.stringify({ openapi: "3.0.0", paths: { "/citas": { post: { operationId: "crearCita", summary: "Crear" } }, "/citas/{id}": { get: { operationId: "obtenerCita" } } } });
 
@@ -277,8 +278,8 @@ test("1.15-schema-version records the plugin version when nothing is pending, el
     ".specture/stack.yml": STACK,
     ".specture/settings.yml": "profile: custom\nhooks.enabled: true\n",
     ".specture/conventions.md": "## 12. Invariantes\n\n## 13. Workflow\n",
-    ".specture/rules.yml": "schema: 1\nrules: []\n",
-    ".gitignore": ".specture/state/\ndocs/.specture-meta/*\n!docs/.specture-meta/build-metrics.jsonl\n"
+    ".specture/rules.yml": TEMPLATE_RULES,   // the template ships the `framework-core` rules: nothing pending
+    ".gitignore": ".specture/state/\ndocs/.specture-meta/*\n!docs/.specture-meta/build-metrics.jsonl\n!docs/.specture-meta/design-metrics.jsonl\n"
   });
   assert.equal(m.detect(contextFor(clean)), "pending");
   m.apply(contextFor(clean));
@@ -289,7 +290,7 @@ test("1.15-schema-version records the plugin version when nothing is pending, el
     ".specture/stack.yml": STACK,
     ".specture/settings.yml": "profile: custom\n",
     ".specture/conventions.md": "## 12. Invariantes\n\n## 13. Workflow\n",
-    ".gitignore": ".specture/state/\ndocs/.specture-meta/*\n!docs/.specture-meta/build-metrics.jsonl\n",
+    ".gitignore": ".specture/state/\ndocs/.specture-meta/*\n!docs/.specture-meta/build-metrics.jsonl\n!docs/.specture-meta/design-metrics.jsonl\n",
     "docs/04-roadmap/ROADMAP.md": "- [ ] **Epic 1.1:** A\n  - **Dependencias:** depende de que el usuario apruebe\n"
   });
   assert.equal(m.inferSchemaVersion(contextFor(behind)), "1.8.0", "1.9-dependencies-syntax pending → schema stays at 1.8.0");

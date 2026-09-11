@@ -173,7 +173,7 @@ function fieldValue(blockLines, label) {
 }
 
 // Epic kinds (roadmap `- **Tipo:**`). Absent → "backend": every roadmap authored before
-// v1.20.0 has no line, so nothing is a page epic and the design-system gate stays silent.
+// v2.0.0 has no line, so nothing is a page epic and the design-system gate stays silent.
 const EPIC_KINDS = ["design-system", "pagina", "backend", "migracion"];
 
 // "design-system" | "pagina" | "backend" | "migracion" when recognised; null when the line

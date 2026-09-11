@@ -429,7 +429,7 @@ function pageProject({ providerTipo = "design-system", providerPlanning = null, 
   });
 }
 
-test("C-design: a roadmap without `Tipo:` never fires the check (every pre-v1.20.0 project)", () => {
+test("C-design: a roadmap without `Tipo:` never fires the check (every pre-v2.0.0 project)", () => {
   const { status, lines } = runCheck(createProject());
   assert.equal(status, 0);
   assert.equal(lines.filter((l) => l.startsWith("C-design")).length, 0);

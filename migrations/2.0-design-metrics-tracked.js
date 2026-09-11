@@ -1,4 +1,4 @@
-// 1.20-design-metrics-tracked — mechanical.
+// 2.0-design-metrics-tracked — mechanical.
 //
 // Phase 03 writes its own metrics file, a sibling of the build one: a design run has no `epic`,
 // and `hooks/lib/metrics-report.js` discards every line without that field while `summarize()`
@@ -15,8 +15,8 @@ const BUILD_NEGATION = "!docs/.specture-meta/build-metrics.jsonl";
 const NEGATION = "!docs/.specture-meta/design-metrics.jsonl";
 
 module.exports = {
-  id: "1.20-design-metrics-tracked",
-  since: "1.20.0",
+  id: "2.0-design-metrics-tracked",
+  since: "2.0.0",
   kind: "mechanical",
   title: "Track docs/.specture-meta/design-metrics.jsonl (gitignore negation, sibling of the build metrics)",
   detect(ctx) {
