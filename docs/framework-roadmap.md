@@ -596,6 +596,61 @@ teniendo verdad viva, reglas cortas y paridad entre plataformas.*
 
 ---
 
+## Milestone 7 — Rediseño del flujo de frontend (v1.20.0)
+
+*Objetivo:* que la Fase 03 fuerce una decisión estética humana y la deje registrada donde los
+subagentes de contexto restringido la hereden; que el canal externo se consuma por componente y
+bajo demanda, sin handoff; y que la aprobación visual —el único gate que no puede ser mecánico—
+de verdad pueda ocurrir.
+
+> **Se aplica la misma regla que el Milestone 6.** Este track es medición-dependiente, y su
+> evidencia de partida no sobrevivió al escrutinio: el corpus de cinco proyectos tiene un n
+> efectivo de 1 sobre el constructo que dice medir. Lo que se envió es lo que se sostiene sin esa
+> medición — argumentos estructurales, un bug vivo, y aritmética con piso legal. Lo que dependía
+> de medir genericidad **no se envió**, y consta por qué en `docs/frontend-design-baseline.md`.
+
+- [x] **43. Reparar el gate de aprobación visual** · hecho 2026-09-11, v1.20.0 — el gate vivía en `EPIC_LOOP.md`, el archivo del epic-agent, que es un subagente no interactivo, mientras `build/SKILL.md` le ordenaba marcar `[x]` antes de reportar: contradicción cerrada que lo hacía inejecutable, y era el único gate del framework sin artefacto durable.
+  El epic-agent construye el showcase y reporta `DONE: pendiente de aprobación visual` (sub-forma, sin cuarto estado terminal); el coordinador —que sí habla con el usuario— corre el gate y escribe `VISUAL_APPROVAL: <sha>` en `_planning.md`. Un epic de fundación capa la tanda a N=1.
+  `Fuente: frontend-design-track §12.4` · `Esfuerzo: bajo` · `Depende de: —`
+
+- [x] **44. `Tipo:` de epic + orden design-system→páginas mecánico** · hecho 2026-09-11, v1.20.0 — `spec-set-check.js` C-design bloquea un epic `Tipo: pagina` cuyo epic `Tipo: design-system` no registre `VISUAL_APPROVAL`. Se ancla en el registro de aprobación y **nunca** en el checkbox: el epic-agent escribe su propio `[x]`, así que copiar la simetría de C1-consume habría reproducido el bug.
+  Opt-in por construcción: sin línea `Tipo:` todo epic es `backend`, ningún ROADMAP anterior tiene epics `pagina`, y el check no dispara. Sin migración ni backfill de aprobaciones que no dejaron sha.
+  `Fuente: frontend-design-track §12.4 (efecto de segundo orden)` · `Esfuerzo: bajo` · `Depende de: 43`
+
+- [x] **45. Captura de marca en la Fase 01** · hecho 2026-09-11, v1.20.0 — `discover` nunca preguntaba por tono ni identidad, y la plantilla de Fase 03 sólo aceptaba referencias que el usuario proveyera, prohibiendo inventarlas sin ofrecer de dónde derivarlas. Sección `## Identidad de Marca` con IDs `MK-nnn`; un campo sin respuesta se escribe `sin definir` y **no lo rellena el agente**: un hueco visible es información, uno rellenado viaja como decisión del usuario.
+  `Fuente: frontend-design-track §12.3` · `Esfuerzo: bajo` · `Depende de: —`
+
+- [x] **46. Gramática canónica del mapa de navegación + plantillas de la espina** · hecho 2026-09-11, v1.20.0 — no había gramática que leer: no existía `NAVIGATION_MAP_TEMPLATE.md` y la skill ofrecía dos sitios donde escribirlo. Tabla de cinco columnas como única fuente legible por máquina. `DESIGN_SYSTEM_TEMPLATE.md` reescrita (tres capas de token, modo oscuro **enumerado**, nivel `domain` obligatorio, gobernanza), más `COMPONENT_REFERENCE_TEMPLATE.md` y `BRAND_BRIEF_TEMPLATE.md`. Ambas plantillas de diseño entran al manifiesto de esquema, que nunca las vigiló.
+  `Fuente: frontend-design-track §12.5` · `Esfuerzo: medio` · `Depende de: 45`
+
+- [x] **47. `design-lint` y `design-inventory` — verificar, no derivar** · hecho 2026-09-11, v1.20.0 — el contraste como gate bloqueante con **piso de pares obligatorios** (sin él itera el conjunto vacío y emite PASS sobre un sistema que no declara nada), corriendo dos veces, una por modo. El inventario se **verifica**: derivarlo exigía leer enums de una celda de texto libre y habría emitido inventarios vacíos en silencio. Una gramática no reconocida es `UNVERIFIABLE` ruidoso, nunca un PASS vacío.
+  **Sin gate de genericidad:** la medida por ejes se prototipó contra los cinco proyectos y no separa las clases — el detector eligió como "primario" un token de dominio y el rojo de error. El rol vive en el nombre del token, no en el valor. Se descartó la medida entera en vez de ajustar el umbral, y no se envió ni como señal.
+  `Fuente: frontend-design-track §12.2, §12.5; D8` · `Esfuerzo: medio` · `Depende de: 46`
+
+- [x] **48. `ux-design` reescrita — tres niveles y gate de procedencia** · hecho 2026-09-11, v1.20.0 — escrita contra un RED de seis escenarios de presión, como exige la Ley de Hierro de `write-skill`. Las seis racionalizaciones capturadas están en su tabla de Red Flags con su contra: *"lo propongo, que es una cosa distinta"*, *"un campo que existe es un permiso"*, *"es un andamio"*, *"no lo invento, lo estoy nombrando"*, un ΔL estimado a ojo con la forma correcta, y *"pasa en verde"* sabiendo que el check se auto-omite.
+  El RED encontró además que `BRAND_BRIEF_TEMPLATE.md` y los dos linters existían y **ninguna skill los citaba**.
+  `Fuente: frontend-design-track §12.3; write-skill Iron Law` · `Esfuerzo: alto` · `Depende de: 46, 47`
+
+- [x] **49. Canal por componente: Design Surface Resolution y frontera de confianza** · hecho 2026-09-11, v1.20.0 — el pilar que sobrevivió a la revisión (el inventario como input del `spec-planner`) no tenía tubería: sus condicionales de frontend eran una lista cerrada y tiene prohibido leer código. Cuarta instancia del patrón resolver. Bloque "For ux-implementer" en el Dispatch Manifest, que no existía.
+  **Frontera de confianza:** el material que baja por canal lo escribió otra persona y entraba directo al contexto de agentes construidos para obedecerlo; ahora va en valla explícita. Lo `medido del DOM` no lo pisa ningún pull.
+  `Fuente: frontend-design-track §12.5; §2.2 (restricción de sesión)` · `Esfuerzo: medio` · `Depende de: 48`
+
+- [x] **50. Eliminar `handoff-ingest`; canales y migraciones** · hecho 2026-09-11, v1.20.0 — BREAKING: se elimina `/specture:handoff-ingest`. El formato al que estaba clavada cambió tres veces en cuatro meses y ningún nivel vivo lo necesita. Sobreviven sus cuatro reglas que sí valían, en `ux-design/CHANNELS.md`.
+  Migraciones `1.20-design-channel` (detecta el canal desde archivos ya en disco) y `1.20-design-spine` (mueve los documentos por componente y **reescribe las citas** — sin eso, un ERROR `broken-path` por cita en cada corrida). Probadas en seco contra los cinco proyectos reales.
+  `Fuente: frontend-design-track §2.4, §7; D2` · `Esfuerzo: medio` · `Depende de: 48, 49`
+
+- [x] **51. Métricas de la Fase 03** · hecho 2026-09-11, v1.20.0 — archivo hermano de las de build, no el mismo: una corrida de diseño no tiene `epic`, el lector descarta toda línea sin ese campo, y si se le inventara uno el agregado falsearía la lectura del Spec Planning Gate. Sin esto, si el gate de cobertura debe bloquear o sólo reportar sólo podría cerrarse por opinión.
+  `Fuente: frontend-design-track §13; D5` · `Esfuerzo: bajo` · `Depende de: 47`
+
+### Lo que este milestone deliberadamente NO envió
+
+- **Un gate de genericidad** (ítem 47): la medida no separa las clases. D8 se cierra como *no medir*.
+- **El ledger de defaults prohibidos sobre `design_system.md`**: nueve de diez entradas no disparan en ningún proyecto real, las dos que disparan son falsos positivos, y no caza el caso que motivó todo. Sus tells son artefactos de clases CSS y un design system es un documento de especificación. Sobrevive como `design-lint tokens` sobre código, midiendo **adherencia a tokens**, WARNING y nunca bloqueante.
+- **El push código → herramienta externa**: exige un permiso durable que no se puede emitir desde un subagente, y el epic de fundación corre entero dentro de uno.
+- **Generación aritmética de rampas**: el contraste sí, las rampas en prosa.
+
+---
+
 ## Apéndice A — Decisiones que condicionan el orden
 
 > **A1-A5 cerradas el 2026-08-28** (la recomendación fue aceptada en las cinco; ver
@@ -629,3 +684,4 @@ vuelve automática después).
 | `spec-planning-gate-review.md` (C-1…C-9, M1-M7, G1-G12, P0-P4) | 1, 2, 13, 14, 15, 17, 19 (M7), 21 (M1), 24 (M6), 29 (M5), 30 (C-6), 32 (M2), 33 (M4), 34 (G7), 36 (G5), 37 (C-9), 38 (G8), 40 (G9), 41, 42 |
 | `psikora-scale-review.md` (N1-N10) | 3 (N4), 4 (N9), 5 (N5), 6/10 (N8), 11 (N7), 16 (N2), 18 (N10), 35 (N6), 38 (N1), 39 (N3) — §5 (acciones locales) → plan en el repo de Psikora |
 | `doctor-and-migrations-design.md` (§3-§7) | 5, 6, 7, 8, 9, 11, 12, 38, Apéndice A1-A5 |
+| `frontend-design-track-design.md` (§12 = revisión adversarial) + `frontend-design-baseline.md` | 43, 44, 45, 46, 47, 48, 49, 50, 51 — §5 y §8 del documento quedan **superados** por lo que se envió: tres de sus propuestas cayeron por medición y una cuarta por viabilidad |
