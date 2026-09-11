@@ -129,7 +129,7 @@ test("2.0-design-spine rewrites every citation — sin esto el corpus lint emite
   const ds = contextFor(root).read("docs/03-ux-ui/design_system.md");
   assert.match(ds, /docs\/03-ux-ui\/components\/CupoProgress\.md/);
   assert.ok(!ds.includes("handoff/components"), ds);
-  assert.match(ds, /design_system\.md §3 \(inventario\)/, "el mapeo apunta al inventario");
+  assert.ok(ds.includes("el mapeo en `docs/03-ux-ui/design_system.md`."), "el andamiaje se reemplaza por una RUTA, no por prosa: " + ds);
 });
 
 test("2.0-design-spine names the scaffolding to remove and verifies, then is idempotent", () => {
@@ -141,6 +141,39 @@ test("2.0-design-spine names the scaffolding to remove and verifies, then is ide
   const before = snapshot(root);
   spine.apply(contextFor(root));
   assert.deepEqual(snapshot(root), before, "idempotente");
+});
+
+test("2.0-design-spine no toca la historia: reviews, debug logs y specs de epics cerrados quedan como estaban", () => {
+  const REVIEW = "docs/07-reviews/review-button-2026-07-13.md";
+  const LOG = "docs/06-debug-logs/2026-07-20-spinner.md";
+  const CLOSED = "docs/05-specs/design-system/button.spec.md";
+  const cita = "ver `docs/03-ux-ui/handoff/components/forms/FranjaEditor.reference.md:12` y `docs/03-ux-ui/handoff-mapping.md:77-78`\n";
+  const root = makeProject({ ...MIRROR_PROJECT, [REVIEW]: cita, [LOG]: cita, [CLOSED]: cita });
+  const result = spine.apply(contextFor(root));
+  const ctx = contextFor(root);
+
+  for (const rel of [REVIEW, LOG, CLOSED]) {
+    assert.equal(ctx.read(rel), cita, rel + " es el registro de lo que era cierto en su fecha, no se reescribe");
+  }
+  assert.ok(!ctx.read("docs/03-ux-ui/design_system.md").includes("handoff/components"), "el documento vivo sí se reescribe");
+  assert.ok(result.notes.some((n) => n.includes("VIVOS")), JSON.stringify(result.notes));
+  assert.equal(spine.verify(ctx), true, "una cita en la historia no puede bloquear el verify");
+});
+
+test("2.0-design-spine: un glob que no tiene destino único no rompe el verify", () => {
+  const root = makeProject({ ...MIRROR_PROJECT, "docs/03-ux-ui/inventario.md": "todos en `docs/03-ux-ui/handoff/components/domain/*.reference.md`\n" });
+  spine.apply(contextFor(root));
+  // apply no puede reescribirlo — no hay un destino único — así que verify tampoco puede exigirlo.
+  assert.equal(spine.verify(contextFor(root)), true);
+});
+
+test("2.0-design-spine no pega el sufijo de una cita al destino del andamiaje", () => {
+  const root = makeProject({ ...MIRROR_PROJECT, "docs/03-ux-ui/notas.md": "`docs/03-ux-ui/handoff-mapping.md:77-78` y `docs/03-ux-ui/handoff-mapping.md` §3\n" });
+  spine.apply(contextFor(root));
+  const t = contextFor(root).read("docs/03-ux-ui/notas.md");
+  assert.ok(t.includes("`docs/03-ux-ui/design_system.md:77-78`"), t);
+  assert.ok(t.includes("`docs/03-ux-ui/design_system.md` §3"), t);
+  assert.ok(!/§3[^\n]*§3/.test(t), "la sección no puede quedar dos veces: " + t);
 });
 
 test("2.0-design-spine is n/a on a project with no mirror", () => {

@@ -15,6 +15,8 @@
 // deletion primitive (same constraint as `1.9-tombstones`, which archives by writing elsewhere).
 // Removing them is one `git rm`, reported in the notes.
 
+const { isLivingDoc } = require("../hooks/lib/doctor/project");
+
 const MIRROR = "docs/03-ux-ui/handoff";
 const COMPONENTS = "docs/03-ux-ui/components";
 const SCAFFOLD = [
@@ -47,6 +49,25 @@ function planMove(rel) {
 function moves(ctx) {
   return (ctx.list(MIRROR) || []).map(planMove).filter(Boolean);
 }
+
+// Only LIVING documents get their citations rewritten — the same set the corpus lint holds to
+// account (`isLivingDoc`). A review, a debug log or the spec of a closed epic records what was
+// true on its date: rewriting a path inside it makes it claim it cited a file that did not exist
+// yet. The lint already ignores those files, so there is nothing to fix there either.
+// `.specture/*.yml` joins the set: config is always current, and `isLivingDoc` only admits .md.
+function rewritable(rel) {
+  if (rel.startsWith(MIRROR)) return false;
+  if (rel.startsWith(".specture/") && rel.endsWith(".yml")) return true;
+  return isLivingDoc(rel);
+}
+
+// Scaffolding is replaced by a PATH, never by prose. A prose destination produced
+// `design_system.md §3 (inventario) §3` — the section twice — and glued a line range onto a
+// section reference (`…:77-78`). Where the content went is said in the notes, once.
+const SCAFFOLD_MOVED_TO = [
+  ["docs/03-ux-ui/handoff-mapping.md", "docs/03-ux-ui/design_system.md"],
+  ["docs/03-ux-ui/fidelity-checklist.md", ".specture/rules.yml"]
+];
 
 function header(move) {
   return [
@@ -93,21 +114,21 @@ module.exports = {
     const byOldPath = new Map(planned.map((m) => [m.source, m.target]));
     let rewritten = 0;
     for (const rel of [...(ctx.list("docs") || []), ...(ctx.list(".specture") || [])]) {
-      if (!rel.endsWith(".md") && !rel.endsWith(".yml")) continue;
-      if (rel.startsWith(MIRROR)) continue;
+      if (!rewritable(rel)) continue;
       const text = ctx.read(rel);
       if (!text || !text.includes("03-ux-ui/handoff")) continue;
       let next = text;
       for (const [oldPath, target] of byOldPath) next = next.split(oldPath).join(target);
-      next = next
-        .split("docs/03-ux-ui/handoff-mapping.md").join("docs/03-ux-ui/design_system.md §3 (inventario)")
-        .split("docs/03-ux-ui/fidelity-checklist.md").join(".specture/rules.yml (reglas `R-*` con tag `frontend`)");
+      for (const [oldPath, target] of SCAFFOLD_MOVED_TO) next = next.split(oldPath).join(target);
       if (next !== text) {
         ctx.write(rel, next);
         rewritten++;
       }
     }
-    if (rewritten > 0) notes.push(`${rewritten} documento(s) con citas reescritas a las rutas nuevas`);
+    if (rewritten > 0) {
+      notes.push(`${rewritten} documento(s) VIVOS con citas reescritas — la historia (reviews, debug logs, specs de epics cerrados) no se toca: es el registro de lo que era cierto entonces`);
+      notes.push("el inventario del handoff vive ahora en `docs/03-ux-ui/design_system.md` §3, y la checklist de fidelidad en las reglas `R-*` con tag `frontend` de `.specture/rules.yml`");
+    }
 
     // 3. Name what is left to remove — the context has no deletion primitive.
     const leftovers = [...SCAFFOLD.filter((f) => ctx.exists(f)), ...(ctx.exists(`${MIRROR}/components`) ? [`${MIRROR}/`] : [])];
@@ -119,10 +140,15 @@ module.exports = {
   verify(ctx) {
     const planned = moves(ctx);
     if (planned.some((m) => !ctx.exists(m.target))) return false;
-    // No living document may still cite a moved path.
+    // No LIVING document may still cite a path this migration actually moved. Checking for the
+    // SHAPE of an old path would fail on what apply cannot rewrite — a glob like
+    // `handoff/components/domain/*.reference.md` has no single destination — making verify
+    // stricter than apply can ever satisfy.
     for (const rel of [...(ctx.list("docs") || []), ...(ctx.list(".specture") || [])]) {
-      if (rel.startsWith(MIRROR) || (!rel.endsWith(".md") && !rel.endsWith(".yml"))) continue;
-      if (/03-ux-ui\/handoff\/components\/[^\s)`"']+\.reference\.md/.test(ctx.read(rel) || "")) return false;
+      if (!rewritable(rel)) continue;
+      const text = ctx.read(rel) || "";
+      if (planned.some((m) => text.includes(m.source))) return false;
+      if (SCAFFOLD_MOVED_TO.some(([oldPath]) => text.includes(oldPath))) return false;
     }
     return true;
   }
