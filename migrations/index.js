@@ -32,7 +32,8 @@ const catalog = [
   require("./1.20-brand-brief"),
   require("./1.20-design-system-layers"),
   require("./1.20-design-channel"),
-  require("./1.20-design-spine")
+  require("./1.20-design-spine"),
+  require("./1.20-design-metrics-tracked")
 ];
 
 // Stable sort by `since` only: entries that share a version keep their declared

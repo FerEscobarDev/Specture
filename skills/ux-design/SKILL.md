@@ -136,6 +136,20 @@ Then the judgment-only points:
 - [ ] Every number in §2.3 and §6 came from the linter, or says `sin verificar`.
 - [ ] No code, snippets or pseudo-code anywhere.
 
+### Step 6.5 — Record the run (one line, never blocks)
+
+Append **one JSON line** to `docs/.specture-meta/design-metrics.jsonl` (create the directory if absent; fail-open). It is a sibling of the build metrics on purpose — a design run has no `epic`, and the build reader discards lines without one.
+
+```json
+{"phase":"design","ts":"<ISO-8601>","level":"A|B|C","brand_provenance":"usuario|mixto|PROPUESTO_POR_EL_AGENTE",
+ "directions_generated":3,"directions_regenerated":0,"components_total":N,"components_deferred":N,
+ "enums_total":N,"enums_covered":N,"contrast_blockers":N,"allow_overrides":N,"outcome":"completa|INCOMPLETA|BLOQUEADA-MARCA|BLOQUEADA-ESPERANDO-DISEÑO"}
+```
+
+A field you did not measure is `null`, never `0` — zero is a measurement. Read it back with `node "${CLAUDE_PLUGIN_ROOT}/hooks/lib/design-metrics.js"`.
+
+Without this, whether the coverage gate should block or only report, and whether a genericity measure is worth attempting at all, can only ever be closed by opinion.
+
 ### Step 7 — Hand-off
 
 Announce in Spanish, and say the true state:

@@ -23,7 +23,7 @@ test("a project built from the current templates detects every migration as done
     ".specture/settings.yml": template("settings.template.yml").replace('"[X.Y.Z]"', pluginVersion),
     ".specture/rules.yml": template("rules.template.yml"),
     ".specture/decisions/001-initial-stack.md": template("decisions/000-template.md"),
-    ".gitignore": ".specture/state/\ndocs/.specture-meta/*\n!docs/.specture-meta/build-metrics.jsonl\n"
+    ".gitignore": ".specture/state/\ndocs/.specture-meta/*\n!docs/.specture-meta/build-metrics.jsonl\n!docs/.specture-meta/design-metrics.jsonl\n"
   });
   const ctx = contextFor(projectRoot);
   const statuses = catalog.map((m) => ({ id: m.id, status: m.detect(ctx) }));
