@@ -647,6 +647,12 @@ de verdad pueda ocurrir.
   **Invierte una doctrina declarada** y se dice en voz alta: la línea 3 de `conventions.template.md` prometía que ante un conflicto gana la convención del proyecto. Ahora tiene una excepción. Sin esa frase el núcleo se contradecía en silencio con su propia plantilla. §2 gana el **mapa de ubicaciones** que `R-FILE-003` cita, con `sin definir` como valor legal y visible — la señal de preguntar, nunca un hueco que la IA rellene.
   `Fuente: pedido del usuario, 2026-09-11` · `Esfuerzo: medio` · `Depende de: 39 (rules.yml)`
 
+- [x] **53. Cierre de huecos de la Milestone 7** · hecho 2026-09-11, v2.1.0 — simular `doctor migrate --apply` contra una copia real de CEAgenda (44 documentos de componente, 46 citas) y preguntarse *"¿cómo hace esto un usuario que no conoce el interior?"* destapó cinco defectos que ninguna prueba en seco había ejercido.
+  **El peor no era un bug de código sino un gate que pasaba en vacío:** el de procedencia de marca contaba campos `MK-*` que dijeran `sin definir`, así que en un proyecto sin la sección `## Identidad de Marca` —los cinco reales— la cuenta daba **cero** y el gate pasaba. Una sección ausente no es "cero campos indefinidos": es la forma más fuerte de no tener marca. Ahora se evalúa **antes** del conteo y bloquea.
+  `2.0-brand-brief` nombraba dueña a `discover`, cuya propia descripción dice que se invoca cuando `business_requirements.md` **no** existe: en un proyecto existente nunca se vuelve a entrar ahí. `discover` gana modo sólo-marca (`--marca`), cinco preguntas, sin re-abrir el cuestionario. `ux-design` recoge la suya en el Step 4 y la registra con `migrate --verify`, copiando el patrón que `knowledge` ya tenía. El catálogo pasa a dar **el comando**, no el nombre de una skill.
+  `design-lint contrast` sobre un sistema sin capa semántica emitía ocho BLOCKERs que repetían el mismo hecho ocho veces sin decir la causa; ahora colapsa a uno que nombra la migración. Y el `git rm -r` del andamiaje, que se decía una vez y nunca más, es `handoff-residue` en el doctor — que **sólo** dispara una vez existe la espina, porque antes el espejo es la única copia.
+  `Fuente: simulación sobre CEAgenda + pregunta del usuario, 2026-09-11` · `Esfuerzo: medio` · `Depende de: 43-52`
+
 ### Lo que este milestone deliberadamente NO envió
 
 - **Un gate de genericidad** (ítem 47): la medida no separa las clases. D8 se cierra como *no medir*.

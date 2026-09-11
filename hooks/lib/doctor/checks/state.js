@@ -70,8 +70,33 @@ function worktrees(project) {
   return [finding("WARNING", "worktree-residue", ".claude/worktrees/", `${leftovers.length} file(s) left behind by agent worktrees`, "run `git worktree prune` and delete .claude/worktrees/")];
 }
 
+// The handoff scaffolding that `2.0-design-spine` moves aside but cannot delete: a migration
+// context has no deletion primitive, so the migration names the files once, in the output of the
+// run that applied it, and never again — its `verify()` only looks at the moved documents and the
+// rewritten citations, so it reports `done` with the scaffolding still on disk. Said once is said
+// to nobody: this reports it on every run until it is gone, and it looks at disk rather than at
+// `.specture/migrations.log`, so a half-finished deletion is caught too.
+const HANDOFF_SCAFFOLD = [
+  "docs/03-ux-ui/handoff-mapping.md",
+  "docs/03-ux-ui/fidelity-checklist.md",
+  "docs/03-ux-ui/design_specs_for_ai.md"
+];
+
+function handoffResidue(project) {
+  // Only AFTER the spine exists. Before the migration runs, the mirror is the only copy of work
+  // that was measured off a running DOM and that no channel returns — telling the user to delete
+  // it then would destroy it.
+  if (walk(project.root, "docs/03-ux-ui/components").length === 0) return [];
+  const files = HANDOFF_SCAFFOLD.filter((rel) => project.exists(rel));
+  const mirror = walk(project.root, "docs/03-ux-ui/handoff");
+  if (files.length === 0 && mirror.length === 0) return [];
+  const targets = [...files, ...(mirror.length > 0 ? ["docs/03-ux-ui/handoff/"] : [])];
+  const what = mirror.length > 0 ? `${files.length} scaffolding file(s) and the ${mirror.length}-file handoff mirror` : `${files.length} scaffolding file(s)`;
+  return [finding("WARNING", "handoff-residue", "docs/03-ux-ui/", `${what} left after the design spine migration — the per-component documents already live in docs/03-ux-ui/components/`, `delete them: \`git rm -r ${targets.join(" ")}\` (a migration cannot delete files, so this is the one step that stays manual)`)];
+}
+
 function run(project) {
-  return [...seal(project), ...roadmap(project), ...docsIndex(project), ...worktrees(project)];
+  return [...seal(project), ...roadmap(project), ...docsIndex(project), ...worktrees(project), ...handoffResidue(project)];
 }
 
 module.exports = { run };

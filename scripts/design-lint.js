@@ -137,6 +137,21 @@ function checkContrast(text) {
     return { status: "UNVERIFIABLE", reason: "no se reconoció ninguna tabla de tokens — ¿sigue design_system.md la gramática de DESIGN_SYSTEM_TEMPLATE.md §2?", findings };
   }
 
+  // When NOT ONE of the mandatory tokens is declared, the design system has no semantic layer at
+  // all. Enumerating the eight missing tokens would state the same fact eight times and still not
+  // say WHY, which is the question the reader has. That cause is computable from this very text —
+  // the same test the `2.0-design-system-layers` migration runs — so it is named here rather than
+  // left for the reader to deduce from a wall of BLOCKERs. A PARTIAL layer keeps the per-token
+  // enumeration: there the list is exactly the right answer.
+  const mandatory = [...new Set(REQUIRED_PAIRS.flatMap((pair) => [pair.fg, pair.bg]))];
+  if (mandatory.every((token) => !declared.has(token))) {
+    findings.push({
+      severity: "BLOCKER",
+      detail: "no hay capa semántica de color: ningún token `color.bg.*` / `color.text.*` / `color.border.*` / `color.focus.*` está declarado, así que no hay un solo par que contrastar. Es la migración de contenido `2.0-design-system-layers` — corré `/specture:ux-design`, que la resuelve con vos sobre los primitivos que ya tenés"
+    });
+    return { status: "FAIL", findings };
+  }
+
   const reported = new Set();
   for (const pair of REQUIRED_PAIRS) {
     for (const missing of [pair.fg, pair.bg].filter((t) => !declared.has(t) && !reported.has(t))) {

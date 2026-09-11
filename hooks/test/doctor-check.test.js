@@ -58,6 +58,32 @@ test("a clean project in sync with the plugin has no findings and exits 0", () =
   assert.equal(json.settingsSource, "settings.yml");
 });
 
+test("handoff-residue: reported once the spine exists, silent before the migration runs", () => {
+  const scaffolding = {
+    "docs/03-ux-ui/handoff-mapping.md": "| pantalla | ruta |\n",
+    "docs/03-ux-ui/fidelity-checklist.md": "- [ ] Button\n",
+    "docs/03-ux-ui/handoff/components/domain/CupoProgress.reference.md": "## Anatomía\n"
+  };
+
+  // Before `2.0-design-spine` runs, the mirror is the only copy of work measured off a running
+  // DOM that no channel returns. Telling the user to delete it here would destroy it.
+  const beforeMigration = createProject({ ...CLEAN, ...scaffolding });
+  assert.equal(
+    runDoctor(beforeMigration).json.findings.filter((f) => f.check === "handoff-residue").length,
+    0,
+    "no spine yet — the mirror is not residue"
+  );
+
+  const migrated = createProject({ ...CLEAN, ...scaffolding, "docs/03-ux-ui/components/CupoProgress.md": "# CupoProgress\n" });
+  const found = runDoctor(migrated).json.findings.find((f) => f.check === "handoff-residue");
+  assert.ok(found, JSON.stringify(runDoctor(migrated).json.findings));
+  assert.equal(found.severity, "WARNING", "nothing is broken — there is rubbish to delete");
+  assert.match(found.action, /git rm -r/);
+  assert.match(found.action, /handoff-mapping\.md/);
+  assert.match(found.action, /docs\/03-ux-ui\/handoff\//, "the mirror directory too");
+  assert.ok(!/design_specs_for_ai/.test(found.action), "only what is actually on disk is named");
+});
+
 test("reports broken paths, placeholders, duplicate ADRs, missing statuses, stale seal and missing _current", () => {
   const projectRoot = createProject({
     ...CLEAN,

@@ -1,6 +1,6 @@
 ---
 name: discover
-description: Use when the user wants to start a new project, lift requirements, "levantar requerimientos", "iniciar un proyecto nuevo", "definir el negocio", or whenever `docs/01-requirements/business_requirements.md` does not yet exist. Extracts business rules, user stories, actors, and edge cases through Socratic questioning. Does NOT write code or define technology.
+description: Use when the user wants to start a new project, lift requirements, "levantar requerimientos", "iniciar un proyecto nuevo", "definir el negocio", or whenever `docs/01-requirements/business_requirements.md` does not yet exist. Also runs in brand-only mode on `/specture:discover --marca`, when requirements already exist but have no `## Identidad de Marca` (the content migration `2.0-brand-brief`). Extracts business rules, user stories, actors, and edge cases through Socratic questioning. Does NOT write code or define technology.
 ---
 
 # 01 — Discovery (Business Requirements Lifting)
@@ -23,6 +23,7 @@ Do NOT discuss tech stack, frameworks, libraries, database choices, or code in t
 |-----------|----------|
 | Greenfield (empty project from Bootstrap) | Pure Socratic — start from "describe la idea en 2-3 oraciones" |
 | Adopted (existing code) | First, summarize what you observed in the codebase ("vi que tienes endpoints de Users y un módulo de Billing"), then ask what's missing or what new direction the user wants |
+| **Brand-only** — `business_requirements.md` exists, the stack has a frontend, and there is no `## Identidad de Marca` (`/specture:discover --marca`, or the doctor sent the user here for `2.0-brand-brief`) | Run **only** the five `MK` questions of Topic 7. Do **not** re-open the full questionnaire: the requirements are already lifted and re-asking them is how a user learns to skip this skill. Write the section into the existing document, leave every other section untouched, and go to the Deliverable's step 2b |
 
 ## The Socratic Process
 
@@ -98,6 +99,19 @@ Once you and the user agree the discovery is sufficient (the user explicitly say
    `Exposición`, `UI`/`API-externa` stories missing from **Capacidades de Frontera**, and
    rules / edge cases / exclusions without `RN/CL/FA` IDs. Never re-implement these checks by
    hand, and never hand off with `requirements` findings open — fix and re-run.
+
+2b. **Record the brand migration, when this run wrote `## Identidad de Marca` into a document that
+   did not have it** (brand-only mode, or a re-run over old requirements):
+
+   ```
+   node "${CLAUDE_PLUGIN_ROOT}/scripts/doctor.js" migrate --verify 2.0-brand-brief --by "discover"
+   ```
+
+   (Copilot / Antigravity: `${PLUGIN_ROOT}`; manual `@import` setups: `$SPECTURE_ROOT`.) Commit
+   `.specture/migrations.log` alongside the requirements — the log is tracked and append-only. If
+   `--verify` fails, the section is not what the migration expects: fix it, never log it by hand.
+   In brand-only mode this step and step 3's brand question are the whole Deliverable — skip
+   steps 1 and 4, and tell the user they can go back to `/specture:ux-design`.
 
 3. **Self-review the judgment-only points** (the doctor cannot check these):
    - ¿Alguna regla de negocio se contradice con otra?

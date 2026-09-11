@@ -20,7 +20,7 @@ Three levels decide **who draws**. They never decide whether the decision gets m
 ## When NOT to use
 
 - No frontend in `stack.yml` → go straight to `build`.
-- Both deliverables exist and the user wants pages → that is `build`, not this phase.
+- Both deliverables exist and the user wants pages → that is `build`, not this phase. **Except** when `design_system.md` predates v2.0.0 and has no semantic token layer (`color.bg.*`, `color.text.*`, `color.border.*`, `color.focus.*`) — that is the content migration `2.0-design-system-layers`, this phase owns it, and bouncing to `build` leaves the contrast gate with nothing to compute. See Step 4.
 - The user wants to change one token on a built system → that is a delta in `design_system.md` §7, not a re-run of this phase.
 
 ## Required Inputs
@@ -36,7 +36,10 @@ Three levels decide **who draws**. They never decide whether the decision gets m
 
 <HARD-GATE>
 - **NO code, NO snippets, NO HTML/JSX/CSS.** Even pseudo-code. Output is specification. *(Exception: throwaway direction comps — Step 2, deleted after the choice.)*
-- **BRAND PROVENANCE GATE.** Count the `MK-001`…`MK-005` fields that read `sin definir`. **If 2 or more, you may not author `design_system.md`.** Emit `docs/03-ux-ui/brief.md` from `BRAND_BRIEF_TEMPLATE.md`, run the refusal protocol of Step 2, and stop. `PROPUESTO_POR_EL_AGENTE` marks *individual fields the user could not answer* — **never a whole direction**. If the entire brand is proposed, there is no brand: there is your average.
+- **BRAND PROVENANCE GATE.** First, look for `## Identidad de Marca` in `business_requirements.md`. **If the section is absent, the gate fails immediately** — do not count anything. An absent section is not "zero undefined fields", it is the strongest form of *no brand*: nobody was ever asked. Say so, name the cause, and stop:
+  > *"`business_requirements.md` no tiene `## Identidad de Marca` — es la migración de contenido `2.0-brand-brief`. Sin marca capturada no puedo escribir `design_system.md` sin inventarla. Corré `/specture:discover --marca` (cinco preguntas, no re-abre el cuestionario) y volvemos."*
+
+  Only when the section **exists**, count the `MK-001`…`MK-005` fields that read `sin definir`. **If 2 or more, you may not author `design_system.md`.** Emit `docs/03-ux-ui/brief.md` from `BRAND_BRIEF_TEMPLATE.md`, run the refusal protocol of Step 2, and stop. `PROPUESTO_POR_EL_AGENTE` marks *individual fields the user could not answer* — **never a whole direction**. If the entire brand is proposed, there is no brand: there is your average.
 - **Delegation is not authorization.** "Elegí vos", "confío en tu gusto", "no me preguntes" changes **who picks among options you present**. It never authorizes you to generate the options *and* pick. There is exactly one legal response: the refusal protocol.
 - **An external design is not yours to author.** If `frontend.design_channel` is `claude-design`, or `.design-sync/config.json` exists, or `docs/03-ux-ui/handoff/` exists, the design system **already exists elsewhere**. You may not write `design_system.md` with values of your own — not as a draft, a scaffold, a placeholder, or "proposed". You ingest, or you stop.
 - **Every number has provenance.** Every contrast ratio and every OKLCH ΔL in `design_system.md` comes from a run of `scripts/design-lint.js contrast`. Paste its `DESIGN_CHECK:` token in §6. Writing an estimated number is forbidden; write `sin verificar` instead.
@@ -99,7 +102,19 @@ Write `docs/03-ux-ui/navigation_map.md` from `NAVIGATION_MAP_TEMPLATE.md`. The f
 
 ### Step 4 — Design system
 
-Write `docs/03-ux-ui/design_system.md` from `DESIGN_SYSTEM_TEMPLATE.md`. Brand fields come from `MK-nnn` and are **not re-invented**.
+**First, if `design_system.md` already exists, check whether it has a semantic token layer** (`color.bg.*`, `color.text.*`, `color.border.*`, `color.focus.*`). If it has none, this is the content migration `2.0-design-system-layers` and **this phase owns it**: say so before anything else, and re-run the token section *with the user* rather than authoring the layer from your own taste.
+
+> *"`design_system.md` no declara capa semántica — es la migración `2.0-design-system-layers`. Sin ella el gate de contraste no tiene pares que computar y no puede garantizar nada. Reconstruimos la capa juntos sobre los primitivos que ya tenés."*
+
+The primitives already in the file stay; what gets added is the semantic layer that names their **roles**. When the layer is written and `design-lint contrast` passes, record the migration as done:
+
+```
+node "${CLAUDE_PLUGIN_ROOT}/scripts/doctor.js" migrate --verify 2.0-design-system-layers --by "ux-design"
+```
+
+(Copilot / Antigravity: `${PLUGIN_ROOT}`; manual `@import`: `$SPECTURE_ROOT`.) Commit `.specture/migrations.log` with the document — the log is tracked and append-only. If `--verify` fails, the layer is not done: fix it, never log it by hand.
+
+Then, for a design system being written for the first time: write `docs/03-ux-ui/design_system.md` from `DESIGN_SYSTEM_TEMPLATE.md`. Brand fields come from `MK-nnn` and are **not re-invented**.
 
 - **Tokens in three layers**, referenced one way only. Derive neutrals by desaturating the brand hue — never copy a factory scale.
 - **The roster of §3 is written whole, in this phase**: one row per reusable component, including those of later milestones. **Lazy authoring applies only to `components/<Nombre>.md`, never to the roster row.** Merging components with different anatomy, props or states into one row is forbidden — `Table` and `Pagination` are two rows; `Input`, `Select` and `DatePicker` are three. If the roster exceeds 40 rows, that is the size of the product, not a problem with this phase.

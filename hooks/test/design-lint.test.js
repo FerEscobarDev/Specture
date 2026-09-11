@@ -91,13 +91,38 @@ test("contrast: a system with no token table is UNVERIFIABLE, never a silent PAS
   assert.match(token, /^DESIGN_CHECK: contrast UNVERIFIABLE /);
 });
 
-test("contrast: a single-layer system FAILS on the undeclared floor instead of passing an empty matrix", () => {
+test("contrast: a single-layer system FAILS naming its cause, not eight times the same fact", () => {
   const singleLayer = ["| Token | Valor (HEX) | Uso |", "|---|---|---|", "| `color.primary.500` | #0d9488 | acción |", "| `color.neutral.900` | #0f172a | texto |"].join("\n");
   const root = makeProject({ "docs/03-ux-ui/design_system.md": singleLayer });
   const { status, lines } = run(root, ["contrast"]);
   assert.equal(status, 1, "must not be a PASS over zero pairs");
-  assert.ok(lines.some((l) => /par obligatorio no declarado.*color\.bg\.canvas/.test(l)), lines.join("\n"));
-  assert.ok(lines.some((l) => /par obligatorio no declarado.*color.border.strong/.test(l)));
+  // No semantic layer at all: one BLOCKER that says WHY, and names the migration that fixes it.
+  // Enumerating the eight missing tokens would repeat one fact eight times and still not answer
+  // the reader's question.
+  assert.equal(lines.length, 2, `token + one finding, got:\n${lines.join("\n")}`);
+  assert.match(lines[1], /^BLOCKER no hay capa semántica de color/);
+  assert.match(lines[1], /2\.0-design-system-layers/, "names the content migration");
+  assert.match(lines[1], /\/specture:ux-design/, "and the command that resolves it");
+});
+
+test("contrast: a PARTIAL semantic layer still enumerates the tokens that are missing", () => {
+  // Here the per-token list is exactly the right answer: the layer exists, these two are absent.
+  const partial = [
+    "| Token | Valor (HEX) | Uso |",
+    "|---|---|---|",
+    "| `color.bg.canvas` | #ffffff | fondo |",
+    "| `color.bg.surface` | #ffffff | superficie |",
+    "| `color.text.primary` | #0f172a | texto |",
+    "| `color.text.muted` | #475569 | auxiliar |",
+    "| `color.text.on-accent` | #ffffff | sobre acción |",
+    "| `color.action.primary` | #0d9488 | acción |"
+  ].join("\n");
+  const root = makeProject({ "docs/03-ux-ui/design_system.md": partial });
+  const { status, lines } = run(root, ["contrast"]);
+  assert.equal(status, 1);
+  assert.ok(lines.some((l) => /par obligatorio no declarado.*color\.border\.strong/.test(l)), lines.join("\n"));
+  assert.ok(lines.some((l) => /par obligatorio no declarado.*color\.focus\.ring/.test(l)));
+  assert.ok(!lines.some((l) => /no hay capa semántica/.test(l)), "the layer is not absent — do not collapse");
 });
 
 test("contrast: a complete system with passing pairs is a PASS with a 12-hex token", () => {

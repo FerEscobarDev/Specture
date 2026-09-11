@@ -26,7 +26,7 @@ module.exports = {
   since: "2.0.0",
   kind: "content",
   title: "Brand identity in business_requirements.md for frontend projects that predate v2.0.0",
-  ownerSkill: "discover — adds `## Identidad de Marca` (MK-nnn) by asking the user; `ux-design` reads it in Phase 3",
+  ownerSkill: "`/specture:discover --marca` — five questions, brand-only mode: it does NOT re-open the questionnaire. Writes `## Identidad de Marca` (MK-nnn) from the user's answers; `ux-design` refuses to author a design system without it",
   detect(ctx) {
     if (!ctx.exists(REQUIREMENTS)) return "n/a";
     if (!hasFrontend(ctx.stackText || "")) return "n/a";

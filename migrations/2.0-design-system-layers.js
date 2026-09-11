@@ -21,7 +21,7 @@ module.exports = {
   since: "2.0.0",
   kind: "content",
   title: "Semantic token layer (surface / text / border / on-accent / focus) in design_system.md",
-  ownerSkill: "ux-design — re-runs the token section with the user; the contrast check needs semantic pairs to have anything to compute",
+  ownerSkill: "`/specture:ux-design` — Step 4 rebuilds the semantic layer with the user over the primitives already in the file; without it `design-lint contrast` has not one pair to compute and blocks",
   detect(ctx) {
     if (!ctx.exists(DESIGN_SYSTEM)) return "n/a";
     return SEMANTIC.test(ctx.read(DESIGN_SYSTEM) || "") ? "done" : "pending";
