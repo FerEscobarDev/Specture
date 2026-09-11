@@ -6,8 +6,14 @@
 //   rule-length   WARNING  a `rule` exceeds RULE_MAX_CHARS or a §4 deny-list item spans more
 //                          than DENY_LIST_MAX_LINES physical lines — the story belongs in an
 //                          ADR / debug log linked from `source`, never inline (roadmap item 39)
+//   rules-core-missing   ERROR  a `framework-core` invariant is absent (since v1.20.0)
+//   rules-core-weakened  ERROR  a `framework-core` invariant declares a severity below its floor
+//
+// The core is the one thing in this file the framework owns rather than the team: a project may
+// tighten it and may add rules of its own, but removing an id or lowering a severity breaks the
+// contract every Specture project is meant to share. `/specture:doctor migrate` restores it.
 
-const { readRules, lintRules, denyListItems, DENY_LIST_MAX_LINES } = require("../../rules");
+const { readRules, lintRules, lintCore, denyListItems, DENY_LIST_MAX_LINES } = require("../../rules");
 
 const RULES = ".specture/rules.yml";
 const CONVENTIONS = ".specture/conventions.md";
@@ -22,7 +28,9 @@ function rulesFile(project) {
   if (rules.error) {
     return [finding("ERROR", "rules-schema", RULES, `does not parse: ${rules.error.message}`, "fix the file — the grammar is in its header comment (one `- id:` item per rule, `key: value` lines, no multi-line values)")];
   }
-  return lintRules(rules.parsed).map((f) => finding(f.check === "rule-length" ? "WARNING" : "ERROR", f.check, RULES, f.line ? `${f.detail} (line ${f.line})` : f.detail, f.action));
+  const lint = lintRules(rules.parsed).map((f) => finding(f.check === "rule-length" ? "WARNING" : "ERROR", f.check, RULES, f.line ? `${f.detail} (line ${f.line})` : f.detail, f.action));
+  const core = lintCore(rules.parsed.rules).map((f) => finding("ERROR", f.check, RULES, f.line ? `${f.detail} (line ${f.line})` : f.detail, f.action));
+  return [...lint, ...core];
 }
 
 function denyList(project) {

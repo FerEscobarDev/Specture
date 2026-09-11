@@ -4,6 +4,30 @@
 
 schema: 1
 rules:
+  - id: R-FILE-001
+    tags: [frontend, mobile]
+    rule: "Un componente por archivo: el archivo de un componente no define ni exporta otro componente."
+    verify: "archivos de componente en el diff: exactamente un componente definido y exportado por archivo"
+    severity: BLOCKER
+    source: "framework-core · conventions.md §2"
+  - id: R-FILE-002
+    tags: [backend]
+    rule: "Una clase, servicio o módulo exportado por archivo: un archivo no agrupa varias unidades con responsabilidades distintas."
+    verify: "archivos de backend en el diff: una sola unidad exportada por archivo"
+    severity: BLOCKER
+    source: "framework-core · conventions.md §2"
+  - id: R-FILE-003
+    tags: [all]
+    rule: "Interfaces, types, constantes y hooks/composables viven fuera del archivo del componente o de la clase, en la ubicación que declara conventions.md §2."
+    verify: "el archivo de un componente o clase no exporta types, interfaces, constantes ni hooks; están en la ruta del mapa de §2"
+    severity: BLOCKER
+    source: "framework-core · conventions.md §2"
+  - id: R-SOLID-001
+    tags: [all]
+    rule: "SOLID en frontend y backend: una razón de cambio por unidad, extensión sin modificación, sustituibilidad, interfaces segregadas, dependencias hacia abstracciones."
+    verify: "unidades nuevas o modificadas en el diff; se cita el principio concreto que se incumple"
+    severity: IMPORTANT
+    source: "framework-core"
   - id: R-1
     tags: [backend, api, http]
     rule: "Toda operación HTTP identifica al empleado por el header X-Employee-Id; sin header → 401 UNAUTHENTICATED"

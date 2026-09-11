@@ -1,5 +1,6 @@
 # Specture — Project Rules (invariantes R-*)
-# Owner: the team (content) · the framework (schema). Read by the build coordinator
+# Owner: the team (content) · the framework (schema AND the `framework-core` rules). Read by
+# the build coordinator
 # (Rules Resolution → a `RULES_RESOLVED` block per dispatch), the doctor (`rules-schema`,
 # `rule-length`) and knowledge capture (new invariants land here, never inline in
 # conventions.md). Agents never open this file: the orchestrator injects only the rules
@@ -17,11 +18,40 @@
 #       verify: "…"             # how the reviewer checks it (optional)
 #       severity: BLOCKER       # BLOCKER | IMPORTANT (the reviewer uses it as declared)
 #       source: "ADR-004 §DTOs" # where the story lives: ADR, debug log, conventions § (optional)
+#
+# THE `framework-core` RULES BELOW ARE MANDATORY IN EVERY SPECTURE PROJECT. A project may
+# TIGHTEN them (raise a severity, add tags, sharpen the wording) and may add rules of its own.
+# Removing an id or lowering a severity is an ERROR of the doctor (`rules-core-missing`,
+# `rules-core-weakened`) and `/specture:doctor migrate` restores it.
 
 schema: 1
-rules: []
+rules:
+  - id: R-FILE-001
+    tags: [frontend, mobile]
+    rule: "Un componente por archivo: el archivo de un componente no define ni exporta otro componente."
+    verify: "archivos de componente en el diff: exactamente un componente definido y exportado por archivo"
+    severity: BLOCKER
+    source: "framework-core · conventions.md §2"
+  - id: R-FILE-002
+    tags: [backend]
+    rule: "Una clase, servicio o módulo exportado por archivo: un archivo no agrupa varias unidades con responsabilidades distintas."
+    verify: "archivos de backend en el diff: una sola unidad exportada por archivo"
+    severity: BLOCKER
+    source: "framework-core · conventions.md §2"
+  - id: R-FILE-003
+    tags: [all]
+    rule: "Interfaces, types, constantes y hooks/composables viven fuera del archivo del componente o de la clase, en la ubicación que declara conventions.md §2."
+    verify: "el archivo de un componente o clase no exporta types, interfaces, constantes ni hooks; están en la ruta del mapa de §2"
+    severity: BLOCKER
+    source: "framework-core · conventions.md §2"
+  - id: R-SOLID-001
+    tags: [all]
+    rule: "SOLID en frontend y backend: una razón de cambio por unidad, extensión sin modificación, sustituibilidad, interfaces segregadas, dependencias hacia abstracciones."
+    verify: "unidades nuevas o modificadas en el diff; se cita el principio concreto que se incumple"
+    severity: IMPORTANT
+    source: "framework-core"
 
-# Examples — remove the leading `# ` (and the `rules: []` line above) to activate:
+# Examples of PROJECT rules — append them to `rules:` above (the core stays):
 # rules:
 #   - id: R-1
 #     tags: [dto, domain]

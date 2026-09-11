@@ -1,6 +1,6 @@
 # Convenciones del Proyecto
 
-> Este archivo describe las convenciones específicas que el equipo (humano + IA) debe seguir en este proyecto. Es leído por todos los skills y agentes de Specture antes de generar código, specs o reviews. Cuando una convención aquí entra en conflicto con una regla genérica del framework, **gana esta convención**.
+> Este archivo describe las convenciones específicas que el equipo (humano + IA) debe seguir en este proyecto. Es leído por todos los skills y agentes de Specture antes de generar código, specs o reviews. Cuando una convención aquí entra en conflicto con una regla genérica del framework, **gana esta convención** — con una excepción: las reglas `framework-core` de `.specture/rules.yml` (§12) son obligatorias en todo proyecto Specture y sólo se pueden **endurecer**, nunca quitar ni ablandar.
 
 ## 1. Naming
 
@@ -16,6 +16,27 @@
 - **Estructura por:** [feature | layer | módulo de dominio]
 - **Co-localización:** [tests junto al código | tests en carpeta separada]
 - **Tamaño máximo de archivo (líneas):** [ej. 300]
+
+### Mapa de ubicaciones
+
+> **Dónde vive cada cosa.** Lo exige `R-FILE-003` del núcleo: interfaces, types, constantes y
+> hooks viven fuera del archivo del componente o de la clase, y este mapa es el que dice dónde.
+> Un slot con `sin definir` **no es un hueco que el agente pueda rellenar por su cuenta**: es la
+> señal de que hay que preguntarle al equipo. Rellenarlo solo convierte una decisión sin tomar en
+> una convención invisible que después nadie recuerda haber elegido.
+>
+> Valores válidos: un patrón de ruta · `co-localizado` (junto al archivo que lo usa, con su propio
+> archivo) · `no aplica` · `sin definir`.
+
+| Qué | Dónde | Ejemplo |
+|---|---|---|
+| Componentes | [patrón] | `src/components/<Nombre>/<Nombre>.tsx` |
+| Types e interfaces | [patrón · `co-localizado`] | `src/components/<Nombre>/<Nombre>.types.ts` |
+| Constantes | [patrón · `co-localizado`] | `src/constants/<dominio>.ts` |
+| Hooks / composables | [patrón · `co-localizado`] | `src/hooks/use<Nombre>.ts` |
+| Servicios / casos de uso | [patrón] | `src/<modulo>/application/<Nombre>Service.ts` |
+| Tests | [patrón · `co-localizado`] | `src/**/<Nombre>.test.ts` |
+
 - **Ejemplos de jerarquía esperada:**
   ```
   [Pegar aquí un árbol de carpetas representativo del proyecto]
@@ -115,6 +136,8 @@
   - [ ] `.specture/decisions/00Y-<slug>.md` — pendiente confirmación del equipo
 
 ## 12. Invariantes del Proyecto (R-*)
+
+> **Núcleo obligatorio (`framework-core`), desde v1.20.0.** Cuatro invariantes vienen con el framework y son obligatorias en todo proyecto Specture: `R-FILE-001` (un componente por archivo), `R-FILE-002` (una clase o servicio exportado por archivo), `R-FILE-003` (types, interfaces, constantes y hooks fuera del archivo del componente o de la clase, en la ubicación que declara el mapa de §2) y `R-SOLID-001` (SOLID en frontend y backend). Se pueden **endurecer** —subir la severidad, añadir tags, precisar el texto— y el proyecto puede añadir las suyas; quitar un id o bajar una severidad es ERROR del doctor (`rules-core-missing`, `rules-core-weakened`) y `/specture:doctor migrate` lo repone. Es la única excepción a la regla de precedencia de la cabecera de este archivo.
 
 > **Desde v1.19.0 las invariantes viven en `.specture/rules.yml`** — una entrada por regla (`id`, `tags`, `rule` ≤ 240 caracteres, `verify`, `severity`, `source`). El coordinador de `build` inyecta en cada dispatch **solo** las reglas cuyos tags cruzan con el spec (Rules Resolution, `hooks/lib/rules-resolve.js`); las **aplica** el `implementer`/`ux-implementer` y las **enforça** el `code-reviewer` (Dimensión 7) citándolas por ID. La historia de cada regla (el bug, el incidente, el porqué) vive en un ADR o debug log **enlazado** desde `source`, nunca inline — el doctor marca `rule-length`. Esta sección es solo un **puntero** — no declares reglas aquí; `/specture:knowledge capture` las escribe en `rules.yml`. Para patrones de más alto nivel usá §3 (allow-list) / §4 (deny-list). Sin reglas en `rules.yml`, la Dimensión 7 del reviewer no encuentra nada (no-op) — comportamiento por defecto.
 >

@@ -164,6 +164,88 @@ function lintRules(parsed) {
   return out;
 }
 
+// ---------------------------------------------------------------------------
+// framework-core — the invariants every Specture project carries (v1.20.0)
+// ---------------------------------------------------------------------------
+//
+// The framework owns the schema of `rules.yml` and, since v1.20.0, these four ids. A project may
+// TIGHTEN them — raise the severity, add tags, sharpen the wording — and may add rules of its own.
+// Removing an id or lowering a severity is an ERROR of the doctor, restored by `doctor migrate`.
+//
+// Only the id and a severity floor are enforced. The text is deliberately NOT compared: a project
+// that translates or sharpens the wording is doing the right thing, and the id is what the
+// reviewer cites, so the id is what has to survive.
+
+const CORE_SOURCE = "framework-core";
+
+const CORE_RULES = [
+  {
+    id: "R-FILE-001",
+    tags: ["frontend", "mobile"],
+    rule: "Un componente por archivo: el archivo de un componente no define ni exporta otro componente.",
+    verify: "archivos de componente en el diff: exactamente un componente definido y exportado por archivo",
+    severity: "BLOCKER",
+    source: `${CORE_SOURCE} · conventions.md §2`
+  },
+  {
+    id: "R-FILE-002",
+    tags: ["backend"],
+    rule: "Una clase, servicio o módulo exportado por archivo: un archivo no agrupa varias unidades con responsabilidades distintas.",
+    verify: "archivos de backend en el diff: una sola unidad exportada por archivo",
+    severity: "BLOCKER",
+    source: `${CORE_SOURCE} · conventions.md §2`
+  },
+  {
+    id: "R-FILE-003",
+    tags: ["all"],
+    rule: "Interfaces, types, constantes y hooks/composables viven fuera del archivo del componente o de la clase, en la ubicación que declara conventions.md §2.",
+    verify: "el archivo de un componente o clase no exporta types, interfaces, constantes ni hooks; están en la ruta del mapa de §2",
+    severity: "BLOCKER",
+    source: `${CORE_SOURCE} · conventions.md §2`
+  },
+  {
+    id: "R-SOLID-001",
+    tags: ["all"],
+    rule: "SOLID en frontend y backend: una razón de cambio por unidad, extensión sin modificación, sustituibilidad, interfaces segregadas, dependencias hacia abstracciones.",
+    verify: "unidades nuevas o modificadas en el diff; se cita el principio concreto que se incumple",
+    severity: "IMPORTANT",
+    source: CORE_SOURCE
+  }
+];
+
+// BLOCKER outranks IMPORTANT; a project may move up this ladder, never down.
+const SEVERITY_RANK = { IMPORTANT: 1, BLOCKER: 2 };
+
+// [{ check: "rules-core-missing" | "rules-core-weakened", id, line, detail, action }]
+function lintCore(rules) {
+  const out = [];
+  const byId = new Map((rules || []).filter((r) => typeof r.id === "string").map((r) => [r.id, r]));
+  for (const core of CORE_RULES) {
+    const found = byId.get(core.id);
+    if (!found) {
+      out.push({
+        check: "rules-core-missing",
+        id: core.id,
+        line: null,
+        detail: `${core.id} (${CORE_SOURCE}) no está en rules.yml — es obligatoria en todo proyecto Specture`,
+        action: "corré `/specture:doctor migrate` para reponerla"
+      });
+      continue;
+    }
+    const declared = SEVERITY_RANK[String(found.severity || "").toUpperCase()] || 0;
+    if (declared < SEVERITY_RANK[core.severity]) {
+      out.push({
+        check: "rules-core-weakened",
+        id: core.id,
+        line: found._line || null,
+        detail: `${core.id}: severidad ${JSON.stringify(found.severity)} por debajo del mínimo ${core.severity} — el núcleo se endurece, nunca se ablanda`,
+        action: "subila a " + core.severity + " o corré `/specture:doctor migrate`"
+      });
+    }
+  }
+  return out;
+}
+
 // The rules whose tags intersect `tags` (normalized), plus every rule tagged `all`.
 function resolveRules(rules, tags, options = {}) {
   const wanted = new Set((tags || []).map(normalizeTag).filter(Boolean));
@@ -353,6 +435,9 @@ module.exports = {
   SEVERITIES,
   ID_PATTERN,
   ALL_TAG,
+  CORE_RULES,
+  CORE_SOURCE,
+  lintCore,
   SECTION_12,
   RulesParseError,
   parseRulesYaml,

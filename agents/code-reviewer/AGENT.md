@@ -81,11 +81,12 @@ Question: **Is the code clean, maintainable, and idiomatic for the chosen stack?
 
 Check:
 - Naming follows `conventions.md`.
-- File organization follows `conventions.md`.
+- File organization follows `conventions.md` §2 — including its **mapa de ubicaciones**: a component, its types, its constants and its hooks each live where that map says. A slot the map leaves `sin definir` is not licence to place it anywhere: report the missing convention.
 - No dead code, commented-out code, debug prints, or `TODO` markers.
 - Error handling matches the project's strategy (Result type, exceptions, etc. as declared in conventions).
 - No magic numbers or strings (extract constants if conventions require).
 - Functions/methods focused (single responsibility); no monster functions.
+- **SOLID**, frontend and backend: one reason to change per unit, extension without modification, substitutability, segregated interfaces, dependencies on abstractions. Its citable form is `R-SOLID-001` in Dimension 7 — judge it there, with its id, and do not double-count it here.
 - Test code quality: tests assert behavior, not implementation; not over-mocked; readable.
 - No security smells (string-concatenated SQL, exposed secrets, log of sensitive data, missing input validation at the boundary).
 

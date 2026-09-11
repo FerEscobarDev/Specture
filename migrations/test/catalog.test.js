@@ -138,7 +138,8 @@ test("1.10-rules-sections appends §12 and §13 from the template", () => {
 });
 
 test("1.19-rules-file moves the §12 table to rules.yml, leaves the pointer, skips placeholders, is idempotent", () => {
-  const { parseRulesYaml } = require("../../hooks/lib/rules");
+  const { parseRulesYaml , CORE_RULES, lintCore } = require("../../hooks/lib/rules");
+  const CORE_IDS = new Set(CORE_RULES.map((r) => r.id));
   const conventions = [
     "# Convenciones",
     "",
@@ -164,15 +165,18 @@ test("1.19-rules-file moves the §12 table to rules.yml, leaves the pointer, ski
     const yml = fs.readFileSync(path.join(root, ".specture", "rules.yml"), "utf8");
     const parsed = parseRulesYaml(yml);
     assert.equal(parsed.schema, "1");
-    assert.deepEqual(parsed.rules.map((r) => r.id), ["R-1"], "placeholder row skipped");
-    assert.deepEqual(parsed.rules[0].tags, ["dto", "domain"]);
-    assert.equal(parsed.rules[0].rule, "Los DTOs son inmutables: sin setters");
-    assert.equal(parsed.rules[0].verify, "sin setters públicos");
-    assert.equal(parsed.rules[0].severity, "BLOCKER");
-    assert.equal(parsed.rules[0].source, "DDD — ADR-004");
+    assert.deepEqual(parsed.rules.map((r) => r.id), [...CORE_RULES.map((r) => r.id), "R-1"], "the core stays, the project rule is appended, the placeholder row is skipped");
+        assert.deepEqual(lintCore(parsed.rules), [], "a migrated project comes out conformant with the core");
+        const own = parsed.rules[parsed.rules.length - 1];
+    assert.deepEqual(own.tags, ["dto", "domain"]);
+    assert.equal(own.rule, "Los DTOs son inmutables: sin setters");
+    assert.equal(own.verify, "sin setters públicos");
+    assert.equal(own.severity, "BLOCKER");
+    assert.equal(own.source, "DDD — ADR-004");
     assert.match(yml, /^# Specture — Project Rules/, "template header kept");
     const text = fs.readFileSync(path.join(root, ".specture", "conventions.md"), "utf8");
-    assert.match(text, /^## 12\. Invariantes del Proyecto \(R-\*\)\n\n> \*\*Desde v1\.19\.0 las invariantes viven en `\.specture\/rules\.yml`\*\*/m);
+    assert.match(text, /^## 12\. Invariantes del Proyecto \(R-\*\)\n\n> \*\*Núcleo obligatorio/m, "§12 opens with the mandatory core");
+    assert.ok(text.includes("Desde v1.19.0 las invariantes viven en"), "and keeps the v1.19 pointer");
     assert.ok(!/\| R-1 \|/.test(text), "table rows leave conventions.md");
     assert.match(text, /## 4\. Patrones Prohibidos\n\n- Singletons mutables\n\n## 12\./, "§4 untouched");
     assert.match(text, /## 13\. Workflow \/ Proceso \(W-\*\)\n\n- W-3: Conventional Commits\n$/, "§13 untouched");
@@ -181,16 +185,17 @@ test("1.19-rules-file moves the §12 table to rules.yml, leaves the pointer, ski
   const bullets = makeProject({ ".specture/stack.yml": STACK, ".specture/conventions.md": "## 12. Invariantes del proyecto\n- **R-1:** toda operación HTTP lleva `X-Employee-Id`.\n- **R-2:** el envelope de error es único.\n\n## 13. Workflow\n\n- W-3: cc\n" });
   const result = byId["1.19-rules-file"].apply(contextFor(bullets));
   const parsedBullets = parseRulesYaml(fs.readFileSync(path.join(bullets, ".specture", "rules.yml"), "utf8"));
-  assert.deepEqual(parsedBullets.rules.map((r) => [r.id, r.tags, r.severity]), [["R-1", ["all"], "IMPORTANT"], ["R-2", ["all"], "IMPORTANT"]]);
+  assert.deepEqual(parsedBullets.rules.filter((r) => !CORE_IDS.has(r.id)).map((r) => [r.id, r.tags, r.severity]), [["R-1", ["all"], "IMPORTANT"], ["R-2", ["all"], "IMPORTANT"]]);
+  assert.deepEqual(lintCore(parsedBullets.rules), [], "bullet form too");
   assert.ok(result.notes.some((n) => /2 rule\(s\) moved/.test(n)));
   assert.ok(result.notes.some((n) => /tagged `all` and IMPORTANT — review them/.test(n)));
   assert.equal(byId["1.19-rules-file"].detect(contextFor(bullets)), "done");
 
   const none = makeProject({ ".specture/stack.yml": STACK, ".specture/conventions.md": "# Convenciones\n\n## 1. Naming\n\n- x\n" });
   const empty = byId["1.19-rules-file"].apply(contextFor(none));
-  assert.match(fs.readFileSync(path.join(none, ".specture", "rules.yml"), "utf8"), /^rules: \[\]$/m);
+  assert.deepEqual(lintCore(parseRulesYaml(fs.readFileSync(path.join(none, ".specture", "rules.yml"), "utf8")).rules).length, 0, "a project with no invariants still gets the core");
   assert.equal(fs.readFileSync(path.join(none, ".specture", "conventions.md"), "utf8"), "# Convenciones\n\n## 1. Naming\n\n- x\n", "no §12 → conventions untouched");
-  assert.ok(empty.notes.some((n) => /created empty/.test(n)));
+  assert.ok(empty.notes.some((n) => /no project rules in §12/.test(n)));
 
   assert.equal(byId["1.19-rules-file"].detect(contextFor(makeProject({ ".specture/stack.yml": STACK }))), "n/a", "no conventions.md → n/a");
 });

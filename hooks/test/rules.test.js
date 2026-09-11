@@ -12,7 +12,9 @@ const {
   parseConventionsRules,
   denyListItems,
   replaceSectionBody,
-  legacyRules
+  legacyRules,
+  CORE_RULES,
+  lintCore
 } = require("../lib/rules");
 
 const SAMPLE = [
@@ -198,4 +200,78 @@ test("replaceSectionBody keeps the heading, the neighbours and the file's EOL", 
   const last = "# C\n\n## 12. Invariantes\n\n| R-1 | x |\n";
   assert.equal(replaceSectionBody(last, /^##\s*12\./m, "> puntero"), "# C\n\n## 12. Invariantes\n\n> puntero\n");
   assert.equal(replaceSectionBody("# C\n\n## 11. Índice\n", /^##\s*12\./m, "x"), "# C\n\n## 11. Índice\n", "absent section → unchanged");
+});
+
+// --- núcleo framework-core (v1.20.0) ---
+
+const CORE_YAML = [
+  "schema: 1",
+  "rules:",
+  ...CORE_RULES.flatMap((r) => [
+    `  - id: ${r.id}`,
+    `    tags: [${r.tags.join(", ")}]`,
+    `    rule: "${r.rule}"`,
+    `    verify: "${r.verify}"`,
+    `    severity: ${r.severity}`,
+    `    source: "${r.source}"`
+  ])
+].join("\n");
+
+test("lintCore: el núcleo completo no produce hallazgos", () => {
+  assert.deepEqual(lintCore(parseRulesYaml(CORE_YAML).rules), []);
+});
+
+test("lintCore: la plantilla que se instala ya trae el núcleo", () => {
+  const template = require("node:fs").readFileSync(
+    require("node:path").join(__dirname, "..", "..", "templates", "project-config", "rules.template.yml"),
+    "utf8"
+  );
+  assert.deepEqual(lintCore(parseRulesYaml(template).rules), [], "un proyecto nuevo nace conforme");
+});
+
+test("lintCore: un id ausente es rules-core-missing, uno por regla que falte", () => {
+  assert.deepEqual(lintCore([]).map((f) => [f.check, f.id]), CORE_RULES.map((r) => ["rules-core-missing", r.id]));
+  const sinSolid = parseRulesYaml(CORE_YAML).rules.filter((r) => r.id !== "R-SOLID-001");
+  const out = lintCore(sinSolid);
+  assert.deepEqual(out.map((f) => f.id), ["R-SOLID-001"]);
+  assert.equal(out[0].check, "rules-core-missing");
+  assert.match(out[0].action, /doctor migrate/);
+});
+
+test("lintCore: bajar una severidad es rules-core-weakened y cita la línea", () => {
+  const debil = CORE_YAML.replace("    severity: BLOCKER\n    source: \"framework-core · conventions.md §2\"\n  - id: R-FILE-002", "    severity: IMPORTANT\n    source: \"framework-core · conventions.md §2\"\n  - id: R-FILE-002");
+  const out = lintCore(parseRulesYaml(debil).rules);
+  assert.deepEqual(out.map((f) => [f.check, f.id]), [["rules-core-weakened", "R-FILE-001"]]);
+  assert.ok(out[0].line > 0, "la línea de la regla debilitada viaja al finding");
+  assert.match(out[0].detail, /BLOCKER/);
+});
+
+test("lintCore: endurecer, adaptar el texto y añadir reglas propias quedan limpios", () => {
+  const duro = CORE_YAML
+    .replace(/severity: IMPORTANT/, "severity: BLOCKER")
+    .replace(/rule: "SOLID[^"]*"/, 'rule: "SOLID, front y back — lo endurecemos: una razón de cambio por unidad"')
+    .replace("    tags: [all]\n    rule: \"SOLID", "    tags: [all, api]\n    rule: \"SOLID")
+    + [
+      "",
+      "  - id: R-9",
+      "    tags: [dto]",
+      "    rule: Regla propia del equipo",
+      "    verify: revisión manual",
+      "    severity: IMPORTANT",
+      "    source: ADR-012"
+    ].join("\n");
+  assert.deepEqual(lintCore(parseRulesYaml(duro).rules), [], "el núcleo se endurece y el proyecto añade lo suyo");
+});
+
+test("lintCore: la severidad se compara sin importar mayúsculas ni espacios", () => {
+  const raro = CORE_YAML.replace(/severity: BLOCKER/g, "severity: blocker");
+  assert.deepEqual(lintCore(parseRulesYaml(raro).rules), []);
+});
+
+test("resolveRules inyecta el núcleo por tag — frontend y backend reciben lo suyo", () => {
+  const parsed = parseRulesYaml(CORE_YAML).rules;
+  const front = resolveRules(parsed, ["frontend"]).map((r) => r.id);
+  assert.deepEqual(front, ["R-FILE-001", "R-FILE-003", "R-SOLID-001"]);
+  const back = resolveRules(parsed, ["backend"]).map((r) => r.id);
+  assert.deepEqual(back, ["R-FILE-002", "R-FILE-003", "R-SOLID-001"]);
 });
