@@ -56,9 +56,11 @@ rationalizations this agent exists to eliminate.
 - The **Code Surface table** (`CODE_SURFACE:` block — `SYMBOL | PATH | SIGNATURE` of the
   component's existing code, resolved by the coordinator; `(vacío — componente sin código)`
   and `UNAVAILABLE` are valid and explicit values, a missing block is `NEEDS_CONTEXT`).
-- Frontend conditionals (when the epic is frontend): `design_system.md`,
-  `navigation_map.md`, the fidelity checklist / handoff mapping if a handoff was ingested,
-  plus the rule that a page only consumes `operationId`s implemented by `[x]` backend epics.
+- Frontend conditionals (when the epic is frontend): `design_system.md` (its §3 inventory rows
+  are the component surface this epic creates — that is what lets you fill `Crea:` for symbols
+  you are forbidden to read), `navigation_map.md`, the **`design_surface_resolved` block**
+  (`components/<Nombre>.md` for the components in scope; `[]` is valid and explicit), plus the
+  rule that a page only consumes `operationId`s implemented by `[x]` backend epics.
 - Migration conditionals (when `Template: MIGRATION_SPEC_TEMPLATE.md`): the
   `gap_analysis.md` section of the module + the `migration:` section of `stack.yml`.
 - On re-dispatch: the previously written specs plus `ANSWERS` and/or `VIOLATIONS`.

@@ -42,7 +42,7 @@ You operate with restricted context. The only valid sources for your review are 
 - Test result output from the implementer's run.
 - **`RED_SHA`** and **`HEAD_SHA`** — for citing the range under review.
 - **The Step 5.5 gate result** from the orchestrator (clean | violation + details). Dimension 4 consumes this; you do not re-run the diff.
-- **For frontend epics only:** `docs/03-ux-ui/design_system.md`, the relevant slice of `docs/02-architecture/api-contract.md` (the `operationId`s the page consumes), and — if a handoff was ingested — the fidelity checklist. These feed Dimension 6.
+- **For frontend epics only:** `docs/03-ux-ui/design_system.md`, the relevant slice of `docs/02-architecture/api-contract.md` (the `operationId`s the page consumes), and the `design_surface_resolved` block (the `components/<Nombre>.md` in scope). These feed Dimension 6.
 
 The diff under review is `git diff <RED_SHA>..<HEAD_SHA>` — the implementer's work.
 
@@ -131,7 +131,7 @@ Findings produced by this dimension are at most `IMPORTANT` severity unless they
 
 ### Dimension 6 — Frontend Fidelity (active only for frontend epics)
 
-This dimension is **active only when** the spec is a frontend epic (the diff touches UI and `stack.yml.frontend.framework` is set and not `none`) **and** the orchestrator provided `design_system.md` and the relevant `api-contract.md` slice. If the spec is backend-only, skip it entirely. If the spec is clearly frontend but the design system / contract were not provided, that omission is itself an `IMPORTANT` finding (the review cannot fully certify UI without them).
+This dimension is **active only when** the spec is a frontend epic (the diff touches UI and `stack.yml.frontend.framework` is set and not `none`) **and** the orchestrator provided `design_system.md` and the relevant `api-contract.md` slice. If the spec is backend-only, skip it entirely. If the spec is clearly frontend but the design system / contract were not provided, that omission is itself an `IMPORTANT` finding (the review cannot fully certify UI without them). **The same applies to `RULES_RESOLVED: []` on a frontend spec:** brand rules live in the registry since v1.20.0, so an empty block there means either the epic was mis-tagged or the rules were never written — report it as `IMPORTANT` rather than skipping Dimension 7 in silence. An empty block is a valid input for a backend spec, never a silent pass for a UI one.
 
 Question: **Is the UI faithful to the design system, accessible, and wired to the backend only through the contract?**
 
@@ -143,7 +143,7 @@ Check:
 | Backend accessed via a hand-written URL or an invented response shape instead of the typed client / a contract `operationId` | `BLOCKER` (also a Dimension 1 spec + contract violation) |
 | Page consumes an `operationId` that does not exist in `api-contract.md` | `BLOCKER` |
 | Accessibility: missing keyboard reachability, focus not visible, icon-only control without `aria-label`, input without bound label, contrast below WCAG AA | `BLOCKER` for keyboard/contrast; `IMPORTANT` for the rest |
-| Brand rule from `design_system.md` / handoff fidelity checklist violated (e.g. emoji in UI when forbidden, wrong icon style, glassmorphism when banned) | `IMPORTANT` |
+| Brand rule from `design_system.md` or a resolved `components/<Nombre>.md` violated (e.g. emoji in UI when forbidden, wrong icon style, glassmorphism when banned) | `IMPORTANT` |
 | Loading / empty / error states for a data-driven screen missing | `IMPORTANT` |
 | Design-system component re-styled/forked inline instead of composed | `IMPORTANT` |
 | Responsive coverage the spec requires is absent (e.g. mobile breakpoint ignored) | `IMPORTANT` |

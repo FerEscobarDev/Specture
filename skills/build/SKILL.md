@@ -68,6 +68,10 @@ Read **N** from the user's request at the start of the session:
 
 N bounds the session: the coordinator builds a queue of up to N ready epics and **stops when the queue drains** — it does NOT spill over into the rest of the ROADMAP.
 
+**Channel probe — once, when you build the queue.** If `stack.yml` declares `frontend.design_channel` and the queue contains any frontend epic, check the channel is reachable **before** dispatching the first one. If it is not (no session authorisation, the design project is not listed, the capability is absent), degrade **the whole batch** to the local spine with one explicit line — *"canal `<x>` no disponible: <razón>. La tanda corre con el material que ya está en `docs/03-ux-ui/`."* — and continue.
+
+Never probe per epic: a `construí 6` would then stop at an authorisation prompt at an unpredictable point, and the coordinator would receive a generic `BLOCKED` indistinguishable from an unexecutable spec. And never conclude a channel is absent without saying why: a listing that returns nothing because the design project belongs to someone else looks exactly like a missing channel, and silently designing from scratch over an existing design is the worst outcome available.
+
 **Cap for the design-system foundation epic: if it enters the queue, N = 1 for that batch.** Its Visual Approval Gate waits on a human, and the epic stays `[/]` until they answer. With N > 1 the rest of the queue would sit trapped behind a chat question — or the coordinator would be pushed to flip `[x]` "provisionally" and start the page epics, which is exactly the failure the gate exists to prevent. Announce the cap when you build the queue.
 
 ### Dependency parsing (deterministic)
@@ -138,7 +142,11 @@ files**: you hand it a table `SYMBOL | PATH | SIGNATURE` of the component's exis
    the epic's component slugs + `backend`/`frontend`/`mobile` as tags — the planner cites
    the rules a spec must honor, never the whole registry); resolved docs-index and
    `_current/` files (run "Docs Index Resolution" and "Current-State Resolution" as
-   defined in `build/EPIC_LOOP.md` — same algorithms, you have the file); the template
+   defined in `build/EPIC_LOOP.md` — same algorithms, you have the file); **for a frontend
+   epic, the `design_surface_resolved` block** (run "Design Surface Resolution" —
+   without it the planner has to fill the `Crea:` surface of the Code Surface seal for
+   components it is forbidden to read and whose inventory nobody hands it, which is exactly
+   the gap the inventory exists to close); the template
    per the epic's `Template:` field plus
    `templates/PLANNING_TEMPLATE.md` (the `_planning.md` grammar); the **Code Surface
    table** from the pre-flight above (`(vacío)` / `UNAVAILABLE` are valid and explicit — the
@@ -373,7 +381,22 @@ Frontend epics must be built in this order — the ROADMAP should already encode
 2. **Visual Approval Gate** — the user approves the showcase. **No page epic may start until this gate passes.**
 3. **Page epics** — one screen (or cluster) at a time, each built only **after** the backend epic implementing the `operationId`s it consumes is `[x]`.
 
-If a page epic becomes "ready" before the design-system epic is approved, it is **not** actually ready — treat the design-system approval as an implicit dependency of every page epic.
+If a page epic becomes "ready" before the design-system epic is approved, it is **not** actually ready. Since v1.20.0 that dependency is no longer implicit: `spec-set-check.js` check **C-design** blocks a `Tipo: pagina` epic whose `Tipo: design-system` epic has no `VISUAL_APPROVAL` line in its `_planning.md`. It anchors on the approval record, never on the `[x]` checkbox — the epic-agent writes its own checkbox, so a checkbox proves nothing about the human gate.
+
+### Contract drift — block only what it touches
+
+Before dispatching a **page** epic, check whether the contract moved under a design that was approved against the old one:
+
+```
+git diff <sha of the epic's VISUAL_APPROVAL>..HEAD -- <stack.yml api.contract_file>
+```
+
+- **Empty** → dispatch normally.
+- **Non-empty** → read which `operationId`s the diff touches, and intersect them with the operations the epic's screens declare in `navigation_map.md` §1.
+  - **They intersect** → **BLOCKER**. Escalate to the user: the design was approved against data that no longer exists. Name the operation and what changed (a new enum member needs a badge variant; a removed field needs the screen re-planned). Either the design or the page is updated before this epic runs.
+  - **They do not intersect** → one WARNING line and continue. A change elsewhere in the contract is not this page's problem.
+
+Proportional to the real damage: a new endpoint nobody renders must not stop the queue, and a new enum member on a screen that renders that enum must.
 
 > The per-epic execution of this policy — the design-system epic procedure, the page-epic rules
 > and the `ux-implementer` dispatch — lives in `build/EPIC_LOOP.md` § "Frontend Epics —
