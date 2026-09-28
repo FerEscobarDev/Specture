@@ -40,7 +40,7 @@ Proyectos creados antes de v1.15.0 pueden tener el toggle en `.specture/conventi
 
 ## Schema: `.specture/state/build-locked.json`
 
-**v3 (v1.18.0+) — sello de specs + superficie permitida + una entrada por spec:**
+**v3 (v1.18.0+, ampliado en v2.2.0) — sello de specs + superficie permitida + una entrada por spec:**
 
 ```json
 {
@@ -51,8 +51,11 @@ Proyectos creados antes de v1.15.0 pueden tener el toggle en `.specture/conventi
   "test_globs": ["tests/**/*.test.ts", "tests/**"],
   "allowed_paths": ["src/notas/service.ts", "src/notas/"],
   "supersede_paths": [],
+  "supersede_for": null,
+  "lock_sha": "<SHA del commit que marcó el epic [/]>",
+  "lifted_spec_paths": [],
   "specs": [
-    { "slug": "01-model", "red_sha": "<SHA del RED commit>", "test_paths": ["tests/model/nota.test.ts"] },
+    { "slug": "01-model", "red_sha": "<SHA del RED commit>", "red_sha_orig": "<SHA del PRIMER RED>", "test_paths": ["tests/model/nota.test.ts"] },
     { "slug": "02-api",   "red_sha": "<SHA del RED commit>", "test_paths": ["tests/api/notas.test.ts", "tests/api/errores.test.ts"] }
   ]
 }
@@ -67,26 +70,45 @@ Proyectos creados antes de v1.15.0 pueden tener el toggle en `.specture/conventi
 | `test_globs` | string[] | coordinador (`write`) | Globs de tests de `conventions.md` **más la carpeta raíz de tests** (`tests/**`): lo que sigue siendo escribible aunque haya `allowed_paths` (helpers y tests de la fase RED). |
 | `allowed_paths` | string[] | coordinador (`write`) | Unión de los paths `Crea:`/`Modifica:` de la Superficie de los specs (`spec-set-check.js --allowed-paths`); una entrada que termina en `/` cubre todo el directorio. **Opcional**: sin este campo el gate Allowed Paths no actúa (fail open). |
 | `supersede_paths` | string[] | epic-agent (`supersede`) | Transitorio: tests sellados de un epic cerrado que este spec supersede por declaración (`Supersede:`); levanta **solo** el deny de test para esos paths mientras el tdd-test-writer aplica la supersesión. |
+| `supersede_for` | string \| null | epic-agent (`supersede --slug`) | v2.2.0: el spec dueño de los `supersede_paths` vigentes; `--clear` lo vacía. |
+| `lock_sha` | string \| null | coordinador (`write --lock-sha`) | v2.2.0: el commit que marcó el epic `[/]` — la base donde el loop de supersesiones corre el RED retroactivo (`honesty-check base-worktree`). `write` lo conserva si no se pasa. |
+| `lifted_spec_paths` | string[] | coordinador (`lift-spec`) | v2.2.0, transitorio: specs liberados del sello durante un loop de supersesiones (solo su sección de supersesiones puede cambiar — `honesty-check spec-delta`). El siguiente `write` lo vacía; si sobrevive, el loop quedó interrumpido (`/specture:doctor check` → `seal-lifted`). |
 | `specs[].slug` | string | epic-agent (`merge-spec`) | Slug del spec (`<task-slug>`). |
 | `specs[].red_sha` | string | epic-agent (`merge-spec`) | SHA del commit donde `tdd-test-writer` selló los tests de **ese** spec. |
+| `specs[].red_sha_orig` | string | epic-agent (`merge-spec`) | v2.2.0: el **primer** RED del spec. `merge-spec` nunca lo mueve (salvo `--reset-orig`, tras un re-RED del loop completo); es el inicio del rango que audita `honesty-check range`. Ausente en sellos anteriores = `red_sha`. |
 | `specs[].test_paths` | string[] | epic-agent (`merge-spec`) | **Lista explícita de archivos** del RED commit (`git show --stat <RED_SHA>`), no globs: un glob sellaría los tests del spec siguiente antes de existir. Se admiten globs (v2) por compatibilidad. |
 
 **v2 (v1.15.0, sigue aceptado):** `{ "epic", "sealed_at", "specs": [ { slug, red_sha, test_paths } ] }`. **v1 (legacy, sigue aceptado):** `{ "epic", "red_sha", "test_paths": [...], "locked_at" }`. Los hooks leen la **unión** de todas las formas; un sello v2 en curso no necesita migración (el archivo es transitorio y gitignoreado). La lógica compartida — lectura, clasificación (`classify`) y mensajes (`denyReason`) — vive en `lib/seal.js`; los tres hooks solo difieren en el sobre de la respuesta.
 
-**Lifecycle**: el **coordinador** (`skills/build/SKILL.md`, gate step 7) escribe los campos de epic con `seal-cli.js write` tras commitear los specs validados; el **epic-agent** (`skills/build/EPIC_LOOP.md`, Step 4 post-check 5) fusiona la entrada de cada spec con `seal-cli.js merge-spec` después de cada RED commit; el coordinador lo libera con `seal-cli.js release` al procesar el `DONE` — y también el epic-agent en Step 8, por si acaso; ninguno confía en el otro. En el loop de corrección de un spec, `seal-cli.js unseal-spec --slug` quita solo esa entrada. **Nadie edita el JSON a mano.** Si querés desbloquear edits de tests legítimamente durante un epic en curso, liberá el sello y aceptá que el TDD contract se rompió — el `git diff` del Step 5.5 va a detectarlo igual; para un test de un epic **cerrado** que este spec contradice, la vía sancionada es `Supersede:` en el spec.
+**Lifecycle**: el **coordinador** (`skills/build/SKILL.md`, gate step 7) escribe los campos de epic con `seal-cli.js write` tras commitear los specs validados; el **epic-agent** (`skills/build/EPIC_LOOP.md`, Step 4 post-check 5) fusiona la entrada de cada spec con `seal-cli.js merge-spec` después de cada RED commit; el coordinador lo libera con `seal-cli.js release` al procesar el `DONE` — y también el epic-agent en Step 8, por si acaso; ninguno confía en el otro. En el loop de corrección de un spec, `seal-cli.js unseal-spec --slug` quita esa entrada **y libera su archivo de spec** de `spec_paths` (antes de v2.2.0 lo dejaba sellado y el hook seguía denegando la edición del planner). En el loop de supersesiones, `lift-spec --slug` libera solo el archivo del spec y conserva su entrada y su RED. **Nadie edita el JSON a mano.** Si querés desbloquear edits de tests legítimamente durante un epic en curso, liberá el sello y aceptá que el TDD contract se rompió — el `git diff` del Step 5.5 va a detectarlo igual; para un test de un epic **cerrado** que este spec contradice, la vía sancionada es `Supersede:` en el spec.
 
 ### `lib/seal-cli.js` — el único escritor del sello
 
 ```
 node "${CLAUDE_PLUGIN_ROOT}/hooks/lib/seal-cli.js" <comando> [opciones] [--project <root>]
-  write        --epic <slug> --spec-sha <sha> --spec-paths a,b [--test-globs a,b] [--allowed-paths a,b]
-  merge-spec   --slug <task-slug> --red-sha <sha> --test-paths a,b [--epic <slug>]
+  write        --epic <slug> --spec-sha <sha> --spec-paths a,b [--test-globs a,b] [--allowed-paths a,b] [--lock-sha <sha>]
+  merge-spec   --slug <task-slug> --red-sha <sha> (--test-paths a,b | --add-test-paths a,b) [--reset-orig] [--epic <slug>]
   unseal-spec  --slug <task-slug>
-  supersede    --paths a,b | --clear
+  lift-spec    --slug <task-slug>
+  supersede    [--slug <task-slug>] --paths a,b [--shared-with-red] | --clear
   release | show
 ```
 
-`write` conserva las entradas `specs[]` del mismo epic (y descarta las de otro epic avisando por stderr); `merge-spec` agrega o reemplaza **una** entrada por slug sin tocar los campos del epic; `release` es idempotente. Exit 1 con un archivo corrupto, exit 2 por uso incorrecto. En Copilot/Antigravity se invoca con `${PLUGIN_ROOT}` en vez de `${CLAUDE_PLUGIN_ROOT}`.
+`write` conserva **íntegras** las entradas `specs[]` del mismo epic (con su `red_sha_orig`) y `lock_sha` si no se pasa, descarta las de otro epic avisando por stderr, y vacía `lifted_spec_paths` / `supersede_paths` / `supersede_for` (un `write` re-sella); `merge-spec` agrega o actualiza **una** entrada por slug sin tocar los campos del epic (`--test-paths` reemplaza, `--add-test-paths` une); `lift-spec` expande a lista explícita el glob que cubre el spec y quita solo ese archivo; `supersede` **rechaza** (exit 1) un path que sea el RED de cualquier spec del sello — propio o hermano — salvo `--shared-with-red` explícito (el RED agregó tests a un archivo existente); `release` es idempotente. Cada comando acepta solo sus flags (más `--project`): un flag desconocido es error de uso. Exit 1 con un archivo corrupto, una supersesión rechazada o un `lift-spec` imposible; exit 2 por uso incorrecto. En Copilot/Antigravity se invoca con `${PLUGIN_ROOT}` en vez de `${CLAUDE_PLUGIN_ROOT}`.
+
+### `lib/honesty-check.js` — salvaguardas mecánicas del TDD Honesty Gate (v2.2.0)
+
+```
+node "${CLAUDE_PLUGIN_ROOT}/hooks/lib/honesty-check.js" <comando> [opciones] [--project <root>] [--json]
+  clean-tree    [--test-globs a,b]
+  range         --slug <task-slug> --epic-dir <dir> [--head <rev>]
+  red-lines     [--slug <task-slug>]
+  spec-delta    --epic-dir <dir> --base <SPEC_SHA> --slug <task-slug>
+  protected     --epic-dir <dir> [--slug <task-slug>]
+  base-worktree --lock <sha> [--files a,b] --dir <tmp> | --remove <dir>
+```
+
+Primera línea de stdout = token `HONESTY <cmd>: PASS … | FAIL <n> | UNVERIFIABLE <motivo>`; exit 0 / 1 / 2. `clean-tree` exige nada sin commitear bajo los globs de test; `range` es la **allowlist** del Step 5.5 (todo commit que toca tests en `red_sha_orig..HEAD` está registrado en `## SUPERSESIONES` con exactamente sus paths — o es el primer RED de un spec hermano — y `supersede_paths` está vacío); `red-lines` verifica que cada línea que agregó el RED original siga en HEAD; `spec-delta` que un spec liberado solo cambió su sección de supersesiones; `protected` que ninguna supersesión toque un test de `verify:` de `rules.yml` o un GUARD de otro epic; `base-worktree` arma el worktree en `LOCK_SHA` para el RED retroactivo. Lo usan `skills/build/EPIC_LOOP.md` (Step 5.2 y 5.5) y el loop de supersesiones de `skills/build/SKILL.md`; el detalle y el riesgo residual están en `docs/tdd-honesty-reference.md`.
 
 **Sello huérfano**: si `docs/04-roadmap/ROADMAP.md` existe y **ningún** epic está `[/]`, el sello sobrevivió a su epic. Los hooks entonces **permiten** la edición para los tres tipos de regla (Claude Code: `permissionDecision: "allow"` con la razón; Copilot/Antigravity: razón por stderr) — un archivo olvidado nunca bloquea trabajo ajeno — y `/specture:doctor check` lo reporta como ERROR (`seal-stale`).
 
@@ -145,6 +167,8 @@ Si querés agregar tu propio hook siguiendo el patrón:
 | El TDD Gate no bloquea aunque estoy en build loop | `.specture/state/build-locked.json` no existe o sus `test_paths` no matchean. Inspeccioná el sello con `node "${CLAUDE_PLUGIN_ROOT}/hooks/lib/seal-cli.js" show` (o `cat .specture/state/build-locked.json`). |
 | El TDD Gate bloquea archivos que no son tests | Algún glob en `test_paths` es demasiado amplio. Revisá la línea de testing en `conventions.md` (desde v1.18.0 `merge-spec` guarda la lista de archivos del RED commit, no globs). |
 | El hook deniega un archivo de producción con "Allowed Paths" | El spec no lo declara en `Crea:`/`Modifica:`. No es un falso positivo: el implementer reporta `BLOCKED: spec <ID>` con el archivo y el planner agrega la línea `Modifica:` (loop de corrección). Si es un helper de tests, `test_globs` debe incluir la carpeta raíz de tests (`tests/**`). |
-| El hook deniega un spec con "Spec Seal" | Los specs validados son inmutables durante el epic. Un spec inejecutable se reporta como `BLOCKED: spec <ID>`; el coordinador lo des-sella (`unseal-spec`), lo re-planifica y lo re-sella con un `SPEC_SHA` nuevo. |
+| El hook deniega un spec con "Spec Seal" | Los specs validados son inmutables durante el epic. Un spec inejecutable se reporta como `BLOCKED: spec <ID>`; el coordinador lo des-sella (`unseal-spec`, que desde v2.2.0 también libera el archivo), lo re-planifica y lo re-sella con un `SPEC_SHA` nuevo. En el loop de supersesiones lo libera `lift-spec`. |
+| `honesty-check range` da FAIL con un commit `test(supersede): … — loop …` | Su SHA no está en `## SUPERSESIONES` del `_planning.md` del epic, o toca un archivo que no se registró con él. El epic-agent completa el `commit:` de cada línea en el Step 5.2; sin ese registro el commit es una modificación de tests como cualquier otra. |
+| `/specture:doctor check` reporta `seal-lifted` | Un loop de supersesiones quedó interrumpido con un spec liberado. Retomalo con `/specture:start` (el coordinador lo continúa desde `spec-delta`); nunca edites el sello a mano. |
 | El TDD Gate actúa en un proyecto que no es Specture | `.specture/` heredado de un directorio padre. `findProjectRoot` sube en el árbol; chequeá. |
 | `hooks.enabled: true` pero `specture-guard` devuelve inactivo | Revisá `.specture/settings.yml` (`hooks.enabled: true` sin comillas ni corchetes, o `profile: lean|full`). En proyectos sin migrar, el bloque de `conventions.md` §10 exige el formato `- **hooks.enabled**: true`. Si existe `settings.yml`, `conventions.md` se ignora. |

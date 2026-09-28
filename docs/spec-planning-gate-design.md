@@ -1,5 +1,6 @@
 > **Estado: IMPLEMENTADO — etapa 1 en v1.17.0 (ítems 19-28), etapa 2 en v1.18.0 (ítems
-> 29-37 del roadmap del framework).** Deltas vs este diseño, decididos por la revisión y el
+> 29-37 del roadmap del framework); D5 y D8 revisadas en v2.2.0 (§8, gate convergente).**
+> Deltas vs este diseño, decididos por la revisión y el
 > roadmap: la evidencia vive en `docs/05-specs/<epic>/_planning.md` trackeado (M1 — no en el
 > commit message ni al pie de cada spec) con gramática fija en `templates/PLANNING_TEMPLATE.md`;
 > el validator corre **un dispatch de set** (C3/C7/C8/C2-fallback) **más** las dims 1-6 por
@@ -605,3 +606,21 @@ usuario. **Lectura a los ~10 epics posteriores**:
 | D19 | **4 preguntas / 2-4 opciones por tanda** (límite de `AskUserQuestion`); delegación con **alcance explícito** (epic, o batch si se dijo antes de arrancarlo; nunca sobrevive la sesión). | "≤5 por tanda": excede la herramienta. Delegación sin alcance: el modelo la generaliza. |
 | D20 | **Métricas antes/después** en `build-metrics.jsonl` como criterio de éxito del release (§6.5). | Asumir "neto: menos tokens": es una hipótesis; sin medición no se distingue gate útil de ceremonia. |
 | D21 | **Lectura de código acotada** en el planner (solo símbolos nombrados, solo firmas y paths) + C8. | Permiso amplio de lectura: el modelo explora de más y filtra comportamiento al spec, sesgando al `tdd-test-writer`. |
+
+## 8. Addendum v2.2.0 — gate convergente (2026-09-28)
+
+El gate de este diseño se atascó en un proyecto real: el Epic HC-IHCE.5 de Psikora pasó 427
+min en el gate sin sellar un spec (14 contactos humanos, 51 % del tiempo esperando al
+usuario, 3 de 4 rechazos por "faltan supersesiones"). La evidencia y la propuesta completas
+están en `docs/spec-gate-convergence-design.md`; la v2.2.0 implementa su fase 1. Cambian dos
+decisiones de §7 y se agrega una:
+
+| ID | Cambio | Por qué |
+|----|--------|---------|
+| D5 (refinada) | El validador **juzga solo lo que el autor del spec puede ver**: ADR, reglas, contrato, RN, contradicciones internas, dueños del Fuera de Scope. La completitud de las supersesiones y todo lo que exigiría leer código salen del gate; el validador corre con `tools: Read, Glob` y `effort: medium`. Re-validación en `MODE: DELTA` (PRIOR + DIFF por TREE; BLOCKER nuevo solo sobre el DIFF o LATE). Un APROBADO avanza: sus observaciones van a destinos cerrados (GATE_NOTES, Diferidos con dueño), nunca a otra pasada. | El planner no lee código (D21/M4): exigirle la lista completa de tests que rompe era pedirle adivinar, y el validador fresco en cada pase oscilaba. La ejecución encuentra esas roturas en minutos. |
+| D8 (reemplazada) | **Tope por rondas**, no por rechazos: 3 rondas sin APROBADO (los FAIL de 4a no cuentan; despachos paralelos = 1 ronda) → **una** pregunta cerrada con opciones según la clase del BLOCKER vivo. Presupuesto humano único: 2 rondas de preguntas por gate, de cualquier origen. | Contar despachos castigaba el paralelismo y dejaba que un FAIL mecánico consumiera el tope; la escalada abierta "¿sigo?" no decidía nada. |
+| D22 (nueva) | **Supersesiones descubiertas en ejecución**: ejecución por capas (compilación antes de GREEN, runtime después) y loop ligero sin revert ni preguntas — J9 con dato por un validador fresco, spec que solo cambia en su sección de supersesiones, tests protegidos fuera, reescritura ciega registrada por SHA, RED-LINES, RED retroactivo en `LOCK_SHA`, Step 5.5 como allowlist (`honesty-check.js`). | Ver `docs/tdd-honesty-reference.md` § "Supersessions discovered in execution", con su riesgo residual. |
+
+D1, D2, D3, D6, D7 y D19 no cambian en v2.2.0. La etapa de revisión por tanda (una sola
+sentada de decisiones antes de ejecutar) es la fase siguiente, v2.3.0
+(`docs/milestone-planning-stage-analysis.md`, `docs/milestone-decision-stage-simulation.md`).

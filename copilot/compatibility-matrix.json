@@ -37,6 +37,8 @@
     "spec-seal",
     "allowed-paths",
     "test-supersession",
+    "supersession-loop",
+    "delta-revalidation",
     "build-metrics",
     "roadmap-validation",
     "red-commit",
