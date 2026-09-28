@@ -1,6 +1,6 @@
 ---
 name: debug
-description: Use the moment any test fails twice, when a build breaks unexpectedly, when the code-reviewer rejects code, when the implementer reports BLOCKED, when the user reports a bug, or when you find yourself "trying things". Stops guess-and-check loops. Forces root-cause investigation with a physical debug log artifact before any fix is attempted.
+description: Use the moment any test fails twice, when a build breaks unexpectedly, when the code-reviewer rejects code, when the implementer reports BLOCKED, when the user reports a bug, or when you find yourself "trying things". Stops guess-and-check loops. Forces root-cause investigation with a physical debug log artifact before any fix is attempted. Not for old tests of closed epics already classified by the build's supersession loop, and never invoked from inside a build epic-agent (it reports a BLOCKED debug status instead).
 ---
 
 # Transversal — Systematic Debugging
@@ -29,6 +29,10 @@ Invoke immediately on any of these triggers:
 - A build/CI step that was passing yesterday is failing today and you don't know why.
 - The user reports unexpected behavior.
 - You catch yourself thinking "let me try changing X and see".
+
+**Exceptions (build, since v2.2.0).** Inside `/specture:build` two cases do **not** trigger this skill:
+- An implementer's `BLOCKED: supersesiones (compilación|runtime)` — old tests of closed epics that a rule of the spec makes false. They are already classified and go through the supersession loop of `build/SKILL.md`; its classification takes precedence over "the same test failed twice" and "the implementer reported BLOCKED".
+- Anything inside an epic-agent: it never invokes this skill (Plan mode would stop the queue with nobody to approve it). It reports `BLOCKED: debug <task-slug>` and the coordinator offers this skill to the user.
 
 ## The Four Phases (mandatory order)
 

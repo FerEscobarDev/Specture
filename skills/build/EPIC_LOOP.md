@@ -27,10 +27,18 @@ Ground rules:
   `DONE: pendiente de aprobación visual` you leave the epic `[/]` — the coordinator flips it
   after the user approves.
 - When you finish, report exactly one of `DONE | BLOCKED | REJECTED_MAJOR` in the shape the
-  dispatch prompt defines. Two sub-forms exist: `BLOCKED: spec <ID>` for an unexecutable spec
-  (the coordinator runs the spec-correction loop) and `DONE: pendiente de aprobación visual`
-  for the design-system foundation epic (the coordinator runs the Visual Approval Gate — see
-  "Frontend Epics" below). Both are handled by the coordinator, not by you.
+  dispatch prompt defines. Sub-forms, all handled by the coordinator, never by you:
+  `BLOCKED: spec <ID>` (unexecutable spec — spec-correction loop); `BLOCKED: supersesiones
+  (compilación|runtime) <task-slug>` with a `FAILURES:` block (old tests of closed epics that
+  a rule of the spec makes false — supersession loop, Step 5); `BLOCKED: entorno` (the suite
+  cannot run); `BLOCKED: debug <task-slug>` (Iteration Cap); `DONE: pendiente de aprobación
+  visual` (design-system foundation epic — Visual Approval Gate, "Frontend Epics" below).
+- **Resumed dispatch** (`RESUME_AT:` in the prompt): skip the specs already `APPROVED` +
+  verified and enter at the named point — `supersede <task-slug>` → Step 5.2;
+  `regresiones <task-slug>` → Step 5 with the `REGRESIONES:` list; `<task-slug>` → Step 4.
+  Use the `BASELINE_FALLOS` you are handed instead of taking a new baseline.
+- You fill the `commit:` field of your spec's pending lines in `## SUPERSESIONES` of
+  `_planning.md` (the spec files stay sealed; `_planning.md` does not).
 
 ## Frontend Epics — execution (design-system epic and page epics)
 
@@ -51,7 +59,7 @@ When the locked epic is the design-system foundation:
    - **Do not flip the epic to `[x]`.** Leave it `[/]`.
    - Report **`DONE: pendiente de aprobación visual`**, and include in the report the dev command to start the app and the showcase route, so the coordinator can present it without re-deriving them.
    - The coordinator presents the showcase, asks the user, re-dispatches you for adjustments if needed, and only then records the approval and flips the checkbox. Approval is a human decision; Claude never self-certifies visual quality.
-5. The standard gates still run on the logic/code: architecture-validator on the spec, RED/GREEN for any tested logic, TDD Honesty Gate, code-reviewer (with the frontend dimension), verification. The visual approval is **in addition to**, not instead of, these — run them all before reporting.
+5. The standard gates still run on the logic/code (the spec was already validated by the coordinator's gate): RED/GREEN for any tested logic, TDD Honesty Gate, code-reviewer (with the frontend dimension), verification. The visual approval is **in addition to**, not instead of, these — run them all before reporting.
 
 ### Page epics
 
@@ -209,6 +217,16 @@ Since v1.19.0 the project's invariants `R-*` live in `.specture/rules.yml` (one 
 4. **No `.specture/rules.yml`**: the block is `RULES_RESOLVED: []` — unless `conventions.md` §12 still declares rules (project not yet migrated): then the resolver injects **all** of them, unfiltered (they carry no tags), so the project keeps the enforcement it had, and warns. Print once per session: *⚠ Specture: `.specture/rules.yml` no inicializado — las reglas de §12 se inyectan enteras hasta migrar; corré `/specture:doctor migrate`* (migration `1.19-rules-file`) and continue.
 5. **Pass the block verbatim** in the dispatch. Empty is valid and explicit: Dimension 7 of the reviewer is a no-op when the block is empty — the presence of rules is the switch, there is no toggle.
 
+## Step 3.9 — Failure baseline (once per epic, before the first RED)
+
+Run the **full** test suite once, before any RED commit of the epic. Re-run each failing
+test twice; the ones that still fail are the epic's **`BASELINE_FALLOS`** — they failed
+before this epic touched anything. Write them to `## BASELINE_FALLOS` of `_planning.md`
+(`- <path>::<test> — <first line of the failure> — <ISO-8601>`, or `- (ninguno)`), pass them
+to every implementer dispatch and include them in your report. They are excluded from every
+classification below and never block the `[x]` — but they are reported, never hidden. A
+suite that cannot run at all is `BLOCKED: entorno`.
+
 ## Step 4 — Write Tests (TDD RED phase)
 
 Dispatch the `tdd-test-writer` agent (`agents/tdd-test-writer/AGENT.md`).
@@ -220,7 +238,7 @@ Dispatch the `tdd-test-writer` agent (`agents/tdd-test-writer/AGENT.md`).
 - `.specture/stack.yml` (specifically `testing_framework` for backend or frontend, depending on what the spec covers).
 - `.specture/conventions.md` testing section.
 - **NOT** any existing implementation files. The agent must be blind to implementation to avoid biasing tests toward existing behavior.
-- **Declared supersessions** (spec section "Supersesiones de tests sellados", roadmap item 35): the list of `Supersede: <path>::<test> — motivo: BR-n` lines, verbatim. Before dispatching, with hooks on, lift the test deny for exactly those paths: `node "${CLAUDE_PLUGIN_ROOT}/hooks/lib/seal-cli.js" supersede --paths "<path1>,<path2>"`. **Abort with `BLOCKED: spec <ID>`** if any superseded path is inside a sibling spec's `test_paths` of this epic's seal — a same-epic contradiction is the spec-correction loop, never a supersession.
+- **Declared supersessions** (spec section "Supersesiones de tests sellados", roadmap item 35): the list of `Supersede: <path>::<test> — motivo: <BR-n|AC-n|GAP-nnn>` lines, verbatim. Before dispatching, with hooks on, lift the test deny for exactly those paths: `node "${CLAUDE_PLUGIN_ROOT}/hooks/lib/seal-cli.js" supersede --slug <task-slug> --paths "<path1>,<path2>"`. It refuses (exit 1) a path inside any spec's `test_paths` of this epic's seal — **abort with `BLOCKED: spec <ID>`**: a same-epic contradiction is the spec-correction loop, never a supersession.
 
 **Expected output**: test file(s) at the path indicated by conventions, all currently failing (RED), **committed by the agent in a single RED commit**, and the SHA of that commit reported as `RED_SHA`. When supersessions were declared: a separate, **earlier** commit `test(supersede): <epic>/<task-slug> — <path>::<test> (BR-n)` touching only the declared files, reported as `SUPERSEDE_SHA`.
 
@@ -269,24 +287,51 @@ Dispatch the `implementer` agent (`agents/implementer/AGENT.md`).
 - The **exact signatures** of existing symbols the implementation will call — already captured in the spec's "Superficie de Código Existente" section (do not make the implementer rediscover an API by reading files) — PLUS the minimum set of source files to actually modify (NOT the whole codebase).
 - The explicit instruction: *"Write only to the paths the spec declares under `Crea:` / `Modifica:` (and the tests you were given). With hooks on, a write anywhere else is denied by the Allowed Paths gate — a denied write means the spec is incomplete: stop and report `BLOCKED: spec <ID>` naming the file, never work around it."*
 
+- `BASELINE_FALLOS` (Step 3.9) and, on a resumed dispatch, the `REGRESIONES:` list — old tests the loop judged **not** superseded (J9 `NO`/`INDETERMINABLE`): the implementer fixes production until they pass, never the tests.
+
 **Expected output**: minimal code to make tests pass; agent commits implementation in commits **separate from the RED commit**; reports status `DONE` / `DONE_WITH_CONCERNS` / `NEEDS_CONTEXT` / `BLOCKED`, plus the `HEAD_SHA` after the last implementation commit.
 
-Handle each status per the implementer's protocol.
+Handle each status per the implementer's protocol. **Execution runs in two layers** (the implementer's Steps 3-4):
+
+- **Compile layer (before GREEN).** `BLOCKED: supersesiones (compilación)` with a WIP commit and the full log → report it upward **as is**, one BLOCKED for the spec, without touching any test.
+- **Runtime layer (after GREEN).** `BLOCKED: supersesiones (runtime)` → check each `FAILURES:` line is outside this spec's RED tests and outside `BASELINE_FALLOS`, and cites a rule of this spec; a line without a rule goes back to the implementer as its regression (it counts toward the Iteration Cap). Then report `BLOCKED: supersesiones (runtime) <task-slug>` upward with every remaining line — **one** report per spec and layer, not one per test. The class only raises scrutiny: `aserción` and `producción` reach you only after the implementer tried them as regressions.
+- **`BLOCKED: entorno`** → report upward with the log. No retries.
+
+The coordinator judges each test (J9), amends the spec's Supersesiones section and re-dispatches you with `RESUME_AT: supersede <task-slug>` (Step 5.2). At most one loop per spec and per layer.
+
+## Step 5.2 — Resume after a supersession loop (`RESUME_AT: supersede <task-slug>`)
+
+The spec now declares the tests the loop judged superseded (`commit: pendiente — loop: <capa>`); the `SUPERSEDE:` block lists them. In order:
+
+1. `node "${CLAUDE_PLUGIN_ROOT}/hooks/lib/honesty-check.js" clean-tree` — `PASS` required (nothing uncommitted under the test globs that the next commit could launder).
+2. `seal-cli.js supersede --slug <task-slug> --paths "<declared paths>"` — add `--shared-with-red` **only** when a declared test lives in a file this spec's RED also added tests to (`seal-cli` refuses it otherwise).
+3. Dispatch the `tdd-test-writer` in `MODE: SUPERSEDE-HEAD` with the spec and the declared list — never the failure output. It commits `test(supersede): … — loop <capa>` and reports `reescrito | retirado | sin cambio` per test.
+4. `seal-cli.js supersede --clear`.
+5. `seal-cli.js merge-spec --slug <task-slug> --red-sha <RED_SHA> --add-test-paths "<declared paths>"` — the original `red_sha_orig` is preserved.
+6. Fill `commit:` of the register lines with the `SUPERSEDE_SHA` (`sin cambio` for the tests the writer left alone).
+7. `honesty-check.js red-lines --slug <task-slug>` — every line the original RED added must survive.
+8. **Retroactive RED** for the `aserción` class: `honesty-check.js base-worktree --lock <LOCK_SHA> --files "<rewritten test files>" --dir <tmp>`, run only the rewritten tests there, then `--remove <tmp>`. They must **fail** at the lock and **pass** at HEAD. Passing in both → they do not express the rule: re-dispatch the writer once with that fact; a second time → `BLOCKED: spec <rule>`. Not compiling at the lock → `REVIEW`, handed to the reviewer.
+9. `REGRESIONES:` non-empty → Step 5 for them. Compile layer → continue Step 5 from the WIP to GREEN. Then Step 5.5.
 
 ## Step 5.5 — TDD Honesty Gate (mandatory, automated)
 
-Before dispatching the code-reviewer, the orchestrator runs the gate itself — a mechanical check, no agent involved:
+Before dispatching the code-reviewer, the orchestrator runs the gate itself — mechanical checks, no agent involved, in this order:
 
 ```
-git diff <RED_SHA>..<HEAD_SHA> -- <test-path-globs>
+node "${CLAUDE_PLUGIN_ROOT}/hooks/lib/honesty-check.js" clean-tree
+node "${CLAUDE_PLUGIN_ROOT}/hooks/lib/honesty-check.js" range --slug <task-slug> --epic-dir docs/05-specs/<epic-slug>
+node "${CLAUDE_PLUGIN_ROOT}/hooks/lib/honesty-check.js" red-lines --slug <task-slug>
 ```
 
-- **Empty output** → ✅ Tests untouched. Proceed to Step 6.
-- **Non-empty output** → ❌ TDD violation. Do NOT proceed to review. You **MUST** read `$SPECTURE_ROOT/docs/tdd-honesty-reference.md` (from the plugin: `${CLAUDE_PLUGIN_ROOT}/docs/tdd-honesty-reference.md` — **never** a `docs/tdd-honesty-*.md` of the project's own cwd) and follow its classification + recovery procedure (it also covers the hook-active vs hook-inactive interpretation). Show the diff to the user verbatim before acting.
+`range` is an **allowlist**: every commit in `<red_sha_orig>..HEAD` that touches the test globs must be a SHA registered in `## SUPERSESIONES` (a loop supersession or a `red-fix`) and touch only the paths registered with it, and `supersede_paths` must be empty. `red_sha_orig` is the spec's first RED — it never moves.
+
+- **Three `PASS`** → ✅ Proceed to Step 6.
+- **Any `FAIL`** → ❌ TDD violation. Do NOT proceed to review. You **MUST** read `$SPECTURE_ROOT/docs/tdd-honesty-reference.md` (from the plugin: `${CLAUDE_PLUGIN_ROOT}/docs/tdd-honesty-reference.md` — **never** a `docs/tdd-honesty-*.md` of the project's own cwd) and follow its classification + recovery procedure (it also covers the hook-active vs hook-inactive interpretation). Include the failing token, its lines and the `git diff <RED_SHA>..<HEAD_SHA> -- <test-path-globs>` output **verbatim in your report** — you have no channel to the user; the coordinator shows it.
+- **`UNVERIFIABLE`** (no git, no seal, no node) → fall back to `git diff <RED_SHA>..<HEAD_SHA> -- <test-path-globs>`: empty passes; any hunk is a violation unless its commit is registered in `## SUPERSESIONES` with those paths.
 
 **Guards de no-regresión**: the tests declared in the spec's "Guards de no-regresión (nacen verdes)" section are born green by declaration — the gate never treats a passing guard as "a test that failed to fail". They are still sealed like every other test in the RED commit: editing one after `RED_SHA` IS a violation.
 
-**Supersesiones declaradas**: a `test(supersede)` commit is applied **before** `RED_SHA`, so the range never contains it — excluded by declaration, not by exception. A superseded path that shows up in `git diff <RED_SHA>..<HEAD_SHA>` **is** a violation like any other, and so is any edit to a closed epic's test the spec did not declare.
+**Supersesiones declaradas**: a `test(supersede)` commit declared at the gate is applied **before** `RED_SHA`, so the range never contains it — excluded by declaration. One from the execution loop sits inside the range and passes only because `range` finds its SHA registered with exactly its paths. Any other edit to a test after the RED — including a closed epic's test the spec did not declare — **is** a violation.
 
 This gate is non-negotiable: TDD violations are invisible if you only look at the implementation diff.
 
@@ -305,7 +350,8 @@ Dispatch the `code-reviewer` agent (`agents/code-reviewer/AGENT.md`).
 **Context to pass**:
 - `RED_SHA` and `HEAD_SHA` (for citing the reviewed range).
 - **The Step 5.5 gate result** (clean | violation + details). The reviewer's Dimension 4 consumes this instead of re-running the diff.
-- **The declared supersessions** (the spec's `Supersede:` lines) + `SUPERSEDE_SHA`, or "none" — Dimension 4 checks the range never touches them and that nothing undeclared touched a closed epic's test.
+- **The declared supersessions** (the spec's `Supersede:` lines) + `SUPERSEDE_SHA`, or "none" — Dimension 4 checks the range never touches them and that nothing undeclared touched a closed epic's test. After a loop, also the loop's `SUPERSEDE_SHA`s, its `J9` lines and the `base-worktree` result (`PASS | REVIEW`), so Dimension 4 can judge each rewrite against its rule.
+- **`GATE_NOTES`** for this spec (from the dispatch prompt; `(ninguna)` is valid).
 - The `.spec.md`.
 - `.specture/stack.yml`, `.specture/conventions.md`.
 - **Only the ADRs relevant to the module(s) the spec touches.** Safety rule: if you are unsure whether an ADR applies, include it — err toward inclusion, never toward omission. (Passing every ADR of a mature project is the bulk of this dispatch's cost and most are irrelevant to a given spec.)
@@ -335,8 +381,10 @@ Do NOT proceed to Step 7 until all three have reported. Use the `Monitor` tool (
 
 If you've looped Step 5 → Step 6 **3 times** for the same spec without `APPROVED`, **STOP**. This is a sign of either:
 - A spec problem (ambiguous or contradictory) → report `BLOCKED: spec <AC-n/BR-n/EC-n>`; the **coordinator** runs the spec-correction loop (re-plan → re-validate → revert the affected RED → resume from that spec). Never edit the sealed spec yourself.
-- An architecture problem → escalate to user, possibly add an ADR.
-- Stuck in a debugging loop → invoke `skills/debug/SKILL.md`.
+- An architecture problem → report `BLOCKED` with the contradiction; the coordinator escalates.
+- Stuck in a debugging loop → report `BLOCKED: debug <task-slug>` with what was tried. **Never invoke `skills/debug`** from here: it needs Plan mode, which would stop the whole queue waiting for an approval nobody is there to give — the coordinator offers it to the user.
+
+Old tests of closed epics that fail are **not** this cap's business: they go through the supersession loop (Step 5), whose classification takes precedence over the debug triggers ("the same test fails twice", "implementer BLOCKED").
 
 Do NOT do a 4th naive retry.
 
@@ -353,7 +401,7 @@ Before declaring the spec done:
 
 **Parallelism**: the fresh test-suite run can be launched via `Bash` with `run_in_background: true` while the orchestrator prepares the `ROADMAP.md` update payload for Step 8. Do NOT commit the ROADMAP update until the background test run has completed and its output has been read in full. The verification gate is non-negotiable; concurrency only reduces wall-clock, never the rigor of the check.
 
-If anything is red, you cannot mark the spec complete. See `skills/verify/SKILL.md` — same iron law applies here.
+If anything is red, you cannot mark the spec complete. See `skills/verify/SKILL.md` — same iron law applies here. The only failures that do not block are the ones listed in `BASELINE_FALLOS` (they failed before the epic began) — list them in the report anyway. Before the run, `honesty-check.js clean-tree` must `PASS`.
 
 ## Step 8 — Mark Epic Complete
 
@@ -368,7 +416,9 @@ After all specs in the epic are APPROVED + verified:
 | Don't | Do |
 |-------|-----|
 | Pasar al implementer la conversación entera | Pasarle solo: spec + tests + archivos a tocar + .specture/ + RED_SHA |
-| Saltar la validación de arquitectura "porque es un spec simple" | Siempre validar. Es barato y atrapa errores caros. |
+| Pedir re-validación o re-planificar un spec dentro del epic-agent | El gate del coordinador ya lo validó. Un spec inejecutable se reporta (`BLOCKED: spec <ID>`); un test viejo roto por diseño, también (`BLOCKED: supersesiones`). |
+| Arreglar un test viejo de otro epic "porque obviamente quedó desactualizado" | Nunca se toca un test fuera del RED sin loop: se reporta en `FAILURES:` con la regla que lo vuelve falso, y el test-writer lo reescribe en `SUPERSEDE-HEAD` después del J9. |
+| Invocar `skills/debug` al llegar al tope | Reportar `BLOCKED: debug <slug>`: debug pide Plan mode y detendría la cola. |
 | Permitir que el `tdd-test-writer` deje los tests sin commitear | Sin RED commit no hay TDD Honesty Gate. Aborta y re-dispatcha exigiendo el commit. |
 | Permitir que el implementer commitee tests junto con código en un solo commit | RED y GREEN deben estar en commits separados. El test commit es el de tdd-test-writer; el implementer NO commitea tests. |
 | Saltarse Step 5.5 "porque el implementer dijo que no tocó tests" | El gate es mecánico (`git diff`), no de confianza. Siempre se corre. |
@@ -376,7 +426,7 @@ After all specs in the epic are APPROVED + verified:
 | Reescribir el spec a mitad de implementación | El spec está sellado. Reportá `BLOCKED: spec <ID>`; el coordinador corre el loop de corrección. |
 | Editar o regenerar un spec sellado dentro del epic-agent | Los specs los autoriza el gate (planner + validator). Un spec inejecutable se reporta, no se arregla en silencio. Con hooks, el sello (`spec_paths`) lo deniega; sin hooks, el coordinador lo detecta con `git diff <SPEC_SHA>..HEAD`. |
 | Escribir fuera de la Superficie "porque hacía falta un archivo de wiring" (router, registro DI, barrel, config) | Es un hueco del spec, no una licencia: `BLOCKED: spec <ID>` nombrando el archivo; el planner agrega la línea `Modifica:` y el epic se reanuda. Con hooks, el gate Allowed Paths lo deniega antes. |
-| Editar `.specture/state/build-locked.json` a mano | `seal-cli.js merge-spec` / `release` son los únicos escritores: preservan los campos del coordinador (`spec_sha`, `spec_paths`, `allowed_paths`) y las entradas de los specs hermanos. |
+| Editar `.specture/state/build-locked.json` a mano | `seal-cli.js merge-spec` / `supersede` / `release` son los únicos escritores: preservan los campos del coordinador (`spec_sha`, `spec_paths`, `allowed_paths`, `lock_sha`) y las entradas de los specs hermanos, incluido su `red_sha_orig`. |
 | Marcar epic `[x]` sin haber corrido tests fresh | Verification gate (verify/SKILL.md) lo prohibe |
 | Omitir el review porque "el implementer ya hizo self-review" | Self-review ≠ review independiente. Ambos son necesarios. |
 | Usar `git add -A` o `git commit --amend` durante un epic | `git add <paths explícitos>` y commits nuevos. Un `add -A` captura trabajo en vuelo de otro agente; un `--amend` puede reescribir el commit de un tercero. |

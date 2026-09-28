@@ -114,7 +114,10 @@ dado que cada epic migra exactamente un módulo con interface externa preservada
 
 > Tests de un epic **cerrado** (o characterization tests sellados) que esta migración contradice
 > por diseño — solo cuando §3 declara el breaking change que los invalida. Mismo protocolo que
-> `SPEC_TEMPLATE.md`: commit `test(supersede)` previo al RED, fila `sup:` en la COVERAGE_TABLE,
-> registro en `_planning.md` § SUPERSESIONES.
+> `SPEC_TEMPLATE.md` (los dos caminos: en la planificación, commit `test(supersede)` previo al
+> RED; en la ejecución, el loop de supersesiones con J9), fila `sup:` en la COVERAGE_TABLE,
+> registro en `_planning.md` § SUPERSESIONES. El `motivo` es un `AC-n` de §5 o el `GAP-nnn` de
+> §3 que invalida el comportamiento. Los characterization tests solo entran si el spec declara
+> ese `GAP-nnn`.
 
-- Supersede: `<path>::<nombre del test>` — motivo: AC-n | breaking change §3 — epic origen: <epic-slug>
+- Supersede: `<path>::<nombre del test>` — motivo: <AC-n | GAP-nnn> — epic origen: <epic-slug> [— acción: reescribir | retirar]

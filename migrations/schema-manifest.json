@@ -13,16 +13,16 @@
     "templates/COMPONENT_REFERENCE_TEMPLATE.md": "2ba836cfcf41d83e34636a630e8dd6452ed37a59dce4cd812e01f0e2e98e6095",
     "templates/CURRENT_CAPABILITY_TEMPLATE.md": "cc5b0774f78caa1ec94a79a8f43b38ead8bd954a4430fa26ea298114c495392c",
     "templates/DESIGN_SYSTEM_TEMPLATE.md": "5784792272e46c5d2baf7fb849f87814ae620f501e2cbfc8f68c11315081f4fd",
-    "templates/MIGRATION_SPEC_TEMPLATE.md": "806ac96cefafb64ec89f391d2beffddda99a45dacd7286e9e819756b1fd4e89c",
+    "templates/MIGRATION_SPEC_TEMPLATE.md": "a4cf0fe20cfa1e4b4a3c59df498ae00c651f9993b92ec2a263f611a21f54b5a3",
     "templates/NAVIGATION_MAP_TEMPLATE.md": "3944e4af7201f8a9bd0af87b422cc9bdf52fbef9034f612c4e60ea4cf150337f",
-    "templates/PLANNING_TEMPLATE.md": "97f5fe1293a52af5d2596c5e42a946a1f72d65742f941b424a85f2f6941202f8",
+    "templates/PLANNING_TEMPLATE.md": "0f990cec63711af4385c74b10575581bee1576237ac3ddac9e84df50f0aeaa9e",
     "templates/project-config/conventions.template.md": "410c9c26f913c1b6aa66b42ceb66b950e32324decadb8fba05d4498b726c2bc0",
     "templates/project-config/decisions/000-template.md": "1a39576f4a0e7b4f69ba3bbe9ac4aa4b438ab6091c26a53dac58d4b425f11972",
     "templates/project-config/docs-index.template.yml": "a7dcdefb59a1589cb6a3b0d400952039a9fbebcce41b637b256bca7cacd25419",
     "templates/project-config/rules.template.yml": "68592f1052b23837613075599af575797139e53c1c8339278656101dcfe5a114",
     "templates/project-config/settings.template.yml": "c1b0765e237d6a5f775dac44cd9ec3ea7a0a7f5eaca57ec2e8bd4a25fca3560a",
     "templates/project-config/stack.template.yml": "9cdffd6e7fbf40c822725c0c5d736ba0d1a4a18bded457422b7f8005df743370",
-    "templates/ROADMAP_TEMPLATE.md": "46f686d645aff17e3d1c9f1964448e990dd7c4e1fd1e5a9ae7959d0afe5a86cc",
-    "templates/SPEC_TEMPLATE.md": "bb9ac554bf75dbf6c11f7a8ebdd84b77aa4980e860bafc34f3c92f3d321c9ca6"
+    "templates/ROADMAP_TEMPLATE.md": "5916fa28478b736a07747d5cff8e4642aa4883171d00d00d56cef8c2e22b8e16",
+    "templates/SPEC_TEMPLATE.md": "f05512fd658becd472f38270775e682d508e774fbaf5313a39e0469052bebb2f"
   }
 }

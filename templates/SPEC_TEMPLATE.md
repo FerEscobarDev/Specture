@@ -45,10 +45,17 @@
 ## Supersesiones de tests sellados (omitir si no aplica)
 > Un test de un epic **CERRADO** que este spec contradice por diseño (una regla cambió — cítala
 > por `BR-n`). Nunca un test de un spec hermano de este epic (eso es el loop de corrección).
-> Lo aplica el `tdd-test-writer` en un commit `test(supersede)` **previo** al RED commit, así el
-> TDD Honesty Gate lo excluye por declaración; el registro vive en `_planning.md` § SUPERSESIONES
-> y en la fila `sup:` de la COVERAGE_TABLE (`spec-set-check.js` C-sup los cruza).
-- Supersede: `<path>::<nombre del test>` — motivo: BR-n — epic origen: <epic-slug>
+> Hay **dos caminos**, y la lista **no** tiene que estar completa:
+> - **En la planificación:** el `spec-planner` declara solo los comportamientos que las fuentes
+>   dejan ver (RN, ADR, spec viejo, `_current/`). El `tdd-test-writer` los aplica en un commit
+>   `test(supersede)` **previo** al RED, que el TDD Honesty Gate excluye por declaración.
+> - **En la ejecución:** los tests viejos que la suite descubre rotos se juzgan uno por uno (J9:
+>   ¿una regla de este spec vuelve falsa la expectativa vieja?) y los que sí se agregan aquí sin
+>   tocar ningún otro byte del spec; el test-writer los reescribe sobre HEAD en un commit
+>   registrado por SHA. Los que no, son regresiones del implementer.
+> El registro vive en `_planning.md` § SUPERSESIONES y en la fila `sup:` de la COVERAGE_TABLE
+> (`spec-set-check.js` C-sup verifica que el archivo exista y que el nombre del test aparezca en él).
+- Supersede: `<path>::<nombre del test>` — motivo: BR-n — epic origen: <epic-slug> [— acción: reescribir | retirar]
 
 ## Aclaraciones (resueltas en planificación)
 > Puntero — la evidencia completa vive en el `_planning.md` del epic (COVERAGE_TABLE,

@@ -333,7 +333,15 @@ the Spec Planning Gate was designed to be judged by (`docs/spec-planning-gate-de
    `open_questions ≈ 0` → the planner does not ask (fix the planner, not the validation);
    `reviewer_rejected_major_spec_defect` rising → keep validating per spec (decision A6);
    `c7_rejections` high → harden the planner's Step 4; tokens → the user's judgment (no
-   harness; the `tokens` field is optional).
+   harness; the `tokens` field is optional). Since v2.2.0 it also reads the convergent gate:
+   `gate_rounds` (≥3 sustained → review the validator's criteria, not the planner),
+   `planner_redispatch_after_approved > 0` (the coordinator is reopening APPROVED verdicts —
+   a process defect), gate vs loop dispatches (`validator_dispatches` /
+   `validator_dispatches_loop`), `supersede_loops` and `supersede_tests` (supersessions found
+   in execution instead of in the gate — expected, and cheap), `j9_regressions` (old tests
+   the loop sent back to the implementer), `exec_blocked_compile` / `exec_blocked_runtime`,
+   `baseline_failures`, and `gate_human_contacts` vs `exec_human_contacts` (the goal is
+   contacts in the gate only).
 2. **No file yet** → say so and offer the baseline: *"No hay métricas todavía. ¿Reconstruyo
    el baseline de los epics cerrados antes del gate (`--baseline --write`)?"* On yes:
    ```

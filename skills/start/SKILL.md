@@ -88,7 +88,7 @@ These are NOT routed by state — they are activated by symptoms during any phas
 
 | Symptom | Invoke |
 |---------|--------|
-| Test fails 2+ times in a row, or implementer is stuck guessing | `./skills/debug/SKILL.md` |
+| Test fails 2+ times in a row, or implementer is stuck guessing (except a build's `BLOCKED: supersesiones` — already classified, it runs the supersession loop — and never from inside an epic-agent, which reports `BLOCKED: debug`) | `./skills/debug/SKILL.md` |
 | User wants to add a feature not in the original ROADMAP | `./skills/new-feature/SKILL.md` |
 | About to claim "done", "complete", "passing", "fixed" | `./skills/verify/SKILL.md` |
 | User wants to create or modify a Specture skill | `./skills/write-skill/SKILL.md` |

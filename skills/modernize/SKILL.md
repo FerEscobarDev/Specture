@@ -271,6 +271,13 @@ Dispatch `tdd-test-writer` with:
 The agent writes tests for the target-tech behavior of this module. These are the GREEN tests.
 Commit (RED commit). Capture `RED_SHA`.
 
+**Supersession loop (build v2.2.0) in a migration epic.** Old tests of closed epics that a
+migration spec makes false go through build's supersession loop like in any epic, with two
+differences: the J9 judgment accepts the spec's `AC-n` or `GAP-nnn` as the rule (a migration
+spec has no `BR-n`), and **characterization tests never enter the loop** — they are the
+regression baseline of §5, frozen at `CHARACTERIZATION_SHA`, unless the spec declares the
+`GAP-nnn` that retires that exact behaviour. A failing characterization test follows §7.7.
+
 ### 7.4 TDD Honesty Gate
 
 ```
@@ -312,7 +319,7 @@ After the code-reviewer approves, run the characterization tests:
 
 These must be 100% green. If any characterization test fails:
 - Do NOT mark the epic `[x]`.
-- Invoke `./skills/debug/SKILL.md`. Root cause before any fix.
+- Invoke `./skills/debug/SKILL.md`. Root cause before any fix. (Inside a build epic-agent that means reporting `BLOCKED: debug <task-slug>` — the coordinator offers debug to the user. A characterization test is never "superseded" by the loop unless the spec declares its `GAP-nnn`.)
 
 ### 7.8 Mark Epic and Reset Context
 

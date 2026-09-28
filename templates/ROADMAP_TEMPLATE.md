@@ -49,6 +49,7 @@
   - **Componentes de arquitectura involucrados:** [Links a secciones de `architecture.md`]
   - **Operaciones del contrato:** `operationId` *(en backticks, separados por coma; sufijo `(consume)` en epics frontend, ej. `` `listarArchivos` (consume) `` — por defecto el epic las *implementa*. Omitir la línea si el epic no toca el boundary HTTP. Un epic de página frontend que consume una operación debe depender del epic backend que la implementa; `spec-set-check.js` C1 exige que ese backend esté `[x]`.)*
   - **Specs estimados:** [N — orientativo, se concretará en Fase 4]
+  - **Diferidos heredados:** <ítem> — de Epic <X.Y> (dispatch <N>) *(opcional; lo escribe el coordinador de `build` cuando el gate de otro epic aprueba con una observación de alcance que pertenece a éste por componente o RN. El gate de este epic la recibe como candidata de C3: se cubre o se difiere con dueño. Una línea por ítem; separados por ` · ` si hay varios.)*
 
 - [ ] **Epic 1.2:** [Nombre del Epic]
   - **Dependencias:** Epic 1.1
