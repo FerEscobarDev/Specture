@@ -20,12 +20,21 @@
 //     validator_verdict: "APPROVED"|"ESCALATED"|null, needs_context_spec, iteration_cap_spec,
 //     blocked_spec, reviewer_rejected_major_spec_defect, review_rejections: {minor, major},
 //     supersessions, outcome: "DONE"|"BLOCKED"|"REJECTED_MAJOR"|"ESCALATED", tokens: null|{input, output, source} }
+// Additive fields (v2.2.0, all numeric; a line without them still reads — they are averaged
+// over the lines that carry them): gate_rounds, gate_human_contacts, exec_human_contacts,
+//   planner_redispatch_after_approved (must stay 0), validator_dispatches_loop,
+//   planner_dispatches_loop, supersede_loops, supersede_tests, j9_regressions,
+//   exec_blocked_compile, exec_blocked_runtime, baseline_failures, late_findings;
+//   plus `effort` ({<agent>: <level>}, not numeric — carried, never averaged).
+// `validator_dispatches` counts gate dispatches only; the correction-loop ones (`— loop`,
+// legacy `(loop de corrección)`) go to `validator_dispatches_loop`.
 
 const fs = require("fs");
 const path = require("path");
 const { execFileSync } = require("child_process");
 const { lines, readText, walk, parseRoadmap } = require("./doctor/project");
 const { REVIEW_STATUS } = require("./doctor/checks/corpus");
+const { parseVerdictHeaders, parseSupersessionRegister } = require("./planning");
 const { findProjectRoot } = require("./specture-guard");
 
 const METRICS_FILE = path.join("docs", ".specture-meta", "build-metrics.jsonl");
@@ -33,8 +42,14 @@ const REVIEW_CAUSE = /CAUSE:\s*\**\s*(none|implementation|spec_defect|architectu
 const NUMERIC = [
   "specs", "planner_dispatches", "open_questions", "resolved_alone", "c7_rejections", "mech_check_failures",
   "validator_dispatches", "needs_context_spec", "iteration_cap_spec", "blocked_spec",
-  "reviewer_rejected_major_spec_defect", "supersessions"
+  "reviewer_rejected_major_spec_defect", "supersessions",
+  // v2.2.0
+  "gate_rounds", "gate_human_contacts", "exec_human_contacts", "planner_redispatch_after_approved",
+  "validator_dispatches_loop", "planner_dispatches_loop", "supersede_loops", "supersede_tests", "j9_regressions",
+  "exec_blocked_compile", "exec_blocked_runtime", "baseline_failures", "late_findings"
 ];
+// Rounds of validation per epic from which the reading asks to review the validator's criterion.
+const GATE_ROUNDS_CEILING = 3;
 
 function parseArgs(argv) {
   const opts = { project: null, last: null, json: false, baseline: false, since: null, write: false };
@@ -117,6 +132,12 @@ function reading(gate, baseline) {
     else if (b !== null) notes.push(`reviewer_rejected_major_spec_defect no sube (${b} → ${gate.reviewer_rejected_major_spec_defect}): A6 puede consolidar dims 1-6 en el dispatch de set cuando haya ~10 epics.`);
   }
   if (gate.c7_rejections !== null && gate.c7_rejections >= 1) notes.push(`c7_rejections alto sostenido (${gate.c7_rejections} por epic): el planner cita mal — endurecer su Step 4.`);
+  if (typeof gate.planner_redispatch_after_approved === "number" && gate.planner_redispatch_after_approved > 0) {
+    notes.push(`planner_redispatch_after_approved > 0 (${gate.planner_redispatch_after_approved} por epic): el coordinador reabre APROBADOS — lo aprobado no vuelve al planner; las observaciones van a GATE_NOTES o DIFERIDOS.`);
+  }
+  if (typeof gate.gate_rounds === "number" && gate.gate_rounds >= GATE_ROUNDS_CEILING) {
+    notes.push(`gate_rounds ≥ ${GATE_ROUNDS_CEILING} sostenido (${gate.gate_rounds} por epic): revisar criterio del validador antes de agregar validación.`);
+  }
   if (gate.tokens !== null && baseline.tokens !== null) {
     notes.push(gate.tokens > baseline.tokens ? `Tokens por epic suben (${baseline.tokens} → ${gate.tokens}): si los defectos bajan menos de lo que cuesta, ajustar 4a (más fast path mecánico) antes de tocar el gate.` : `Tokens por epic no suben (${baseline.tokens} → ${gate.tokens}).`);
   } else {
@@ -138,11 +159,11 @@ function renderSummary(result) {
   const out = [];
   out.push(`metrics-report: ${result.file} — ${result.total} epic(s)${result.shown !== result.total ? `, showing last ${result.shown}` : ""}${result.skipped ? `, ${result.skipped} malformed line(s) skipped` : ""}`);
   out.push("");
-  out.push("epic | source | specs | Q | R | c7 | mech | val | nctx | cap | blk | spec_def | rej m/M | sup | outcome");
+  out.push("epic | source | specs | Q | R | c7 | mech | val | rnd | nctx | cap | blk | spec_def | rej m/M | sup | sup-loop | outcome");
   for (const e of result.entries) {
     const v = (x) => (x === null || x === undefined ? "-" : x);
     const rr = e.review_rejections || {};
-    out.push(`${e.epic} | ${e.source || "gate"} | ${v(e.specs)} | ${v(e.open_questions)} | ${v(e.resolved_alone)} | ${v(e.c7_rejections)} | ${v(e.mech_check_failures)} | ${v(e.validator_dispatches)} | ${v(e.needs_context_spec)} | ${v(e.iteration_cap_spec)} | ${v(e.blocked_spec)} | ${v(e.reviewer_rejected_major_spec_defect)} | ${v(rr.minor)}/${v(rr.major)} | ${v(e.supersessions)} | ${v(e.outcome)}`);
+    out.push(`${e.epic} | ${e.source || "gate"} | ${v(e.specs)} | ${v(e.open_questions)} | ${v(e.resolved_alone)} | ${v(e.c7_rejections)} | ${v(e.mech_check_failures)} | ${v(e.validator_dispatches)} | ${v(e.gate_rounds)} | ${v(e.needs_context_spec)} | ${v(e.iteration_cap_spec)} | ${v(e.blocked_spec)} | ${v(e.reviewer_rejected_major_spec_defect)} | ${v(rr.minor)}/${v(rr.major)} | ${v(e.supersessions)} | ${v(e.supersede_loops)} | ${v(e.outcome)}`);
   }
   out.push("");
   for (const [label, agg] of [["gate", result.gate], ["baseline", result.baseline]]) {
@@ -177,7 +198,9 @@ function reviewsFor(projectRoot, epicSlug) {
   return files.map((rel) => {
     const text = readText(projectRoot, rel) || "";
     const base = path.posix.basename(rel, ".md");
-    const task = base.slice(`review-${epicSlug}-`.length).replace(/-\d{4}-\d{2}-\d{2}$/, "");
+    // `review-<epic>-<spec>-pN-<fecha>.md` keeps an earlier pass of the same spec (EPIC_LOOP
+    // Step 6): it counts for <spec>.
+    const task = base.slice(`review-${epicSlug}-`.length).replace(/-\d{4}-\d{2}-\d{2}$/, "").replace(/-p\d+$/, "");
     const status = (text.match(REVIEW_STATUS) || [])[1] || null;
     const cause = (text.match(REVIEW_CAUSE) || [])[1] || null;
     const date = (base.match(/(\d{4}-\d{2}-\d{2})$/) || [])[1] || null;
@@ -185,17 +208,54 @@ function reviewsFor(projectRoot, epicSlug) {
   });
 }
 
+// Distinct (spec, loop layer) pairs — one supersession-only loop per spec and per layer.
+function distinctPairs(pairs) {
+  return new Set(pairs.map(([a, b]) => `${a}\u0000${b}`)).size;
+}
+
+// `compilación` / `compilacion` / `Runtime` → one spelling per layer.
+function loopLayer(value) {
+  return String(value || "").toLowerCase().replace("compilacion", "compilación");
+}
+
 function planningCounters(projectRoot, epicSlug) {
   const text = readText(projectRoot, `docs/05-specs/${epicSlug}/_planning.md`);
   if (text === null) return null;
+  const headers = parseVerdictHeaders(text);
+  const rounds = headers.map((h) => h.ronda).filter((r) => typeof r === "number");
+  const loops = parseSupersessionRegister(text).filter((r) => r.kind === "supersede" && r.loop);
   return {
     open_questions: countMatches(text, /^\s*-\s*Q-\d+\b/gm),
     resolved_alone: countMatches(text, /^\s*-\s*R-\d+\b/gm),
     mech_check_failures: countMatches(text, /MECH_CHECK:\s*FAIL\b/g),
-    validator_dispatches: countMatches(text, /^###\s.*\bdispatch\s+\d+/gm) || null,
+    // No verdict header at all → not recorded (null), not zero.
+    validator_dispatches: headers.length === 0 ? null : headers.filter((h) => !h.loop).length,
+    validator_dispatches_loop: headers.length === 0 ? null : headers.filter((h) => h.loop).length,
+    gate_rounds: rounds.length === 0 ? null : Math.max(...rounds),
+    supersede_loops: distinctPairs(loops.map((r) => [r.slug, loopLayer(r.loop)])),
     c7_rejections: countMatches(text, /aclaraci[oó]n sin sustento/gi),
     validator_verdict: /STATUS:\s*\**\s*APPROVED/.test(text) ? "APPROVED" : null
   };
+}
+
+// `test(supersede): <epic>/<spec> — loop[:] <compilación|runtime> — …` subjects → distinct
+// (spec, layer) pairs. A supersede commit without `loop` precedes the RED: it is no loop.
+function supersedeLoopsFromGit(commits) {
+  const pairs = [];
+  for (const c of commits) {
+    if (!/^test\(supersede\)/.test(c.subject) || !/\bloop\b/i.test(c.subject)) continue;
+    const target = (c.subject.match(/^test\(supersede\):\s*(\S+)/) || [])[1] || "";
+    const layer = (c.subject.match(/\bloop\b\s*:?\s*(compilaci[oó]n|runtime)?/i) || [])[1] || "";
+    pairs.push([target, loopLayer(layer)]);
+  }
+  return distinctPairs(pairs);
+}
+
+// Both sources undercount (the register may predate v2.2, a loop may share a commit): the
+// larger one wins; null only when neither could be read.
+function maxOrNull(values) {
+  const nums = values.filter((v) => typeof v === "number");
+  return nums.length === 0 ? null : Math.max(...nums);
 }
 
 function reconstructEpic(projectRoot, epicSlug, epicState, commits, gitOk, pluginVersion) {
@@ -220,6 +280,8 @@ function reconstructEpic(projectRoot, epicSlug, epicState, commits, gitOk, plugi
     c7_rejections: planning ? planning.c7_rejections : null,
     mech_check_failures: planning ? planning.mech_check_failures : null,
     validator_dispatches: planning ? planning.validator_dispatches : null,
+    validator_dispatches_loop: planning ? planning.validator_dispatches_loop : null,
+    gate_rounds: planning ? planning.gate_rounds : null,
     validator_verdict: planning ? planning.validator_verdict : null,
     needs_context_spec: null,
     iteration_cap_spec: Object.values(perTask).filter((n) => n >= 3).length,
@@ -227,6 +289,18 @@ function reconstructEpic(projectRoot, epicSlug, epicState, commits, gitOk, plugi
     reviewer_rejected_major_spec_defect: specDefect.length + heuristic.length,
     review_rejections: { minor: reviews.filter((r) => r.status === "REJECTED_MINOR").length, major: major.length },
     supersessions: gitOk ? mine.filter((c) => /^test\(supersede\)/.test(c.subject)).length : null,
+    supersede_loops: maxOrNull([planning ? planning.supersede_loops : null, gitOk ? supersedeLoopsFromGit(mine) : null]),
+    // v2.2.0 fields no artefact records before the gate ran: not reconstructible.
+    gate_human_contacts: null,
+    exec_human_contacts: null,
+    planner_redispatch_after_approved: null,
+    planner_dispatches_loop: null,
+    supersede_tests: null,
+    j9_regressions: null,
+    exec_blocked_compile: null,
+    exec_blocked_runtime: null,
+    baseline_failures: null,
+    late_findings: null,
     outcome: epicState === "done" ? "DONE" : epicState === "in-progress" ? "ESCALATED" : "unknown",
     tokens: null
   };

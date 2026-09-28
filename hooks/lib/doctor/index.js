@@ -11,6 +11,7 @@ const state = require("./checks/state");
 const drift = require("./checks/drift");
 const requirements = require("./checks/requirements");
 const rules = require("./checks/rules");
+const gate = require("./checks/gate");
 
 function runCheck(projectRoot, options = {}) {
   const pluginVersion = options.pluginVersion;
@@ -19,7 +20,7 @@ function runCheck(projectRoot, options = {}) {
   const project = loadProject(projectRoot, pluginVersion);
 
   const driftResult = drift.run(project, catalog);
-  const findings = [...corpus.run(project), ...requirements.run(project), ...rules.run(project), ...state.run(project), ...driftResult.findings];
+  const findings = [...corpus.run(project), ...requirements.run(project), ...rules.run(project), ...state.run(project), ...gate.run(project), ...driftResult.findings];
   const counts = { ERROR: 0, WARNING: 0, INFO: 0 };
   for (const f of findings) counts[f.severity] = (counts[f.severity] || 0) + 1;
 

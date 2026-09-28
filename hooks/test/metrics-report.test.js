@@ -92,6 +92,137 @@ test("reading rules: planner-does-not-ask (R1) and A6 (spec_defect rising) fire 
   assert.match(report.reading({ count: 0 }, baseline).join("\n"), /Sin epics con gate/);
 });
 
+// The v2.2.0 additive fields (all numeric) — a line may carry them or not.
+const V22_FIELDS = [
+  "gate_rounds", "gate_human_contacts", "exec_human_contacts", "planner_redispatch_after_approved",
+  "validator_dispatches_loop", "planner_dispatches_loop", "supersede_loops", "supersede_tests", "j9_regressions",
+  "exec_blocked_compile", "exec_blocked_runtime", "baseline_failures", "late_findings"
+];
+
+test("v2.2 fields: averaged like the other numeric fields; `effort` as an object does not break; old lines still work", () => {
+  const v22 = (value) => Object.fromEntries(V22_FIELDS.map((k) => [k, value]));
+  const root = createProject({
+    "docs/.specture-meta/build-metrics.jsonl": [
+      line("epic-0.9-old"),
+      line("epic-1.1-a", { ...v22(2), gate_rounds: 2, supersede_loops: 1, effort: { planner: "high", validator: "medium" } }),
+      line("epic-1.2-b", { ...v22(4), gate_rounds: 4, supersede_loops: 0 })
+    ].join("\n") + "\n"
+  });
+  const { status, json, stderr } = run(root, "--json");
+  assert.equal(status, 0, stderr);
+  assert.equal(json.skipped, 0);
+  assert.equal(json.gate.count, 3);
+  for (const key of V22_FIELDS) assert.ok(key in json.gate, `aggregate carries ${key}`);
+  assert.equal(json.gate.gate_rounds, 3, "the old line has no gate_rounds: it does not count as 0");
+  assert.equal(json.gate.supersede_loops, 0.5);
+  assert.equal(json.gate.late_findings, 3);
+  assert.equal(json.gate.validator_dispatches, 3, "the v1.18 fields keep their mean");
+  assert.deepEqual(json.entries[1].effort, { planner: "high", validator: "medium" });
+  assert.ok(!("effort" in json.gate), "effort is not numeric: it is not averaged");
+
+  const onlyOld = run(createProject({ "docs/.specture-meta/build-metrics.jsonl": line("epic-0.9-old") + "\n" }), "--json");
+  assert.equal(onlyOld.status, 0);
+  for (const key of V22_FIELDS) assert.equal(onlyOld.json.gate[key], null, key);
+});
+
+test("summary: the table gains the `rnd` and `sup-loop` columns; old lines print `-`", () => {
+  const root = createProject({
+    "docs/.specture-meta/build-metrics.jsonl": [line("epic-0.9-old"), line("epic-1.1-a", { gate_rounds: 3, supersede_loops: 2 })].join("\n") + "\n"
+  });
+  const { status, stdout } = run(root);
+  assert.equal(status, 0);
+  assert.match(stdout, /^epic \| source \| specs \| Q \| R \| c7 \| mech \| val \| rnd \| nctx \| cap \| blk \| spec_def \| rej m\/M \| sup \| sup-loop \| outcome$/m);
+  assert.match(stdout, /^epic-1\.1-a \| gate \| 2 \| 1 \| 6 \| 0 \| 1 \| 3 \| 3 \| 0 \| 0 \| 0 \| 0 \| 1\/0 \| 0 \| 2 \| DONE$/m);
+  assert.match(stdout, /^epic-0\.9-old \| gate \| 2 \| 1 \| 6 \| 0 \| 1 \| 3 \| - \| 0 \| 0 \| 0 \| 0 \| 1\/0 \| 0 \| - \| DONE$/m);
+});
+
+test("reading rules: a planner re-dispatch after APPROVED and sustained gate rounds >= 3 fire", () => {
+  const baseline = { count: 10, downstream_defects: 2, reviewer_rejected_major_spec_defect: 0.1, tokens: null };
+  const gate = { count: 4, downstream_defects: 1, zero_question_share: 0.2, reviewer_rejected_major_spec_defect: 0.1, c7_rejections: 0, tokens: null, planner_redispatch_after_approved: 0.25, gate_rounds: 3.5 };
+  const notes = report.reading(gate, baseline).join("\n");
+  assert.match(notes, /planner_redispatch_after_approved > 0 \(0\.25 por epic\): el coordinador reabre APROBADOS/);
+  assert.match(notes, /gate_rounds ≥ 3 sostenido \(3\.5 por epic\): revisar criterio del validador/);
+
+  const calm = report.reading({ ...gate, planner_redispatch_after_approved: 0, gate_rounds: 2 }, baseline).join("\n");
+  assert.doesNotMatch(calm, /reabre APROBADOS/);
+  assert.doesNotMatch(calm, /criterio del validador/);
+  const legacy = report.reading({ ...gate, planner_redispatch_after_approved: null, gate_rounds: null }, baseline).join("\n");
+  assert.doesNotMatch(legacy, /reabre APROBADOS|criterio del validador/, "lines without the fields fire nothing");
+});
+
+test("--baseline: _planning.md separates gate from loop dispatches, takes the max round and counts (slug, loop) pairs", () => {
+  const root = createProject({
+    "docs/04-roadmap/ROADMAP.md": "### Milestone 1: M\n\n- [x] **Epic 1.1:** A\n  - **Dependencias:** Ninguna\n",
+    "docs/05-specs/epic-1.1-a/01-x.spec.md": "# SPEC\n",
+    "docs/05-specs/epic-1.1-a/02-y.spec.md": "# SPEC\n",
+    "docs/05-specs/epic-1.1-a/_planning.md": [
+      "# Planning",
+      "",
+      "## SUPERSESIONES",
+      "- tests/a.test.js::t1 — motivo: BR-1 — spec: 01-x — commit: 1a2b3c4 — loop: runtime",
+      "- tests/a.test.js::t2 — motivo: BR-1 — spec: 01-x — commit: 1a2b3c4 — loop: runtime",
+      "- tests/b.test.js::t3 — motivo: BR-2 — spec: 02-y — commit: 5d6e7f8 — loop: compilación",
+      "- tests/b.test.js::t4 — motivo: BR-2 — spec: 01-x — commit: 9a8b7c6 — loop: compilación",
+      "- tests/c.test.js::t5 — motivo: BR-2 — spec: 02-y — commit: pendiente",
+      "",
+      "## VEREDICTOS",
+      "### set — dispatch 1 — ronda 1 — 2026-09-28T10:00:00Z — tree aaaaaaaaaaaa — head bbbbbbbbbbbb",
+      "```\nSTATUS: REJECTED\n```",
+      "### set — dispatch 2 — ronda 2 — 2026-09-28T11:00:00Z — tree cccccccccccc — head dddddddddddd — delta",
+      "```\nSTATUS: APPROVED\n```",
+      "### 01-x — dispatch 3 — ronda 1 — 2026-09-29T09:00:00Z — tree eeeeeeeeeeee — head ffffffffffff — loop",
+      "```\nSTATUS: APPROVED\n```",
+      "### 02-y — dispatch 1 — 2026-09-24 (loop de corrección)",
+      "```\nSTATUS: APPROVED\n```",
+      ""
+    ].join("\n")
+  });
+  const { json } = run(root, "--baseline", "--json");
+  const e = json.epics[0];
+  assert.equal(e.validator_dispatches, 2, "only the gate dispatches");
+  assert.equal(e.validator_dispatches_loop, 2, "`— loop` and the legacy `(loop de corrección)`");
+  assert.equal(e.gate_rounds, 2);
+  assert.equal(e.supersede_loops, 3, "01-x/runtime, 02-y/compilación, 01-x/compilación");
+
+  const legacy = createProject({
+    "docs/04-roadmap/ROADMAP.md": "### Milestone 1: M\n\n- [x] **Epic 1.1:** A\n",
+    "docs/05-specs/epic-1.1-a/01-x.spec.md": "# SPEC\n",
+    "docs/05-specs/epic-1.1-a/_planning.md": "# Planning\n\n## VEREDICTOS\n### set — dispatch 1 — 2026-09-01\n```\nSTATUS: APPROVED\n```\n"
+  });
+  const old = run(legacy, "--baseline", "--json").json.epics[0];
+  assert.equal(old.validator_dispatches, 1);
+  assert.equal(old.validator_dispatches_loop, 0);
+  assert.equal(old.gate_rounds, null, "legacy headers carry no round");
+});
+
+test("--baseline: supersede_loops from `test(supersede): … — loop …` subjects; a `-pN` review counts for its spec", () => {
+  const root = createProject({
+    "docs/04-roadmap/ROADMAP.md": "### Milestone 1: M\n\n- [x] **Epic 1.1:** A\n",
+    "docs/05-specs/epic-1.1-a/01-x.spec.md": "# SPEC\n",
+    "docs/07-reviews/review-epic-1.1-a-01-x-2026-09-01.md": "# Review\n\n**STATUS: REJECTED_MINOR**\n**CAUSE:** implementation\n",
+    "docs/07-reviews/review-epic-1.1-a-01-x-p2-2026-09-01.md": "# Review\n\n**STATUS: REJECTED_MINOR**\n**CAUSE:** implementation\n",
+    "docs/07-reviews/review-epic-1.1-a-01-x-2026-09-02.md": "# Review\n\n**STATUS: APPROVED**\n**CAUSE:** none\n"
+  });
+  git(root, "init", "-q");
+  git(root, "add", "-A");
+  git(root, "commit", "-q", "-m", "test(epic-1.1-a): RED 01-x");
+  const commit = (file, subject) => {
+    write(root, file, `// ${subject}\n`);
+    git(root, "add", "-A");
+    git(root, "commit", "-q", "-m", subject);
+  };
+  commit("tests/a.test.js", "test(supersede): epic-1.1-a/01-x — tests/old.test.js::t (BR-1)");
+  commit("tests/b.test.js", "test(supersede): epic-1.1-a/01-x — loop: runtime — tests/old.test.js::u (BR-1)");
+  commit("tests/c.test.js", "test(supersede): epic-1.1-a/01-x — loop: runtime — tests/old.test.js::v (BR-1)");
+  commit("tests/d.test.js", "test(supersede): epic-1.1-a/01-x — loop: compilación — tests/old.test.js::w (BR-1)");
+
+  const e = run(root, "--baseline", "--json").json.epics[0];
+  assert.equal(e.supersessions, 4);
+  assert.equal(e.supersede_loops, 2, "01-x/runtime and 01-x/compilación");
+  assert.equal(e.iteration_cap_spec, 1, "01-x has 3 reviews once `-p2` is folded into it");
+  assert.deepEqual(e.review_rejections, { minor: 2, major: 0 });
+});
+
 test("--baseline reconstructs a closed epic from reviews, _planning.md and git; --write appends once", () => {
   const root = createProject({
     "docs/04-roadmap/ROADMAP.md": "### Milestone 1: M\n\n- [x] **Epic 1.1:** A\n  - **Dependencias:** Ninguna\n- [ ] **Epic 1.2:** B\n",

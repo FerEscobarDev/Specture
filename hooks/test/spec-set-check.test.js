@@ -340,26 +340,125 @@ test("migration epics: C2 and C4 are skipped with INFO; C-gap needs every GAP ex
   assert.ok(lie.lines.some((l) => /^C-gap BLOCKER 01-mig: la tabla declara GAP-001 pero el spec no lo lista/.test(l)));
 });
 
+// The sealed test file of the C-sup fixtures: it contains the superseded test by name.
+const NOTA_TEST = 'test("rechaza titulo repetido", () => {});\n';
+
 test("C-sup: every Supersede: line needs its sup: row (and vice-versa) and the path must exist on disk", () => {
   const supersedeSection = "\n## Supersesiones de tests sellados (omitir si no aplica)\n- Supersede: `tests/old/nota.test.js::rechaza titulo repetido` — motivo: BR-1 — epic origen: epic-0.9-old\n";
   const specs = { ...CLEAN_SPECS, "01-subir": CLEAN_SPECS["01-subir"] + supersedeSection };
   const rows = CLEAN_ROWS + "\n- sup: tests/old/nota.test.js::rechaza titulo repetido → 01-subir (BR-1)";
 
-  const ok = runCheck(createProject({ specs, planning: planningDoc(rows), files: { "tests/old/nota.test.js": "// old\n" } }));
+  const ok = runCheck(createProject({ specs, planning: planningDoc(rows), files: { "tests/old/nota.test.js": NOTA_TEST } }));
   assert.equal(ok.status, 0, ok.lines.join("\n"));
 
   const missingFile = runCheck(createProject({ specs, planning: planningDoc(rows) }));
   assert.equal(missingFile.status, 1);
   assert.ok(missingFile.lines.some((l) => /^C-sup BLOCKER 01-subir: Supersede `tests\/old\/nota\.test\.js` no existe en disco/.test(l)), missingFile.lines.join("\n"));
 
-  const noRow = runCheck(createProject({ specs, files: { "tests/old/nota.test.js": "// old\n" } }));
+  const noRow = runCheck(createProject({ specs, files: { "tests/old/nota.test.js": NOTA_TEST } }));
   assert.ok(noRow.lines.some((l) => /^C-sup BLOCKER 01-subir: Supersede `tests\/old\/nota\.test\.js::rechaza titulo repetido` sin fila sup:/.test(l)), noRow.lines.join("\n"));
 
-  const noLine = runCheck(createProject({ planning: planningDoc(rows), files: { "tests/old/nota.test.js": "// old\n" } }));
+  const noLine = runCheck(createProject({ planning: planningDoc(rows), files: { "tests/old/nota.test.js": NOTA_TEST } }));
   assert.ok(noLine.lines.some((l) => /^C-sup BLOCKER 01-subir: fila sup: .* sin línea Supersede: en el spec/.test(l)), noLine.lines.join("\n"));
 
-  const wrongSlug = runCheck(createProject({ specs, planning: planningDoc(rows.replace("→ 01-subir (BR-1)", "→ 02-listar (BR-1)")), files: { "tests/old/nota.test.js": "// old\n" } }));
+  const wrongSlug = runCheck(createProject({ specs, planning: planningDoc(rows.replace("→ 01-subir (BR-1)", "→ 02-listar (BR-1)")), files: { "tests/old/nota.test.js": NOTA_TEST } }));
   assert.ok(wrongSlug.lines.some((l) => /^C-sup BLOCKER 01-subir: .*la tabla la asigna a 02-listar/.test(l)), wrongSlug.lines.join("\n"));
+});
+
+// One spec superseding `tests/old/nota.test.js::<testName>`, the file holding `fileText`.
+function supersedeProject(testName, fileText) {
+  const section = `\n## Supersesiones de tests sellados (omitir si no aplica)\n- Supersede: \`tests/old/nota.test.js::${testName}\` — motivo: BR-1 — epic origen: epic-0.9-old\n`;
+  return createProject({
+    specs: { ...CLEAN_SPECS, "01-subir": CLEAN_SPECS["01-subir"] + section },
+    planning: planningDoc(`${CLEAN_ROWS}\n- sup: tests/old/nota.test.js::${testName} → 01-subir (BR-1)`),
+    files: { "tests/old/nota.test.js": fileText }
+  });
+}
+
+const supFindings = (result) => result.lines.filter((l) => l.startsWith("C-sup"));
+
+test("C-sup: the test name must appear literally in the file — present passes, absent is a BLOCKER", () => {
+  const present = runCheck(supersedeProject("rechaza titulo repetido", NOTA_TEST));
+  assert.equal(present.status, 0, present.lines.join("\n"));
+  assert.deepEqual(supFindings(present), []);
+
+  const absent = runCheck(supersedeProject("rechaza titulo repetido", 'test("acepta titulo nuevo", () => {});\n'));
+  assert.equal(absent.status, 1);
+  assert.match(absent.token, /^MECH_CHECK: FAIL [0-9a-f]{12}$/);
+  assert.ok(
+    absent.lines.some((l) => /^C-sup BLOCKER 01-subir: Supersede `tests\/old\/nota\.test\.js::rechaza titulo repetido`: el nombre del test no aparece en el archivo/.test(l)),
+    absent.lines.join("\n")
+  );
+});
+
+test("C-sup: a name with a [..] or (..) suffix passes when the file holds it without the suffix", () => {
+  for (const name of ["rechaza titulo repetido [caso 1]", "rechaza titulo repetido (x)"]) {
+    const result = runCheck(supersedeProject(name, NOTA_TEST));
+    assert.equal(result.status, 0, `${name}\n${result.lines.join("\n")}`);
+    assert.deepEqual(supFindings(result), [], name);
+  }
+});
+
+test("C-sup: a qualified name passes when the file holds its last segment (`>`, `.`, `::`, `/`)", () => {
+  const cases = [
+    ["Notas > rechaza titulo repetido", 'describe("Notas", () => { it("rechaza titulo repetido", () => {}); });\n'],
+    ["NotaTests.RechazaTituloRepetido", "public class NotaTests { [Fact] public void RechazaTituloRepetido() {} }\n"],
+    ["nota_tests::rechaza_titulo_repetido", "#[test]\nfn rechaza_titulo_repetido() {}\n"],
+    ["Notas/rechaza titulo repetido", NOTA_TEST]
+  ];
+  for (const [name, text] of cases) {
+    const result = runCheck(supersedeProject(name, text));
+    assert.equal(result.status, 0, `${name}\n${result.lines.join("\n")}`);
+    assert.deepEqual(supFindings(result), [], name);
+  }
+});
+
+test("C-sup: a parameterised name (%s, $x, {x}, [x]) absent from the file is a WARNING, still exit 0", () => {
+  for (const name of ["rechaza %s repetido", "rechaza $titulo repetido", "rechaza {titulo} repetido", "rechaza [titulo] repetido"]) {
+    const result = runCheck(supersedeProject(name, 'test.each(rows)("otro nombre", () => {});\n'));
+    assert.equal(result.status, 0, `${name}\n${result.lines.join("\n")}`);
+    const finding = supFindings(result);
+    assert.equal(finding.length, 1, `${name}\n${result.lines.join("\n")}`);
+    assert.match(finding[0], /^C-sup WARNING 01-subir: Supersede `tests\/old\/nota\.test\.js::.*`: nombre parametrizado/, name);
+  }
+});
+
+test("C-sup: a migration spec supersedes with motivo AC-n or GAP-nnn", () => {
+  const migrationSpec = [
+    "# MIGRATION SPEC: tags",
+    "",
+    "- **Gaps cubiertos (gap_analysis.md):** GAP-001",
+    "",
+    "## 1. Estado Actual",
+    "- x",
+    "",
+    "## 5. Criterios de Aceptación",
+    "- **AC-1:** a",
+    "",
+    "## 7. Fuera de Scope",
+    "- nada",
+    "",
+    "## 8. Supersesiones de tests sellados (omitir si no aplica)",
+    "- Supersede: `tests/old/tags.test.js::usa la tabla vieja` — motivo: GAP-001 — epic origen: epic-1.1-x",
+    "- Supersede: `tests/old/tags.test.js::mantiene el campo viejo` — motivo: AC-1 — epic origen: epic-1.1-x — acción: retirar",
+    ""
+  ].join("\n");
+  const rows = [
+    "- gap: GAP-001 → 01-mig",
+    "- oos: nada → diferido a: fuera del epic",
+    "- sup: tests/old/tags.test.js::usa la tabla vieja → 01-mig (GAP-001)",
+    "- sup: tests/old/tags.test.js::mantiene el campo viejo → 01-mig (AC-1)"
+  ].join("\n");
+  const project = createProject({
+    roadmap: roadmap([{ id: "2.1", template: "MIGRATION_SPEC_TEMPLATE.md", rules: "RN-005", gaps: "GAP-001" }]),
+    epic: "epic-2.1-mig",
+    planning: planningDoc(rows),
+    specs: { "01-mig": migrationSpec },
+    files: { "tests/old/tags.test.js": 'test("usa la tabla vieja", () => {});\ntest("mantiene el campo viejo", () => {});\n' }
+  });
+  const result = runCheck(project, [], { epic: "2.1" });
+  assert.equal(result.status, 0, result.lines.join("\n"));
+  assert.deepEqual(supFindings(result), []);
 });
 
 test("planning.js parses the four core row kinds, the epic block and a spec's surface", () => {

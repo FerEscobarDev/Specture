@@ -20,6 +20,7 @@ function seal(project) {
   if (project.roadmap && inProgress.length === 0) {
     return [finding("ERROR", "seal-stale", rel, `seal for epic "${epic}" but no epic is [/] in ROADMAP.md — sealed tests, specs and allowed paths stay blocked for any future work`, 'release it: node "${CLAUDE_PLUGIN_ROOT}/hooks/lib/seal-cli.js" release (the epic is already closed)')];
   }
+  const out = [];
   if (epic && inProgress.length > 0) {
     // Seal slugs follow the spec-dir convention `epic-<X.Y>-<name>` (or just `epic-<X.Y>`):
     // the epic id inside the slug is the reliable key; the substring rule stays as fallback.
@@ -27,10 +28,25 @@ function seal(project) {
     const idInSlug = (epic.match(/(\d+(?:\.\d+)+)/) || [])[1] || null;
     const matches = inProgress.some((e) => (idInSlug && e.id === idInSlug) || `${e.id || ""} ${e.text}`.toLowerCase().includes(needle));
     if (!matches) {
-      return [finding("WARNING", "seal-mismatch", rel, `seal for epic "${epic}" but the [/] epic is "${inProgress[0].id || inProgress[0].text}"`, 'confirm the seal belongs to the running epic (seal-cli.js show); release it with seal-cli.js release if it is a leftover')];
+      out.push(finding("WARNING", "seal-mismatch", rel, `seal for epic "${epic}" but the [/] epic is "${inProgress[0].id || inProgress[0].text}"`, 'confirm the seal belongs to the running epic (seal-cli.js show); release it with seal-cli.js release if it is a leftover'));
     }
   }
-  return [];
+  if (inProgress.length > 0) out.push(...liftedSpecs(rel, state));
+  return out;
+}
+
+// `seal-cli lift-spec` frees one spec path so the planner can amend it inside a correction loop,
+// and records it in `lifted_spec_paths` (absent = []); `seal-cli write` re-seals and empties it.
+// A lifted path that outlives its loop leaves that spec editable for the rest of the epic.
+function liftedSpecs(rel, state) {
+  const lifted = state.lifted_spec_paths;
+  if (lifted === undefined || lifted === null) return [];
+  const action = 'si el loop de corrección terminó, re-sellar con node "${CLAUDE_PLUGIN_ROOT}/hooks/lib/seal-cli.js" write (vacía lifted_spec_paths); revisar antes con seal-cli.js show';
+  if (!Array.isArray(lifted)) {
+    return [finding("WARNING", "seal-lifted", rel, `lifted_spec_paths no es una lista (${typeof lifted}): no se puede saber qué specs quedaron liberados del sello`, action)];
+  }
+  if (lifted.length === 0) return [];
+  return [finding("WARNING", "seal-lifted", rel, `${lifted.length} spec(s) liberado(s) del sello con un epic [/]: ${lifted.map(String).join(", ")} — se pueden editar fuera del loop que los liberó`, action)];
 }
 
 const { missingCurrent } = require("../../current-state");

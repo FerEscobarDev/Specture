@@ -21,7 +21,9 @@
 //   C6  no `sym: … consume` points at an earlier (or the same) spec           BLOCKER / WARNING
 //   C-path  every `Crea:` / `Modifica:` line carries `en <path>`              BLOCKER
 //   C-gap   migration epics: every GAP-nnn of the epic in exactly one spec    BLOCKER
-//   C-sup   every `Supersede:` line has its `sup:` row, and the path exists   BLOCKER
+//   C-sup   every `Supersede:` line has its `sup:` row, the path exists and
+//           the test name appears in the file (motivo BR-n | AC-n | GAP-nnn)  BLOCKER
+//           … unless the name is parameterised (`%`, `$`, `{`, `[`)           WARNING
 //
 // stdout: first line is the token — `MECH_CHECK: PASS <sha12>` | `MECH_CHECK: FAIL <sha12>` |
 // `MECH_CHECK: UNVERIFIABLE <reason>`; then one `<check> <severity> <slug>: <detail>` per finding.
@@ -120,6 +122,26 @@ function visualApprovalOf(epicDir, providerId) {
     return null;
   }
   return planning.lastVisualApproval(text) !== null;
+}
+
+// A parameterised test name (`test.each` `%s`, `$x` / `{x}` templates, `[x]` case labels) is
+// rendered by the runner: its literal text need not appear in the file.
+const PARAM_MARKER = /[%${[]/;
+
+// The spellings of a `Supersede:` test name to look for in its file, most specific first:
+// the full name; the name without its trailing `[...]` / `(...)` case suffixes; the last
+// segment after `.`, `>`, `::` or `/` (`Describe > caso`, `Clase.Metodo`, `mod::caso`). A
+// segment with no letter (`v1.2` → `2`) is not a name and would match anything.
+function testNameCandidates(name) {
+  const full = String(name).trim();
+  let bare = full;
+  for (let prev = null; prev !== bare; ) {
+    prev = bare;
+    bare = bare.replace(/\s*(?:\[[^\]]*\]|\([^)]*\))\s*$/, "").trim();
+  }
+  const segments = bare.split(/::|>|\.|\//).map((s) => s.trim());
+  const last = segments[segments.length - 1];
+  return [...new Set([full, bare, /\p{L}/u.test(last || "") ? last : ""])].filter(Boolean);
 }
 
 function runChecks({ table, specs, epic, roadmapEpics, epicDir }) {
@@ -290,7 +312,25 @@ function runChecks({ table, specs, epic, roadmapEpics, epicDir }) {
       const row = rows.sup.find((r) => r.path === sup.path && r.test === sup.test);
       if (!row) add("C-sup", "BLOCKER", spec.slug, `Supersede \`${sup.path}::${sup.test}\` sin fila sup: en la COVERAGE_TABLE`);
       else if (row.slug !== spec.slug) add("C-sup", "BLOCKER", spec.slug, `Supersede \`${sup.path}::${sup.test}\` la tabla la asigna a ${row.slug}`);
-      if (!fs.existsSync(path.join(projectRoot, sup.path))) add("C-sup", "BLOCKER", spec.slug, `Supersede \`${sup.path}\` no existe en disco (raíz ${projectRoot})`);
+      const abs = path.join(projectRoot, sup.path);
+      if (!fs.existsSync(abs)) {
+        add("C-sup", "BLOCKER", spec.slug, `Supersede \`${sup.path}\` no existe en disco (raíz ${projectRoot})`);
+        continue;
+      }
+      const text = fs.statSync(abs).isFile() ? readFile(abs) : null;
+      const id = `Supersede \`${sup.path}::${sup.test}\``;
+      if (text === null) {
+        add("C-sup", "BLOCKER", spec.slug, `${id}: \`${sup.path}\` no es un archivo legible`);
+        continue;
+      }
+      const candidates = testNameCandidates(sup.test);
+      if (candidates.some((c) => text.includes(c))) continue;
+      const tried = candidates.map((c) => `"${c}"`).join(", ");
+      if (PARAM_MARKER.test(sup.test)) {
+        add("C-sup", "WARNING", spec.slug, `${id}: nombre parametrizado — no aparece literal en el archivo (probados: ${tried}); verificar a mano que el test existe`);
+      } else {
+        add("C-sup", "BLOCKER", spec.slug, `${id}: el nombre del test no aparece en el archivo (probados: ${tried})`);
+      }
     }
   }
   for (const row of rows.sup) {

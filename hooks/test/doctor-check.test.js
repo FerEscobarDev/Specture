@@ -184,6 +184,115 @@ test("a v3 seal (spec_sha/spec_paths/allowed_paths, no specs[]) is accepted whil
   assert.match(stale.action, /seal-cli\.js.*release/);
 });
 
+test("seal-lifted: a seal with lifted_spec_paths while an epic is [/] is a WARNING; empty or absent is silent", () => {
+  const seal = (extra) => JSON.stringify({ epic: "epic-1.1-scaffold", spec_sha: "abc1234", spec_paths: ["docs/05-specs/epic-1.1-scaffold/01-a.spec.md"], specs: [], ...extra });
+  const roadmapInProgress = "### Milestone 1: Foundation\n\n- [/] **Epic 1.1:** Scaffold\n";
+
+  const lifted = createProject({ ...CLEAN, ".specture/state/build-locked.json": seal({ lifted_spec_paths: ["docs/05-specs/epic-1.1-scaffold/02-b.spec.md"] }), "docs/04-roadmap/ROADMAP.md": roadmapInProgress });
+  const { status, json } = runDoctor(lifted);
+  const found = json.findings.find((f) => f.check === "seal-lifted");
+  assert.ok(found, JSON.stringify(json.findings));
+  assert.equal(status, 0, "a WARNING never fails the run");
+  assert.equal(found.severity, "WARNING");
+  assert.equal(found.group, "state");
+  assert.equal(found.file, ".specture/state/build-locked.json");
+  assert.match(found.detail, /02-b\.spec\.md/);
+  assert.match(found.action, /seal-cli\.js/);
+
+  for (const extra of [{ lifted_spec_paths: [] }, {}]) {
+    const quiet = createProject({ ...CLEAN, ".specture/state/build-locked.json": seal(extra), "docs/04-roadmap/ROADMAP.md": roadmapInProgress });
+    assert.deepEqual(runDoctor(quiet).json.findings.filter((f) => f.check.startsWith("seal-")), [], JSON.stringify(extra));
+  }
+});
+
+// A `_planning.md` whose VEREDICTOS carry the v2.1 rejection for an incomplete supersession list.
+const SUPERSESSION_REJECTION = [
+  "### 03-consentimiento — dispatch 3 — 2026-09-24",
+  "```",
+  "STATUS: REJECTED",
+  "",
+  "VIOLATIONS:",
+  "- Coherence: 03-consentimiento — `tests/Jobs.test.js::cuenta cinco jobs` afirma 5 jobs y AC-11 agrega 3: falta su línea Supersede:",
+  "  - Why it violates: Dim 4 — supersesiones de tests sellados",
+  "  - Severity: BLOCKER",
+  "",
+  "NOTES:",
+  "None",
+  "```"
+].join("\n");
+
+function planningWithVerdicts(...verdicts) {
+  return ["# Planning — epic-1.1-scaffold", "", "## VEREDICTOS", "### set — dispatch 1 — 2026-09-23", "```", "STATUS: APPROVED", "```", ...verdicts, "", "## SPEC_SHA", "- SPEC_SHA: abc1234 — 2026-09-24", ""].join("\n");
+}
+
+function gateProject(planningText, epicState = "/") {
+  return createProject({
+    ...CLEAN,
+    "docs/04-roadmap/ROADMAP.md": `# ROADMAP\n\n### Milestone 1: Foundation\n\n- [${epicState}] **Epic 1.1:** Scaffold\n  - **Dependencias:** Ninguna\n`,
+    "docs/05-specs/epic-1.1-scaffold/_planning.md": planningText
+  });
+}
+
+test("gate-legacy-rejection: an epic [/] whose last verdict for a target is REJECTED over supersessions is a WARNING", () => {
+  const { status, json } = runDoctor(gateProject(planningWithVerdicts(SUPERSESSION_REJECTION)));
+  const found = json.findings.filter((f) => f.check === "gate-legacy-rejection");
+  assert.equal(found.length, 1, JSON.stringify(json.findings));
+  assert.equal(status, 0);
+  assert.equal(found[0].severity, "WARNING");
+  assert.equal(found[0].group, "gate");
+  assert.equal(found[0].file, "docs/05-specs/epic-1.1-scaffold/_planning.md");
+  assert.match(found[0].detail, /03-consentimiento \(dispatch 3\)/);
+  assert.doesNotMatch(found[0].detail, /\bset\b/, "the set target was APPROVED");
+  assert.match(found[0].action, /re-validar bajo v2\.2 \(re-validación delta\)/);
+});
+
+test("gate-legacy-rejection: silent with a later APPROVED, a rejection on other grounds, or an epic that is not [/]", () => {
+  const later = ["### 03-consentimiento — dispatch 4 — 2026-09-25", "```", "STATUS: APPROVED", "", "VIOLATIONS:", "None", "```"].join("\n");
+  const otherGrounds = [
+    "### 03-consentimiento — dispatch 3 — 2026-09-24",
+    "```",
+    "STATUS: REJECTED",
+    "",
+    "VIOLATIONS:",
+    "- Coherence: 03-consentimiento — BR-2 cita RN-099, que no existe en business_requirements.md",
+    "  - Why it violates: Dim 4",
+    "  - Severity: BLOCKER",
+    "- ADR Compliance: 03-consentimiento — sigue ADR-004, que está Superseded por ADR-012",
+    "  - Why it violates: ADR-012",
+    "  - Severity: BLOCKER",
+    "- Coherence: 03-consentimiento — la lista de supersesiones podría estar incompleta",
+    "  - Why it violates: Dim 4",
+    "  - Severity: WARNING",
+    "```"
+  ].join("\n");
+  const cases = [
+    ["APPROVED afterwards", gateProject(planningWithVerdicts(SUPERSESSION_REJECTION, later))],
+    ["rejected on other grounds", gateProject(planningWithVerdicts(otherGrounds))],
+    ["epic [x]", gateProject(planningWithVerdicts(SUPERSESSION_REJECTION), "x")],
+    ["epic [ ]", gateProject(planningWithVerdicts(SUPERSESSION_REJECTION), " ")]
+  ];
+  for (const [label, project] of cases) {
+    assert.deepEqual(runDoctor(project).json.findings.filter((f) => f.check === "gate-legacy-rejection"), [], label);
+  }
+});
+
+test("claude-md-gate-overrides: the temporary gate block in the project's CLAUDE.md is an INFO", () => {
+  const block = "# Psikora\n\n> **Spec Planning Gate — instrucciones temporales del usuario (retirar al instalar Specture v2.2.0).**\n> (a) La completitud de la lista de supersesiones NO es criterio de rechazo del gate.\n";
+  const { status, json } = runDoctor(createProject({ ...CLEAN, "CLAUDE.md": block }));
+  const found = json.findings.filter((f) => f.check === "claude-md-gate-overrides");
+  assert.equal(found.length, 1, JSON.stringify(json.findings));
+  assert.equal(status, 0);
+  assert.equal(found[0].severity, "INFO");
+  assert.equal(found[0].file, "CLAUDE.md");
+  assert.match(found[0].action, /retirar el bloque temporal: v2\.2\.0 lo incorpora/);
+
+  const nested = runDoctor(createProject({ ...CLEAN, ".claude/CLAUDE.md": block })).json.findings.filter((f) => f.check === "claude-md-gate-overrides");
+  assert.deepEqual(nested.map((f) => f.file), [".claude/CLAUDE.md"]);
+
+  const plain = createProject({ ...CLEAN, "CLAUDE.md": "# Psikora\n\n@$SPECTURE_ROOT/CLAUDE.md\n\nEl Spec Planning Gate corre en cada epic.\n" });
+  assert.deepEqual(runDoctor(plain).json.findings.filter((f) => f.check === "claude-md-gate-overrides"), []);
+});
+
 test("--brief prints a one-line summary", () => {
   const projectRoot = createProject(CLEAN);
   const result = spawnSync(process.execPath, [doctorPath, "check", "--project", projectRoot, "--brief"], { encoding: "utf8" });
