@@ -241,7 +241,9 @@ files**: you hand it a table `SYMBOL | PATH | SIGNATURE` of the component's exis
    - **5b — one dispatch per spec** (dims 1-6, unchanged; **never** `_planning.md` — Dimension
      7 does not run per spec). Both 5a and 5b carry the `RULES_RESOLVED` block of the gate
      (Rules Resolution with the epic's tags) so a spec that contradicts a `BLOCKER` invariant
-     is rejected by rule ID before any test is written.
+     is rejected by rule ID before any test is written. A 5b of a spec with `Supersede:` lines
+     also carries the ROADMAP checkbox line of each `epic origen` (Dimension 4 checks it is
+     closed) — never the test files.
    - **Rounds.** A round is the set of validator dispatches you launch together after a
      planner pass (5a and/or the 5b's — parallel dispatches count **one** round).
    - On `REJECTED` (5a or 5b) → re-dispatch the planner with `VIOLATIONS` (step 4) → 4a →
