@@ -50,7 +50,9 @@ Además:
   epic, pausarlo…).
 - Después del sello, el epic corre sin preguntarte salvo casos que solo tú puedes decidir:
   aprobación visual del design system, entorno roto, un test protegido por una regla del
-  proyecto, o un spec que no se puede ejecutar.
+  proyecto, un spec atascado en el tope de iteraciones (`BLOCKED: debug`) o un rechazo mayor
+  del reviewer. Un spec inejecutable (`BLOCKED: spec`) vuelve al gate por el loop de
+  corrección; solo te pregunta si ese gate lo necesita, dentro del mismo presupuesto.
 
 ## ¿Esto debilita el TDD?
 

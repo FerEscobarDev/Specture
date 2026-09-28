@@ -13,11 +13,16 @@ Three modes:
 
 | Mode | What it does | Writes |
 |---|---|---|
-| `check` (default) | corpus lint (broken paths, `...` placeholders, duplicate ADRs, ADRs without Status, reviews without verdict, specs without IDs, over 300 lines or with off-template sections, line-number citations), requirements lint (unresolved placeholders, HUs without `Exposición`, boundary stories not consolidated, rules/edge cases/exclusions without `RN/CL/FA` IDs), rules lint (`.specture/rules.yml` that does not parse or with duplicate ids / missing fields / unknown severity — `rules-schema`; a `rule` over 240 characters or a §4 deny-list item over 2 lines — `rule-length`), state (stale seal, >1 `[/]`, missing `_current/` or a component with `[x]` specs and no `_current/<slug>.md` — both name the `knowledge reconcile` command —, docs-index vs toggle, worktree leftovers, handoff scaffolding left after the design spine moved — `handoff-residue`, the one deletion a migration cannot do), schema drift (pending migrations by kind) | nothing |
+| `check` (default) | corpus lint (broken paths, `...` placeholders, duplicate ADRs, ADRs without Status, reviews without verdict, specs without IDs, over 300 lines or with off-template sections, line-number citations), requirements lint (unresolved placeholders, HUs without `Exposición`, boundary stories not consolidated, rules/edge cases/exclusions without `RN/CL/FA` IDs), rules lint (`.specture/rules.yml` that does not parse or with duplicate ids / missing fields / unknown severity — `rules-schema`; a `rule` over 240 characters or a §4 deny-list item over 2 lines — `rule-length`), state (stale seal, >1 `[/]`, missing `_current/` or a component with `[x]` specs and no `_current/<slug>.md` — both name the `knowledge reconcile` command —, docs-index vs toggle, worktree leftovers, handoff scaffolding left after the design spine moved — `handoff-residue`, the one deletion a migration cannot do, a spec left lifted from the seal — `seal-lifted`), gate leftovers from v2.1 (`gate-legacy-rejection`, `claude-md-gate-overrides` — see below), schema drift (pending migrations by kind) | nothing |
 | `migrate` | applies pending **mechanical** migrations (with `--apply`), drafts the **assisted** ones in Plan mode, records **content** ones as deferred with their owner; advances `schema_version` | `.specture/`, `.gitignore`, ROADMAP, requirements/architecture docs, `.specture/migrations.log` |
 | `sync` | `migrate --apply` (mechanical only) + `check` — for CI and for `start` | mechanical only |
 
 Migrations never touch specs `[x]`, reviews or debug logs.
+
+Checks added in v2.2.0 for the move to the convergent gate (v2.2.0 has no content migration — `migrate` only records `schema_version`):
+- `gate-legacy-rejection` (WARNING) — an epic `[/]` whose last verdict for a target in its `_planning.md` is `REJECTED` over supersessions, with no `APPROVED` after it; action: re-validate under v2.2 (delta re-validation — `build` does it on resumption, those findings become `RETIRADO`).
+- `claude-md-gate-overrides` (INFO) — the project's `CLAUDE.md` still carries the temporary "Spec Planning Gate — instrucciones temporales" block written for v2.1; action: remove it, v2.2.0 ships what it asked for.
+- `seal-lifted` (WARNING) — the seal's `lifted_spec_paths` is not empty while an epic is `[/]`: an interrupted supersession loop left that spec editable; action: let `build` resume the loop, or re-seal with `seal-cli.js write` (check first with `seal-cli.js show`).
 
 ## Preconditions
 

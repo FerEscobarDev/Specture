@@ -4,11 +4,13 @@
 > (revisión: C-1…C-9, M1-M7, G1-G12), `psikora-scale-review.md` (N1-N10) y
 > `doctor-and-migrations-design.md` (doctor, catálogo de migraciones, principios). Cada
 > ítem cita su fuente; las definiciones son las de origen, no reinterpretaciones. Estado:
-> **M0 hecho (v1.14.1) · M1 hecho (v1.15.0) · M2 hecho (v1.16.0) · M3 hecho (v1.17.0) · M4 hecho (v1.18.0) · M5 hecho (v1.19.0)**. Las **decisiones** que
+> **M0 hecho (v1.14.1) · M1 hecho (v1.15.0) · M2 hecho (v1.16.0) · M3 hecho (v1.17.0) · M4 hecho (v1.18.0) · M5 hecho (v1.19.0) · M7 hecho (v2.0.0; cierre v2.1.0) · M8 en curso (v2.2.0 hecho; v2.3.0 pendiente; v2.4.0 condicional)**; M6 espera medición. M7 y M8 suman
+> las fuentes `frontend-design-track-design.md`, `spec-gate-convergence-design.md` y
+> `milestone-planning-stage-analysis.md` (Apéndice C). Las **decisiones** que
 > condicionan el orden están en el Apéndice A (A1-A7 cerradas). **Solo contiene ajustes del framework**: las acciones sobre el proyecto
 > Psikora viven en su propio repo (`C:\Proyectos\Psikora\PLAN-SANEAMIENTO-SPECTURE-2026-08-28.md`).
 
-# Roadmap del framework Specture — v1.14.1 → v1.19
+# Roadmap del framework Specture — v1.14.1 → v2.4
 
 ## Principio de orden
 
@@ -662,6 +664,97 @@ de verdad pueda ocurrir.
 
 ---
 
+## Milestone 8 — Gate convergente y etapa de revisión (v2.2.0 · v2.3.0 · v2.4.0 condicional)
+
+*Objetivo:* que cada propiedad la decida quien puede verla —el negocio el humano, una vez y en un
+presupuesto único; la coherencia con ADR, contrato y reglas el validador; lo mecánico un script;
+el impacto sobre tests existentes la suite en ejecución—, que `APPROVED` signifique avanzar, y
+que después de una revisión concentrada antes de ejecutar la ejecución fluya sin preguntar.
+
+> **v2.2.0 "desbloqueo" hecho el 2026-09-28** (ítems 54-67): la fase 1 de
+> `docs/spec-gate-convergence-design.md`. Evidencia de partida: en Psikora el Epic HC-IHCE.5 pasó
+> 427 min en el gate sin sellar un spec — 14 contactos humanos, el 51 % del tiempo esperando al
+> usuario, 3 de 4 rechazos por supersesiones que el planner no puede ver (no lee código) y que el
+> gate solo acertaba al 30 %. Probes del release en `docs/gate-convergence-baseline.md`
+> (fixture `--stage 4`). **v2.3.0** (ítems 68-71) espera la medición de v2.2.0 drenando
+> HC-IHCE.5 y el experimento "ronda 2", cuyo resultado decide la variante (B1: revisión de dos
+> rondas · B2: B1 + mini-revisión anunciada antes de cada epic regulatorio). **v2.4.0** (ítem 72)
+> solo si los datos lo piden. Análisis de la etapa de revisión:
+> `docs/milestone-planning-stage-analysis.md` y `docs/milestone-decision-stage-simulation.md`.
+
+- [x] **54. Sacar del gate la completitud de supersesiones (F1-01)** · hecho 2026-09-28, v2.2.0 (`41c6aa8`, `45aed56`, `a13a471`) — el validador deja de exigir la lista completa de tests viejos que rompe un spec (una sospecha va, como mucho, en una línea `sup-candidato:` de NOTES, nunca WARNING ni BLOCKER) y gana una lista cerrada de lo que **no** marca; el planner declara solo supersesiones de comportamiento visibles en las fuentes y gana su lista de lo que no escribe; el coordinador no genera tablas de uso en tests; C-sup de 4a verifica que el nombre del test aparezca literal en el archivo (completo, sin sufijo `[…]`/`(…)`, o su último segmento; ausente = BLOCKER, parametrizado = WARNING) y acepta motivo `BR-n | AC-n | GAP-nnn`
+  En HC-IHCE.5, 3 de 4 rechazos y 4 de 5 BLOCKER fueron por supersesiones faltantes, y el 50 % del corpus del gate era contabilidad de supersesiones. El planner no puede verlas porque no lee código (ítem 33); la ejecución las encuentra exactas y baratas (ítems 61-62).
+  `Fuente: gate-convergence §5 F1-01; §2` · `Esfuerzo: bajo` · `Depende de: 29, 35`
+
+- [x] **55. Validador acotado y esfuerzo declarado por rol (F1-02)** · hecho 2026-09-28, v2.2.0 (`41c6aa8`) — `architecture-validator` con `tools: Read, Glob` (Glob porque `architecture`, `new-feature` y `modernize` le pasan `.specture/decisions/` como directorio; sin Bash ni Grep, sin barridos) y `effort: medium`; `spec-planner` con `effort: medium`. El release queda condicionado a los probes del ítem 66: si el validador en medium no detecta 3/3 el clon de ADR, se publica con `effort: high` y se registra
+  **Brecha de plataforma documentada:** los espejos de Copilot no trasladan `tools` ni `effort` (el validador sigue con `["read","search"]` en `compatibility-matrix.json`, así que `search` permite barrer) y el `define_subagent` de Antigravity tampoco los lleva; recomendación para ambas: esfuerzo de sesión en medium para `/specture:build`.
+  `Fuente: gate-convergence §5 F1-02; §3 H1` · `Esfuerzo: bajo` · `Depende de: 40`
+
+- [x] **56. APROBADO significa avanzar: destinos cerrados, `GATE_NOTES` y Diferidos con dueño (F1-03)** · hecho 2026-09-28, v2.2.0 (`45aed56`) — un `APPROVED` nunca se re-valida, re-planifica ni se vuelve pregunta por sus WARNING/NOTES; tabla cerrada de destinos (a-f) en el paso 5 de `build`; `## GATE_NOTES` las reciben implementer, ux-implementer y reviewer (nunca el test-writer); `## DIFERIDOS` + `**Diferidos heredados:**` en el bloque del epic **dueño** por componente o RN (su gate lo recibe como candidato C3); un EC de dinero, legal o datos de las operaciones del propio epic nunca se difiere; cada WARNING del validador trae `destino-sugerido`; un re-despacho del planner exige un BLOCKER o una respuesta del usuario
+  En HC-IHCE.5, 10 de 14 observaciones de veredictos aprobados se volvieron trabajo o preguntas, una de ellas alcance nuevo.
+  `Fuente: gate-convergence §5 F1-03` · `Esfuerzo: medio` · `Depende de: 22, 30`
+
+- [x] **57. Presupuesto humano único (F1-04)** · hecho 2026-09-28, v2.2.0 (`41c6aa8`, `45aed56`) — ≤2 rondas de `AskUserQuestion` por gate **de cualquier origen** (planner, C7, dudas de contrato de la validación, sizing), ≤4 preguntas por ronda; no cuentan la pregunta de reanudación ni la del tope; opciones del planner tal cual con `derivadas:` por opción (el coordinador solo agrega `Dato verificado:`; si discrepa, `CONCERNS` al planner); las respuestas que cambian RN/ADR se commitean antes de re-despachar; contrato abierto tras la ronda 2 → `discover` acotado. "Human contacts" reescrito: después del sello el epic corre sin preguntar y un test viejo roto por diseño no es contacto; la clasificación de fallos de la ejecución precede a los disparadores de `debug`; con N > 1 el Step 8.5 se ofrece una sola vez al drenar la cola
+  `Fuente: gate-convergence §5 F1-04` · `Esfuerzo: medio` · `Depende de: 20, 22`
+
+- [x] **58. Re-validación delta (F1-05, sin el borrador)** · hecho 2026-09-28, v2.2.0 (`0dc5902`, `41c6aa8`, `45aed56`) — TREE por pase (`git add` + `git write-tree --prefix=docs/05-specs/<epic>/`); `MODE: DELTA` del validador con `PRIOR_VERDICT`, `DIFF_SPECS` (`git diff <tree_prev> <tree>`) y `DIFF_SOURCES` (requerimientos y ADRs); salida `PRIOR V-n: ADDRESSED | NOT ADDRESSED | RETIRADO`; un BLOCKER nuevo solo sobre el diff o LATE-J1/J2/J4/J5 (≤1 por epic); PRIOR y DIFF en `.specture/state/gate/<epic>/`; si `git cat-file -e <tree_prev>` falla, validación completa. Encabezado de `## VEREDICTOS` con `ronda`, ISO con hora y zona, `tree`, `head` y marcas `delta`/`loop`/`J9` (`parseVerdictHeaders`, que sigue leyendo el formato legado)
+  La validación **borrador** en segundo plano durante la espera humana (F1-05.4) no se envió.
+  `Fuente: gate-convergence §5 F1-05` · `Esfuerzo: medio` · `Depende de: 30`
+
+- [x] **59. Tope por rondas y menú cerrado (F1-06; reemplaza D8)** · hecho 2026-09-28, v2.2.0 (`45aed56`) — se cuentan **rondas** (despachos paralelos = 1) y solo las mantienen vivas los BLOCKER `NOT ADDRESSED` o nuevos; los FAIL de 4a no cuentan (el mismo FAIL dos pases seguidos → `CONCERNS: 4a repetido`; el tercero → `BLOCKED: gate`); 3 rondas sin APPROVED → **una** pregunta cerrada con opciones por clase de BLOCKER vivo (ADR: enmendar vía `architecture` | cumplir literal; contrato: `BLOCKED: contrato`; BR vs RN o contradicción: `discover` acotado | elegir regla; sizing: partir; siempre: pausar). "Sellar con riesgo declarado" solo para clases no semánticas y nunca recomendada
+  `Fuente: gate-convergence §5 F1-06; gate-design §8 (D8)` · `Esfuerzo: bajo` · `Depende de: 29, 30`
+
+- [x] **60. Planner siempre fresco, alcance controlado y handback mínimo (F1-08)** · hecho 2026-09-28, v2.2.0 (`41c6aa8`, `45aed56`) — nunca se reanuda al planner con `SendMessage` (uno reanudado llegó a 941k tokens de contexto); cada pase es un despacho nuevo con `SPECS_DIR`, `ALCANCE: [slugs]` y `ANSWERS`/`VIOLATIONS` verbatim; handback STATUS · rutas · CHANGELOG · OPEN_QUESTIONS nuevas · CONCERNS; un spec modificado fuera de `ALCANCE` se restaura desde el TREE previo (excepción declarada al anti-patrón "nunca restaurar tras una mutación"), un archivo nuevo fuera de alcance se reporta y nunca se borra sin preguntar
+  `Fuente: gate-convergence §5 F1-08` · `Esfuerzo: bajo` · `Depende de: 19`
+
+- [x] **61. Ejecución por capas y línea base de fallos (F1-09)** · hecho 2026-09-28, v2.2.0 (`41c6aa8`, `45aed56`) — Step 3.9 `BASELINE_FALLOS` (suite completa antes del primer RED, fallos re-corridos 2×; nunca bloquean el `[x]`, siempre se reportan); implementer y ux-implementer por capas: **compilación** antes de GREEN (commit WIP + `BLOCKED: supersesiones (compilación)` con el log completo, sin tocar ningún test) y **runtime** después (flakes re-corridos, clase `compilación · preparación · aserción · producción · entorno · desconocido` que solo sube el escrutinio, aserción/producción = regresión propia salvo regla del spec citada, nunca doblar producción contra un BR); un solo reporte por spec y capa; `BLOCKED: entorno`
+  `Fuente: gate-convergence §5 F1-09` · `Esfuerzo: medio` · `Depende de: 31`
+
+- [x] **62. Loop ligero de supersesiones con salvaguardas mecánicas (F1-10; D22)** · hecho 2026-09-28, v2.2.0 (`41c6aa8`, `45aed56`, `9c590da`) — rama `BLOCKED: supersesiones (<capa>)` del coordinador, sin revert, sin `unseal-spec` y sin preguntas: J9 por un validador fresco con el dato (`MODE: J9`) → `seal-cli lift-spec` → planner `MODE: SUPERSESSIONS` → `honesty-check spec-delta` (si falla, loop completo con re-RED) → `honesty-check protected` (un test de `verify:` de `rules.yml` o GUARD de otro epic se escala) → 4a → commit + `seal-cli write` → epic-agent `RESUME_AT: supersede` (Step 5.2: `clean-tree`, `supersede --slug`, test-writer `MODE: SUPERSEDE-HEAD` ciego a los valores, `merge-spec --add-test-paths`, `red-lines`, RED retroactivo en `LOCK_SHA` con `base-worktree`); ≤1 loop por spec y capa. Step 5.5 como **allowlist** (`clean-tree` · `range` · `red-lines`) sobre `red_sha_orig`. `seal-cli`: `lift-spec`, `lock_sha`, `red_sha_orig`, `--add-test-paths`, `--reset-orig`, `--shared-with-red`, flags por comando, y el arreglo de `unseal-spec` (quitaba la entrada pero el hook seguía denegando la edición del spec). Reviewer Dim 4 juzga cada reescritura contra su regla. En migraciones J9 acepta `AC-n`/`GAP-nnn` y los characterization tests quedan fuera
+  Riesgo residual declarado en `docs/tdd-honesty-reference.md` § "Supersessions discovered in execution": un J9 y un reviewer que acepten a la vez una lectura demasiado generosa de una regla.
+  `Fuente: gate-convergence §5 F1-10 (salvaguardas 1-7, 9-11); gate-design §8 (D22)` · `Esfuerzo: medio` · `Depende de: 31, 35, 61`
+
+- [x] **63. Métricas del gate convergente (F1-11, parcial)** · hecho 2026-09-28, v2.2.0 (`a13a471`) — 13 campos numéricos aditivos en `build-metrics.jsonl` (`gate_rounds`, `gate_human_contacts`, `exec_human_contacts`, `planner_redispatch_after_approved`, `validator_dispatches_loop`, `planner_dispatches_loop`, `supersede_loops`, `supersede_tests`, `j9_regressions`, `exec_blocked_compile`, `exec_blocked_runtime`, `baseline_failures`, `late_findings`) + `effort`; `planningCounters` separa despachos de gate y de loop; reviews `-pN` cuentan para su spec; reglas de lectura nuevas (`planner_redispatch_after_approved > 0` → el coordinador reabre APROBADOS; `gate_rounds ≥ 3` sostenido → revisar el criterio del validador) y columnas `rnd`/`sup-loop` en `knowledge stats`
+  Quedan fuera los minutos por rol (`gate_wall_min`, `gate_human_min`, `gate_compute_min`), `obs_routed`, `epics_zero_contact` y `batch_unattended_completion`.
+  `Fuente: gate-convergence §5 F1-11; §10` · `Esfuerzo: medio` · `Depende de: 34`
+
+- [x] **64. Checkpoint declarado del coordinador (F1-13, parcial)** · hecho 2026-09-28, v2.2.0 (`45aed56`) — `build` deja de prometer un contexto O(n_epics) que no se cumplía: el gate acumula en el coordinador, todo lo que importa vive en disco (ROADMAP, `_planning.md`, sello, `.specture/state/gate/`, métricas) y después de cualquier epic se puede cerrar la sesión y seguir con `/specture:start` (uso previsto en tandas largas, no un fallo)
+  `Fuente: gate-convergence §5 F1-13` · `Esfuerzo: bajo` · `Depende de: —`
+
+- [x] **65. Doctor para la migración a v2.2** · hecho 2026-09-28, v2.2.0 (`a13a471`) — `hooks/lib/doctor/checks/gate.js`: `gate-legacy-rejection` (WARNING: epic `[/]` cuyo último veredicto por target es REJECTED por supersesiones sin APPROVED posterior → re-validar en modo delta) y `claude-md-gate-overrides` (INFO: el `CLAUDE.md` del proyecto conserva el bloque temporal de instrucciones del gate → retirarlo); en `checks/state.js`, `seal-lifted` (WARNING: `lifted_spec_paths` no vacío con un epic `[/]`). Sin migración de contenido: `migrate` solo registra el `schema_version`
+  `Fuente: gate-convergence §11` · `Esfuerzo: bajo` · `Depende de: 7`
+
+- [x] **66. Probes de release con defectos plantados (F1-12)** · hecho 2026-09-28, v2.2.0 — `scripts/baseline-fixture.js --stage 4` (stack `node:test` con agregador, así un import roto tumba la suite; carnadas: rename de compilación, BR 10→25 MB, supersesión falsa, clon de ADR, AC contra AC, lista de supersesiones incompleta, test PROTECTED); resultado G1-G8 (gate) y E1-E4 (ejecución) en `docs/gate-convergence-baseline.md`; sección "Probes de release" en `docs/release-process.md`. Corridas manuales hasta que exista harness
+  `Fuente: gate-convergence §5 F1-12` · `Esfuerzo: medio` · `Depende de: 55, 62`
+
+- [x] **67. Documentación de usuario del gate convergente** · hecho 2026-09-28, v2.2.0 (`e8e402e`) — `docs/build-faq.md` (nuevo); `docs/tdd-honesty-reference.md` § "Supersessions discovered in execution"; addendum §8 de `docs/spec-planning-gate-design.md` (D5 refinada, D8 reemplazada, D22 nueva); `docs/execution-flows.md` (rondas, capas, loop, excepción de `debug`), `docs/native-integration-guide.md`, guías de Copilot y Antigravity (brecha de `tools`/`effort`), README y changelog con la migración
+  `Fuente: gate-convergence §12` · `Esfuerzo: bajo` · `Depende de: 54-66`
+
+- [ ] **68. Etapa de revisión por tanda (`skills/build/REVIEW_STAGE.md`)** — una sola sentada de decisiones antes de ejecutar la tanda: R0 abrir o reanudar (nunca con un `[/]` abierto) → R1 preparación desatendida por epic (Code Surface, planner fresco `MODE: DRAFT` ciego, `spec-set-check --draft --batch`, validador `MODE: REVIEW` que **sí** puede leer código con Read/Glob para descubrir decisiones, filtro de lo que las fuentes ya responden con cita visible, agenda por tema + políticas P-1…P-7) → R2 ronda 1 con el usuario → R3 planner con respuestas + validador delta → R4 ronda 2 solo si nacieron preguntas nuevas → R5 cierre con `SCOPE <sha12>` por epic. El gate por epic pasa a "refresco y sello al turno, sin preguntas" (planner `MODE: REFRESH`, 4a real, validador delta). La recomendada nunca se aplica por defecto
+  La simulación a ciegas (31 decisiones reales) mostró que un barrido previo anticipa todas las preguntas de primera ronda en epics de infraestructura y solo la mitad en el regulatorio, y que la recomendada de la simulación coincidió con la respuesta real solo en 3 de 11 y 5 de 12: las decisiones siguen siendo humanas, pero concentradas.
+  `Fuente: milestone-planning-stage-analysis §5, §7; milestone-decision-stage-simulation` · `Esfuerzo: alto` · `Depende de: 54-66, medición de v2.2.0 en HC-IHCE.5, experimento "ronda 2"`
+
+- [ ] **69. `templates/BATCH_REVIEW_TEMPLATE.md` — registro de la tanda** — `docs/05-specs/_reviews/<fecha>-<slug>.md` con `ESTADO`, `EPICS`, `POLÍTICAS` P-1…P-7 (tope, supersesiones, fallos preexistentes, datos de pruebas, acciones destructivas o de producción, rama, decisión nueva tras el sello), `AGENDA` de rondas 1 y 2 (ítems `A-n`), `FILTRADAS`, `DECISIONES PERSISTIDAS`, `BORRADORES`, `APARCADOS`, `MÉTRICAS`, `EJECUCIÓN`. Entra al manifiesto de esquema
+  `Fuente: milestone-planning-stage-analysis §5` · `Esfuerzo: medio` · `Depende de: 68`
+
+- [ ] **70. `hooks/lib/review.js` + doctor de la revisión** — parser y CLI: `status` (`REVIEW: NONE | OPEN <id> <ESTADO> pendientes:n | CLOSED <id> por-ejecutar:n aparcados:m | DRAINED`) y `scope-check --batch` (`SCOPE <X.Y>: SAME | CHANGED`); `spec-set-check --draft` (token `DRAFT_PASS|DRAFT_FAIL`, que nunca habilita un sello), `--batch` y `--scope-hash`; doctor `checks/review.js` (`review-open`, `review-scope-drift`, `epic-parked`, `parked-orphan`, `review-malformed`); métricas de revisión (`review_rounds`, `review_questions`, `late_questions`, `parked`, …)
+  `Fuente: milestone-planning-stage-analysis §5` · `Esfuerzo: medio` · `Depende de: 69`
+
+- [ ] **71. Epic aparcado (PARKED)** — una decisión **nueva** de dinero, legal, datos, contrato o modelo que aparece al refrescar un epic ya revisado lo aparca: vuelve de `[/]` a `[ ]` con la línea `**Aparcado:** <ISO> — <clase> — <motivo> — tanda <id>` en el ROADMAP (no es un cuarto estado de checkbox) y la cola sigue con los epics independientes. Honesto: en una cadena casi lineal de dependencias, aparcar suele equivaler a parar
+  `Fuente: milestone-planning-stage-analysis §5, §6, §9 (decisión 5)` · `Esfuerzo: medio` · `Depende de: 68`
+
+- [ ] **72. Coordinador por epic en subagente (v2.4.0, condicional)** — `skills/build/EPIC_COORDINATOR.md`: un subagente por epic que hace refresco, sello, epic-agent, loop de supersesiones y métricas; **nunca pregunta** y devuelve `EPIC_REPORT: DONE | PARKED | STOPPED | VISUAL_PENDING | NESTING_UNAVAILABLE`. Anidamiento de exactamente 3 niveles (principal → coordinador de epic → epic-agent → workers), con smoke test previo; si falla, el coordinador de epic corre `EPIC_LOOP` en línea. Solo Claude Code: Copilot y Antigravity se quedan con el coordinador principal. **Condición:** tras v2.3.0, ≥2 tandas N≥3 que obligaron a reiniciar la sesión, o un contexto del coordinador >~400k tokens antes del epic 3
+  `Fuente: milestone-planning-stage-analysis §5, §9 (decisión 6)` · `Esfuerzo: alto` · `Depende de: 68-71`
+
+### Lo que v2.2.0 deliberadamente NO envió
+
+- **La validación borrador en segundo plano** (F1-05.4) mientras el usuario responde la ronda 1.
+- **C7m, C-ids y C-freeze** (F1-07: citas resueltas contra una gramática de fuentes, IDs existentes, congelamiento de alcance con `SCOPE_FREEZE`); el `SCOPE <sha12>` de la revisión (ítem 68) cubre parte del congelamiento.
+- **La delegación ofrecida al armar la tanda y las notificaciones** (F1-14 (1)-(2)); de F1-14 solo se envió el Step 8.5 agrupado al drenar la cola. La delegación explícita de siempre sigue igual.
+- **El modo ADAPT del test-writer** (F2-01), el despacho `SPEC_GATE` único con checklist J1-J9 y el cierre de A6 (F2-02 — A6 sigue en su forma de v1.18.0), C5 en bytes (F2-04), el carril de refactors de esquema (F2-07), `impact-hint` (F3-01) y el registro de supersesiones generado (F3-02). El diseño los ubicaba en "Fase 2 — v2.3.0"; el plan aprobado reasignó v2.3.0 a la etapa de revisión y estos quedan sin versión.
+
+---
+
 ## Apéndice A — Decisiones que condicionan el orden
 
 > **A1-A5 cerradas el 2026-08-28** (la recomendación fue aceptada en las cinco; ver
@@ -696,3 +789,5 @@ vuelve automática después).
 | `psikora-scale-review.md` (N1-N10) | 3 (N4), 4 (N9), 5 (N5), 6/10 (N8), 11 (N7), 16 (N2), 18 (N10), 35 (N6), 38 (N1), 39 (N3) — §5 (acciones locales) → plan en el repo de Psikora |
 | `doctor-and-migrations-design.md` (§3-§7) | 5, 6, 7, 8, 9, 11, 12, 38, Apéndice A1-A5 |
 | `frontend-design-track-design.md` (§12 = revisión adversarial) + `frontend-design-baseline.md` | 43, 44, 45, 46, 47, 48, 49, 50, 51 — §5 y §8 del documento quedan **superados** por lo que se envió: tres de sus propuestas cayeron por medición y una cuarta por viabilidad |
+| `spec-gate-convergence-design.md` (§5 F1-01…F1-14, §11, §12) + `gate-convergence-baseline.md` | 54 (F1-01), 55 (F1-02), 56 (F1-03), 57 (F1-04), 58 (F1-05), 59 (F1-06), 60 (F1-08), 61 (F1-09), 62 (F1-10), 63 (F1-11), 64 (F1-13), 65 (§11), 66 (F1-12), 67 (§12) — F1-07 y F1-14 (1)-(2) no enviados; su "Fase 2 — v2.3.0" quedó **superada** por la etapa de revisión |
+| `milestone-planning-stage-analysis.md` + `milestone-decision-stage-simulation.md` | 68, 69, 70, 71, 72 |

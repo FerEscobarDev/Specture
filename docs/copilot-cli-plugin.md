@@ -62,7 +62,7 @@ copilot --plugin-dir C:\Proyectos\VibeCoding
    Las habilidades mantienen sus nombres estándar (`start`, `setup`, `discover`, `architecture`, `ux-design`, `build`, `debug`, `knowledge`). Copilot puede inferir la habilidad requerida o puedes nombrarla explícitamente.
 
 4. **Preguntas del Spec Planning Gate**:
-   En `build`, las tandas del `spec-planner` llegan como **preguntas cerradas en el chat** (2-4 opciones, una recomendada, ≤4 por tanda, ≤2 tandas por epic) — mismas reglas que `AskUserQuestion` en Claude Code. `copilot/agents/` incluye los 7 espejos de agentes, **generados** desde `agents/*/AGENT.md` (`npm run mirrors:sync`, ver abajo).
+   En `build`, las preguntas del gate llegan como **preguntas cerradas en el chat** (2-4 opciones, una recomendada, ≤4 por ronda) — mismas reglas que `AskUserQuestion` en Claude Code, incluido el presupuesto único de v2.2.0: como mucho **2 rondas por gate**, vengan de donde vengan, más **una** pregunta cerrada con menú si el gate llega a su tope. Un test viejo roto por diseño nunca llega como pregunta: lo resuelve el loop de supersesiones. `copilot/agents/` incluye los 7 espejos de agentes, **generados** desde `agents/*/AGENT.md` (`npm run mirrors:sync`, ver abajo).
 
 ---
 
@@ -76,13 +76,16 @@ Los scripts del gate se invocan con la raíz del plugin de Copilot (`${PLUGIN_RO
 
 ```shell
 node "${PLUGIN_ROOT}/hooks/lib/spec-set-check.js" docs/05-specs/<epic> --roadmap docs/04-roadmap/ROADMAP.md --epic <X.Y>   # gate 4a → MECH_CHECK
-node "${PLUGIN_ROOT}/hooks/lib/seal-cli.js" write|merge-spec|unseal-spec|supersede|release|show                          # único escritor del sello
+node "${PLUGIN_ROOT}/hooks/lib/seal-cli.js" write|merge-spec|unseal-spec|lift-spec|supersede|release|show                # único escritor del sello
+node "${PLUGIN_ROOT}/hooks/lib/honesty-check.js" clean-tree|range|red-lines|spec-delta|protected|base-worktree           # Step 5.5 y loop de supersesiones (v2.2.0)
 node "${PLUGIN_ROOT}/hooks/lib/metrics-report.js" --project . [--baseline --write]                                        # knowledge stats
 node "${PLUGIN_ROOT}/hooks/lib/rules-resolve.js" --project . --tags <a,b,c> | --all                                        # Rules Resolution → RULES_RESOLVED (v1.19.0)
 node "${PLUGIN_ROOT}/hooks/lib/current-state.js" specs --project . --component <slug>                                     # knowledge reconcile (v1.19.0)
 ```
 
 **Espejos generados (v1.19.0, ítem 40 del roadmap — cierra la brecha C-9b):** `copilot/agents/*.agent.md` se generan desde `agents/<name>/AGENT.md` con `scripts/copilot-mirrors.js` (`npm run mirrors:sync`; `npm run mirrors:check` en los tests). El cuerpo viaja **completo** — Required Inputs, Iron Rules, tablas de racionalizaciones, worked examples y formatos de salida —: el formato de agentes de Copilot admite hasta 30.000 caracteres por prompt y el `AGENT.md` más grande (`code-reviewer`) ronda los 19.000. El generador se **niega** (exit 2) si una fuente supera el tope; nunca trunca — se recorta la fuente. El frontmatter conserva `name`, toma `description` de la fuente, `tools` de `compatibility-matrix.json → platformAdaptations.agentTools` y fija `disable-model-invocation: true` (`model` se descarta: los nombres de modelo de Copilot son otros). Sustituciones de plataforma, aplicadas al cuerpo: `${CLAUDE_PLUGIN_ROOT}` → `${PLUGIN_ROOT}`; `AskUserQuestion` → "pregunta cerrada en el chat (2-4 opciones, una recomendada)"; `EnterPlanMode` / `ExitPlanMode` → "propuesta cerrada en el chat" + "aprobación explícita". **Nunca editar un espejo a mano**: `hooks/test/copilot-plugin-contract.test.js` corre el `--check` y falla si un espejo difiere de su fuente, falta o quedó huérfano. Antes de v1.19.0 los espejos eran resúmenes de 16-30 líneas escritos a mano y el test solo verificaba su existencia.
+
+**Brecha de plataforma: `tools` y `effort` no viajan (v2.2.0).** En Claude Code el frontmatter de `agents/architecture-validator/AGENT.md` fija `tools: Read, Glob` y `effort: medium`, y el de `agents/spec-planner/AGENT.md` fija `effort: medium`. El generador de espejos **no traslada** ninguno de los dos campos: el `tools` de cada espejo sale de `compatibility-matrix.json → platformAdaptations.agentTools`, donde el validador sigue con `["read","search"]`, y `effort` se descarta. Consecuencia: en Copilot el validador puede usar `search`, así que un barrido de `tests/` o del código sigue siendo técnicamente posible — solo lo frena la regla escrita en su cuerpo (en el gate nunca abre tests ni código de producción). Es una brecha documentada, no un bug. **Recomendación:** corré `/specture:build` con el esfuerzo de razonamiento de la sesión en *medium* (o el nivel equivalente que ofrezca tu versión de Copilot CLI). Los modos nuevos del validador (`MODE: DELTA`, `MODE: J9`) y del planner (`MODE: SUPERSESSIONS`) sí viajan, porque el cuerpo del espejo es completo.
 
 ---
 

@@ -71,6 +71,13 @@ Si en ese intervalo cualquier agente (incluido el implementer) intenta `Edit`, `
 
 El usuario ve el mensaje y entiende por qué el modelo no pudo hacer esa escritura. Un sello huérfano (ningún epic `[/]`) falla abierto con la razón.
 
+**Supersesiones después del RED (v2.2.0).** Un test de un epic cerrado que una regla del spec vuelve falso ya no se descubre solo en el gate: la ejecución lo encuentra y el coordinador corre el **loop de supersesiones**. Para eso el sello gana cuatro campos — `lock_sha` (el commit que marcó el epic `[/]`, base del RED retroactivo), `red_sha_orig` por spec (el primer RED; `merge-spec` nunca lo mueve salvo `--reset-orig`), `supersede_for` y `lifted_spec_paths` — y `seal-cli.js` dos comportamientos:
+
+- **`lift-spec --slug <spec>`** saca de `spec_paths` **solo** el archivo de ese spec (el hook deja de denegar su edición al planner) y lo anota en `lifted_spec_paths`; los specs hermanos y todas las entradas `specs[]` siguen sellados. El siguiente `seal-cli.js write` re-sella y vacía la lista. Un `lifted_spec_paths` que sobrevive a su loop deja ese spec editable: `/specture:doctor check` lo marca `seal-lifted` y `build` retoma el loop al reanudar. (`unseal-spec`, el del loop de corrección completo, ahora también libera el archivo del spec: antes el hook seguía denegando la edición.)
+- **`supersede --slug <spec> --paths …`** levanta el deny de test solo para los tests declarados y solo mientras escribe el test-writer; rechaza un archivo que sea parte del RED de algún spec salvo `--shared-with-red` explícito.
+
+El hook no ve el historial, así que lo que entra **después** del RED lo verifica `hooks/lib/honesty-check.js` en el Step 5.5 (primera línea = token `HONESTY <cmd>: PASS | FAIL | UNVERIFIABLE`): `clean-tree` (nada sin commitear bajo los globs de test), `range` (cada commit que toca tests en `red_sha_orig..HEAD` está registrado por SHA en `## SUPERSESIONES` de `_planning.md`, toca solo sus archivos registrados, y `supersede_paths` está vacío) y `red-lines` (cada línea que agregó el RED original sigue en HEAD). El loop usa además `spec-delta` (el spec cambió solo en su sección de supersesiones), `protected` (ningún test de un `verify:` de `rules.yml` ni de un GUARD de otro epic) y `base-worktree` (worktree en `LOCK_SHA` para el RED retroactivo). Detalle y riesgo residual: `$SPECTURE_ROOT/docs/tdd-honesty-reference.md` § "Supersessions discovered in execution".
+
 ### 3.3 Troubleshooting: hook no se dispara
 
 Ver `hooks/README.md` — tabla de síntomas y causas. Los más comunes:
@@ -90,10 +97,10 @@ Ver `hooks/README.md` — tabla de síntomas y causas. Los más comunes:
 Cuando `/specture:build` encola epics, el **coordinador** crea una task visible por epic; al cerrar el Spec Planning Gate crea además una task por spec (1–3 típicamente) que progresa por estos `activeForm`:
 
 ```
-planning specs           → spec-planner + validator por spec (Spec Planning Gate, coordinador)
+planning specs           → spec-planner + validator por rondas (Spec Planning Gate, coordinador)
 writing tests (RED)      → tdd-test-writer dispatch (Step 4)
 implementing (GREEN)     → implementer dispatch (Step 5)
-verifying TDD honesty    → manual git diff gate (Step 5.5)
+verifying TDD honesty    → honesty-check clean-tree · range · red-lines (Step 5.5)
 code review              → code-reviewer + linter + typecheck (Step 6, en paralelo)
 running verification     → fresh test run (Step 7)
 completed                → al marcar epic [x] en ROADMAP (Step 8)
@@ -202,13 +209,15 @@ El TDD Honesty Gate existe precisamente porque "es legítimo" es la racionalizac
 Si genuinamente necesitás cambiar el contrato de test mid-epic:
 
 1. Reportá `BLOCKED: spec <AC-n/BR-n/EC-n>` (o abortá el epic si estás en el chat).
-2. El coordinador corre el **loop de corrección**: quita SOLO la entrada de ese spec de `build-locked.json`, re-despacha al `spec-planner` con `VIOLATIONS` (edición mínima), re-valida, y hace `git revert` del RED afectado.
+2. El coordinador corre el **loop de corrección**: `seal-cli.js unseal-spec` quita la entrada de ese spec de `build-locked.json` **y libera su archivo** del sello (desde v2.2.0; los hermanos siguen sellados), re-despacha al `spec-planner` con `VIOLATIONS` (edición mínima), re-valida en modo delta, y hace `git revert` del RED afectado.
 3. Re-dispatch `tdd-test-writer` para producir el nuevo RED commit con el contrato corregido.
 4. El `RED_SHA` se actualiza, el state file se reescribe, y el epic-agent reanuda **desde el spec afectado**.
 
 Nunca edites un test "rapidito" para hacerlo pasar — eso destruye el audit trail que justifica todo el framework.
 
 **¿Y un test de un epic ya cerrado que este spec contradice a propósito?** Eso no es una violación sino una **supersesión declarada** (v1.18.0): el spec la lista en "Supersesiones de tests sellados" (`Supersede: <path>::<test> — motivo: BR-n`), el `tdd-test-writer` la aplica en un commit `test(supersede)` previo al RED, el gate la excluye por declaración y el registro queda en `_planning.md` § SUPERSESIONES (+ el índice `docs/05-specs/_supersessions.md`). Detalle: `$SPECTURE_ROOT/docs/tdd-honesty-reference.md`.
+
+**¿Y si nadie la declaró y aparece al correr la suite?** Desde v2.2.0 el gate ya no exige la lista completa (el planner no puede ver los tests): la ejecución la descubre. El implementer **no toca el test**: reporta `BLOCKED: supersesiones (compilación|runtime)` citando la regla del spec que vuelve falsa la expectativa vieja. El coordinador corre el loop de supersesiones sin preguntarte — un validador fresco juzga cada test con el dato (J9), `seal-cli.js lift-spec` libera solo ese spec, un planner fresco agrega las líneas `Supersede:`, `honesty-check spec-delta` y `protected` lo verifican, y el test-writer reescribe en un commit `test(supersede): … — loop <capa>` **posterior** al RED, registrado por SHA; `honesty-check range` lo acepta solo por ese registro. Los tests que J9 no confirma vuelven al implementer como regresión; un test protegido por `rules.yml` o por un GUARD de otro epic se escala al usuario. Guía para el usuario: `docs/build-faq.md`.
 
 ### 8.2 "El hook bloqueó algo que no era una violación, ¿qué hago?"
 
@@ -238,7 +247,8 @@ Esta sección consolida lo que cada skill hace diferente con hooks/Context7/Plan
 Con `hooks.enabled: true` y/o `context7.enabled: true`:
 
 - **TaskCreate visible**: cada spec del epic aparece como tarea viva, transicionando por `validating architecture` → `writing tests (RED)` → `implementing (GREEN)` → `code review` → `running verification` → `completed`. Sin hooks, solo `ROADMAP.md` refleja el progreso.
-- **Sello del build como hard block**: mientras existe `.specture/state/build-locked.json`, cualquier `Edit`/`Write` contra un test sellado, un spec sellado o un archivo de producción fuera de `Crea:`/`Modifica:` se deniega a nivel plataforma. Sin el hook, las violaciones se detectan post-mortem: `git diff RED_SHA..HEAD` en Step 5.5, `git diff SPEC_SHA..HEAD` en el coordinador, y la Dimensión 1 del reviewer para la superficie.
+- **Sello del build como hard block**: mientras existe `.specture/state/build-locked.json`, cualquier `Edit`/`Write` contra un test sellado, un spec sellado o un archivo de producción fuera de `Crea:`/`Modifica:` se deniega a nivel plataforma. Sin el hook, las violaciones se detectan post-mortem: `honesty-check.js` en Step 5.5 (o `git diff RED_SHA..HEAD` sin node), `git diff SPEC_SHA..HEAD` en el coordinador, y la Dimensión 1 del reviewer para la superficie.
+- **Validador y planner con esfuerzo declarado (v2.2.0)**: el `architecture-validator` corre con `tools: Read, Glob` (sin Bash ni Grep: no puede barrer `tests/` ni el código) y `effort: medium`; el `spec-planner` con `effort: medium`. Lo fija el frontmatter de cada `AGENT.md`, así que solo aplica en Claude Code: Copilot y Antigravity no trasladan `tools` ni `effort` (ver sus guías).
 - **Chequeo mecánico del set y métricas** (con o sin hooks): `spec-set-check.js` corre tras cada pasada del planner y su token `MECH_CHECK` viaja al validator; cada epic termina con una línea en `docs/.specture-meta/build-metrics.jsonl` (trackeada) que `/specture:knowledge stats` lee.
 - **Review en paralelo (Step 6)**: `code-reviewer` corre concurrente con linter y type-checker. ~30-50% menos wall-clock en diffs grandes. El rigor de cada gate no cambia.
 - **Dimension 5 con Context7**: con `context7.enabled: true`, las reviews citan deprecaciones versionadas del framework de `stack.yml`. Sin él, el reviewer omite Dimension 5 y lo nota en el reporte.

@@ -1,4 +1,10 @@
-> **Estado: PROPUESTA — 2026-09-27. No implementado.** Análisis pedido por el usuario
+> **Estado: fase 1 implementada en v2.2.0 (2026-09-28), con alcance recortado por el plan
+> aprobado:** F1-01, F1-02, F1-03, F1-04 (salvo el borrador en segundo plano), F1-05 (delta,
+> sin la validación borrador), F1-06, F1-08, F1-09, F1-10, F1-11, F1-13 (checkpoint declarado) y F1-12 (sondas en
+> `docs/gate-convergence-baseline.md`); **no enviados:** F1-07 (C7m/C-ids/C-freeze), la
+> validación borrador de F1-05 y F1-14 más allá de agrupar el Step 8.5. La etapa de revisión
+> por tanda (v2.3.0) reemplaza la "fase 2" de este documento; ver
+> `docs/framework-roadmap.md` Milestone 8. Propuesta original del 2026-09-27: análisis pedido por el usuario
 > tras observar que la definición y validación de specs se volvió el cuello de botella:
 > en Psikora (`C:\Proyectos\Psikora`) el Epic HC-IHCE.5 pasó un día entero en el Spec
 > Planning Gate, agotó el tope de 3 rechazos, pidió "una pasada más" y siguió sin llegar

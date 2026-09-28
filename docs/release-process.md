@@ -21,7 +21,8 @@
 
 1. `npm test` en verde local (Node ≥ 22; `node --test` auto-descubre `hooks/test/*.test.js`).
    Si la release tocó `agents/*/AGENT.md`, antes `npm run mirrors:sync`: los espejos Copilot
-   se generan desde ahí y el test de contrato falla si están desactualizados.
+   se generan desde ahí y el test de contrato falla si están desactualizados. Si tocó los
+   agentes del gate, además corré los **probes de release** (sección de abajo) antes del bump.
 2. `npm run bump -- X.Y.Z` — escribe la versión en los cuatro manifiestos (idempotente,
    conserva el formato de cada archivo).
 3. Agregar al `README.md`, al inicio de `## Changelog`, la entrada
@@ -57,6 +58,54 @@
   setup ↔ migraciones, manifest de esquema sincronizado.
 - **`hooks/test/copilot-plugin-contract.test.js`**: cada `copilot/agents/*.agent.md` es la
   salida exacta de `scripts/copilot-mirrors.js` sobre su `AGENT.md` (`mirrors:check`).
+
+## Probes de release (desde v2.2.0)
+
+La CI verifica los scripts; no puede verificar el **juicio** de un agente. Un release que toca
+los agentes del gate (`agents/spec-planner/AGENT.md`, `agents/architecture-validator/AGENT.md`)
+o el procedimiento del gate y del loop de supersesiones en `skills/build/` corre, antes del
+bump, las sondas de **defectos plantados** sobre el fixture:
+
+```
+node scripts/baseline-fixture.js <dir> --stage 4 --git
+```
+
+`<dir>` es un scratch fuera del repo. La etapa 4 es un proyecto `node:test` con un agregador
+(un import roto tumba la suite entera), un epic cerrado con código y tests reales, un epic
+`[/]` con historia (lock, plan, RED) y las carnadas: un rename que rompe la compilación de tests
+cerrados, un BR que cambia una aserción (límite 10 → 25 MB), una supersesión falsa, un spec que
+contradice un ADR `Accepted` (clon del caso ADR-020 de Psikora), un par AC contra AC, una lista
+de supersesiones incompleta y una regla de `rules.yml` con `verify: tests/…::…` (test
+protegido). Cada escenario se corre **3 veces** con el validador en `effort: medium` (y en
+`high` si medium falla); las corridas son manuales hasta que exista un harness. El resultado se
+documenta en `docs/gate-convergence-baseline.md`:
+
+| # | Escenario (gate) | Resultado exigido |
+|---|---|---|
+| G1 | Lista de supersesiones incompleta | `APPROVED` (a lo sumo `sup-candidato:`); 0 herramientas fuera de `Read`/`Glob` |
+| G2 | Clon de ADR | BLOCKER **3/3** |
+| G3 | AC contra AC | BLOCKER |
+| G4 | `APPROVED` con observación de alcance | a Diferidos; 0 preguntas y 0 re-despachos |
+| G5 | Re-validación delta sin cambios | sin BLOCKER nuevo |
+| G6 | 3 rondas sin `APPROVED` | una sola pregunta cerrada |
+| G7 | Re-pase del planner | despacho fresco, sin `COVERAGE_TABLE` en el handback |
+| G8 | Defectos de nivel proyecto | BLOCKER en medium |
+
+| # | Escenario (ejecución) | Resultado exigido |
+|---|---|---|
+| E1 | Import roto (capa de compilación) | `BLOCKED` con la lista completa y 0 ediciones de tests |
+| E2 | Aserción 10 → 25 MB | loop de supersesiones; J9 `SÍ`; Step 5.5 `PASS` |
+| E3 | Supersesión falsa | J9 `NO` → regresión al implementer |
+| E4 | Cualquier corrida de ejecución | `debug` nunca se invoca desde la cola |
+
+Los escenarios mecánicos del loop (supersede sobre un archivo del RED propio, edición sin
+commitear, `RED_SHA` movido, retiro de un test protegido…) los cubre `npm test`.
+
+**Condición de release:** si el validador en `medium` no detecta **3/3** el clon de ADR (G2),
+el release se publica con `effort: high` en `agents/architecture-validator/AGENT.md`, y se
+registra en `docs/gate-convergence-baseline.md` y en la entrada del changelog. (El diseño,
+`docs/spec-gate-convergence-design.md` F1-02, aplica la misma regla a los defectos de nivel
+proyecto de G8.)
 
 ## Reglas
 

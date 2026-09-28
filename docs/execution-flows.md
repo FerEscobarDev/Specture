@@ -58,7 +58,7 @@ flowchart TB
       T8["setup-docs-bridge"]
     end
 
-    F4 -.->|"test falla 2× / reviewer rechaza / BLOCKED"| T1
+    F4 -.->|"BLOCKED: debug → el coordinador lo ofrece<br/>(nunca desde el epic-agent · no por BLOCKED: supersesiones)"| T1
     F4 -.->|"feature fuera del ROADMAP"| T2
     F4 -.->|"antes de 'completado'"| T3
     FASES -.->|"migrar/subir versión"| T4
@@ -110,8 +110,8 @@ distintas.
 flowchart LR
     O["Orquestador<br/>(build / architecture / modernize / new-feature)<br/>ensambla contexto RESTRINGIDO por agente"]
 
-    O -->|"bloque del epic + fuentes + slice contrato + template<br/>(firmas y paths, NUNCA comportamiento)"| SP["spec-planner · Opus<br/>1-3 specs + OPEN_QUESTIONS / RESOLVED_ALONE"]
-    O -->|"documento + .specture/<br/>(SIN código)"| AV["architecture-validator · Opus<br/>APPROVED / REJECTED / BLOCKED"]
+    O -->|"bloque del epic + fuentes + slice contrato + template<br/>(firmas y paths, NUNCA comportamiento)"| SP["spec-planner · Opus · effort medium<br/>1-3 specs + OPEN_QUESTIONS / RESOLVED_ALONE<br/>(despacho fresco por pase · MODE: SUPERSESSIONS en el loop)"]
+    O -->|"documento + .specture/<br/>(SIN código)"| AV["architecture-validator · Opus · effort medium<br/>tools: Read, Glob<br/>APPROVED / REJECTED / BLOCKED · MODE: DELTA / J9"]
     O -->|"spec + business rules + framework de test<br/>(SIN implementación — anti-bias)"| TW["tdd-test-writer · Sonnet<br/>tests RED (fallidos)"]
     O -->|"spec + tests RED + archivos a tocar + RED_SHA"| IM["implementer · Sonnet<br/>código GREEN (lógica)"]
     O -->|"spec + design_system + slice contrato<br/>+ tests + checklist de marca"| UX["ux-implementer · Sonnet<br/>UI fiel a tokens/contrato/a11y"]
@@ -136,7 +136,11 @@ Todos los implementadores validan el **Dispatch Manifest** como primera acción 
 
 Hay **un solo** modo de ejecución. El chat es **solo coordinador**: autoriza specs únicamente vía el `spec-planner` (Spec Planning Gate) y no corre tests.
 Construye una cola de hasta **N** epics y despacha **un epic-agent aislado a la vez**
-(concurrencia = 1). El contexto del coordinador se mantiene O(n_epics) — solo checkboxes + reportes.
+(concurrencia = 1). Tests, implementación y reviews viven dentro de cada epic-agent y se
+descartan al terminar; los despachos y preguntas del gate sí se acumulan en el coordinador.
+**Checkpoint declarado** (v2.2.0): todo lo que importa vive en disco (ROADMAP, `_planning.md`,
+sello, `.specture/state/gate/`, `build-metrics.jsonl`), así que después de cualquier epic se
+puede cerrar la sesión y seguir con `/specture:start`.
 
 ```mermaid
 flowchart TD
@@ -147,13 +151,18 @@ flowchart TD
     Br -->|No| D["TaskCreate por epic encolado<br/>(cola visible)"]
     Br2 --> D
     D --> L{"¿Quedan epics en la cola?"}
-    L -->|Sí| E["Marcar epic [/] + commit"]
-    E --> SPG["Spec Planning Gate:<br/>Code Surface → spec-planner → preguntas → 4a spec-set-check (MECH_CHECK)<br/>→ validator: set (C3/C7/C8) + por spec → resumen → commit specs + _planning.md<br/>→ sello: seal-cli write (spec_sha · spec_paths · allowed_paths)"]
-    SPG --> F["epic-agent ejecuta build/EPIC_LOOP.md (Steps 4–8)<br/>(contexto aislado, se descarta al terminar)"]
+    L -->|Sí| E["Marcar epic [/] + commit → LOCK_SHA"]
+    E --> SPG["Spec Planning Gate (ver 3.2):<br/>Code Surface → spec-planner → ≤2 rondas de preguntas (presupuesto único)<br/>→ 4a spec-set-check (MECH_CHECK) → validator por rondas (set + por spec · re-validación delta)<br/>→ resumen (GATE_NOTES · Diferidos) → commit specs + _planning.md<br/>→ sello: seal-cli write (spec_sha · spec_paths · allowed_paths · lock_sha)"]
+    SPG --> F["epic-agent ejecuta build/EPIC_LOOP.md (Steps 3.9–8)<br/>(contexto aislado, se descarta al terminar)"]
     F --> G{"Procesar el reporte:<br/>1º git diff SPEC_SHA..HEAD -- specs"}
     G -->|"diff ≠ vacío"| ESC
     G -->|DONE| H["Verificar [x] + commit por git log<br/>(no confiar en el reporte) · seal-cli release<br/>· línea en build-metrics.jsonl (docs(metrics))"]
-    G -->|"BLOCKED / REJECTED_MAJOR"| ESC(["Escalar al usuario · sin auto-retry"])
+    G -->|"BLOCKED: supersesiones (capa)"| SUP["Loop de supersesiones (ver 3.6)<br/>sin revert · sin preguntar"]
+    SUP -->|"epic-agent fresco · RESUME_AT"| F
+    G -->|"BLOCKED: spec"| COR["Loop de corrección del spec<br/>unseal-spec → planner → 4a → re-validación delta<br/>→ re-sello → git revert del RED afectado"]
+    COR -->|"epic-agent desde el spec afectado"| F
+    G -->|"BLOCKED: debug"| DBG[["Ofrecer /specture:debug al usuario<br/>(la cola se detiene: debug pide Plan mode)"]]
+    G -->|"BLOCKED: entorno / otro · REJECTED_MAJOR"| ESC(["Escalar al usuario · sin auto-retry"])
     H --> L
     L -->|No| FIN(["Cola drenada · sugerir merge/PR (W-4)<br/>Specture nunca mergea solo"])
 ```
@@ -161,42 +170,62 @@ flowchart TD
 ### 3.2 El loop por epic — `spec → validate → RED → GREEN → review → verify`
 
 El diagrama central del framework. La planificación vive en el **coordinador** (Spec
-Planning Gate: `spec-planner` + validación por spec); los Steps 4–8 son el procedimiento
+Planning Gate: `spec-planner` + validación por rondas); los Steps 3.9–8 son el procedimiento
 del epic-agent y viven en `build/EPIC_LOOP.md` (único archivo que recibe); Step 1 y Steps
 8.5/8.7/9 son del coordinador (`build/SKILL.md`). Los **gates** (rombos) son innegociables:
 planificación validada, RED commit, TDD Honesty Gate, code review y verificación.
+
+Desde v2.2.0 el gate **converge**: un solo presupuesto humano (≤2 rondas de preguntas, de
+cualquier origen, más una única pregunta cerrada en el tope); una **ronda** es el conjunto de
+despachos del validador que salen juntos; tras un rechazo, planner fresco con `ALCANCE` y
+**re-validación delta** (`MODE: DELTA`: veredicto previo + diff de TREEs y de fuentes); un
+**APPROVED avanza** — sus WARNING/NOTES van a `GATE_NOTES` o a Diferidos con epic dueño, nunca
+a otra pasada ni a otra pregunta; 3 rondas sin APPROVED → **una** pregunta cerrada con menú
+según la clase del BLOCKER vivo. Los FAIL de 4a no cuentan para el tope. La completitud de la
+lista de supersesiones ya no es criterio del gate: la ejecución la descubre (3.5 y 3.6).
 
 ```mermaid
 flowchart TD
     S1["Step 1 · Pick & Lock (coordinador)<br/>epic → [/] · commit"] --> SP
     subgraph GATE ["coordinador · Spec Planning Gate"]
     CS["Pre-flights · Code Surface Resolution (SYMBOL | PATH | SIGNATURE, haiku / grep — el planner no lee código)<br/>+ Rules Resolution (rules-resolve.js --tags → RULES_RESOLVED) + docs-index + _current/"]
-    CS --> SP["spec-planner · Opus<br/>1-3 specs + COVERAGE_TABLE + OPEN_QUESTIONS / RESOLVED_ALONE"]
-    SP --> SQ{"¿OPEN_QUESTIONS?"}
-    SQ -->|"sí"| ASKQ["AskUserQuestion ≤4/tanda · ≤2 tandas<br/>respuestas → BR in place · re-dispatch"]
+    CS --> SP["spec-planner · Opus · effort medium<br/>1-3 specs + COVERAGE_TABLE + OPEN_QUESTIONS / RESOLVED_ALONE<br/>(despacho fresco por pase · ALCANCE · nunca SendMessage)"]
+    SP --> TR["git add + git write-tree → TREE del pase<br/>(spec tocado fuera de ALCANCE → se restaura del TREE previo)"]
+    TR --> SQ{"¿OPEN_QUESTIONS?"}
+    SQ -->|"sí"| ASKQ["AskUserQuestion · presupuesto ÚNICO del gate:<br/>≤2 rondas de cualquier origen · ≤4 por ronda<br/>opciones del planner tal cual (+ derivadas)<br/>respuestas → RN/ADR in place + commit → planner fresco"]
     ASKQ --> SP
-    SQ -->|"no"| MC{"4a · spec-set-check.js (mecánico)<br/>C1 cobertura · C2 RN · C4 firmas · C5 sizing · C6 orden"}
-    MC -->|"FAIL"| FIXS["re-dispatch planner con VIOLATIONS<br/>(edición mínima · CHANGELOG vs git diff)"]
+    SQ -->|"no"| MC{"4a · spec-set-check.js (mecánico)<br/>C1 cobertura · C2 RN · C4 firmas · C5 sizing · C6 orden<br/>· C-sup: el test existe y su nombre aparece en el archivo"}
+    MC -->|"FAIL (no cuenta para el tope)"| FIXM["planner fresco con VIOLATIONS<br/>(3 FAIL idénticos seguidos → BLOCKED: gate)"]
+    FIXM --> SP
     MC -->|"PASS → MECH_CHECK token"| S3a{"GATE 5a · validator · dispatch de SET<br/>C3 dueños de Fuera de Scope · C7 citas · C8 Superficie"}
-    S3a -->|REJECTED| FIXS
+    S3a -->|REJECTED| RC{"¿3 rondas sin APPROVED?<br/>(despachos paralelos = 1 ronda)"}
     S3a -->|APPROVED| S3{"GATE 5b · validator por spec<br/>(dims 1-6, con MECH_CHECK)"}
-    S3 -->|REJECTED| FIXS
+    S3 -->|REJECTED| RC
+    RC -->|"no"| FIXS["planner fresco con VIOLATIONS + ALCANCE → 4a<br/>→ re-validación DELTA: solo lo tocado · PRIOR_VERDICT + DIFF<br/>(BLOCKER nuevo solo sobre el diff o LATE, ≤1 por epic)"]
     FIXS --> SP
-    S3 -->|APPROVED| SC["Resumen → commit specs + _planning.md<br/>SPEC_SHA · seal-cli write (spec_paths + allowed_paths)<br/>· TaskCreate por spec"]
+    RC -->|"sí"| CAPQ(["UNA pregunta cerrada · menú por clase del BLOCKER vivo<br/>ADR: enmendar | cumplir · contrato · discover | elegir regla · partir · pausar"])
+    S3 -->|"APPROVED = avanza"| RT["WARNING / NOTES → GATE_NOTES · DIFERIDOS<br/>(+ Diferidos heredados en el epic dueño)<br/>nunca otra pasada ni otra pregunta"]
+    RT --> SC["Resumen (specs · RESOLVED_ALONE · GATE_NOTES · Diferidos)<br/>→ commit specs + _planning.md · SPEC_SHA<br/>· seal-cli write (spec_paths + allowed_paths + lock_sha) · TaskCreate por spec"]
     end
-    SC --> S4
-    subgraph EL ["epic-agent · build/EPIC_LOOP.md (Steps 4–8 · Sonnet)"]
+    SC --> S39
+    subgraph EL ["epic-agent · build/EPIC_LOOP.md (Steps 3.9–8 · Sonnet)"]
+    S39["Step 3.9 · línea base: suite completa antes del primer RED<br/>fallos re-corridos 2× → BASELINE_FALLOS (no bloquean · se reportan)"]
+    S39 --> S4
     S4["Step 4 · RED · tdd-test-writer<br/>escribe tests que FALLAN (sin ver código)<br/>(+ commit test(supersede) previo si el spec declara Supersede:)"]
     S4 --> S4c{"Post-checks: ¿fallan por la razón correcta?<br/>¿RED commit solo-tests? · capturar RED_SHA<br/>· seal-cli merge-spec (lista de archivos del RED)"}
     S4c -->|No| S4
-    S4c -->|Sí| S5["Step 5 · GREEN · implementer / ux-implementer<br/>código mínimo · tests sellados · solo paths Crea:/Modifica:<br/>(re-lectura de firmas del spec anterior antes del Manifest)"]
-    S5 --> S55{"Step 5.5 · TDD Honesty Gate (mecánico)<br/>git diff RED_SHA..HEAD -- tests"}
-    S55 -->|"diff ≠ vacío ❌"| VIOL["Violación TDD →<br/>$SPECTURE_ROOT/docs/tdd-honesty-reference.md"]
-    S55 -->|"vacío ✅"| S6{"Step 6 · GATE · code-reviewer<br/>(+ linter + type-check en paralelo)<br/>Dim 1 verifica firmas Crea: en HEAD · Dim 7 solo con RULES_RESOLVED · CAUSE: parseable"}
+    S4c -->|Sí| S5["Step 5 · GREEN · implementer / ux-implementer · por capas (ver 3.5)<br/>código mínimo · tests sellados · solo paths Crea:/Modifica:<br/>(re-lectura de firmas del spec anterior antes del Manifest)"]
+    S5 -.->|"tests viejos que una regla del spec vuelve falsos"| SUPB(["BLOCKED: supersesiones (capa)<br/>→ loop de supersesiones del coordinador (ver 3.6)"])
+    SUPB -.->|"RESUME_AT: supersede"| S52["Step 5.2 · reescritura SUPERSEDE-HEAD registrada por SHA<br/>· red-lines · RED retroactivo en LOCK_SHA"]
+    S52 -->|"regresiones J9 NO o WIP de compilación"| S5
+    S52 -->|"sin pendientes"| S55
+    S5 --> S55{"Step 5.5 · TDD Honesty Gate (mecánico)<br/>honesty-check: clean-tree · range (allowlist de SHAs) · red-lines"}
+    S55 -->|"algún FAIL ❌"| VIOL["Violación TDD →<br/>$SPECTURE_ROOT/docs/tdd-honesty-reference.md"]
+    S55 -->|"3 PASS ✅"| S6{"Step 6 · GATE · code-reviewer<br/>(+ linter + type-check en paralelo)<br/>Dim 1 verifica firmas Crea: en HEAD · Dim 4 juzga cada reescritura contra su regla<br/>· Dim 7 solo con RULES_RESOLVED · CAUSE: parseable"}
     S6 -->|REJECTED_MINOR| S5
     S6 -->|REJECTED_MAJOR| ESC["Fix grande con contexto fresco<br/>o escalar al usuario"]
-    S6 -.->|"3 loops sin APPROVED"| CAP["Iteration Cap → arreglar spec<br/>o invocar debug"]
-    S6 -->|APPROVED| S7{"Step 7 · Verificación<br/>correr tests fresh · leer salida completa"}
+    S6 -.->|"3 loops sin APPROVED"| CAP["Iteration Cap → BLOCKED: spec (ID)<br/>o BLOCKED: debug (spec) — nunca invoca debug"]
+    S6 -->|APPROVED| S7{"Step 7 · Verificación<br/>correr tests fresh · leer salida completa<br/>(solo los BASELINE_FALLOS no bloquean)"}
     S7 -->|"rojo"| ESC
     S7 -->|"verde"| S8["Step 8 · epic → [x] · commit<br/>· seal-cli release · reporte con METRICS + SUPERSESSIONS"]
     end
@@ -211,9 +240,14 @@ Tres contratos se **sellan** en `.specture/state/build-locked.json` (schema v3, 
 `hooks/lib/seal-cli.js`): los specs validados (`spec_sha` + `spec_paths`, coordinador), los
 tests de cada RED commit (`specs[]`, epic-agent) y la superficie declarada por los specs
 (`allowed_paths`). Un hook opcional lo bloquea mecánicamente; el coordinador y el epic-agent
-siempre corren los `git diff` como defensa en profundidad. Una supersesión declarada
-(`Supersede:`) levanta el deny de test **solo** para esos paths y **solo** durante el dispatch
-del tdd-test-writer.
+siempre corren los chequeos mecánicos (`honesty-check.js` en el Step 5.5, `git diff
+<SPEC_SHA>..HEAD` al procesar el reporte) como defensa en profundidad. Una supersesión
+declarada (`Supersede:`) levanta el deny de test **solo** para esos paths y **solo** durante el
+dispatch del tdd-test-writer — antes del RED si la declaró el gate, o en el Step 5.2 si la
+descubrió la ejecución (`supersede --slug`, que rechaza un archivo del RED de un spec salvo
+`--shared-with-red`). En el loop de supersesiones, `seal-cli.js lift-spec` libera **solo** el
+archivo de ese spec (queda en `lifted_spec_paths` hasta el siguiente `write`); `red_sha_orig`
+guarda el primer RED de cada spec y no se mueve.
 
 ```mermaid
 sequenceDiagram
@@ -223,7 +257,7 @@ sequenceDiagram
     participant H as Hook PreToolUse<br/>(opcional)
     participant IM as implementer
 
-    C->>C: commit specs validados → SPEC_SHA<br/>seal-cli write (spec_paths · allowed_paths · test_globs)
+    C->>C: commit specs validados → SPEC_SHA<br/>seal-cli write (spec_paths · allowed_paths · test_globs · lock_sha)
     C->>O: specs + SPEC_SHA + veredicto + SEAL: written
     O->>H: seal-cli supersede --paths (solo si el spec declara Supersede:)
     O->>TW: spec validado (sin código) + supersesiones declaradas
@@ -233,8 +267,8 @@ sequenceDiagram
     IM->>H: intenta Edit/Write
     H-->>IM: test sellado → DENY (TDD Honesty Gate)<br/>spec sellado → DENY (Spec Seal)<br/>fuera de la superficie → DENY (Allowed Paths)
     IM-->>O: código GREEN + HEAD_SHA (tests intactos)
-    O->>O: git diff RED_SHA..HEAD -- <test-globs>
-    Note over O: vacío → ✅ code review (Dim 1 verifica firmas Crea:)<br/>no vacío → ❌ violación TDD (recovery)
+    O->>O: honesty-check clean-tree · range · red-lines<br/>(sin node: git diff RED_SHA..HEAD -- test-globs)
+    Note over O: 3 PASS → ✅ code review (Dim 1 verifica firmas Crea:)<br/>algún FAIL → ❌ violación TDD (recovery)
     O-->>C: DONE + METRICS + SUPERSESSIONS
     C->>C: git diff SPEC_SHA..HEAD -- specs (vacío ✅ / ≠ vacío → REJECTED_MAJOR)<br/>seal-cli release · build-metrics.jsonl
 ```
@@ -257,6 +291,67 @@ flowchart TD
     F -->|Sí| G["ux-implementer: la página consume el backend<br/>SOLO vía el cliente tipado del contrato"]
     G --> H["code-reviewer · Dimensión 6 (fidelidad frontend):<br/>tokens · a11y · contrato · reglas de marca"]
 ```
+
+### 3.5 Ejecución por capas — el oráculo descubre qué tests viejos rompe el spec (v2.2.0)
+
+El gate ya no adivina qué tests de epics cerrados rompe un spec: los descubre la ejecución
+corriendo la suite, en dos capas, descontando lo que ya fallaba antes del epic
+(`BASELINE_FALLOS`). El implementer **nunca** toca un test fuera de su RED ni dobla producción
+contra una regla: o arregla su regresión, o cita la regla del spec que vuelve falsa la
+expectativa vieja. Esta clasificación tiene precedencia sobre los disparadores de `debug`
+("el mismo test falla dos veces", "el implementer reporta BLOCKED").
+
+```mermaid
+flowchart TD
+    B(["Step 3.9 · BASELINE_FALLOS<br/>suite completa antes del primer RED · fallos re-corridos 2×"]) --> RED["Step 4 · RED commit del spec"]
+    RED --> C1{"Capa de compilación<br/>primer build / corrida del implementer:<br/>¿la suite puede correr?"}
+    C1 -->|"no: tests fuera del RED no compilan o no cargan"| WIP["commit WIP de producción<br/>SIN tocar ningún test"]
+    WIP --> BC(["BLOCKED: supersesiones (compilación)<br/>log completo en FAILURES:"])
+    C1 -->|"sí"| G["GREEN: los tests del RED en verde"]
+    G --> R{"Capa de runtime · suite completa<br/>¿fallos fuera del RED y fuera de BASELINE_FALLOS?"}
+    R -->|"ninguno"| OK(["→ Step 5.5"])
+    R -->|"sí"| RR["re-correr 2× (el que pasa es flake → CONCERNS)<br/>clasificar por el reporte del runner:<br/>compilación · preparación · aserción · producción · entorno · desconocido<br/>(la clase solo SUBE el escrutinio · desconocido = producción)"]
+    RR -->|"la misma falla de inicialización en toda una colección"| ENV(["BLOCKED: entorno"])
+    RR -->|"aserción / producción sin regla del spec que la vuelva falsa"| REG["regresión del implementer:<br/>arregla PRODUCCIÓN, nunca el test<br/>(cuenta para el Iteration Cap)"]
+    REG --> R
+    RR -->|"cita la regla del spec<br/>(BR-n · AC-n / GAP-nnn en migración)"| BR(["BLOCKED: supersesiones (runtime)<br/>UN reporte por spec y capa, con todas las líneas"])
+```
+
+### 3.6 Loop de supersesiones — sin revert y sin preguntar (v2.2.0)
+
+Lo corre el **coordinador** al recibir `BLOCKED: supersesiones (<capa>)`. No hay `git revert`
+del RED, ni `unseal-spec`, ni pregunta al usuario: quien decide "regresión o diseño" es un
+validador fresco con el dato (J9), nunca el implementer. Como mucho **un loop por spec y por
+capa**; el segundo se escala. El usuario solo aparece si un test está protegido por una
+invariante del proyecto. En un epic de migración J9 acepta `AC-n` / `GAP-nnn` como regla, y los
+characterization tests nunca entran al loop salvo que el spec declare el `GAP-nnn` que retira
+ese comportamiento.
+
+```mermaid
+flowchart TD
+    INR(["Reporte: BLOCKED: supersesiones (capa)<br/>+ FAILURES: aserción vieja + primer fallo por test"]) --> Q{"¿Ya hubo un loop<br/>para este spec y esta capa?"}
+    Q -->|"sí"| ESC(["Escalar al usuario"])
+    Q -->|"no"| J9{"1 · J9 · validador fresco (MODE: J9)<br/>por test: ¿una regla de este spec<br/>vuelve falsa la expectativa vieja?"}
+    J9 -->|"todos NO / INDETERMINABLE"| RES2["epic-agent fresco · RESUME_AT: regresiones<br/>(sin cambio de spec)"]
+    J9 -->|"algún SÍ"| LIFT["2 · seal-cli lift-spec --slug<br/>libera solo ese spec (lifted_spec_paths)"]
+    LIFT --> PL["3 · spec-planner fresco · MODE: SUPERSESSIONS<br/>solo los tests SÍ con su regla<br/>→ líneas Supersede: · filas sup: · registro SUPERSESIONES"]
+    PL --> SD{"4 · honesty-check spec-delta<br/>¿cambió solo la sección Supersesiones?"}
+    SD -->|"FAIL"| COR[["loop de corrección completo<br/>(unseal-spec · re-validación · git revert del RED · re-RED)"]]
+    SD -->|"PASS"| PR{"5 · honesty-check protected<br/>¿un test de un verify: de rules.yml<br/>o de un GUARD de otro epic?"}
+    PR -->|"FAIL"| ESC2(["Escalar al usuario:<br/>enmendar una invariante es decisión humana"])
+    PR -->|"PASS"| MC["6 · 4a spec-set-check (debe dar PASS)"]
+    MC --> CM["7 · commit docs(specs): supersesiones … — loop (capa)<br/>→ SPEC_SHA nuevo + veredicto J9 en _planning.md<br/>· seal-cli write (mismo lock_sha · vacía el lift)"]
+    CM --> RES["8 · epic-agent fresco · RESUME_AT: supersede<br/>SUPERSEDE: (tests SÍ) · REGRESIONES: (NO / INDETERMINABLE)"]
+    RES --> S52["Step 5.2 (epic-agent)<br/>clean-tree → supersede --slug → tdd-test-writer SUPERSEDE-HEAD<br/>(ciego a los valores · commit test(supersede): … — loop)<br/>→ supersede --clear → merge-spec --add-test-paths → registrar commit:<br/>→ red-lines → RED retroactivo: falla en LOCK_SHA y pasa en HEAD"]
+    S52 --> S55(["regresiones / GREEN → Step 5.5: range acepta el SHA del loop porque está registrado<br/>→ code-reviewer Dim 4: una reescritura más débil que su regla es BLOCKER"])
+```
+
+El RED retroactivo es la prueba de que la reescritura expresa la regla: si los tests
+reescritos **pasan** también en `LOCK_SHA` (el commit que marcó el epic `[/]`), no discriminan —
+el test-writer se re-despacha una vez con ese dato y, a la segunda, es `BLOCKED: spec <regla>`;
+si no compilan en la base, el resultado es `REVIEW` y lo juzga el reviewer. Para auditarlo a
+mano: `git log --oneline <red_sha_orig>..HEAD -- <globs de test>` y cada SHA tiene que estar
+en `## SUPERSESIONES` del `_planning.md` del epic (`docs/build-faq.md`).
 
 ---
 
@@ -379,6 +474,12 @@ Modo emergencia. Prohíbe fixes sin investigación. La hipótesis se escribe **d
 hasta que el usuario aprueba, no se puede tocar código. Límite duro de **3 hipótesis** antes de
 escalar arquitectónicamente.
 
+**Excepciones dentro de `build` (v2.2.0).** El epic-agent **nunca** invoca `debug`: Plan mode
+dejaría la cola esperando una aprobación que nadie puede dar. Al llegar al Iteration Cap reporta
+`BLOCKED: debug <spec>`, la cola se detiene y el coordinador le ofrece `/specture:debug` al
+usuario. Y un `BLOCKED: supersesiones` del implementer no dispara `debug` aunque el mismo test
+haya fallado dos veces: ya está clasificado y va al loop de supersesiones (3.5 y 3.6).
+
 ```mermaid
 flowchart TD
     L["Iron Law: cero fixes sin causa raíz<br/>+ cero fixes sin DEBUG_LOG escrito"] --> P1["Fase 1 · Investigación de causa raíz<br/>leer error completo · reproducir · git diff · trazar al origen"]
@@ -428,7 +529,10 @@ flowchart LR
 ### 5.4 Modernize — migración incremental (Strangler Fig)
 
 Cubre upgrade de versión y migración de tecnología. La ley de hierro: **tests de caracterización
-antes del primer cambio de código**; nunca Big Bang; un módulo por epic.
+antes del primer cambio de código**; nunca Big Bang; un módulo por epic. Los characterization
+tests nunca entran al loop de supersesiones del build (3.6) salvo que el spec declare el
+`GAP-nnn` que retira ese comportamiento; dentro de un epic-agent, "→ debug" significa reportar
+`BLOCKED: debug <spec>` (v2.2.0).
 
 ```mermaid
 flowchart TD
@@ -472,7 +576,7 @@ flowchart TD
 
     M -->|"stats"| ST0{"¿docs/.specture-meta/build-metrics.jsonl existe?"}
     ST0 -->|No| ST1(["Ofrecer metrics-report.js --baseline --write<br/>(reconstruye los epics [x] desde reviews, _planning.md y git log)"])
-    ST0 -->|Sí| ST2["metrics-report.js: tabla por epic · gate vs baseline<br/>· lectura §6.5 (defectos aguas abajo · ¿pregunta el planner? · spec_defect → A6)"]
+    ST0 -->|Sí| ST2["metrics-report.js: tabla por epic · gate vs baseline<br/>· lectura §6.5 (defectos aguas abajo · ¿pregunta el planner? · spec_defect → A6)<br/>· v2.2.0: rondas · APROBADOS reabiertos · loops de supersesión · contactos gate vs ejecución"]
     ST2 --> ST3(["Una recomendación por regla que dispara · nunca edita el archivo"])
 
     M -->|"capture"| C0{"settings.yml knowledge.enabled ?"}
