@@ -18,7 +18,15 @@ const ARROW = "(?:→|->)";
 const DASH = "\\s+(?:—|–|--|-)\\s+"; // field separator: em dash, en dash, `--` or ` - `
 const RN_ID = /\bRN-(?:[A-Z]+-)?\d+\b/g;
 const GAP_ID = /\bGAP-(?:[A-Z]+-)?\d+\b/g;
+// A supersession motive: the BR of a feature spec, the AC of a migration spec or the GAP it
+// closes (`GAP-nnn`, optionally with a domain prefix like RN ids).
+const MOTIVE_SRC = "(?:BR|AC)-\\d+|GAP-(?:[A-Z]+-)?\\d+";
 const SECTION_LABELS = /^(COVERAGE_TABLE|OPEN_QUESTIONS|RESOLVED_ALONE|SUPERSESIONES|CODE_SURFACE|MECH_CHECK|VEREDICTOS|SPEC_SHA|CHANGELOG|CONCERNS)\s*:/;
+
+// Only a BR motive fills the legacy `br` field; AC/GAP motives leave it null.
+function brOf(motivo) {
+  return motivo && /^BR-/.test(motivo) ? motivo : null;
+}
 
 function unquote(value) {
   return String(value || "").replace(/`/g, "").trim();
@@ -82,8 +90,8 @@ function parseRow(kind, rest) {
       m = value.match(new RegExp(`^\`?(GAP-(?:[A-Z]+-)?\\d+)\`?\\s*${ARROW}\\s*\`?([A-Za-z0-9_.-]+)\`?\\s*$`));
       return m ? { gap: m[1], slug: m[2] } : null;
     case "sup":
-      m = value.match(new RegExp(`^\`?([^\`\\s:]+)::([^\`]+?)\`?\\s*${ARROW}\\s*\`?([A-Za-z0-9_.-]+)\`?\\s*(?:\\(\\s*(BR-\\d+)\\s*\\))?\\s*$`));
-      return m ? { path: m[1], test: collapse(m[2]), slug: m[3], br: m[4] || null } : null;
+      m = value.match(new RegExp(`^\`?([^\`\\s:]+)::([^\`]+?)\`?\\s*${ARROW}\\s*\`?([A-Za-z0-9_.-]+)\`?\\s*(?:\\(\\s*(${MOTIVE_SRC})\\s*\\))?\\s*$`));
+      return m ? { path: m[1], test: collapse(m[2]), slug: m[3], motivo: m[4] || null, br: brOf(m[4]) } : null;
     default:
       return null;
   }
@@ -274,8 +282,10 @@ function operationsFromLine(line) {
   return ids.map((id) => ({ id, mode }));
 }
 
+const SUPERSEDE_LINE = new RegExp(`^\\s*-\\s*Supersede\\s*:\\s*\`?([^\`\\s:]+)::([^\`]+?)\`?${DASH}motivo\\s*:\\s*(${MOTIVE_SRC})\\b`, "i");
+
 // { slug, operations: [{id, mode}], hasOperationsSection, rules, surface: [...], plannedSymbols,
-//   createdPaths, modifiedPaths, idCount, gaps, supersedes: [{path, test, br}], outOfScope: [] }
+//   createdPaths, modifiedPaths, idCount, gaps, supersedes: [{path, test, motivo, br, accion}], outOfScope: [] }
 function parseSpec(text, slug) {
   const opsSection = extractSection(text, /^##\s+Operaciones del Contrato/i) || "";
   const operations = [];
@@ -292,8 +302,10 @@ function parseSpec(text, slug) {
   const supersedeSection = extractSection(text, /^##\s+(?:\d+\.\s*)?Supersesiones/i) || "";
   const supersedes = [];
   for (const line of lines(supersedeSection)) {
-    const m = line.match(/^\s*-\s*Supersede\s*:\s*`?([^`\s:]+)::([^`]+?)`?\s+(?:—|–|--|-)\s+motivo\s*:\s*(BR-\d+)/i);
-    if (m) supersedes.push({ path: m[1], test: collapse(m[2]), br: m[3] });
+    const m = line.match(SUPERSEDE_LINE);
+    if (!m) continue;
+    const accion = line.match(new RegExp(`${DASH}acci[oó]n\\s*:\\s*(reescribir|retirar)\\b`, "i"));
+    supersedes.push({ path: m[1], test: collapse(m[2]), motivo: m[3], br: brOf(m[3]), accion: accion ? accion[1].toLowerCase() : null });
   }
   const oosSection = extractSection(text, /^##\s+(?:\d+\.\s*)?Fuera de Scope/i) || "";
   const outOfScope = lines(oosSection).filter((l) => /^\s*-\s+\S/.test(l)).map((l) => collapse(l.replace(/^\s*-\s*/, "")));
@@ -315,6 +327,106 @@ function parseSpec(text, slug) {
   };
 }
 
+// ---------------------------------------------------------------------------
+// _planning.md registers written by the coordinator (v2.2.0)
+// ---------------------------------------------------------------------------
+
+// Lines of a register: the `## <NAME>` section (any suffix) or the bare `<NAME>:` label block of
+// the v1.17.0 planner, up to the next `## ` heading or label line.
+function registerLines(text, name) {
+  const all = lines(text);
+  const heading = new RegExp(`^##\\s+${name}\\b`);
+  const label = new RegExp(`^\\s*${name}\\s*:`);
+  const start = all.findIndex((l) => heading.test(l) || label.test(l));
+  if (start === -1) return [];
+  const out = [];
+  for (let i = start + 1; i < all.length; i++) {
+    if (/^##\s/.test(all[i]) || SECTION_LABELS.test(all[i].trim())) break;
+    out.push(all[i]);
+  }
+  return out;
+}
+
+// The value of a ` — name: value` field, or null.
+function registerField(line, name, valueSrc) {
+  const m = line.match(new RegExp(`${DASH}${name}\\s*:\\s*(${valueSrc})`, "i"));
+  return m ? m[1].trim() : null;
+}
+
+// `## SUPERSESIONES` register (templates/PLANNING_TEMPLATE.md):
+//   - <path>::<test> — motivo: <BR|AC|GAP> — spec: <slug> — commit: <pendiente|sha|sin cambio> [— loop: …] [— j9: SÍ] [— acción: …]
+//   - red-fix: <path> — spec: <slug> — commit: <sha>
+// → [{kind, path, test, motivo, slug, commit, loop, j9, accion, raw}]; `commit: pendiente` → null.
+function parseSupersessionRegister(text) {
+  const out = [];
+  for (const raw of registerLines(text, "SUPERSESIONES")) {
+    const line = raw.replace(/`/g, "");
+    const commit = registerField(line, "commit", "sin cambio|pendiente|[0-9a-f]{7,40}");
+    const accion = registerField(line, "acci[oó]n", "reescribir|retirar");
+    const common = {
+      slug: registerField(line, "spec", "[A-Za-z0-9_.-]+"),
+      commit: commit === "pendiente" ? null : commit,
+      loop: registerField(line, "loop", "compilaci[oó]n|runtime"),
+      j9: registerField(line, "j9", "S[IÍ]|NO"),
+      accion: accion ? accion.toLowerCase() : null
+    };
+    const redFix = line.match(/^\s*-\s*red-fix\s*:\s*(\S+)/i);
+    if (redFix) {
+      out.push({ kind: "red-fix", path: redFix[1], test: null, motivo: null, ...common, raw: collapse(raw) });
+      continue;
+    }
+    const sup = line.match(new RegExp(`^\\s*-\\s*([^\\s:]+)::(.+?)${DASH}motivo\\s*:\\s*(${MOTIVE_SRC})\\b`));
+    if (sup) out.push({ kind: "supersede", path: sup[1], test: collapse(sup[2]), motivo: sup[3], ...common, raw: collapse(raw) });
+  }
+  return out;
+}
+
+const VERDICT_HEADER = new RegExp(`^###\\s+([A-Za-z0-9_.-]+)${DASH}dispatch\\s+(\\d+)\\b(.*)$`);
+
+// `### <set|slug> — dispatch N [— ronda R] — <fecha|ISO> [— tree <sha12>] [— head <sha12>] [— delta] [— loop] [— J9]`
+// Legacy headers (`### set — dispatch 1 — 2026-09-23`, `… (loop de corrección)`) parse with null
+// ronda/tree/head. → [{target, dispatch, ronda, ts, tree, head, delta, loop, j9, raw}]
+function parseVerdictHeaders(text) {
+  const out = [];
+  for (const line of lines(text)) {
+    const m = line.match(VERDICT_HEADER);
+    if (!m) continue;
+    const rest = m[3];
+    const ronda = rest.match(/\bronda\s+(\d+)\b/i);
+    const ts = rest.match(/\b(\d{4}-\d{2}-\d{2}(?:T[0-9:.]+(?:Z|[+-]\d{2}:?\d{2})?)?)/);
+    const tree = rest.match(/\btree\s+([0-9a-f]{7,40})\b/i);
+    const head = rest.match(/\bhead\s+([0-9a-f]{7,40})\b/i);
+    const flag = (name) => new RegExp(`${DASH}${name}\\b`, "i").test(rest);
+    out.push({
+      target: m[1],
+      dispatch: Number(m[2]),
+      ronda: ronda ? Number(ronda[1]) : null,
+      ts: ts ? ts[1] : null,
+      tree: tree ? tree[1] : null,
+      head: head ? head[1] : null,
+      delta: flag("delta"),
+      // `— loop` (v2.2.0) or the legacy free text `(loop de corrección)`.
+      loop: flag("loop") || /\bloop\b/i.test(rest),
+      j9: flag("J9"),
+      raw: collapse(line)
+    });
+  }
+  return out;
+}
+
+const GUARD_LINE = new RegExp(`^\\s*-\\s*\\*\\*(GUARD-\\d+)\\s*:?\\s*\\*\\*.*?${ARROW}\\s*test\\s*:\\s*\`?([^\`\\s:]+)::([^\`]+?)\`?\\s*$`);
+
+// `- **GUARD-n:** <comportamiento> → test: \`<path>::<nombre>\`` (templates/SPEC_TEMPLATE.md).
+// A GUARD without a test pointer protects nothing mechanically and is skipped.
+function parseGuards(text) {
+  const out = [];
+  for (const line of lines(text)) {
+    const m = line.match(GUARD_LINE);
+    if (m) out.push({ id: m[1], path: m[2], test: collapse(m[3]) });
+  }
+  return out;
+}
+
 module.exports = {
   ROW_KINDS,
   RN_ID,
@@ -330,5 +442,8 @@ module.exports = {
   parseEpicBlock,
   parseRoadmapEpics,
   findEpicBlock,
-  parseSpec
+  parseSpec,
+  parseSupersessionRegister,
+  parseVerdictHeaders,
+  parseGuards
 };
