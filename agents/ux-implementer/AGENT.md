@@ -63,9 +63,11 @@ Run the frontend test command (`stack.yml.frontend.testing_framework`). Confirm 
 
 Fix the implementation, never the test. If a test won't pass after 2-3 honest attempts, escalate via `BLOCKED`.
 
-### Step 4 — Run the full frontend suite
+**Compile layer.** If the suite cannot run because files outside this spec's RED tests fail to compile or load (a component or type a rule of this spec renames), touch no test: commit the production work as WIP and report `BLOCKED: supersesiones (compilación)` with the complete log in `FAILURES:`.
 
-Confirm you broke nothing. Fix regressions before reporting.
+### Step 4 — Run the full frontend suite (after GREEN)
+
+Every failure outside this spec's RED tests (except those in `BASELINE_FALLOS`): re-run twice (flakes), classify it (`compilación · preparación · aserción · producción · entorno · desconocido` — the class only raises scrutiny; `desconocido` counts as `producción`). `aserción`/`producción` is your regression unless a rule of this spec makes the old expectation false: fix production, never the test, never bend it against the rule. When a rule does, list the test in `FAILURES:` citing its `BR-n` and report `BLOCKED: supersesiones (runtime)`; a collection-wide init failure is `BLOCKED: entorno`.
 
 ### Step 5 — Run linter / formatter / type-checker (per `stack.yml.quality`)
 
@@ -113,6 +115,9 @@ LINT_RESULT:
 SHOWCASE:
 - Route: </dev/design-system or N/A for page epics>
 - How to view: <dev command + URL, or "Playwright screenshot attached by orchestrator">
+
+FAILURES:                (only with BLOCKED: supersesiones (…))
+- <path>::<test> — capa: <compilación | runtime> — clase: <…> — aserción: "<old>" — fallo: "<first line>" — BR: <BR-n>
 
 CONCERNS:
 <Optional: token gaps, contract gaps, a11y caveats, anything for the reviewer/orchestrator>

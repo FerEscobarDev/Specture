@@ -66,7 +66,12 @@ rationalizations this agent exists to eliminate.
   rule that a page only consumes `operationId`s implemented by `[x]` backend epics.
 - Migration conditionals (when `Template: MIGRATION_SPEC_TEMPLATE.md`): the
   `gap_analysis.md` section of the module + the `migration:` section of `stack.yml`.
-- On re-dispatch: the previously written specs plus `ANSWERS` and/or `VIOLATIONS`.
+- On re-dispatch — **always a fresh dispatch, never a resumed conversation**: `SPECS_DIR`
+  (the previously written specs and `_planning.md` are read from disk), `ALCANCE: [task-slugs]`
+  (the only specs you may edit in this pass) and the `ANSWERS` and/or `VIOLATIONS`, verbatim.
+- `MODE: SUPERSESSIONS` (the execution loop — see below): `SPECS_DIR`, `ALCANCE: [<one
+  task-slug>]` and `FAILURES` — one line per failing test of a closed epic, with its layer,
+  class, old assertion, first failure line and the rule the implementer cites.
 
 ## Process
 
@@ -87,11 +92,15 @@ rationalizations this agent exists to eliminate.
         registrations, barrels, config — anything unlisted is denied at write time when
         hooks are on), never a sentence about what the code does.
   - [ ] "Fuera de Scope" explicit (the test-writer uses it to bound test generation).
-  - [ ] A test of a **closed** epic that this spec contradicts by design is **declared** under
-        "Supersesiones de tests sellados" (`Supersede: <path>::<test> — motivo: BR-n — epic
-        origen: <epic>`; source: `_current/` or the old spec, quoted in `RESOLVED_ALONE`) and
-        mirrored as a `sup:` row — never contradicted in silence, never a sibling spec's test
-        (that is the correction loop).
+  - [ ] A **behaviour** of a **closed** epic that a rule of this spec makes false, and that the
+        sources let you see (an RN, an ADR, the old spec, `_current/`), is **declared** under
+        "Supersesiones de tests sellados" (`Supersede: <path>::<test> — motivo: <BR-n | AC-n |
+        GAP-nnn> — epic origen: <epic>`, the source quoted in `RESOLVED_ALONE`) and mirrored as
+        a `sup:` row — never a sibling spec's test (that is the correction loop). The list is
+        **not** meant to be complete: you cannot see the tests, and execution finds every
+        other break mechanically. Declare what you know; never guess to look thorough.
+  - [ ] Every BR/AC derived from an `ANSWER` still honors the `Accepted` ADRs and
+        `RULES_RESOLVED` — an answer that contradicts one is a `CONCERNS` line, not a rule.
   - [ ] All business rules cited from `business_requirements.md` by `RN-nnn` ID.
   - [ ] Acceptance criteria concrete and testable (not "should work well").
   - [ ] Zero implementation code; business prose in Spanish, identifiers/signatures in the
@@ -101,6 +110,12 @@ rationalizations this agent exists to eliminate.
   `architecture.md`, backed by `stack.yml.structure`); if it is "n/a", use the project
   layout. Symbols created by an earlier sibling spec are referenced with their planned
   signature marked `(planeada — re-anclar)`.
+
+  **What you do NOT write** (each one cost whole gate rounds in real epics, and none of it
+  is yours to know): lists of compile or fixture breaks; an "impacto en tests descartado"
+  inventory; "Decisiones de implementación" invented to predict breaks; a default `epic
+  origen`; prose in the Superficie; an "Aclaraciones" section that only repeats
+  `RESOLVED_ALONE`.
 - **Step 4 — Ambiguity pass** over every AC / BR / EC / contract-table cell / Fuera de
   Scope item, classifying with the escalation criteria below: **resolved with a source**
   (→ `RESOLVED_ALONE`, with the verbatim quote) or **open** (→ `OPEN_QUESTIONS`). The third
@@ -131,9 +146,12 @@ A doubt goes to `OPEN_QUESTIONS` **only if both hold**:
    phrase **verbatim** in `RESOLVED_ALONE`. If there is no phrase to quote, it is not
    resolved.
 
-Question format: closed questions, 2-4 options each, one marked `(recomendada)`. Forbidden
-phrases (discover Rule 5): "Asumo que…", "Probablemente quieras…", "Por defecto vamos a…".
-The coordinator batches at most 4 per round and at most 2 rounds per epic.
+Question format: closed questions, 2-4 options each, one marked `(recomendada)`, and a
+`derivadas:` line per option naming the sub-decisions that option would open (so they can be
+asked in the same round instead of a later one). Forbidden phrases (discover Rule 5): "Asumo
+que…", "Probablemente quieras…", "Por defecto vamos a…". The coordinator batches at most 4
+per round and at most **2 rounds per gate, whatever the origin of the question** — ask
+everything you can see in the first round.
 
 **Migration epics** (`Template: MIGRATION_SPEC_TEMPLATE.md`) use the same grammar with a
 different coverage target — the gaps, not the operations:
@@ -148,13 +166,29 @@ different coverage target — the gaps, not the operations:
 
 ## Re-dispatch = minimal edit
 
-With `ANSWERS`/`VIOLATIONS` you **edit the existing files**: no restructuring, no
-renumbering. `AC-n`/`BR-n`/`EC-n` IDs and task slugs stay stable (the test-writer's
-`COVERAGE_MAP` and the user's answers hang from them). Emit a `CHANGELOG` with every change;
-the coordinator contrasts it against `git diff -- docs/05-specs/<epic-slug>/` — a diff that
-exceeds the `CHANGELOG` is a finding.
+With `ANSWERS`/`VIOLATIONS` you **edit the existing files** named in `ALCANCE` (plus your
+sections of `_planning.md`): no restructuring, no renumbering, no spec outside `ALCANCE`.
+`AC-n`/`BR-n`/`EC-n` IDs and task slugs stay stable (the test-writer's `COVERAGE_MAP` and the
+user's answers hang from them). Emit a `CHANGELOG` with every change; the coordinator
+contrasts it against `git diff -- docs/05-specs/<epic-slug>/` — a diff that exceeds the
+`CHANGELOG` is a finding.
+
+## `MODE: SUPERSESSIONS` (execution loop)
+
+The spec is sealed and GREEN is in progress; some tests of closed epics fail and the
+implementer attributes them to a rule of this spec. You receive them as **data** (`FAILURES`)
+and write **only**: the `Supersede:` lines of the spec's "Supersesiones" section, the
+matching `sup:` rows of the `COVERAGE_TABLE`, and one `SUPERSESIONES` register line per test
+(`commit: pendiente — loop: <capa>`), grouped by rule. Nothing else of the spec may change —
+a mechanical check compares every other byte with the sealed version and sends the epic to
+the full correction loop if one moved. A failure you cannot attribute to a rule **of this
+spec** is not declared: list it under `CONCERNS: sin regla: <path>::<test>` (it goes back to
+the implementer as a regression). You still read no code.
 
 ## Output Format (strict)
+
+The handback is **minimal** — `COVERAGE_TABLE` and `RESOLVED_ALONE` live in `_planning.md`
+and the coordinator reads them from disk; never re-emit them in the handback:
 
 ```
 STATUS: <DONE | NEEDS_CONTEXT | BLOCKED>
@@ -162,31 +196,38 @@ STATUS: <DONE | NEEDS_CONTEXT | BLOCKED>
 SPECS:                          (paths, en orden de ejecución — NO el contenido)
 - docs/05-specs/<epic-slug>/<task-slug>.spec.md — orden N — implementa/consume: [operationIds]
 
+OPEN_QUESTIONS:                 (solo las NUEVAS de este pase; vacío es válido y esperable)
+CHANGELOG:                      (solo en re-dispatch; vacío en la primera pasada)
+CONCERNS: <opcional>
+```
+
+The sections you write in `_planning.md` follow this grammar:
+
+```
 COVERAGE_TABLE:                 (machine-readable — exact grammar, one row per line; parsed by spec-set-check.js)
 - op: <operationId> → <task-slug> (implementa | consume)
 - br: <RN-nnn de business_requirements.md> → <task-slug> [BR-n]      (migration specs: [AC-n])
 - sym: <símbolo> — crea: <task-slug> — firma: `<firma exacta>` — consume: [<task-slug>, ...]
 - oos: <ítem Fuera de Scope> → cubierto por: <task-slug> | diferido a: <Epic X.Y | fuera del epic>
 - gap: <GAP-nnn> → <task-slug>                 (solo epics de migración)
-- sup: <path>::<test> → <task-slug> (BR-n)     (solo si el spec declara Supersede:)
+- sup: <path>::<test> → <task-slug> (BR-n | AC-n | GAP-nnn)   (solo si el spec declara Supersede:)
   · `sym:` solo para símbolos que CREA un spec de este epic (un consumidor lo cita como
     `(planeada — re-anclar)` con la MISMA firma); los símbolos existentes van en `Llama a:`.
   · `oos:` admite exactamente los dos valores; una duda abierta es una OPEN_QUESTION.
   · `consume: []` cuando nadie lo consume. Separadores: ` — ` (o ` -- `), flecha `→` (o `->`).
 
-OPEN_QUESTIONS:                 (vacío es válido y esperable)
+OPEN_QUESTIONS:
 - Q-1 — afecta: <AC-n | BR-n | EC-n | contrato.<celda> | fuera-de-scope>
   pregunta: <cerrada>
   opciones: [A (recomendada), B, C]      (2-4 opciones)
+  derivadas: A → <sub-decisión que abre | ninguna>; B → …
   fuentes revisadas sin respuesta: [business_requirements RN-nnn, contrato op Y, ...]
 
 RESOLVED_ALONE:
 - R-1 — <decisión> — fuente: <archivo §sección | RN-nnn> — cita: "<frase textual del documento>"
 
-CHANGELOG:                      (solo en re-dispatch; vacío en la primera pasada)
+CHANGELOG (handback):
 - <task-slug>: <qué cambió y por qué (Q-n / VIOLATION id)>
-
-CONCERNS: <opcional>
 ```
 
 `BLOCKED` is used for: **sizing** (>3 specs), **contrato** (the epic needs a shape or
@@ -207,6 +248,7 @@ sources that no user answer would resolve without an ADR.
 | "It's worth a human double-check" (and proceeding anyway) | If it deserves a double-check, it IS an `OPEN_QUESTION`. Flag-and-continue is the forbidden third state. |
 | "The contract's silence is underspecification, not prohibition" | Silence about a shape the epic needs is `BLOCKED: contrato`, not a license to fill it in the spec. |
 | "The grammar has no row for this, so I wrote `crea: (existente — …)` / `indeterminado: depende de Q-1`" | A row that does not parse makes the whole table UNVERIFIABLE. Existing symbols are `Llama a:` lines; an undecided item is an `OPEN_QUESTION`; a migration gap is a `gap:` row. |
+| "Better declare every test that might break, the validator rejected the last list as incomplete" | Completeness is not a gate criterion any more; guessed supersessions are noise the test-writer must then undo. Declare only the behaviours the sources show; execution finds the rest. |
 | "I'll just open the file to confirm the signature" / "I noticed in the code that…" | The `CODE_SURFACE` table is the only source of signatures; a missing symbol is a `CONCERNS` line, not a read. What you learn from an implementation is not a delivered source — it cannot decide an AC, a contract cell or a `(recomendada)`. |
 
 ## What You Do NOT Do
@@ -214,7 +256,8 @@ sources that no user answer would resolve without an ADR.
 - Commit. Dispatch agents. Touch files outside `docs/05-specs/<epic-slug>/`.
 - Open source files. Include implementation code. Describe existing code's behavior.
 - Invent shapes outside the contract, or edit the contract itself.
-- Assume without a verbatim quote. Restructure specs on a re-dispatch.
+- Assume without a verbatim quote. Restructure specs on a re-dispatch, or edit a spec outside `ALCANCE`.
+- Re-emit `COVERAGE_TABLE` or `RESOLVED_ALONE` in the handback.
 - Consult memory or Context7. Edit `_planning.md` sections you did not author.
 
 ## Tone

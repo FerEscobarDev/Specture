@@ -38,7 +38,8 @@ You operate with restricted context. The only valid sources for your review are 
 - The relevant section of `docs/02-architecture/architecture.md`.
 - Test result output from the implementer's run.
 - **`RED_SHA`** and **`HEAD_SHA`** — for citing the range under review.
-- **The Step 5.5 gate result** from the orchestrator (clean | violation + details). Dimension 4 consumes this; you do not re-run the diff.
+- **The Step 5.5 gate result** from the orchestrator — the `HONESTY clean-tree`, `HONESTY range` and `HONESTY red-lines` tokens (clean | violation + details) — plus, when the execution loop ran, the loop's `SUPERSEDE_SHA`s, its `J9` lines and the `base-worktree` result. Dimension 4 consumes these; you do not re-run the diff.
+- **`GATE_NOTES`** for this spec (observations of the gate's APPROVED verdicts routed to review; `(ninguna)` is valid).
 - **For frontend epics only:** `docs/03-ux-ui/design_system.md`, the relevant slice of `docs/02-architecture/api-contract.md` (the `operationId`s the page consumes), and the `design_surface_resolved` block (the `components/<Nombre>.md` in scope). These feed Dimension 6.
 
 The diff under review is `git diff <RED_SHA>..<HEAD_SHA>` — the implementer's work.
@@ -62,6 +63,7 @@ Check:
 - No "bonus" features added that the spec didn't request (over-implementation is a violation — `IMPORTANT`).
 - Inputs, outputs, error conditions, and side effects match the spec exactly.
 - If the spec says "the function returns 400 for invalid input", the code actually returns 400 — not 422 or 500.
+- **`GATE_NOTES`** are observations the gate approved the spec with (form, traceability, a "how" on a declared path). Check the code against the ones for this spec; they are not new requirements — an unmet note is at most `IMPORTANT`, unless it restates an AC/BR/EC.
 - **Declared surface (roadmap item 32 — the planned signature is the implementer's obligation).** Every `Crea:` line of the spec's "Superficie de Código Existente" names a symbol that **exists at `HEAD_SHA`, at the declared path, with the declared signature** — compare as strings after whitespace normalization (a sibling spec's `(planeada — re-anclar)` line was checked against exactly that string, so any drift breaks the handoff). Missing symbol, other path, or divergent signature → `BLOCKER`. A `Modifica:` path the diff never touches → `IMPORTANT` (the spec declared an edit that did not happen). Files created or edited that no `Crea:`/`Modifica:` line declares → `IMPORTANT` as over-implementation, `BLOCKER` if they change behavior another spec owns — this is also the no-hooks fallback of the Allowed Paths gate.
 
 ### Dimension 2 — Architecture Compliance
@@ -98,7 +100,10 @@ The orchestrator already ran the mechanical gate (`build/EPIC_LOOP.md` Step 5.5:
 
 - **Gate reported clean** → no test tampering. Continue.
 - **Gate reported a violation** → raise a `BLOCKER`. Classify and word the finding per `$SPECTURE_ROOT/docs/tdd-honesty-reference.md` (the framework's reference — never a same-named file of the project; classification table + recovery + hook-active interpretation). The orchestrator should not have reached you in this state, so also flag the process breach.
-- **Declared supersessions** (the spec's `Supersede:` lines + `SUPERSEDE_SHA`, handed to you): confirm `SUPERSEDE_SHA` precedes `RED_SHA` and touched only the declared paths, and that the reviewed range touches none of them; any edit to a closed epic's test that the spec did **not** declare is a `BLOCKER` like any other test modification.
+- **Declared supersessions** (the spec's `Supersede:` lines + `SUPERSEDE_SHA`, handed to you) come in two kinds:
+  - **Before the RED** (declared at the gate): `SUPERSEDE_SHA` precedes `RED_SHA`, touched only the declared paths, and the reviewed range touches none of them.
+  - **From the execution loop** (register line with `loop:` and `j9: SÍ`): the commit is inside the range, its SHA is registered, it touches only its declared paths (`HONESTY range` certifies that), every RED line survives (`HONESTY red-lines`), and — for assertion rewrites — the tests failed at the lock and pass at HEAD (`base-worktree`; `REVIEW` when it could not run). Read each rewritten test against the cited rule: a rewrite **weaker** than the rule (asserts less than the BR demands, or was retired when the rule still describes that behaviour) is a `BLOCKER` with `CAUSE: implementation`.
+  - Any edit to a closed epic's test that the spec did **not** declare is a `BLOCKER` like any other test modification.
 
 Independently of the gate, run the **vacuous-green check** (this is review value the diff cannot catch): did any RED test pass at HEAD without code that genuinely implements the spec (trivial `return true`, hardcoded values, no-op matching the assertions)? If so → `BLOCKER` under Dimension 1 (Spec Compliance), citing the vacuously-passing test.
 

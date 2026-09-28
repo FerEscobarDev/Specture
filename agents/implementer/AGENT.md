@@ -76,9 +76,29 @@ If they fail:
 - Fix the implementation, not the test.
 - If you can't make a test pass after 2-3 honest attempts, do NOT keep guessing — escalate via status `BLOCKED` and describe what you tried.
 
-### Step 4 — Run the FULL test suite
+**Compile layer (first build or run).** If the suite cannot even run because files **outside
+this spec's RED tests** fail to compile or load (an old test calls a symbol a rule of this
+spec renames or removes), touch no test: commit your production work as WIP
+(`wip(<scope>): <task-slug> — suite bloqueada por compilación`) and report
+`BLOCKED: supersesiones (compilación)` with the **complete** log in `FAILURES:`. The
+coordinator amends the spec and the test-writer adapts the old tests; you resume at GREEN.
 
-Confirm you didn't break previously passing tests. If you did, fix it before reporting done.
+### Step 4 — Run the FULL test suite (after GREEN)
+
+For every failure **outside this spec's RED tests** (ignore the ones listed in
+`BASELINE_FALLOS` — they failed before the epic started):
+1. Re-run it twice; a test that passes is a flake — report it in CONCERNS.
+2. Classify it from the runner's report: `compilación · preparación · aserción · producción ·
+   entorno · desconocido`. The class can only **raise** scrutiny: a production frame in the
+   stack or a 5xx in the response is `producción`; `desconocido` is treated as `producción`.
+3. `aserción`/`producción` is **your regression** unless a rule of this spec makes the old
+   expectation false — fix the production code (never the test). If a rule does, do not
+   "fix" it and never bend production against the rule: list it in `FAILURES:` citing the
+   rule. "It's by design" without a `BR-n` is not allowed.
+4. The same initialisation failure across a whole collection is `entorno` → `BLOCKED: entorno`.
+
+`DONE` requires a clean suite (baseline failures aside). A non-empty `FAILURES:` list is
+`BLOCKED: supersesiones (runtime)` — one report with every failure, not one per test.
 
 ### Step 5 — Run linter / formatter / type-checker (per `stack.yml.quality`)
 
@@ -139,6 +159,9 @@ LINT_RESULT:
 - Linter command: <cmd>
 - Result: <X errors, X warnings>
 
+FAILURES:                (only with BLOCKED: supersesiones (…) — one line per test)
+- <path>::<test> — capa: <compilación | runtime> — clase: <…> — aserción: "<old assertion>" — fallo: "<first line of the failure>" — BR: <BR-n>
+
 CONCERNS:
 <Optional: anything you flag for the reviewer or orchestrator>
 ```
@@ -166,6 +189,7 @@ These are the exact thoughts that lead to TDD violations. If you catch yourself 
 | "Just removing one assertion to unblock progress" | One removed assertion = silent regression risk. Flag instead. Report `BLOCKED` if it truly blocks you. |
 | "Adding `it.skip` / `xit` / `@Disabled` temporarily" | There is no "temporary" in software. Skipped tests survive forever. Use status `BLOCKED` with the specific reason. |
 | "The spec is ambiguous so I'll interpret it via the test" | Specs are interpreted in the spec phase, not the implementation phase. Return `NEEDS_CONTEXT`. |
+| "That old test of another epic is obviously outdated" | Then a rule of this spec says so: cite its `BR-n` in `FAILURES:`. Without one it is your regression — fix production, never the test. |
 | "The test expects X but the architecture demands Y, so I'll change the test" | Architecture/spec mismatches are escalations, not test edits. Report `BLOCKED` with the contradiction. |
 | "I'll move the test to a different file while I refactor" | Even moving the file counts as modification in `git diff`. Don't touch test files at all. |
 | "I'll just rename the test for clarity" | Rename = diff. Don't. |

@@ -135,6 +135,29 @@ sealed tests you may ever touch, and only like this:
 If a declared path does not exist, or the declared test belongs to a spec of **this** epic,
 stop and report `BLOCKED` with the line — that is a spec defect, not a supersession.
 
+#### `MODE: SUPERSEDE-HEAD` — supersessions discovered in execution
+
+Dispatched by the epic-agent **after** the RED commit, when the suite showed tests of closed
+epics that a rule of this spec makes false and the spec was amended (only its Supersesiones
+section — lines with `commit: pendiente — loop: <capa>`). You receive the spec, the declared
+`<path>::<test>` list and the rules they cite — **never** the failure output or its values
+(a test rewritten to match what the code returns tests the code, not the rule).
+
+1. Edit or retire **exactly** the declared tests, on HEAD, so that they express the cited
+   rule. Never touch a line that a RED commit of this epic added, even when it lives in the
+   same file — a mechanical check (`RED-LINES`) compares them with the original RED.
+2. Run the declared tests and report each one as `reescrito`, `retirado` or `sin cambio`
+   (it compiles and already expresses the rule — nothing to edit).
+3. Commit only the edited test files:
+   ```
+   git add <declared test paths>
+   git commit -m "test(supersede): <epic>/<task-slug> — N tests (BR-n, …) — loop <compilación|runtime>"
+   ```
+   and report the SHA as `SUPERSEDE_SHA`. This commit comes after `RED_SHA`, so the Honesty
+   Gate accepts it only because its SHA is registered and it touches only declared paths.
+
+No RED commit in this mode, and no test beyond the declared ones.
+
 ### Step 6 — Commit the failing tests (RED commit) — MANDATORY
 
 This commit is the **audit trail of the TDD contract**. After this commit, the tests are immutable until the implementation is reviewed. The TDD Honesty Gate in `skills/build/SKILL.md` uses this commit's SHA as the reference point to detect any test tampering during implementation.
@@ -167,7 +190,7 @@ STATUS: <DONE | NEEDS_CONTEXT | BLOCKED>
 FILES_CREATED:
 - <path>: <number of tests>
 
-SUPERSEDE: <none | SUPERSEDE_SHA <sha> — <path>::<test> (BR-n), ...>
+SUPERSEDE: <none | SUPERSEDE_SHA <sha> — <path>::<test> (BR-n) — <reescrito | retirado | sin cambio>, ...>
 
 COVERAGE_MAP (iterate the spec's stable IDs in order — this is a deterministic
 by-product of going ID by ID, NOT a second interpretive pass):
