@@ -9,6 +9,11 @@
 //     "allowed_paths": ["src/x/service.ts", "src/x/"],        // optional — Crea:/Modifica: of the specs (item 36)
 //     "supersede_paths": ["tests/old.test.ts"],               // optional, transient — declared supersessions (item 35)
 //     "specs": [ { "slug": "<task-slug>", "red_sha": "<sha>", "test_paths": ["<file|glob>", …] } ] }
+// v2.2.0 adds optional fields, all additive (an older v3 seal reads with neutral defaults):
+//     "lock_sha": "<sha>",                                    // commit of the epic lock (base of the retroactive RED)
+//     "lifted_spec_paths": ["docs/05-specs/<epic>/<slug>.spec.md"], // specs freed by lift-spec/unseal-spec until the next write
+//     "supersede_for": "<task-slug>",                         // the spec whose supersede_paths are open
+//     specs[].red_sha_orig: "<sha>"                           // the FIRST RED of the spec — never moved (RED_ORIG)
 // Schema v2 (v1.15.0, still accepted): { "epic", "sealed_at", "specs": [ { slug, red_sha, test_paths } ] }
 // Schema v1 (still accepted): { "epic", "red_sha", "test_paths": [...], "locked_at" }
 //
@@ -76,9 +81,14 @@ function stringList(value) {
   return Array.isArray(value) ? value.filter((v) => typeof v === "string" && v.length > 0) : [];
 }
 
+function stringOrNull(value) {
+  return typeof value === "string" && value.length > 0 ? value : null;
+}
+
 // Returns null (no seal), { corrupt: true }, or
-// { state, epic, spec_sha, spec_paths, test_globs, allowed_paths, supersede_paths,
-//   specs: [{ slug, red_sha, test_paths, legacy }] }.
+// { state, epic, spec_sha, lock_sha, spec_paths, lifted_spec_paths, test_globs, allowed_paths,
+//   supersede_paths, supersede_for, specs: [{ slug, red_sha, red_sha_orig, test_paths, legacy }] }.
+// `red_sha_orig` reads null when the entry lacks it: the reader never invents the first RED.
 function readSeal(projectRoot) {
   const abs = path.join(projectRoot, STATE_FILE);
   if (!fs.existsSync(abs)) return null;
@@ -91,12 +101,18 @@ function readSeal(projectRoot) {
   if (!state || typeof state !== "object" || Array.isArray(state)) return { corrupt: true };
   const specs = [];
   if (Array.isArray(state.test_paths) && state.test_paths.length > 0) {
-    specs.push({ slug: state.spec || null, red_sha: state.red_sha || null, test_paths: stringList(state.test_paths), legacy: true });
+    specs.push({ slug: state.spec || null, red_sha: state.red_sha || null, red_sha_orig: null, test_paths: stringList(state.test_paths), legacy: true });
   }
   if (Array.isArray(state.specs)) {
     for (const spec of state.specs) {
       if (spec && typeof spec === "object" && Array.isArray(spec.test_paths)) {
-        specs.push({ slug: spec.slug || null, red_sha: spec.red_sha || null, test_paths: stringList(spec.test_paths), legacy: false });
+        specs.push({
+          slug: spec.slug || null,
+          red_sha: spec.red_sha || null,
+          red_sha_orig: stringOrNull(spec.red_sha_orig),
+          test_paths: stringList(spec.test_paths),
+          legacy: false
+        });
       }
     }
   }
@@ -104,10 +120,13 @@ function readSeal(projectRoot) {
     state,
     epic: state.epic || null,
     spec_sha: typeof state.spec_sha === "string" ? state.spec_sha : null,
+    lock_sha: stringOrNull(state.lock_sha),
     spec_paths: stringList(state.spec_paths),
+    lifted_spec_paths: stringList(state.lifted_spec_paths),
     test_globs: stringList(state.test_globs),
     allowed_paths: stringList(state.allowed_paths),
     supersede_paths: stringList(state.supersede_paths),
+    supersede_for: stringOrNull(state.supersede_for),
     specs
   };
 }

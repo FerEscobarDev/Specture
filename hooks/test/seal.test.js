@@ -138,3 +138,44 @@ test("dirToGlob and the glob matcher accept plain file paths and directory entri
   assert.equal(seal.pathMatchesAnyGlob("src/x/a.js", ["src/x/a.js"]), true);
   assert.equal(seal.pathMatchesAnyGlob("src/x/a.js", ["src/x/b.js"]), false);
 });
+
+// ---- v2.2.0: light supersession loop fields ---------------------------------------------
+
+test("readSeal (v2.2): red_sha_orig per spec, lock_sha, lifted_spec_paths and supersede_for", () => {
+  const s = seal.readSeal(
+    projectWith({
+      ...V3,
+      lock_sha: "lock999",
+      lifted_spec_paths: ["docs/05-specs/epic-1.2-notas/02-api.spec.md"],
+      supersede_for: "02-api",
+      specs: [
+        { slug: "01-modelo-nota", red_sha: "red333", red_sha_orig: "red111", test_paths: ["tests/notas/modelo-nota.test.js"] },
+        { slug: "02-api", red_sha: "red222", test_paths: ["tests/notas/api.test.js"] }
+      ]
+    })
+  );
+  assert.equal(s.lock_sha, "lock999");
+  assert.deepEqual(s.lifted_spec_paths, ["docs/05-specs/epic-1.2-notas/02-api.spec.md"]);
+  assert.equal(s.supersede_for, "02-api");
+  assert.equal(s.specs[0].red_sha, "red333");
+  assert.equal(s.specs[0].red_sha_orig, "red111");
+  assert.equal(s.specs[1].red_sha_orig, null, "an entry without the field reads null — the reader never invents the first RED");
+});
+
+test("readSeal (v2.2): an older v3 seal without the new fields reads exactly as before, with neutral defaults", () => {
+  const s = seal.readSeal(projectWith(V3));
+  assert.equal(s.lock_sha, null);
+  assert.deepEqual(s.lifted_spec_paths, []);
+  assert.equal(s.supersede_for, null);
+  assert.equal(s.specs[0].red_sha_orig, null);
+  assert.equal(s.specs[0].red_sha, "red111");
+  assert.deepEqual(s.spec_paths, V3.spec_paths);
+  assert.equal(seal.classify("docs/05-specs/epic-1.2-notas/01-modelo-nota.spec.md", s).kind, "spec");
+  assert.equal(seal.classify("tests/notas/modelo-nota.test.js", s).kind, "test");
+
+  const v1 = seal.readSeal(projectWith({ epic: "a", red_sha: "r", test_paths: ["tests/**"] }));
+  assert.equal(v1.specs[0].red_sha_orig, null);
+  assert.equal(v1.lock_sha, null);
+  assert.deepEqual(v1.lifted_spec_paths, []);
+  assert.equal(v1.supersede_for, null);
+});

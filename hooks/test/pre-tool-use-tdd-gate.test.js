@@ -159,3 +159,21 @@ test("v3: a stale seal fails open with a reason for all three kinds; supersede_p
   assert.equal(runHook(superseding, path.join(superseding, "tests", "notas", "modelo-nota.test.js")).stdout, "");
   assert.equal(runHook(superseding, path.join(superseding, "src", "billing", "x.js")).json.hookSpecificOutput.permissionDecision, "deny");
 });
+
+test("v2.2: after `seal-cli lift-spec` the lifted spec is editable and its sibling stays denied", () => {
+  const projectRoot = createProject({ state: V3_STATE, roadmap: IN_PROGRESS });
+  const specDir = path.join(projectRoot, "docs", "05-specs", "epic-1.2-notas");
+  fs.mkdirSync(specDir, { recursive: true });
+  fs.writeFileSync(path.join(specDir, "01-modelo-nota.spec.md"), "# 01\n");
+  fs.writeFileSync(path.join(specDir, "02-api.spec.md"), "# 02\n");
+  const sealCli = path.resolve(__dirname, "..", "lib", "seal-cli.js");
+  const lifted = spawnSync(process.execPath, [sealCli, "lift-spec", "--slug", "02-api", "--project", projectRoot], { encoding: "utf8" });
+  assert.equal(lifted.status, 0, lifted.stderr);
+  const state = JSON.parse(fs.readFileSync(path.join(projectRoot, ".specture", "state", "build-locked.json"), "utf8"));
+  assert.deepEqual(state.spec_paths, ["docs/05-specs/epic-1.2-notas/01-modelo-nota.spec.md"]);
+
+  assert.equal(runHook(projectRoot, path.join(specDir, "02-api.spec.md")).stdout, "", "the lifted spec is editable");
+  const sibling = runHook(projectRoot, path.join(specDir, "01-modelo-nota.spec.md"));
+  assert.equal(sibling.json.hookSpecificOutput.permissionDecision, "deny");
+  assert.match(sibling.json.hookSpecificOutput.permissionDecisionReason, /Spec Seal: `docs\/05-specs\/epic-1\.2-notas\/01-modelo-nota\.spec\.md`/);
+});

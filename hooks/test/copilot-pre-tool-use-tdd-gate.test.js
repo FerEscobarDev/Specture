@@ -153,3 +153,32 @@ test("v3: denies a sealed spec and a write outside allowed_paths with the shared
     assert.match(stale.stderr, /stale seal/);
   }
 });
+
+test("v2.2: after `seal-cli lift-spec` the lifted spec is editable and its sibling stays denied", () => {
+  const projectRoot = createProject({
+    state: {
+      epic: "epic-1.2-notas",
+      spec_sha: "abc1234",
+      spec_paths: ["docs/05-specs/epic-1.2-notas/*.spec.md"],
+      test_globs: ["tests/**/*.test.js"],
+      specs: [{ slug: "01-modelo-nota", red_sha: "red111", test_paths: ["tests/notas/modelo-nota.test.js"] }]
+    }
+  });
+  fs.mkdirSync(path.join(projectRoot, "docs", "04-roadmap"), { recursive: true });
+  fs.writeFileSync(path.join(projectRoot, "docs", "04-roadmap", "ROADMAP.md"), "- [/] **Epic 1.2:** notas\n");
+  const specDir = path.join(projectRoot, "docs", "05-specs", "epic-1.2-notas");
+  fs.mkdirSync(specDir, { recursive: true });
+  fs.writeFileSync(path.join(specDir, "01-modelo-nota.spec.md"), "# 01\n");
+  fs.writeFileSync(path.join(specDir, "02-api.spec.md"), "# 02\n");
+
+  const sealCli = path.resolve(__dirname, "..", "lib", "seal-cli.js");
+  const lifted = spawnSync(process.execPath, [sealCli, "lift-spec", "--slug", "02-api", "--project", projectRoot], { encoding: "utf8" });
+  assert.equal(lifted.status, 0, lifted.stderr);
+
+  const allowed = runHook(projectRoot, path.join(specDir, "02-api.spec.md"));
+  assert.equal(allowed.status, 0);
+  assert.equal(allowed.stdout, "", "the lifted spec is editable");
+  const sibling = runHook(projectRoot, path.join(specDir, "01-modelo-nota.spec.md"));
+  assert.equal(JSON.parse(sibling.stdout).permissionDecision, "deny");
+  assert.match(JSON.parse(sibling.stdout).permissionDecisionReason, /Spec Seal.*01-modelo-nota\.spec\.md/);
+});
