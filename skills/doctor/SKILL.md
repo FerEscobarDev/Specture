@@ -23,6 +23,7 @@ Checks added in v2.2.0 for the move to the convergent gate (v2.2.0 has no conten
 - `gate-legacy-rejection` (WARNING) — an epic `[/]` whose last verdict for a target in its `_planning.md` is `REJECTED` over supersessions, with no `APPROVED` after it; action: re-validate under v2.2 (delta re-validation — `build` does it on resumption, those findings become `RETIRADO`).
 - `claude-md-gate-overrides` (INFO) — the project's `CLAUDE.md` still carries the temporary "Spec Planning Gate — instrucciones temporales" block written for v2.1; action: remove it, v2.2.0 ships what it asked for.
 - `seal-lifted` (WARNING) — the seal's `lifted_spec_paths` is not empty while an epic is `[/]`: an interrupted supersession loop left that spec editable; action: let `build` resume the loop, or re-seal with `seal-cli.js write` (check first with `seal-cli.js show`).
+- `specture-script-permissions` (INFO, v2.2.1, Claude Code) — the build already ran and no settings let `seal-cli.js` run without a prompt (no `permissions.allow` rule in the project's `.claude/settings.json` / `.claude/settings.local.json` or the user settings, no `autoMode.allow` entry in `~/.claude/settings.json`); in auto mode the classifier may deny `unseal-spec` or `supersede` and every denial becomes a question to the user. Action: `hooks/README.md` § Permisos. The doctor never writes settings — the user adds the rules.
 
 ## Preconditions
 

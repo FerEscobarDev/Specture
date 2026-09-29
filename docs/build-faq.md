@@ -124,6 +124,17 @@ esperando sin que nadie lo sepa. El coordinador te lo muestra y te ofrece `/spec
    doctor lo señala (`claude-md-gate-overrides`): v2.2.0 ya lo incorpora y puedes quitarlo.
 4. Continúa con `/specture:start`.
 
+## ¿Por qué el build me pidió autorizar `unseal-spec` a mitad de un epic?
+
+No lo pidió el framework: lo pidió el **modo auto** de Claude Code. Su clasificador de
+permisos puede leer `seal-cli.js unseal-spec` como "quitar tests de seguridad" y negarlo; el
+coordinador entonces te pregunta. Desde v2.2.1 el epic-agent nunca desella nada (reporta
+`BLOCKED: red-fix` y lo hace el coordinador), y puedes evitar la pregunta dejando correr los
+scripts de Specture sin revisión: reglas estrechas en `permissions.allow` del proyecto y, para
+el modo auto, una entrada `autoMode.allow` en `~/.claude/settings.json`. El detalle y el texto
+exacto están en `hooks/README.md` § Permisos; `/specture:doctor check` te avisa
+(`specture-script-permissions`) si no hay ninguna.
+
 ## La sesión del coordinador se volvió muy larga. ¿Pierdo algo si la cierro?
 
 No. Todo lo que importa vive en disco: el ROADMAP, el `_planning.md` de cada epic, el sello y

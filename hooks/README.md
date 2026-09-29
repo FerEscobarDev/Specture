@@ -110,6 +110,29 @@ node "${CLAUDE_PLUGIN_ROOT}/hooks/lib/honesty-check.js" <comando> [opciones] [--
 
 Primera línea de stdout = token `HONESTY <cmd>: PASS … | FAIL <n> | UNVERIFIABLE <motivo>`; exit 0 / 1 / 2. `clean-tree` exige nada sin commitear bajo los globs de test; `range` es la **allowlist** del Step 5.5 (todo commit que toca tests en `red_sha_orig..HEAD` está registrado en `## SUPERSESIONES` con exactamente sus paths — o es el primer RED de un spec hermano — y `supersede_paths` está vacío); `red-lines` verifica que cada línea que agregó el RED original siga en HEAD; `spec-delta` que un spec liberado solo cambió su sección de supersesiones; `protected` que ninguna supersesión toque un test de `verify:` de `rules.yml` o un GUARD de otro epic; `base-worktree` arma el worktree en `LOCK_SHA` para el RED retroactivo. Lo usan `skills/build/EPIC_LOOP.md` (Step 5.2 y 5.5) y el loop de supersesiones de `skills/build/SKILL.md`; el detalle y el riesgo residual están en `docs/tdd-honesty-reference.md`.
 
+### Permisos (Claude Code, v2.2.1)
+
+El build corre `seal-cli.js`, `honesty-check.js` y `spec-set-check.js` muchas veces por epic, a veces desde un subagente. En **modo auto**, el clasificador de permisos puede leer `seal-cli.js unseal-spec` como "quitar tests de seguridad" y negarlo; en un epic real eso pasó dos veces y cada negación terminó en una pregunta al usuario. Dos vías, complementarias:
+
+- **Reglas estrechas en `permissions.allow`** del proyecto (`.claude/settings.json`, commiteado para todo el equipo, o `.claude/settings.local.json` solo para ti). El comodín va **pegado** a `.js`, porque la ruta del plugin va entre comillas en el comando (`node "…/seal-cli.js" write …`) y cambia con la versión:
+
+  ```json
+  {
+    "permissions": {
+      "allow": [
+        "Bash(node *specture*hooks/lib/seal-cli.js*)",
+        "Bash(node *specture*hooks/lib/honesty-check.js*)",
+        "Bash(node *specture*hooks/lib/spec-set-check.js*)"
+      ]
+    }
+  }
+  ```
+
+  Estas reglas se resuelven antes que el clasificador. La documentación de Claude Code avisa que el modo auto **suspende** las reglas amplias de ejecución arbitraria, "como `Bash(*)` o intérpretes con comodín"; si tu versión trata estas reglas así, queda la segunda vía.
+- **Una entrada `autoMode.allow`** en `~/.claude/settings.json` — el único lugar donde el clasificador lee `autoMode` (nunca de la configuración del proyecto). Es prosa, no un patrón; por ejemplo: *"Correr los scripts del plugin Specture (`seal-cli.js`, `honesty-check.js`, `spec-set-check.js`, bajo el directorio del plugin specture) está permitido: administran el sello local de `.specture/state/` y verifican el historial de git; no borran tests ni tocan sistemas remotos."* `/auto-mode-setup` y la pestaña **Auto mode** de `/permissions` sirven para agregarla.
+
+`/specture:doctor check` avisa con `specture-script-permissions` (INFO) cuando el build ya corrió y no encuentra ninguna de las dos. Specture nunca escribe tu configuración de permisos: la decisión es tuya.
+
 **Sello huérfano**: si `docs/04-roadmap/ROADMAP.md` existe y **ningún** epic está `[/]`, el sello sobrevivió a su epic. Los hooks entonces **permiten** la edición para los tres tipos de regla (Claude Code: `permissionDecision: "allow"` con la razón; Copilot/Antigravity: razón por stderr) — un archivo olvidado nunca bloquea trabajo ajeno — y `/specture:doctor check` lo reporta como ERROR (`seal-stale`).
 
 ---

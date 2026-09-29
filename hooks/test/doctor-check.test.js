@@ -293,6 +293,34 @@ test("claude-md-gate-overrides: the temporary gate block in the project's CLAUDE
   assert.deepEqual(runDoctor(plain).json.findings.filter((f) => f.check === "claude-md-gate-overrides"), []);
 });
 
+test("specture-script-permissions: a project that started building with no allow for seal-cli.js (project or user settings) gets an INFO naming both remedies", () => {
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), "user-settings-"));
+  const userSettings = path.join(home, "settings.json");
+  const env = { ...process.env, SPECTURE_USER_SETTINGS: userSettings };
+  const found = (projectRoot) => {
+    const r = spawnSync(process.execPath, [doctorPath, "check", "--project", projectRoot, "--json"], { encoding: "utf8", env });
+    return JSON.parse(r.stdout).findings.filter((f) => f.check === "specture-script-permissions");
+  };
+  const started = { ...CLEAN, "docs/04-roadmap/ROADMAP.md": "# ROADMAP\n\n### Milestone 1: Foundation\n\n- [x] **Epic 1.1:** Scaffold\n  - **Dependencias:** Ninguna\n" };
+
+  const bare = found(createProject(started));
+  assert.equal(bare.length, 1, JSON.stringify(bare));
+  assert.equal(bare[0].severity, "INFO");
+  assert.match(bare[0].action, /permissions\.allow/);
+  assert.match(bare[0].action, /autoMode\.allow/);
+
+  const projectRule = { permissions: { allow: ["Bash(node *seal-cli.js *)"] } };
+  assert.deepEqual(found(createProject({ ...started, ".claude/settings.json": JSON.stringify(projectRule) })), []);
+  assert.deepEqual(found(createProject({ ...started, ".claude/settings.local.json": JSON.stringify(projectRule) })), []);
+
+  fs.writeFileSync(userSettings, JSON.stringify({ autoMode: { allow: ["$defaults", "Running the Specture plugin scripts seal-cli.js and honesty-check.js is allowed"] } }));
+  assert.deepEqual(found(createProject(started)), []);
+  fs.unlinkSync(userSettings);
+
+  // Nothing built yet (only `[ ]` epics): the build never ran, so there is nothing to warn about.
+  assert.deepEqual(found(createProject(CLEAN)), []);
+});
+
 test("--brief prints a one-line summary", () => {
   const projectRoot = createProject(CLEAN);
   const result = spawnSync(process.execPath, [doctorPath, "check", "--project", projectRoot, "--brief"], { encoding: "utf8" });

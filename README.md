@@ -652,6 +652,23 @@ Specture está en desarrollo activo. Para decisiones arquitectónicas internas, 
 
 ## Changelog
 
+### v2.2.1 — Lo que la primera medición real encontró
+
+**Motivación:** HC-IHCE.5 de Psikora, el epic que se había atascado un día entero en el gate bajo v2.1, se cerró con v2.2.0: el gate reanudado aprobó en **una** ronda delta y el epic llegó a `[x]` con 197 tests viejos supersedidos en 3 loops. La medición dejó tres fricciones reales y una métrica mal definida, todas de la ejecución.
+
+**Cambios:**
+- **C-sup ya no falla después de aplicar una supersesión.** El chequeo literal de v2.2.0 exigía que el nombre del test siguiera en el archivo aun cuando el loop ya lo había reescrito, renombrado o retirado: en HC-IHCE.5, `spec-set-check` en HEAD daba `MECH_CHECK: FAIL` y el paso 4a del loop solo pasó desde un worktree anterior. Ahora una línea `Supersede:` cuyo registro en `## SUPERSESIONES` ya tiene el SHA del commit no se vuelve a verificar en disco; `commit: pendiente` y `sin cambio` siguen exigiendo el nombre.
+- **Red-fix por el coordinador, nunca por el epic-agent.** Un test del RED con un defecto **mecánico** (no compila o no carga, o su preparación contradice una premisa que el spec declara) sale como `BLOCKED: red-fix <spec>`; el coordinador desella, re-sella y revierte, sin planner y sin preguntar. Un desacuerdo sobre *qué* afirma el test sigue siendo `BLOCKED: spec`. El epic-agent ya no corre `unseal-spec` ni `release` a mitad del epic.
+- **El loop de corrección revierte el RED y la producción del spec, y la restaura después del RED nuevo.** Es lo que hizo el coordinador en HC-IHCE.5 por su cuenta —y lo correcto: con la implementación presente, algunos tests nuevos pasarían en el commit RED y el test-writer los descartaría—; ahora está escrito, con un bloque `REVERTED_PROD:` en la reanudación y `merge-spec --reset-orig` para el RED nuevo.
+- **Permisos en modo auto.** El clasificador del modo auto negó dos veces `seal-cli.js unseal-spec` a un subagente ("Security Test Removal") y cada negación fue una pregunta para ti. `hooks/README.md` § Permisos documenta las reglas estrechas de `permissions.allow` para los scripts de Specture (con el comodín pegado a `.js`, porque la ruta va entre comillas) y la entrada `autoMode.allow` de `~/.claude/settings.json`, el único lugar donde el clasificador la lee. Nuevo INFO del doctor `specture-script-permissions` cuando el build ya corrió y no hay ninguna. Specture nunca escribe tu configuración de permisos.
+- **`planner_redispatch_after_approved` bien definida:** cuenta solo re-despachos del gate causados por un WARNING o NOTE de un APROBADO; los loops de corrección, red-fix y supersesiones nacidos en ejecución van a `planner_dispatches_loop`. En HC-IHCE.5 marcó 1 por un loop de corrección legítimo.
+- **Docs:** `docs/build-faq.md` ("¿Por qué el build me pidió autorizar `unseal-spec`?"), `docs/tdd-honesty-reference.md` (red-fix y loop de corrección), `docs/execution-flows.md` (rama de red-fix).
+- Tests: 266 (264 → 266: C-sup sobre supersesiones aplicadas, `specture-script-permissions`).
+
+**Migración para proyectos existentes:** ninguna. `/specture:doctor migrate` registra el `schema_version`; si `check` muestra `specture-script-permissions`, agrega las reglas de `hooks/README.md` § Permisos.
+
+**Backward-compat:** sin cambios de esquema ni de gramática. Un `_planning.md` sin registro `## SUPERSESIONES` se comporta como en v2.2.0.
+
 ### v2.2.0 — Desbloqueo: el gate converge y la ejecución resuelve sola los tests viejos
 
 **Motivación:** en Psikora, el Epic HC-IHCE.5 pasó 427 minutos en el Spec Planning Gate sin sellar un solo spec: 14 contactos humanos, el 51 % del tiempo esperando al usuario, y 3 de sus 4 rechazos por "faltan supersesiones" — la lista de tests de epics cerrados que el spec rompe, que el planner no puede ver porque no lee código. En HC-IHCE.3/.4 el gate acertó solo el 30 % de esas supersesiones; la ejecución encontró el resto en minutos. Y 10 de las 14 observaciones de veredictos **aprobados** se volvieron trabajo o preguntas nuevas. El gate no tenía punto fijo: intentaba adelantar un dato que la suite da exacto y barato. Evidencia y diseño: `docs/spec-gate-convergence-design.md` (fase 1); preguntas frecuentes para el usuario: [`docs/build-faq.md`](docs/build-faq.md).

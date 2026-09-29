@@ -10,10 +10,22 @@
 //   claude-md-gate-overrides  INFO     the project's CLAUDE.md still carries the temporary
 //                                      "Spec Planning Gate — instrucciones temporales" block the
 //                                      user wrote for v2.1; v2.2.0 ships what it asked for
+//   specture-script-permissions INFO   (v2.2.1, Claude Code) the build already ran (an epic [/]
+//                                      or [x]) and no settings let `seal-cli.js` run without a
+//                                      prompt: neither a `permissions.allow` rule in the project's
+//                                      `.claude/settings(.local).json` or the user settings, nor an
+//                                      `autoMode.allow` entry in the user settings (the only scope
+//                                      the auto-mode classifier reads it from). In a real epic the
+//                                      classifier denied `unseal-spec` twice and each denial became
+//                                      a question to the user. User settings path:
+//                                      SPECTURE_USER_SETTINGS, else ~/.claude/settings.json
 //
 // "Last" is document order: `## VEREDICTOS` is append-only (the coordinator adds one block per
 // dispatch), exactly as the last `MECH_CHECK:` line is the one in force.
 
+const fs = require("fs");
+const os = require("os");
+const path = require("path");
 const { lines } = require("../project");
 const { parseVerdictHeaders } = require("../../planning");
 
@@ -127,8 +139,44 @@ function claudeMdOverrides(project) {
   );
 }
 
+function readJson(file) {
+  try {
+    return JSON.parse(fs.readFileSync(file, "utf8"));
+  } catch {
+    return null;
+  }
+}
+
+// True when a settings object carries a `permissions.allow` rule (or, for user settings, an
+// `autoMode.allow` entry) that names the Specture seal script.
+function allowsSealCli(settings, { autoMode }) {
+  const names = (list) => (Array.isArray(list) ? list : []).some((entry) => typeof entry === "string" && /seal-cli/i.test(entry));
+  if (!settings || typeof settings !== "object") return false;
+  if (names(settings.permissions && settings.permissions.allow)) return true;
+  return autoMode && names(settings.autoMode && settings.autoMode.allow);
+}
+
+function scriptPermissions(project) {
+  if (!project.roadmap) return [];
+  const started = project.roadmap.epics.some((e) => e.state === "in-progress" || e.state === "done");
+  if (!started) return [];
+  const projectFiles = [".claude/settings.json", ".claude/settings.local.json"];
+  if (projectFiles.some((rel) => allowsSealCli(readJson(path.join(project.root, rel)), { autoMode: false }))) return [];
+  const userFile = process.env.SPECTURE_USER_SETTINGS || path.join(os.homedir(), ".claude", "settings.json");
+  if (allowsSealCli(readJson(userFile), { autoMode: true })) return [];
+  return [
+    finding(
+      "INFO",
+      "specture-script-permissions",
+      ".claude/settings.json",
+      "(Claude Code) ninguna configuración deja correr `seal-cli.js` sin preguntar: en modo auto el clasificador puede negar `unseal-spec` o `supersede` a un subagente y cada negación termina en una pregunta al usuario",
+      "agregar a `permissions.allow` del proyecto reglas estrechas para los scripts de Specture (p. ej. `Bash(node *specture*hooks/lib/seal-cli.js*)`, con el comodín pegado porque la ruta va entre comillas) y, para modo auto, una entrada `autoMode.allow` en `~/.claude/settings.json` que los describa — ver hooks/README.md § Permisos"
+    )
+  ];
+}
+
 function run(project) {
-  return [...legacyRejections(project), ...claudeMdOverrides(project)];
+  return [...legacyRejections(project), ...claudeMdOverrides(project), ...scriptPermissions(project)];
 }
 
 module.exports = { run };
