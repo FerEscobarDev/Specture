@@ -22,7 +22,9 @@
 //     supersessions, outcome: "DONE"|"BLOCKED"|"REJECTED_MAJOR"|"ESCALATED", tokens: null|{input, output, source} }
 // Additive fields (v2.2.0, all numeric; a line without them still reads — they are averaged
 // over the lines that carry them): gate_rounds, gate_human_contacts, exec_human_contacts,
-//   planner_redispatch_after_approved (must stay 0), validator_dispatches_loop,
+//   planner_redispatch_after_approved (must stay 0 — gate re-dispatches caused by a WARNING or
+//   NOTE of an APPROVED; execution-born correction, red-fix and supersession loops go to
+//   planner_dispatches_loop), validator_dispatches_loop,
 //   planner_dispatches_loop, supersede_loops, supersede_tests, j9_regressions,
 //   exec_blocked_compile, exec_blocked_runtime, baseline_failures, late_findings;
 //   plus `effort` ({<agent>: <level>}, not numeric — carried, never averaged).

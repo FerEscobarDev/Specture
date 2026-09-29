@@ -80,16 +80,23 @@ git diff <RED_SHA>..<HEAD_SHA> -- <test-path-globs>
    never edit the test in place. The epic-agent reports `BLOCKED: spec <AC-n/BR-n/EC-n>`
    when the spec itself was wrong (the coordinator runs the spec-correction loop: unseal
    that spec's entry with `seal-cli.js unseal-spec`, re-plan, re-validate, `git revert` the
-   RED commit, resume from that spec), or — when only the test misread a correct spec —
-   re-dispatches `tdd-test-writer` with the implementer's concern as input for a **new RED
-   commit** (the old one is reverted, never amended) and merges the new `RED_SHA` into the
-   seal. Either way the coordinator records the RED-fix in the epic's `_planning.md`
+   RED commit, resume from that spec), or — when only the test is **mechanically** defective
+   (it does not compile or load, or its setup contradicts a premise the spec states: a
+   fixture, a seed, the route or role it names) — reports `BLOCKED: red-fix <task-slug>`.
+   Since v2.2.1 the epic-agent never unseals anything itself: the coordinator runs
+   `unseal-spec`, re-seals with `write`, reverts the RED **and the spec's production commits**
+   (so the new RED fails against code without the implementation), and re-dispatches with the
+   defect list; the test-writer writes a **new RED commit** (never an amend), the epic-agent
+   restores the production work after it and merges the new `RED_SHA` with `--reset-orig`. A
+   disagreement about *what* a test asserts is never a red-fix — it is `BLOCKED: spec`.
+   Either way the coordinator records the RED-fix in the epic's `_planning.md`
    (`## SUPERSESIONES`, line `- red-fix: <path>::<test> — motivo: … — spec: <slug> — commit:
    <new RED_SHA>`) so the audit trail is on disk, not in a chat.
 3. **Abort the spec entirely** if the violation signals a fundamental
    spec/implementation mismatch — report `BLOCKED: spec <AC-n/BR-n/EC-n>`;
    the coordinator runs the spec-correction loop (re-plan → re-validate →
-   revert the affected RED → resume from that spec).
+   revert the affected RED and its production commits → resume from that spec; the
+   epic-agent restores the production work right after the new RED commit).
 
 ## Sanctioned supersession of a closed epic's tests (v1.18.0, roadmap item 35)
 

@@ -31,12 +31,21 @@ Ground rules:
   `BLOCKED: spec <ID>` (unexecutable spec — spec-correction loop); `BLOCKED: supersesiones
   (compilación|runtime) <task-slug>` with a `FAILURES:` block (old tests of closed epics that
   a rule of the spec makes false — supersession loop, Step 5); `BLOCKED: entorno` (the suite
-  cannot run); `BLOCKED: debug <task-slug>` (Iteration Cap); `DONE: pendiente de aprobación
-  visual` (design-system foundation epic — Visual Approval Gate, "Frontend Epics" below).
+  cannot run); `BLOCKED: debug <task-slug>` (Iteration Cap); `BLOCKED: red-fix <task-slug>`
+  (a test of this spec's own RED is mechanically defective — it does not compile or load, or its
+  setup contradicts a premise the spec states — while the spec is right; list each test, the
+  defect and the spec line); `DONE: pendiente de aprobación visual` (design-system foundation
+  epic — Visual Approval Gate, "Frontend Epics" below). **You never run `seal-cli.js
+  unseal-spec` or `release` mid-epic, and never edit a sealed RED test**: unsealing is the
+  coordinator's, and doing it from a subagent is also what permission classifiers block.
 - **Resumed dispatch** (`RESUME_AT:` in the prompt): skip the specs already `APPROVED` +
   verified and enter at the named point — `supersede <task-slug>` → Step 5.2;
   `regresiones <task-slug>` → Step 5 with the `REGRESIONES:` list; `<task-slug>` → Step 4.
-  Use the `BASELINE_FALLOS` you are handed instead of taking a new baseline.
+  Use the `BASELINE_FALLOS` you are handed instead of taking a new baseline. With
+  `REVERTED_PROD:` (after a correction loop or a red-fix): write and commit the new RED
+  first — against the code without the implementation — then restore that work with `git revert
+  <revert-sha>` for each listed SHA, and continue at GREEN. `merge-spec` of the new RED uses
+  `--reset-orig`: it is the spec's new first RED.
 - You fill the `commit:` field of your spec's pending lines in `## SUPERSESIONES` of
   `_planning.md` (the spec files stay sealed; `_planning.md` does not).
 
