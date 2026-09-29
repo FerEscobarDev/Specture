@@ -1,4 +1,4 @@
-> **Estado: ANÁLISIS — 2026-09-27. No implementado.** Evalúa dos ideas del usuario para
+> **Estado: ANÁLISIS — 2026-09-27. Fase 1 del gate implementada en v2.2.0; la etapa de revisión (v2.3.0) usará la variante B2 que decidió el experimento "ronda 2" (`docs/milestone-decision-stage-simulation.md` §7).** Evalúa dos ideas del usuario para
 > que el framework concentre sus interacciones en una sola etapa y luego ejecute una
 > milestone entera, un epic a la vez, sin detenerse salvo que su intervención sea
 > estrictamente necesaria: **(1)** no limitar el contexto de quien planifica y define specs;

@@ -197,3 +197,91 @@ reales de la primera ronda y ver si aparecen GT-5-02, -05, -12 y -16.
   conservadora: algunas de esas decisiones podrían haberse diferido sin daño.
 - **Esfuerzo de los agentes.** Corrieron con el esfuerzo heredado de la sesión, no con el
   `effort: medium` propuesto.
+
+## 7. Fase 0 — ¿captura la ronda 2 las decisiones de segundo orden? (2026-09-28)
+
+Es la prueba barata que pedía §5 ("Pendiente de medir"), corrida antes de construir la etapa
+de revisión (v2.3.0) para decidir su variante. **Solo lectura sobre Psikora.**
+
+**Método.** Snapshot de Psikora en el lock de HC-IHCE.5 (`023ff5d6`), sin información
+posterior. Tres corridas independientes del mismo pipeline:
+1. planner ciego al código escribe borradores y preguntas;
+2. validador en modo revisión, que **sí puede leer código** (solo Read/Glob), agrega
+   `HUMAN_DECISIONS`;
+3. se inyectan las respuestas reales de la ronda 1 (A-1…A-8, depuradas de toda pista del
+   futuro); lo que no cubren se da por respondido con la recomendada;
+4. planner fresco reescribe con las respuestas → validador en modo delta → planner arma la
+   agenda de ronda 2.
+Jueces ciegos, uno por corrida, contra los 4 objetivos principales (decisiones que en la
+realidad nacieron después de la ronda 1: GT-5-02, -05, -12, -16) y el secundario GT-5-14.
+GT-5-10 quedó fuera: ya estaba respondido en A-8. Regla preregistrada: ≥3/4 FULL en ≥2 de 3
+corridas y ronda 2 ≤12 ítems → **B1**; 2/4 → B1 vigilando `late_questions`; ≤1/4 → **B2**.
+
+**Resultado — solo la agenda de ronda 2 (medida preregistrada):**
+
+| Objetivo | Nació en la realidad | Corrida 1 | Corrida 2 | Corrida 3 |
+|---|---|---|---|---|
+| GT-5-02 portal recoge PII sin autorización | sonda de código del coordinador | NONE | NONE | NONE |
+| GT-5-05 al restaurar al paciente, ¿nueva autorización? | seguimiento de tus respuestas | **FULL** | **FULL** | PARTIAL |
+| GT-5-12 enlaces de Wompi sin vencimiento | validador sobre specs escritos | NONE | NONE | NONE |
+| GT-5-16 cita anonimizada pendiente en el dashboard | validador sobre specs escritos | NONE | NONE | NONE |
+| **FULL principales** | | **1/4** | **1/4** | **0/4** |
+| GT-5-14 (secundario) estado de una intención Expirada | validador | PARTIAL | NONE | PARTIAL |
+
+Agenda de ronda 2: 4 ítems en cada corrida, ninguno con fuga, un ítem de ruido en total.
+
+**Lectura justa — ronda 1 + ronda 2.** La etapa de revisión pregunta ambas rondas antes de
+ejecutar, y el validador de la ronda 1 ahora lee código. Contando lo que ya aparecía en la
+ronda 1 (preguntas del planner + `HUMAN_DECISIONS`), con un segundo juez ciego por corrida:
+
+| Objetivo | Corrida 1 | Corrida 2 | Corrida 3 |
+|---|---|---|---|
+| GT-5-02 | NONE | PARTIAL | NONE |
+| GT-5-05 | FULL (r2) | FULL (r2) | PARTIAL |
+| GT-5-12 | **FULL (r1, HD-5)** | PARTIAL (r1, HD-4) | PARTIAL (r1, HD-13) |
+| GT-5-16 | PARTIAL (r1) | PARTIAL (r1) | PARTIAL (r1) |
+| **FULL principales** | **2/4** | **1/4** | **0/4** |
+
+Tamaño de la ronda 1: 17, 16 y 23 ítems (preguntas + decisiones del validador).
+
+**Decisión: B2.** Con cualquiera de las dos medidas, la mayoría de las corridas queda en ≤1/4.
+Es decir: la revisión en dos rondas por tanda **más** una mini-revisión anunciada justo antes
+de cada epic regulatorio, cuando los specs ya están escritos y el validador los lee con el
+código.
+
+**Qué funciona y qué no:**
+- **Lo que nace de tus respuestas lo captura la ronda 2.** GT-5-05 salió FULL en 2 de 3
+  corridas, como pregunta derivada de A-1 + A-2 ("¿al restaurar vale la autorización
+  anterior?").
+- **Leer código en la revisión adelanta los huecos de dinero.** El hueco de los enlaces de
+  Wompi (GT-5-12), que en la realidad apareció tarde, aparece ya en la ronda 1 en las 3
+  corridas: FULL en una y PARTIAL en dos. Se queda corto porque solo cubre paquetes y no las
+  citas.
+- **Lo que solo aparece con el spec escrito en detalle no llega.** Las acciones del
+  psicólogo sobre una cita anonimizada en el dashboard (GT-5-16) y la autorización en el
+  portal de agendamiento (GT-5-02) solo se rozan. El tema aparece, pero no la elección
+  concreta. Para esos está la mini-revisión de B2.
+
+**Tres ajustes para el diseño de v2.3.0 que salen de la corrida:**
+1. **Una decisión del validador no se cierra con una respuesta que no la toca.** En la corrida
+   3, el paso simulado de respuestas dio por cubierto el hueco de Wompi (HD-13) con A-6, que
+   habla de plazos y no del cobro tardío. El validador en delta lo advirtió ("se cierran solo
+   por el mapeo; ninguna respuesta menciona sus premisas"), pero la agenda lo descartó. En R3 de
+   `REVIEW_STAGE.md`, un `HUMAN_DECISIONS` cerrado solo por mapeo vuelve a la ronda 2.
+2. **La ronda 2 no tiene tope de 4.** Los tres planners de agenda recortaron a 4 ítems por el
+   límite de su `AGENT.md` y descartaron candidatos. En la etapa de revisión una ronda admite
+   varias llamadas de `AskUserQuestion`. El tope de 4 es por llamada, no por ronda.
+3. **La mini-revisión de B2 es donde el validador lee el spec escrito en detalle contra el
+   código**: roles y acciones por pantalla (GT-5-16) y datos personales que entran por
+   superficies públicas (GT-5-02).
+
+**Limitaciones.**
+- Tres corridas y un solo epic, el regulatorio.
+- Las respuestas de la ronda 1 se inyectaron. Lo que la simulación dio por respondido con la
+  recomendada no generó derivadas, como sí lo habría hecho una respuesta real, así que la
+  ronda 2 probablemente está subestimada.
+- Los orquestadores de las corridas se cortaron por el límite de sesión después del paso 5.
+  Los pasos 6 y 7 se lanzaron por separado, con los mismos prompts.
+- Hubo dos incidentes menores de aislamiento: un `ls` de la carpeta del experimento, que listó
+  nombres sin abrir archivos, y un `find` de nombres de archivo sobre el snapshot.
+- El esfuerzo fue el heredado de la sesión.
