@@ -24,6 +24,8 @@
 //   C-sup   every `Supersede:` line has its `sup:` row, the path exists and
 //           the test name appears in the file (motivo BR-n | AC-n | GAP-nnn)  BLOCKER
 //           … unless the name is parameterised (`%`, `$`, `{`, `[`)           WARNING
+//           An applied line (its `## SUPERSESIONES` commit is a SHA) is not
+//           re-checked on disk: the rewrite may have renamed or retired it.
 //
 // stdout: first line is the token — `MECH_CHECK: PASS <sha12>` | `MECH_CHECK: FAIL <sha12>` |
 // `MECH_CHECK: UNVERIFIABLE <reason>`; then one `<check> <severity> <slug>: <detail>` per finding.
@@ -144,7 +146,7 @@ function testNameCandidates(name) {
   return [...new Set([full, bare, /\p{L}/u.test(last || "") ? last : ""])].filter(Boolean);
 }
 
-function runChecks({ table, specs, epic, roadmapEpics, epicDir }) {
+function runChecks({ table, specs, epic, roadmapEpics, epicDir, register = [] }) {
   const findings = [];
   const add = (check, severity, slug, detail) => findings.push({ check, severity, slug: slug || "-", detail });
   const slugs = specs.map((s) => s.slug);
@@ -306,12 +308,20 @@ function runChecks({ table, specs, epic, roadmapEpics, epicDir }) {
   }
 
   // ---- C-sup — sanctioned supersessions -----------------------------------------------
+  // A supersession already applied — its `## SUPERSESIONES` register line carries the SHA of
+  // the `test(supersede)` commit — is not re-checked on disk: the rewrite legitimately renamed,
+  // retired or deleted the test, and the loop's 4a at HEAD must not fail on that (v2.2.1).
+  // `pendiente` and `sin cambio` still require the test to be there by name.
+  const applied = new Set(
+    register.filter((r) => r.kind === "supersede" && r.commit && r.commit !== "sin cambio").map((r) => `${r.path}::${r.test}`)
+  );
   const projectRoot = findProjectRoot(epicDir) || process.cwd();
   for (const spec of specs) {
     for (const sup of spec.supersedes) {
       const row = rows.sup.find((r) => r.path === sup.path && r.test === sup.test);
       if (!row) add("C-sup", "BLOCKER", spec.slug, `Supersede \`${sup.path}::${sup.test}\` sin fila sup: en la COVERAGE_TABLE`);
       else if (row.slug !== spec.slug) add("C-sup", "BLOCKER", spec.slug, `Supersede \`${sup.path}::${sup.test}\` la tabla la asigna a ${row.slug}`);
+      if (applied.has(`${sup.path}::${sup.test}`)) continue;
       const abs = path.join(projectRoot, sup.path);
       if (!fs.existsSync(abs)) {
         add("C-sup", "BLOCKER", spec.slug, `Supersede \`${sup.path}\` no existe en disco (raíz ${projectRoot})`);
@@ -363,7 +373,8 @@ function run(opts) {
   }
   const loaded = loadEpic(opts);
   if (loaded.error) return unverifiable(loaded.error, { sha });
-  const findings = runChecks({ table, specs, epic: loaded.epic, roadmapEpics: loaded.roadmapEpics, epicDir });
+  const register = planning.parseSupersessionRegister(planningText);
+  const findings = runChecks({ table, specs, epic: loaded.epic, roadmapEpics: loaded.roadmapEpics, epicDir, register });
   const status = findings.some((f) => f.severity === "BLOCKER") ? "FAIL" : "PASS";
   const { id, state, template, operations, rules, gaps } = loaded.epic;
   return { status, sha, findings, specs: specs.map((s) => s.slug), epic: { id, state, template, operations, rules, gaps } };

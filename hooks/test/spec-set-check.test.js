@@ -377,6 +377,42 @@ function supersedeProject(testName, fileText) {
 
 const supFindings = (result) => result.lines.filter((l) => l.startsWith("C-sup"));
 
+test("C-sup: an applied supersession (register commit is a SHA) is not re-checked on disk — the rewrite may rename, retire or delete it", () => {
+  const withRegister = (testName, commit, files) => {
+    const section = `\n## Supersesiones de tests sellados (omitir si no aplica)\n- Supersede: \`tests/old/nota.test.js::${testName}\` — motivo: BR-1 — epic origen: epic-0.9-old\n`;
+    const register = `\n## SUPERSESIONES\n- tests/old/nota.test.js::${testName} — motivo: BR-1 — spec: 01-subir — commit: ${commit}\n`;
+    return createProject({
+      specs: { ...CLEAN_SPECS, "01-subir": CLEAN_SPECS["01-subir"] + section },
+      planning: planningDoc(`${CLEAN_ROWS}\n- sup: tests/old/nota.test.js::${testName} → 01-subir (BR-1)`) + register,
+      files
+    });
+  };
+  const retired = { "tests/old/nota.test.js": 'test("acepta titulo nuevo", () => {});\n' };
+
+  const applied = runCheck(withRegister("rechaza titulo repetido", "1a2b3c4d", retired));
+  assert.equal(applied.status, 0, applied.lines.join("\n"));
+  assert.deepEqual(supFindings(applied), []);
+
+  const fileGone = runCheck(withRegister("rechaza titulo repetido", "1a2b3c4d", {}));
+  assert.equal(fileGone.status, 0, fileGone.lines.join("\n"));
+
+  // Not applied yet, or left unchanged on purpose: the test must still be there by name.
+  for (const commit of ["pendiente", "sin cambio"]) {
+    const pending = runCheck(withRegister("rechaza titulo repetido", commit, retired));
+    assert.equal(pending.status, 1, `${commit}: ${pending.lines.join("\n")}`);
+    assert.ok(pending.lines.some((l) => /el nombre del test no aparece en el archivo/.test(l)), pending.lines.join("\n"));
+  }
+
+  // The Supersede ↔ sup: cross-check still holds for applied lines.
+  const noRow = createProject({
+    specs: { ...CLEAN_SPECS, "01-subir": CLEAN_SPECS["01-subir"] + "\n## Supersesiones de tests sellados\n- Supersede: `tests/old/nota.test.js::rechaza titulo repetido` — motivo: BR-1 — epic origen: epic-0.9-old\n" },
+    planning: planningDoc(CLEAN_ROWS) + "\n## SUPERSESIONES\n- tests/old/nota.test.js::rechaza titulo repetido — motivo: BR-1 — spec: 01-subir — commit: 1a2b3c4d\n",
+    files: {}
+  });
+  const noRowResult = runCheck(noRow);
+  assert.ok(noRowResult.lines.some((l) => /sin fila sup:/.test(l)), noRowResult.lines.join("\n"));
+});
+
 test("C-sup: the test name must appear literally in the file — present passes, absent is a BLOCKER", () => {
   const present = runCheck(supersedeProject("rechaza titulo repetido", NOTA_TEST));
   assert.equal(present.status, 0, present.lines.join("\n"));
