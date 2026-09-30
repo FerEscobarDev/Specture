@@ -1,10 +1,12 @@
 // Parser for the Spec Planning Gate artefacts — pure functions, no I/O.
 //
 //   - `_planning.md`  → COVERAGE_TABLE rows (op / br / sym / oos / gap / sup) + hash
-//   - ROADMAP epic block → id, state, Template:, operations, RN ids, GAP ids
+//   - ROADMAP epic block → id, state, Template:, operations, RN ids, GAP ids, Aparcado:,
+//     Diferidos heredados:, and its scope fingerprint (`scopeHash`, epic block + linked RN text)
 //   - `*.spec.md`     → declared operations, RN citations, Superficie lines, AC/BR/EC count
 //
-// Used by hooks/lib/spec-set-check.js (roadmap item 29) and hooks/lib/metrics-report.js.
+// Used by hooks/lib/spec-set-check.js (roadmap item 29), hooks/lib/metrics-report.js and
+// hooks/lib/review.js (the batch review stage, v2.3.0).
 // The grammar is the one printed in templates/PLANNING_TEMPLATE.md and in
 // agents/spec-planner/AGENT.md "Output Format". Both the `## COVERAGE_TABLE` heading form
 // (v1.18.0+) and the bare `COVERAGE_TABLE:` label form written by the v1.17.0 planner parse.
@@ -180,6 +182,26 @@ function fieldValue(blockLines, label) {
   return null;
 }
 
+// Every value of a field that may repeat (`**Diferidos heredados:**` is one line per item).
+// Whole-word label: `Aparcado` does not match an `**Aparcados …**` line.
+function fieldValues(blockLines, label) {
+  const re = new RegExp(`\\*\\*${label}\\b[^*]*\\*\\*\\s*:?\\s*(.*)$`, "i");
+  return blockLines.map((line) => line.match(re)).filter(Boolean).map((m) => m[1].trim());
+}
+
+// `**Aparcado:** <ISO> — <clase> — <motivo> — tanda <id>` (templates/ROADMAP_TEMPLATE.md, v2.3.0).
+// The motivo may itself hold dashes. A line without its tanda parses with `tanda: null` and
+// one with fewer fields keeps what it has — the doctor (`parked-orphan`) reports the gap.
+function parseParked(value) {
+  if (value === null || value === undefined) return null;
+  const text = unquote(value);
+  const full = text.match(new RegExp(`^(.+?)${DASH}(.+?)${DASH}(.+?)${DASH}tanda\\s+(\\S+)\\s*$`, "i"));
+  if (full) return { ts: full[1].trim(), clase: full[2].trim(), motivo: collapse(full[3]), tanda: full[4] };
+  const noBatch = text.match(new RegExp(`^(.+?)${DASH}(.+?)${DASH}(.+?)\\s*$`));
+  if (noBatch) return { ts: noBatch[1].trim(), clase: noBatch[2].trim(), motivo: collapse(noBatch[3]), tanda: null };
+  return { ts: text || null, clase: null, motivo: null, tanda: null };
+}
+
 // Epic kinds (roadmap `- **Tipo:**`). Absent → "backend": every roadmap authored before
 // v2.0.0 has no line, so nothing is a page epic and the design-system gate stays silent.
 const EPIC_KINDS = ["design-system", "pagina", "backend", "migracion"];
@@ -193,7 +215,8 @@ function epicKind(value) {
   return EPIC_KINDS.includes(raw) ? raw : null;
 }
 
-// { id, state, template, tipo, operations: [{id, mode}], rules: [RN…], gaps: [GAP…], text }
+// { id, state, template, tipo, operations: [{id, mode}], rules: [RN…], gaps: [GAP…],
+//   parked: {ts, clase, motivo, tanda} | null, diferidos: [string], text }
 function parseEpicBlock(text) {
   const all = lines(text);
   const head = all.find((l) => /\bEpic\b/i.test(l)) || "";
@@ -214,6 +237,9 @@ function parseEpicBlock(text) {
     hasRulesLine: fieldValue(all, "Reglas de negocio clave") !== null,
     gaps: idList(gapsValue, GAP_ID),
     hasGapsLine: gapsValue !== null,
+    parked: parseParked(fieldValues(all, "Aparcado")[0]),
+    // Items separated by ` · ` on one line, or one line per item — both forms add up.
+    diferidos: fieldValues(all, "Diferidos heredados").flatMap((v) => v.split(/\s+·\s+/)).map((s) => s.trim()).filter(Boolean),
     text
   };
 }
@@ -240,6 +266,73 @@ function parseRoadmapEpics(roadmapText) {
 function findEpicBlock(roadmapText, epicId) {
   const wanted = String(epicId || "").replace(/^epic[-\s]*/i, "").split(/[-\s]/)[0].trim();
   return parseRoadmapEpics(roadmapText).find((e) => e.id === wanted || e.id === String(epicId)) || null;
+}
+
+// ---------------------------------------------------------------------------
+// Scope fingerprint of an epic (review stage, v2.3.0)
+// ---------------------------------------------------------------------------
+
+// Lines that are bookkeeping of the queue, not scope: the coordinator writes them while the
+// batch runs, and a parked or inherited-deferral line must not make a reviewed epic "changed".
+const SCOPE_IGNORED_LINE = /^(?:[-*+]\s*)?\*\*(?:Aparcado|Diferidos heredados)\b[^*]*\*\*/i;
+// Any stable id of business_requirements.md that opens a definition (templates/BUSINESS_REQUIREMENTS_TEMPLATE.md).
+const REQ_ID_START = /^(?:RN|CL|FA|HU)-(?:[A-Za-z0-9]+-)*\d+(?![0-9A-Za-z_])/;
+
+// A requirements line without its leading list / table / heading markers, bold and backticks.
+function stripLineMarkers(line) {
+  let out = String(line).trim();
+  for (let prev = null; prev !== out; ) {
+    prev = out;
+    out = out.replace(/^(?:[-*+]\s+|\d+[.)]\s+|\|\s*|#+\s*|\*\*|__|`)/, "").trim();
+  }
+  return out;
+}
+
+function escapeRegExp(value) {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+// The definition block of `id` (RN-001, RN-SEG-007, …) in business_requirements.md: from the
+// first line that — without list/table/heading markers and `**` — starts with the id, up to a
+// blank line, a heading or a line that starts with another RN/CL/FA/HU id. Each line collapsed
+// (CRLF, runs of spaces, indentation); null when the id is not defined.
+function rnDefinition(requirementsText, id) {
+  if (requirementsText === null || requirementsText === undefined) return null;
+  const all = lines(requirementsText);
+  const starts = new RegExp(`^${escapeRegExp(id)}(?![0-9A-Za-z_])`);
+  const start = all.findIndex((l) => starts.test(stripLineMarkers(l)));
+  if (start === -1) return null;
+  const out = [collapse(all[start])];
+  for (let i = start + 1; i < all.length; i++) {
+    const line = all[i];
+    if (line.trim() === "" || /^\s{0,3}#/.test(line) || REQ_ID_START.test(stripLineMarkers(line))) break;
+    out.push(collapse(line));
+  }
+  return out.join("\n");
+}
+
+// The text scopeHash digests, or null when the epic is not in the ROADMAP: the epic block
+// normalized (CRLF → LF, whitespace collapsed, blank lines dropped, the checkbox as `[?]`, no
+// `**Aparcado:**` / `**Diferidos heredados:**` lines) followed by the definition of each RN of
+// "Reglas de negocio clave" — `RN-xxx:MISSING` when business_requirements.md does not define it.
+function scopeMaterial(roadmapText, epicId, requirementsText) {
+  const epic = findEpicBlock(roadmapText, epicId);
+  if (!epic) return null;
+  const block = lines(epic.text)
+    .map(collapse)
+    .filter((l) => l !== "" && !SCOPE_IGNORED_LINE.test(l))
+    .map((l, i) => (i === 0 ? l.replace(/\[(?: |\/|x|X)\]/, "[?]") : l));
+  const rules = epic.rules.map((rn) => rnDefinition(requirementsText, rn) || `${rn}:MISSING`);
+  return [...block, ...rules].join("\n");
+}
+
+// sha256 (12 hex) of scopeMaterial, or null when the epic is not in the ROADMAP. Stable across
+// the checkbox state, so the SCOPE recorded when a batch review closes still matches when the
+// epic's turn comes; it moves when the epic block or a linked RN's text changes.
+function scopeHash(roadmapText, epicId, requirementsText) {
+  const material = scopeMaterial(roadmapText, epicId, requirementsText);
+  if (material === null) return null;
+  return crypto.createHash("sha256").update(material).digest("hex").slice(0, 12);
 }
 
 // ---------------------------------------------------------------------------
@@ -442,6 +535,9 @@ module.exports = {
   parseEpicBlock,
   parseRoadmapEpics,
   findEpicBlock,
+  rnDefinition,
+  scopeMaterial,
+  scopeHash,
   parseSpec,
   parseSupersessionRegister,
   parseVerdictHeaders,

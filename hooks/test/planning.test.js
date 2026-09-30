@@ -1,4 +1,5 @@
 const assert = require("node:assert/strict");
+const crypto = require("node:crypto");
 const { test } = require("node:test");
 const planning = require("../lib/planning");
 
@@ -92,6 +93,132 @@ test("parseVerdictHeaders: the v2.2 header with rounds, trees and flags; the leg
     ]
   );
   assert.deepEqual(planning.parseVerdictHeaders("### not a verdict\n## VEREDICTOS\n"), []);
+});
+
+// ---------------------------------------------------------------------------------------
+// scopeHash — the fingerprint of an epic's scope the review stage records (v2.3.0)
+// ---------------------------------------------------------------------------------------
+
+function scopeRoadmap({ mark = " ", description = "Cobrar la sesión al cerrarla.", extra = [] } = {}) {
+  return [
+    "# ROADMAP",
+    "",
+    "### Milestone 2: Cobros",
+    "",
+    `- [${mark}] **Epic 2.1:** Cobro de sesiones`,
+    "  - **Dependencias:** Ninguna",
+    `  - **Descripción:** ${description}`,
+    "  - **Reglas de negocio clave:** RN-001, RN-SEG-007, RN-009",
+    ...extra,
+    "  - **Operaciones del contrato:** `cobrarSesion`",
+    "",
+    "- [ ] **Epic 2.2:** Recibos",
+    "  - **Dependencias:** Epic 2.1",
+    "  - **Descripción:** Emitir el recibo.",
+    "  - **Reglas de negocio clave:** RN-002",
+    ""
+  ].join("\n");
+}
+
+function scopeRequirements({ rn001 = "Toda sesión se cobra al cerrarla.", rn002 = "El recibo lleva el RUT." } = {}) {
+  return [
+    "# Requerimientos de Negocio",
+    "",
+    "## Historias de Usuario",
+    "- **HU-COB-001:** Como psicóloga quiero cobrar · Actor: psicóloga · Exposición: `UI`",
+    "",
+    "## Reglas de Negocio",
+    `- **RN-001:** ${rn001}`,
+    "  El cobro usa la tarifa vigente del paciente.",
+    `- **RN-002:** ${rn002}`,
+    "",
+    "| ID | Regla |",
+    "|----|-------|",
+    "| RN-SEG-007 | Solo el titular ve el cobro |",
+    "| RN-SEG-008 | Otra regla de seguridad |",
+    "",
+    "## Casos Límite",
+    "- **CL-001:** sesión sin tarifa → no se cobra",
+    ""
+  ].join("\n");
+}
+
+test("scopeHash: 12 hex, stable across the checkbox [ ] → [/] → [x], CRLF, spacing and the Aparcado/Diferidos lines", () => {
+  const req = scopeRequirements();
+  const base = planning.scopeHash(scopeRoadmap(), "2.1", req);
+  assert.match(base, /^[0-9a-f]{12}$/);
+  assert.equal(planning.scopeHash(scopeRoadmap({ mark: "/" }), "2.1", req), base);
+  assert.equal(planning.scopeHash(scopeRoadmap({ mark: "x" }), "2.1", req), base);
+  assert.equal(planning.scopeHash(scopeRoadmap().replace(/\n/g, "\r\n"), "2.1", req.replace(/\n/g, "\r\n")), base);
+  assert.equal(planning.scopeHash(scopeRoadmap().replace(/\n/g, "   \n").replace("Cobrar la", "Cobrar    la"), "2.1", req), base);
+  assert.equal(planning.scopeHash(scopeRoadmap().replace(/\n {2}- /g, "\n    - "), "2.1", req), base, "indentation is not scope");
+  const parked = scopeRoadmap({
+    extra: [
+      "  - **Aparcado:** 2026-09-30T10:00:00-05:00 — datos — retención de fichas — tanda 2026-09-29-cobros",
+      "  - **Diferidos heredados:** validar RUT — de Epic 1.3 (dispatch 2) · recibo en PDF — de Epic 1.4 (dispatch 1)"
+    ]
+  });
+  assert.equal(planning.scopeHash(parked, "2.1", req), base);
+  // The requirements file may change anywhere else: only the linked RN count.
+  assert.equal(planning.scopeHash(scopeRoadmap(), "2.1", scopeRequirements({ rn002: "El recibo lleva el RUT y la fecha." })), base);
+  assert.equal(planning.scopeHash(scopeRoadmap(), "9.9", req), null, "unknown epic");
+});
+
+test("scopeHash: moves when the epic block or the text of a linked RN changes; an absent RN counts as RN-xxx:MISSING", () => {
+  const req = scopeRequirements();
+  const base = planning.scopeHash(scopeRoadmap(), "2.1", req);
+  assert.notEqual(planning.scopeHash(scopeRoadmap({ description: "Cobrar la sesión al agendarla." }), "2.1", req), base);
+  assert.notEqual(planning.scopeHash(scopeRoadmap(), "2.1", scopeRequirements({ rn001: "Toda sesión se cobra al agendarla." })), base);
+  assert.notEqual(planning.scopeHash(scopeRoadmap(), "2.1", req.replace("tarifa vigente del paciente", "tarifa base")), base, "a continuation line is part of the RN");
+  assert.notEqual(planning.scopeHash(scopeRoadmap(), "2.1", req.replace("Solo el titular ve el cobro", "El titular y su tutor ven el cobro")), base, "a table row");
+
+  const material = planning.scopeMaterial(scopeRoadmap(), "2.1", req);
+  assert.ok(material.includes("RN-009:MISSING"), material);
+  assert.ok(!material.includes("RN-001:MISSING"), material);
+  assert.equal(planning.scopeHash(scopeRoadmap(), "2.1", req), crypto.createHash("sha256").update(material).digest("hex").slice(0, 12));
+  const defined = req.replace("| RN-SEG-008 |", "- **RN-009:** Un cobro anulado no se borra.\n\n| RN-SEG-008 |");
+  assert.notEqual(planning.scopeHash(scopeRoadmap(), "2.1", defined), base, "defining the missing RN moves the hash");
+  // No requirements file at all: every linked RN is MISSING, never a silent skip.
+  const bare = planning.scopeMaterial(scopeRoadmap(), "2.1", null);
+  for (const rn of ["RN-001", "RN-SEG-007", "RN-009"]) assert.ok(bare.includes(`${rn}:MISSING`), bare);
+});
+
+test("rnDefinition: from the id line to a blank line, a heading or the next RN/CL/FA/HU id", () => {
+  const req = scopeRequirements();
+  assert.equal(planning.rnDefinition(req, "RN-001"), "- **RN-001:** Toda sesión se cobra al cerrarla.\nEl cobro usa la tarifa vigente del paciente.");
+  assert.equal(planning.rnDefinition(req, "RN-002"), "- **RN-002:** El recibo lleva el RUT.");
+  assert.equal(planning.rnDefinition(req, "RN-SEG-007"), "| RN-SEG-007 | Solo el titular ve el cobro |");
+  assert.equal(planning.rnDefinition(req, "RN-009"), null);
+  const heading = "## Reglas\n### RN-010 — Anulaciones\nUna anulación conserva el cobro.\n## Casos\n";
+  assert.equal(planning.rnDefinition(heading, "RN-010"), "### RN-010 — Anulaciones\nUna anulación conserva el cobro.");
+  assert.equal(planning.rnDefinition("- **RN-0010:** otra\n- **RN-001:** la buena\n", "RN-001"), "- **RN-001:** la buena", "RN-001 is not a prefix of RN-0010");
+  assert.equal(planning.rnDefinition("- **RN-001:** a\n- **FA-001:** fuera\n", "RN-001"), "- **RN-001:** a");
+});
+
+test("parseEpicBlock: parked (the **Aparcado:** line) and diferidos (the **Diferidos heredados:** lines)", () => {
+  const block = [
+    "- [ ] **Epic 2.1:** Cobro de sesiones",
+    "  - **Descripción:** d",
+    "  - **Aparcado:** 2026-09-30T10:00:00-05:00 — datos — retención — de fichas — tanda 2026-09-29-cobros",
+    "  - **Diferidos heredados:** validar RUT — de Epic 1.3 (dispatch 2) · recibo en PDF — de Epic 1.4 (dispatch 1)",
+    "  - **Diferidos heredados:** folio correlativo — de Epic 1.5 (dispatch 1)"
+  ].join("\n");
+  const epic = planning.parseEpicBlock(block);
+  assert.deepEqual(epic.parked, { ts: "2026-09-30T10:00:00-05:00", clase: "datos", motivo: "retención — de fichas", tanda: "2026-09-29-cobros" });
+  assert.deepEqual(epic.diferidos, ["validar RUT — de Epic 1.3 (dispatch 2)", "recibo en PDF — de Epic 1.4 (dispatch 1)", "folio correlativo — de Epic 1.5 (dispatch 1)"]);
+
+  const plain = planning.parseEpicBlock("- [ ] **Epic 2.2:** Recibos\n  - **Descripción:** d\n");
+  assert.equal(plain.parked, null);
+  assert.deepEqual(plain.diferidos, []);
+
+  // A parked line without its tanda still parses what it has — the doctor reports the rest.
+  const noBatch = planning.parseEpicBlock("- [ ] **Epic 2.3:** X\n  - **Aparcado:** 2026-09-30 — dinero — cobro parcial\n");
+  assert.deepEqual(noBatch.parked, { ts: "2026-09-30", clase: "dinero", motivo: "cobro parcial", tanda: null });
+
+  // parseRoadmapEpics carries both fields.
+  const epics = planning.parseRoadmapEpics(scopeRoadmap({ extra: ["  - **Aparcado:** 2026-09-30 — legal — consentimiento — tanda 2026-09-29-cobros"] }));
+  assert.equal(epics.find((e) => e.id === "2.1").parked.tanda, "2026-09-29-cobros");
+  assert.equal(epics.find((e) => e.id === "2.2").parked, null);
 });
 
 test("parseGuards: GUARD lines with their test pointer; lines without a pointer are skipped", () => {

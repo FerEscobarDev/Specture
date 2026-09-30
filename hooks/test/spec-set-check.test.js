@@ -636,3 +636,120 @@ test("planning.epicKind normalises the four kinds, defaults to backend, and reje
   assert.deepEqual(planning.lastVisualApproval("x\n- VISUAL_APPROVAL: aaa — 1\n- VISUAL_APPROVAL: bbb — 2\n"), { sha: "bbb", line: "- VISUAL_APPROVAL: bbb — 2" });
   assert.equal(planning.lastVisualApproval("nada"), null);
 });
+
+// ---------------------------------------------------------------------------------------
+// --draft / --batch — the review stage checks drafts without a Superficie (v2.3.0)
+// ---------------------------------------------------------------------------------------
+
+test("--draft: DRAFT_PASS / DRAFT_FAIL tokens with the same sha and exit 0 / 1; --json carries the draft status", () => {
+  const clean = createProject();
+  const real = runCheck(clean);
+  const draft = runCheck(clean, ["--draft"]);
+  assert.equal(draft.status, 0, draft.stdout + draft.stderr);
+  assert.equal(draft.token, real.token.replace("MECH_CHECK: PASS", "MECH_CHECK: DRAFT_PASS"));
+  assert.match(draft.token, /^MECH_CHECK: DRAFT_PASS [0-9a-f]{12}$/);
+  assert.equal(runCheck(clean, ["--draft", "--json"]).json.status, "DRAFT_PASS");
+
+  const hole = createProject({ roadmap: roadmap([{ id: "1.1", ops: "`subir`, `listar`, `eliminar`", rules: "RN-001, RN-002" }]) });
+  const failing = runCheck(hole, ["--draft"]);
+  assert.equal(failing.status, 1);
+  assert.match(failing.token, /^MECH_CHECK: DRAFT_FAIL [0-9a-f]{12}$/);
+  assert.ok(failing.lines.some((l) => /^C1 BLOCKER -: .*`eliminar`.*hueco/.test(l)), failing.lines.join("\n"));
+
+  // A draft that cannot be verified never prints a bare UNVERIFIABLE a gate could take as its own.
+  const noTable = runCheck(createProject({ planning: "# Planning\n\n## OPEN_QUESTIONS\n- (ninguna)\n" }), ["--draft"]);
+  assert.equal(noTable.status, 2);
+  assert.match(noTable.token, /^MECH_CHECK: DRAFT_UNVERIFIABLE COVERAGE_TABLE not found/);
+});
+
+test("--draft: C-path, C4, C6 and C-sup drop to INFO (a draft has no Superficie yet); C1/C2 still block", () => {
+  const supersede = "\n## Supersesiones de tests sellados\n- Supersede: `tests/old/nota.test.js::rechaza titulo repetido` — motivo: BR-1 — epic origen: epic-0.9-old\n";
+  const specs = {
+    "01-subir": CLEAN_SPECS["01-subir"].replace("- Crea: `subir` en `src/a/service.js` — firma: `subir(dto)`", "- Crea: `subir` — firma: `subir(dto)`") + supersede,
+    "02-listar": CLEAN_SPECS["02-listar"].replace("firma: `class Repo { insert(row) }` `(planeada", "firma: `class Repo { insert(row, opts) }` `(planeada")
+  };
+  const rows = `${CLEAN_ROWS}\n- sym: Svc — crea: 02-listar — firma: \`svc()\` — consume: [01-subir]\n- sup: tests/old/nota.test.js::rechaza titulo repetido → 01-subir (BR-1)`;
+  const project = createProject({ specs, planning: planningDoc(rows) });
+
+  const real = runCheck(project);
+  assert.equal(real.status, 1);
+  for (const check of ["C-path", "C4", "C6", "C-sup"]) {
+    assert.ok(real.lines.some((l) => l.startsWith(`${check} BLOCKER`)), `${check}\n${real.lines.join("\n")}`);
+  }
+
+  const draft = runCheck(project, ["--draft"]);
+  assert.equal(draft.status, 0, draft.lines.join("\n"));
+  assert.match(draft.token, /^MECH_CHECK: DRAFT_PASS /);
+  assert.equal(draft.lines.filter((l) => / (BLOCKER|WARNING) /.test(l)).length, 0, draft.lines.join("\n"));
+  for (const check of ["C-path", "C4", "C6", "C-sup"]) {
+    assert.ok(draft.lines.some((l) => l.startsWith(`${check} INFO`) && /borrador/.test(l)), `${check}\n${draft.lines.join("\n")}`);
+  }
+
+  const uncited = runCheck(createProject({ roadmap: roadmap([{ id: "1.1", ops: "`subir`, `listar`", rules: "RN-001, RN-002, RN-009" }]) }), ["--draft"]);
+  assert.equal(uncited.status, 1);
+  assert.ok(uncited.lines.some((l) => /^C2 BLOCKER -: RN-009/.test(l)), uncited.lines.join("\n"));
+});
+
+test("--batch without --draft is a usage error (exit 2)", () => {
+  const result = runCheck(createProject(), ["--batch", "1.1"]);
+  assert.equal(result.status, 2);
+  assert.match(result.stderr, /--batch.*--draft/);
+  assert.equal(result.stdout, "");
+});
+
+test("--draft --batch: C1-consume drops to INFO when the providing epic is in the batch", () => {
+  const project = createProject({
+    roadmap: roadmap([
+      { id: "1.1", state: " ", ops: "`listar`", rules: "RN-001" },
+      { id: "3.1", ops: "`listar` (consume)", rules: "RN-001" }
+    ]),
+    epic: "epic-3.1-page",
+    planning: planningDoc("- op: listar → 01-page (consume)\n- br: RN-001 → 01-page [BR-1]"),
+    specs: { "01-page": spec({ slug: "01-page", ops: ["listar"], mode: "consume", rules: ["RN-001"], surface: ["- Crea: `Page` en `app/page.tsx` — firma: `Page()`"] }) }
+  });
+  const alone = runCheck(project, ["--draft"], { epic: "3.1" });
+  assert.equal(alone.status, 1);
+  assert.match(alone.token, /^MECH_CHECK: DRAFT_FAIL /);
+
+  const batched = runCheck(project, ["--draft", "--batch", "1.1,3.1"], { epic: "3.1" });
+  assert.equal(batched.status, 0, batched.lines.join("\n"));
+  assert.ok(batched.lines.some((l) => /^C1 INFO -: `listar` \(consume\).*1\.1.*tanda/.test(l)), batched.lines.join("\n"));
+
+  const otherBatch = runCheck(project, ["--draft", "--batch", "2.9, 3.1"], { epic: "3.1" });
+  assert.equal(otherBatch.status, 1, "the provider is not in the batch");
+});
+
+test("--draft --batch: C-design drops to INFO when the design-system epic is in the batch", () => {
+  const unreachable = pageProject({ providerPlanning: null });
+  assert.equal(runCheck(unreachable, ["--draft"]).status, 1);
+  const batched = runCheck(unreachable, ["--draft", "--batch", "1.0,1.1"]);
+  assert.equal(batched.status, 0, batched.lines.join("\n"));
+  assert.match(batched.lines.find((l) => l.startsWith("C-design")), /^C-design INFO -: .*1\.0.*tanda/);
+
+  const unapproved = pageProject({ providerPlanning: "# Planning\n\n## MECH_CHECK\n- MECH_CHECK: PASS abc123def456\n" });
+  const b = runCheck(unapproved, ["--draft", "--batch", "1.0"]);
+  assert.equal(b.status, 0, b.lines.join("\n"));
+  assert.match(b.lines.find((l) => l.startsWith("C-design")), /^C-design INFO/);
+});
+
+test("planning.lastMechCheck never takes a DRAFT_* line — a draft never enables a seal", () => {
+  const text = "## MECH_CHECK\n- MECH_CHECK: PASS aaaaaaaaaaaa — 1\n- MECH_CHECK: DRAFT_PASS bbbbbbbbbbbb — 2\n- MECH_CHECK: DRAFT_FAIL cccccccccccc — 3\n";
+  assert.deepEqual(planning.lastMechCheck(text), { status: "PASS", value: "aaaaaaaaaaaa", line: "- MECH_CHECK: PASS aaaaaaaaaaaa — 1" });
+  assert.equal(planning.lastMechCheck("- MECH_CHECK: DRAFT_PASS bbbbbbbbbbbb\n- MECH_CHECK: DRAFT_UNVERIFIABLE x\n"), null);
+});
+
+test("--draft --batch: hyphenated epic ids (HC-IHCE.5) are matched whole, never cut at the first dash", () => {
+  const project = createProject({
+    roadmap: roadmap([
+      { id: "HC-IHCE.5", state: " ", ops: "`listar`", rules: "RN-001" },
+      { id: "HC-IHCE.6", ops: "`listar` (consume)", rules: "RN-001" }
+    ]),
+    epic: "epic-HC-IHCE.6-page",
+    planning: planningDoc("- op: listar → 01-page (consume)\n- br: RN-001 → 01-page [BR-1]"),
+    specs: { "01-page": spec({ slug: "01-page", ops: ["listar"], mode: "consume", rules: ["RN-001"], surface: ["- Crea: `Page` en `app/page.tsx` — firma: `Page()`"] }) }
+  });
+  const batched = runCheck(project, ["--draft", "--batch", "HC-IHCE.5,HC-IHCE.6"], { epic: "HC-IHCE.6" });
+  assert.equal(batched.status, 0, batched.lines.join("\n"));
+  const prefixOnly = runCheck(project, ["--draft", "--batch", "HC"], { epic: "HC-IHCE.6" });
+  assert.equal(prefixOnly.status, 1, "HC is not HC-IHCE.5");
+});

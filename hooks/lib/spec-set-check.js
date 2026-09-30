@@ -3,6 +3,7 @@
 //
 //   node "${CLAUDE_PLUGIN_ROOT}/hooks/lib/spec-set-check.js" <epic-dir> [<epic-block-file>]
 //        [--roadmap docs/04-roadmap/ROADMAP.md --epic <X.Y>] [--json] [--hash-only] [--allowed-paths]
+//        [--draft [--batch <X.Y,X.Z>]]
 //
 // Inputs: <epic-dir>/_planning.md (COVERAGE_TABLE — grammar in templates/PLANNING_TEMPLATE.md),
 // the epic block (a file with the block, or extracted from the ROADMAP with --roadmap/--epic)
@@ -33,6 +34,14 @@
 // `--hash-only` prints `MECH_CHECK: HASH <sha12>` without running the checks (the coordinator
 // compares it with the last PASS token before committing). `--allowed-paths` prints the union
 // of `Crea:`/`Modifica:` paths, one per line (item 36). The sha covers only the table rows.
+//
+// `--draft` (review stage, skills/build/REVIEW_STAGE.md R1/R3): the same analysis over drafts
+// written without a Superficie — C-path, C4, C6 and C-sup drop to INFO. Token
+// `MECH_CHECK: DRAFT_PASS <sha12>` | `MECH_CHECK: DRAFT_FAIL <sha12>` |
+// `MECH_CHECK: DRAFT_UNVERIFIABLE <reason>` (exit 0 / 1 / 2). A draft token never enables a
+// seal: `planning.lastMechCheck` does not read DRAFT_* lines. `--batch <X.Y,X.Z>` (only with
+// `--draft`, else a usage error): the epics reviewed together — C1-consume and C-design drop
+// to INFO when the providing epic is in the list (it runs earlier in the same batch).
 
 const fs = require("fs");
 const path = require("path");
@@ -43,23 +52,41 @@ const SEVERITY_ORDER = { BLOCKER: 0, WARNING: 1, INFO: 2 };
 const MAX_SPECS = 3;
 const MAX_IDS_PER_SPEC = 15;
 
+// Checks that look at the Superficie / supersessions a draft does not have yet (review stage):
+// in `--draft` every finding of theirs is INFO — the refresh at the epic's turn runs them for real.
+const DRAFT_RELAXED = ["C-path", "C4", "C6", "C-sup"];
+
 function usage() {
-  return "usage: spec-set-check.js <epic-dir> [<epic-block-file>] [--roadmap <ROADMAP.md> --epic <X.Y>] [--json] [--hash-only] [--allowed-paths]";
+  return "usage: spec-set-check.js <epic-dir> [<epic-block-file>] [--roadmap <ROADMAP.md> --epic <X.Y>] [--json] [--hash-only] [--allowed-paths] [--draft [--batch <X.Y,X.Z>]]";
+}
+
+// "1.1", "Epic 1.1", "epic-1.1-archivos" → "1.1"; "HC-IHCE.5" stays whole (only the numeric
+// id of an `epic-<X.Y>-<slug>` directory name is cut out of its slug).
+function epicIdOf(value) {
+  const text = String(value || "").replace(/[`*]/g, "").trim();
+  const dir = text.match(/^epic-(\d+(?:\.\d+)*)(?:-|$)/i);
+  return dir ? dir[1] : text.replace(/^epic\s+/i, "").trim();
 }
 
 function parseArgs(argv) {
-  const opts = { positional: [], json: false, hashOnly: false, allowedPaths: false, roadmap: null, epic: null };
+  const opts = { positional: [], json: false, hashOnly: false, allowedPaths: false, roadmap: null, epic: null, draft: false, batch: null };
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
     if (arg === "--json") opts.json = true;
     else if (arg === "--hash-only") opts.hashOnly = true;
     else if (arg === "--allowed-paths") opts.allowedPaths = true;
+    else if (arg === "--draft") opts.draft = true;
     else if (arg === "--roadmap") opts.roadmap = argv[++i];
     else if (arg === "--epic") opts.epic = argv[++i];
-    else if (arg.startsWith("--")) throw new Error(`unknown option ${arg}\n${usage()}`);
+    else if (arg === "--batch") {
+      const value = argv[++i];
+      if (value === undefined) throw new Error(`missing value for --batch\n${usage()}`);
+      opts.batch = value.split(",").map(epicIdOf).filter(Boolean);
+    } else if (arg.startsWith("--")) throw new Error(`unknown option ${arg}\n${usage()}`);
     else opts.positional.push(arg);
   }
   if (opts.positional.length === 0) throw new Error(usage());
+  if (opts.batch !== null && !opts.draft) throw new Error(`--batch only applies to a draft check: pass --draft\n${usage()}`);
   return opts;
 }
 
@@ -146,9 +173,14 @@ function testNameCandidates(name) {
   return [...new Set([full, bare, /\p{L}/u.test(last || "") ? last : ""])].filter(Boolean);
 }
 
-function runChecks({ table, specs, epic, roadmapEpics, epicDir, register = [] }) {
+// `draft`: the review stage's check over drafts without a Superficie (DRAFT_RELAXED → INFO).
+// `batch`: epic ids reviewed together (only with `draft`): a provider of a consumed operation
+// or of the design system that is in the batch will run before its turn — C1-consume and
+// C-design drop to INFO instead of blocking the draft.
+function runChecks({ table, specs, epic, roadmapEpics, epicDir, register = [], draft = false, batch = null }) {
   const findings = [];
   const add = (check, severity, slug, detail) => findings.push({ check, severity, slug: slug || "-", detail });
+  const inBatch = (id) => Boolean(draft && batch && batch.includes(id));
   const slugs = specs.map((s) => s.slug);
   const bySlug = Object.fromEntries(specs.map((s) => [s.slug, s]));
   const known = (slug) => Object.prototype.hasOwnProperty.call(bySlug, slug);
@@ -189,7 +221,9 @@ function runChecks({ table, specs, epic, roadmapEpics, epicDir, register = [] })
         } else {
           const provider = roadmapEpics.find((e) => e.id !== epic.id && e.operations.some((o) => o.id === op.id && o.mode === "implementa"));
           if (!provider) add("C1", "BLOCKER", null, `\`${op.id}\` (consume): ningún otro epic la declara como implementada`);
-          else if (provider.state !== "done") add("C1", "BLOCKER", null, `\`${op.id}\` (consume): el epic ${provider.id} que la implementa está ${provider.state}, no [x]`);
+          else if (provider.state !== "done" && inBatch(provider.id)) {
+            add("C1", "INFO", null, `\`${op.id}\` (consume): el epic ${provider.id} que la implementa está ${provider.state}, pero está en la tanda (--batch) — se exige [x] al refrescar`);
+          } else if (provider.state !== "done") add("C1", "BLOCKER", null, `\`${op.id}\` (consume): el epic ${provider.id} que la implementa está ${provider.state}, no [x]`);
         }
       }
     }
@@ -217,7 +251,9 @@ function runChecks({ table, specs, epic, roadmapEpics, epicDir, register = [] })
     } else {
       const provider = providers[0];
       const approval = visualApprovalOf(epicDir, provider.id);
-      if (approval === null) {
+      if (approval !== true && inBatch(provider.id)) {
+        add("C-design", "INFO", null, `el epic ${provider.id} (design system) está en la tanda (--batch): la \`VISUAL_APPROVAL\` se exige al refrescar este epic`);
+      } else if (approval === null) {
         add("C-design", "BLOCKER", null, `no se encontró el \`_planning.md\` del epic ${provider.id} (design system): la aprobación visual no es verificable`);
       } else if (!approval) {
         add("C-design", "BLOCKER", null, `el epic ${provider.id} (design system) no registra \`VISUAL_APPROVAL\` en su \`_planning.md\`: el gate visual no ha pasado y ningún epic de página puede arrancar`);
@@ -353,11 +389,18 @@ function runChecks({ table, specs, epic, roadmapEpics, epicDir, register = [] })
     }
   }
 
+  if (draft) {
+    for (const f of findings) {
+      if (!DRAFT_RELAXED.includes(f.check) || f.severity === "INFO") continue;
+      f.detail = `(borrador, era ${f.severity}) ${f.detail}`;
+      f.severity = "INFO";
+    }
+  }
   findings.sort((a, b) => SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity] || a.check.localeCompare(b.check));
   return findings;
 }
 
-function run(opts) {
+function checkSet(opts) {
   const epicDir = path.resolve(opts.positional[0]);
   if (!fs.existsSync(epicDir) || !fs.statSync(epicDir).isDirectory()) return unverifiable(`epic dir not found: ${opts.positional[0]}`);
   const planningText = readFile(path.join(epicDir, "_planning.md"));
@@ -377,22 +420,31 @@ function run(opts) {
   const loaded = loadEpic(opts);
   if (loaded.error) return unverifiable(loaded.error, { sha });
   const register = planning.parseSupersessionRegister(planningText);
-  const findings = runChecks({ table, specs, epic: loaded.epic, roadmapEpics: loaded.roadmapEpics, epicDir, register });
+  const draft = Boolean(opts.draft);
+  const findings = runChecks({ table, specs, epic: loaded.epic, roadmapEpics: loaded.roadmapEpics, epicDir, register, draft, batch: opts.batch || null });
   const status = findings.some((f) => f.severity === "BLOCKER") ? "FAIL" : "PASS";
   const { id, state, template, operations, rules, gaps } = loaded.epic;
   return { status, sha, findings, specs: specs.map((s) => s.slug), epic: { id, state, template, operations, rules, gaps } };
 }
 
+// A draft's statuses carry the prefix in the result itself (JSON included): no consumer can
+// read a DRAFT_PASS as the PASS that enables a seal, and `planning.lastMechCheck` never takes one.
+function run(opts) {
+  const result = checkSet(opts);
+  if (!opts.draft || !["PASS", "FAIL", "UNVERIFIABLE"].includes(result.status)) return result;
+  return { ...result, status: `DRAFT_${result.status}`, draft: true, batch: opts.batch || [] };
+}
+
 function render(result) {
   if (result.status === "PATHS") return result.paths.join("\n") + (result.paths.length ? "\n" : "");
-  const token = result.status === "UNVERIFIABLE" ? `MECH_CHECK: UNVERIFIABLE ${result.reason}` : `MECH_CHECK: ${result.status} ${result.sha}`;
+  const token = /UNVERIFIABLE$/.test(result.status) ? `MECH_CHECK: ${result.status} ${result.reason}` : `MECH_CHECK: ${result.status} ${result.sha}`;
   const body = (result.malformed || []).map((l) => `  ${l}`).concat(result.findings.map((f) => `${f.check} ${f.severity} ${f.slug}: ${f.detail}`));
   return [token, ...body].join("\n") + "\n";
 }
 
 function exitCode(result) {
-  if (result.status === "UNVERIFIABLE") return 2;
-  return result.status === "FAIL" ? 1 : 0;
+  if (/UNVERIFIABLE$/.test(result.status)) return 2;
+  return /FAIL$/.test(result.status) ? 1 : 0;
 }
 
 if (require.main === module) {
