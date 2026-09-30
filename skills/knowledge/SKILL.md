@@ -341,7 +341,15 @@ the Spec Planning Gate was designed to be judged by (`docs/spec-planning-gate-de
    in execution instead of in the gate — expected, and cheap), `j9_regressions` (old tests
    the loop sent back to the implementer), `exec_blocked_compile` / `exec_blocked_runtime`,
    `baseline_failures`, and `gate_human_contacts` vs `exec_human_contacts` (the goal is
-   contacts in the gate only).
+   contacts in the gate only). Since v2.3.0 it also reads the review stage
+   (`build/REVIEW_STAGE.md`): lines of a reviewed batch carry `batch_id`, and the register's
+   figures — `review_rounds`, `review_questions`, `review_filtered`, `review_human_contacts`,
+   `late_questions`, `premises_false` — are counted **once per batch** (a `gate revisión:` line
+   with the per-batch means and the question total; the table's `rev` column is the batch's
+   `review_questions` repeated on each of its epics); `parked` / `park_class` are per epic
+   (`aparcados/epic`). R1 counts `open_questions + review_questions` on a line with `batch_id`:
+   under the review stage the questions are asked in the sitting, not in the epic's gate. Review
+   figures on a line without `batch_id` are not counted and the reading says so.
 2. **No file yet** → say so and offer the baseline: *"No hay métricas todavía. ¿Reconstruyo
    el baseline de los epics cerrados antes del gate (`--baseline --write`)?"* On yes:
    ```

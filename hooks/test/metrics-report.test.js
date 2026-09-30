@@ -52,7 +52,7 @@ test("summary: per-epic table, aggregates split by source, --last, --json", () =
   const text = run(root);
   assert.equal(text.status, 0, text.stderr);
   assert.match(text.stdout, /3 epic\(s\)/);
-  assert.match(text.stdout, /^epic-1\.1-a \| gate \| 2 \| 1 \| 6/m);
+  assert.match(text.stdout, /^epic-1\.1-a \| gate \| 2 \| 1 \| - \| 6/m);
   assert.match(text.stdout, /^gate: 2 epic\(s\)/m);
   assert.match(text.stdout, /^baseline: 1 epic\(s\)/m);
   assert.match(text.stdout, /Bajan needs_context\/iteration_cap\/blocked por epic \(2 → 0\)/);
@@ -125,15 +125,97 @@ test("v2.2 fields: averaged like the other numeric fields; `effort` as an object
   for (const key of V22_FIELDS) assert.equal(onlyOld.json.gate[key], null, key);
 });
 
-test("summary: the table gains the `rnd` and `sup-loop` columns; old lines print `-`", () => {
+test("summary: the table gains the `rev`, `rnd` and `sup-loop` columns; old lines print `-`", () => {
   const root = createProject({
-    "docs/.specture-meta/build-metrics.jsonl": [line("epic-0.9-old"), line("epic-1.1-a", { gate_rounds: 3, supersede_loops: 2 })].join("\n") + "\n"
+    "docs/.specture-meta/build-metrics.jsonl": [line("epic-0.9-old"), line("epic-1.1-a", { gate_rounds: 3, supersede_loops: 2, batch_id: "2026-09-29-cobros", review_questions: 5 })].join("\n") + "\n"
   });
   const { status, stdout } = run(root);
   assert.equal(status, 0);
-  assert.match(stdout, /^epic \| source \| specs \| Q \| R \| c7 \| mech \| val \| rnd \| nctx \| cap \| blk \| spec_def \| rej m\/M \| sup \| sup-loop \| outcome$/m);
-  assert.match(stdout, /^epic-1\.1-a \| gate \| 2 \| 1 \| 6 \| 0 \| 1 \| 3 \| 3 \| 0 \| 0 \| 0 \| 0 \| 1\/0 \| 0 \| 2 \| DONE$/m);
-  assert.match(stdout, /^epic-0\.9-old \| gate \| 2 \| 1 \| 6 \| 0 \| 1 \| 3 \| - \| 0 \| 0 \| 0 \| 0 \| 1\/0 \| 0 \| - \| DONE$/m);
+  assert.match(stdout, /^epic \| source \| specs \| Q \| rev \| R \| c7 \| mech \| val \| rnd \| nctx \| cap \| blk \| spec_def \| rej m\/M \| sup \| sup-loop \| outcome$/m);
+  assert.match(stdout, /^epic-1\.1-a \| gate \| 2 \| 1 \| 5 \| 6 \| 0 \| 1 \| 3 \| 3 \| 0 \| 0 \| 0 \| 0 \| 1\/0 \| 0 \| 2 \| DONE$/m);
+  assert.match(stdout, /^epic-0\.9-old \| gate \| 2 \| 1 \| - \| 6 \| 0 \| 1 \| 3 \| - \| 0 \| 0 \| 0 \| 0 \| 1\/0 \| 0 \| - \| DONE$/m);
+});
+
+// The v2.3.0 review-stage fields. The six of the register's `## MÉTRICAS` line are per batch
+// (every epic line of a batch may repeat them); `parked` / `park_class` are per epic.
+const BATCH_FIELDS = ["review_rounds", "review_questions", "review_filtered", "review_human_contacts", "late_questions", "premises_false"];
+const batchMetrics = (batch, values) => ({ batch_id: batch, ...Object.fromEntries(BATCH_FIELDS.map((k) => [k, values[k] ?? 0])) });
+
+test("v2.3 review fields: counted once per batch_id (two epics of one batch with review_questions 6 count 6, not 12)", () => {
+  const cobros = batchMetrics("2026-09-29-cobros", { review_rounds: 2, review_questions: 6, review_filtered: 1, review_human_contacts: 2, late_questions: 1, premises_false: 1 });
+  const oneBatch = report.aggregate([
+    JSON.parse(line("epic-2.1-a", { ...cobros, parked: 0 })),
+    JSON.parse(line("epic-2.2-b", { ...cobros, parked: 1, park_class: "datos" }))
+  ]);
+  assert.equal(oneBatch.batches, 1);
+  assert.equal(oneBatch.review_totals.review_questions, 6, "the batch counts once");
+  assert.equal(oneBatch.review_questions, 6, "per batch, not per epic");
+  assert.equal(oneBatch.review_totals.review_human_contacts, 2);
+
+  // The first line of each batch carries its figures; per-batch mean 4 (6, 2), not the
+  // per-epic mean 4.67 (6, 6, 2).
+  const agenda = batchMetrics("2026-10-05-agenda", { review_rounds: 1, review_questions: 2, review_human_contacts: 1 });
+  const root = createProject({
+    "docs/.specture-meta/build-metrics.jsonl": [
+      line("epic-0.9-old"),
+      line("epic-2.1-a", { ...cobros, parked: 0 }),
+      line("epic-2.2-b", { ...cobros, parked: 1, park_class: "datos" }),
+      line("epic-3.1-c", { ...agenda, parked: 0 })
+    ].join("\n") + "\n"
+  });
+  const { status, json, stderr } = run(root, "--json");
+  assert.equal(status, 0, stderr);
+  assert.equal(json.skipped, 0);
+  assert.equal(json.gate.count, 4);
+  assert.equal(json.gate.batches, 2);
+  assert.equal(json.gate.review_questions, 4);
+  assert.equal(json.gate.review_rounds, 1.5);
+  assert.deepEqual(json.gate.review_totals, { review_rounds: 3, review_questions: 8, review_filtered: 1, review_human_contacts: 3, late_questions: 1, premises_false: 1 });
+  assert.equal(json.gate.parked, 0.33, "per epic, over the lines that carry it");
+  assert.equal(json.entries[2].park_class, "datos", "carried, never averaged");
+  assert.ok(!("park_class" in json.gate) && !("batch_id" in json.gate));
+
+  const text = run(root).stdout;
+  assert.match(text, /^gate revisión: 2 tanda\(s\) · preguntas\/tanda 4 \(total 8\) · filtradas\/tanda 0\.5 · contactos\/tanda 1\.5 · late\/tanda 0\.5 · premisas falsas\/tanda 0\.5 · aparcados\/epic 0\.33$/m);
+
+  // Lines written before v2.3.0: nothing breaks, no batch, the fields read null.
+  const onlyOld = run(createProject({ "docs/.specture-meta/build-metrics.jsonl": line("epic-0.9-old") + "\n" }), "--json");
+  assert.equal(onlyOld.status, 0);
+  assert.equal(onlyOld.json.gate.batches, 0);
+  for (const key of [...BATCH_FIELDS, "parked"]) assert.equal(onlyOld.json.gate[key], null, key);
+  for (const key of BATCH_FIELDS) assert.equal(onlyOld.json.gate.review_totals[key], null, key);
+  assert.doesNotMatch(run(createProject({ "docs/.specture-meta/build-metrics.jsonl": line("epic-0.9-old") + "\n" })).stdout, /revisión:/);
+});
+
+test("R1 (el planner no pregunta) counts open_questions + review_questions when the line carries batch_id", () => {
+  const base = { open_questions: 0, blocked_spec: 2 };
+  const baselineLine = line("epic-0.9-old", { source: "baseline", blocked_spec: 2 });
+  const summary = (...gateLines) => report.summarize(createProject({ "docs/.specture-meta/build-metrics.jsonl": [baselineLine, ...gateLines].join("\n") + "\n" }), {});
+
+  const noReview = summary(line("epic-2.1-a", base), line("epic-2.2-b", base));
+  assert.equal(noReview.gate.zero_question_share, 1);
+  assert.match(noReview.reading.join("\n"), /el planner no pregunta \(R1\)/);
+
+  // The review stage asked the questions: the batch's review_questions count for each of its
+  // epics — also for a line of the batch that does not repeat the figure.
+  const reviewed = summary(line("epic-2.1-a", { ...base, batch_id: "2026-09-29-cobros", review_questions: 6 }), line("epic-2.2-b", { ...base, batch_id: "2026-09-29-cobros" }));
+  assert.equal(reviewed.gate.zero_question_share, 0);
+  assert.doesNotMatch(reviewed.reading.join("\n"), /el planner no pregunta/);
+  assert.match(reviewed.reading.join("\n"), /aunque el planner pregunta/);
+
+  // review_questions without batch_id is not a review-stage line: only open_questions counts.
+  const loose = summary(line("epic-2.1-a", { ...base, review_questions: 6 }), line("epic-2.2-b", base));
+  assert.equal(loose.gate.zero_question_share, 1);
+  assert.match(loose.reading.join("\n"), /el planner no pregunta \(R1\)/);
+  assert.equal(loose.gate.batches, 0);
+  assert.match(loose.reading.join("\n"), /1 línea\(s\) con métricas de revisión \(review_\*\) sin batch_id/, "never dropped silently");
+  assert.doesNotMatch(reviewed.reading.join("\n"), /sin batch_id/);
+
+  // A batch whose review asked nothing and whose planner asked nothing is still R1.
+  const silent = summary(line("epic-2.1-a", { ...base, batch_id: "2026-09-29-cobros", review_questions: 0 }), line("epic-2.2-b", { ...base, batch_id: "2026-09-29-cobros", review_questions: 0 }));
+  assert.equal(silent.gate.zero_question_share, 1);
+  assert.match(silent.reading.join("\n"), /el planner no pregunta \(R1\)/);
+  assert.match(silent.reading.join("\n"), /open_questions \+ review_questions/);
 });
 
 test("reading rules: a planner re-dispatch after APPROVED and sustained gate rounds >= 3 fire", () => {

@@ -4,6 +4,7 @@ const os = require("node:os");
 const path = require("node:path");
 const { afterEach, test } = require("node:test");
 const { spawnSync } = require("node:child_process");
+const planning = require("../lib/planning");
 
 const root = path.resolve(__dirname, "..", "..");
 const doctorPath = path.join(root, "scripts", "doctor.js");
@@ -319,6 +320,181 @@ test("specture-script-permissions: a project that started building with no allow
 
   // Nothing built yet (only `[ ]` epics): the build never ran, so there is nothing to warn about.
   assert.deepEqual(found(createProject(CLEAN)), []);
+});
+
+// ---------------------------------------------------------------------------------------
+// Review stage (v2.3.0): batch registers in docs/05-specs/_reviews/ and parked epics
+// ---------------------------------------------------------------------------------------
+
+const REVIEW_FILE = "docs/05-specs/_reviews/2026-09-29-cobros.md";
+const PARKED = "2026-09-30T10:00:00-03:00 — datos — retención del recibo — tanda 2026-09-29-cobros";
+
+function reviewRequirements({ rn002 = "Una sesión cancelada con menos de 24 h se cobra al 50 %." } = {}) {
+  return ["# Requerimientos", "", "## Reglas de Negocio", "", "- **RN-001:** La tarifa se fija por paciente.", `- **RN-002:** ${rn002}`, "- **RN-003:** El recibo no muestra el diagnóstico.", ""].join("\n");
+}
+
+// Three epics of one batch: `states` maps id → checkbox mark, `parked` maps id → the
+// `**Aparcado:**` value, `descriptions` overrides a description.
+function reviewRoadmap({ states = {}, parked = {}, descriptions = {} } = {}) {
+  const epic = (id, name, description, rules) =>
+    [
+      `- [${states[id] || " "}] **Epic ${id}:** ${name}`,
+      "  - **Dependencias:** Ninguna",
+      `  - **Descripción:** ${descriptions[id] || description}`,
+      `  - **Reglas de negocio clave:** ${rules}`,
+      parked[id] ? `  - **Aparcado:** ${parked[id]}` : null
+    ]
+      .filter(Boolean)
+      .join("\n");
+  return ["# ROADMAP", "", "### Milestone 2: Cobros", "", epic("2.1", "Tarifas", "Definir la tarifa por paciente.", "RN-001"), epic("2.2", "Cobro de sesiones", "Cobrar la sesión al cerrarla.", "RN-001, RN-002"), epic("2.3", "Recibos", "Emitir el recibo.", "RN-003"), ""].join("\n");
+}
+
+// The SCOPE lines R5 records, computed over the ROADMAP and requirements as they were at close.
+function scopeAt(roadmapText, requirementsText, ids = ["2.1", "2.2", "2.3"]) {
+  return ids.map((id) => `- ${id}: SCOPE ${planning.scopeHash(roadmapText, id, requirementsText)} — 2026-09-29T18:00:00-03:00`);
+}
+
+function batchRegister({ id = "2026-09-29-cobros", estado = "CERRADA", epics = "2.1, 2.2, 2.3", pending = 0, scope = [] } = {}) {
+  const agenda = ["- A-1 — 2.2 — dinero — ¿Se cobra la cancelada? — respuesta: sí, el 50 % — fuente: usuario 2026-09-29"];
+  for (let i = 0; i < pending; i++) agenda.push(`- A-${i + 2} — 2.3 — datos — ¿Pregunta ${i + 2}? — respuesta: pendiente — fuente: pendiente`);
+  return [`# Revisión de tanda — ${id}`, "", `- ID: ${id}`, `- ESTADO: ${estado}`, `- EPICS: ${epics}`, "- REGULATORIOS: (ninguno)", "", "## AGENDA", "### Ronda 1", ...agenda, "", "## SCOPE", ...scope, "", "## MÉTRICAS", "- review_rounds: 1 · review_questions: 1", ""].join("\n");
+}
+
+// A project closed on `roadmap` / `requirements` (SCOPE recorded over them) whose files are now
+// `now` — defaults: nothing changed since the close.
+function reviewProject({ estado = "CERRADA", pending = 0, roadmap = reviewRoadmap(), requirements = reviewRequirements(), now = {}, extra = {} } = {}) {
+  return createProject({
+    ...CLEAN,
+    "docs/04-roadmap/ROADMAP.md": now.roadmap || roadmap,
+    "docs/01-requirements/business_requirements.md": now.requirements || requirements,
+    [REVIEW_FILE]: batchRegister({ estado, pending, scope: estado === "CERRADA" ? scopeAt(roadmap, requirements) : [] }),
+    ...extra
+  });
+}
+
+const reviewFindings = (projectRoot) => runDoctor(projectRoot).json.findings.filter((f) => f.group === "review");
+
+test("review checks: a project without _reviews/ and without parked epics produces nothing; a closed batch in sync neither", () => {
+  const withoutReviews = createProject({ ...CLEAN, "docs/04-roadmap/ROADMAP.md": reviewRoadmap(), "docs/01-requirements/business_requirements.md": reviewRequirements() });
+  assert.deepEqual(reviewFindings(withoutReviews), []);
+
+  const inSync = reviewProject({ extra: { "docs/05-specs/_reviews/2026-09-01-agenda.md": batchRegister({ id: "2026-09-01-agenda", estado: "EJECUTADA", epics: "2.1" }) } });
+  const { status, json } = runDoctor(inSync);
+  assert.equal(status, 0, JSON.stringify(json.findings));
+  assert.deepEqual(json.findings.filter((f) => f.group === "review" || /_reviews\//.test(f.file)), []);
+});
+
+test("review-open: the current register in PREPARANDO / RONDA-1 / RONDA-2 is a WARNING that says to resume with /specture:start", () => {
+  const projectRoot = reviewProject({ estado: "RONDA-1", pending: 2 });
+  const { status, json } = runDoctor(projectRoot);
+  const found = json.findings.filter((f) => f.check === "review-open");
+  assert.equal(found.length, 1, JSON.stringify(json.findings));
+  assert.equal(status, 0, "a WARNING never fails the run");
+  assert.equal(found[0].severity, "WARNING");
+  assert.equal(found[0].group, "review");
+  assert.equal(found[0].file, REVIEW_FILE);
+  assert.match(found[0].detail, /2026-09-29-cobros/);
+  assert.match(found[0].detail, /RONDA-1/);
+  assert.match(found[0].detail, /2 pendiente/);
+  assert.match(found[0].action, /retomar con \/specture:start/);
+
+  for (const estado of ["PREPARANDO", "RONDA-2"]) {
+    assert.equal(reviewFindings(reviewProject({ estado })).filter((f) => f.check === "review-open").length, 1, estado);
+  }
+  for (const estado of ["CERRADA", "EJECUTADA"]) {
+    assert.deepEqual(reviewFindings(reviewProject({ estado })).filter((f) => f.check === "review-open"), [], estado);
+  }
+});
+
+test("review-scope-drift: a CERRADA register whose epic block or linked RN changed is a WARNING; [x] and parked epics are not", () => {
+  const edited = reviewRoadmap({ descriptions: { "2.2": "Cobrar la sesión al cerrarla, con seña." } });
+  const blockChanged = reviewFindings(reviewProject({ now: { roadmap: edited } }));
+  const drift = blockChanged.filter((f) => f.check === "review-scope-drift");
+  assert.equal(drift.length, 1, JSON.stringify(blockChanged));
+  assert.equal(drift[0].severity, "WARNING");
+  assert.equal(drift[0].file, REVIEW_FILE);
+  assert.match(drift[0].detail, /\b2\.2\b/);
+  assert.match(drift[0].detail, /[0-9a-f]{12} → [0-9a-f]{12}/);
+  assert.match(drift[0].action, /re-revisar ese epic antes de ejecutarlo/);
+
+  const ruleChanged = reviewFindings(reviewProject({ now: { requirements: reviewRequirements({ rn002: "Una sesión cancelada con menos de 48 h se cobra entera." }) } }));
+  assert.deepEqual(ruleChanged.filter((f) => f.check === "review-scope-drift").map((f) => f.detail.match(/epic (\S+)/)[1]), ["2.2"], JSON.stringify(ruleChanged));
+
+  // The checkbox and the `**Aparcado:**` line are bookkeeping, not scope: closing 2.1 is no drift.
+  const done = reviewFindings(reviewProject({ now: { roadmap: reviewRoadmap({ states: { "2.1": "x", "2.2": "x" }, descriptions: { "2.2": "Cobrar la sesión al cerrarla, con seña." } }) } }));
+  assert.deepEqual(done.filter((f) => f.check === "review-scope-drift"), [], "2.2 is [x]");
+  const parked = reviewFindings(reviewProject({ now: { roadmap: reviewRoadmap({ parked: { "2.2": PARKED }, descriptions: { "2.2": "Cobrar la sesión al cerrarla, con seña." } }) } }));
+  assert.deepEqual(parked.filter((f) => f.check === "review-scope-drift"), [], "2.2 is parked");
+
+  // A register closed without the SCOPE of one of its epics cannot be compared: said, not skipped.
+  const missing = createProject({ ...CLEAN, "docs/04-roadmap/ROADMAP.md": reviewRoadmap(), "docs/01-requirements/business_requirements.md": reviewRequirements(), [REVIEW_FILE]: batchRegister({ scope: scopeAt(reviewRoadmap(), reviewRequirements(), ["2.1", "2.2"]) }) });
+  const noScope = reviewFindings(missing).filter((f) => f.check === "review-scope-drift");
+  assert.equal(noScope.length, 1, JSON.stringify(noScope));
+  assert.match(noScope[0].detail, /epic 2\.3 .*sin línea SCOPE/);
+  assert.match(noScope[0].action, /review\.js scope-hash --epic 2\.3/);
+
+  // An open register records no SCOPE yet: no drift is judged before it closes.
+  assert.deepEqual(reviewFindings(reviewProject({ estado: "RONDA-2", now: { roadmap: edited } })).filter((f) => f.check === "review-scope-drift"), []);
+});
+
+test("epic-parked: an epic [ ] with an `**Aparcado:**` line is an INFO naming its class and reason", () => {
+  const found = reviewFindings(reviewProject({ now: { roadmap: reviewRoadmap({ parked: { "2.3": PARKED } }) } }));
+  const parked = found.filter((f) => f.check === "epic-parked");
+  assert.equal(parked.length, 1, JSON.stringify(found));
+  assert.equal(parked[0].severity, "INFO");
+  assert.equal(parked[0].file, "docs/04-roadmap/ROADMAP.md");
+  assert.match(parked[0].detail, /epic 2\.3/);
+  assert.match(parked[0].detail, /decisión pendiente: datos — retención del recibo/);
+  assert.match(parked[0].detail, /2026-09-29-cobros/);
+  assert.match(parked[0].action, /sesión de revisión/);
+  assert.deepEqual(found.filter((f) => f.check === "parked-orphan"), [], "its batch has a register");
+});
+
+test("parked-orphan: `**Aparcado:**` on an epic [/] or [x], naming a batch without register, or without batch, is a WARNING", () => {
+  const cases = [
+    ["epic [/]", { states: { "2.2": "/" }, parked: { "2.2": PARKED } }, /\[\/\]/],
+    ["epic [x]", { states: { "2.2": "x" }, parked: { "2.2": PARKED } }, /\[x\]/],
+    ["unknown batch", { parked: { "2.2": "2026-09-30T10:00:00-03:00 — datos — retención — tanda 2026-01-01-fantasma" } }, /2026-01-01-fantasma/],
+    ["no batch", { parked: { "2.2": "2026-09-30T10:00:00-03:00 — datos — retención del recibo" } }, /no nombra su tanda/]
+  ];
+  for (const [label, roadmapOptions, detail] of cases) {
+    const found = reviewFindings(reviewProject({ now: { roadmap: reviewRoadmap(roadmapOptions) } }));
+    const orphan = found.filter((f) => f.check === "parked-orphan");
+    assert.equal(orphan.length, 1, `${label}: ${JSON.stringify(found)}`);
+    assert.equal(orphan[0].severity, "WARNING", label);
+    assert.equal(orphan[0].file, "docs/04-roadmap/ROADMAP.md", label);
+    assert.match(orphan[0].detail, /epic 2\.2/, label);
+    assert.match(orphan[0].detail, detail, label);
+    assert.ok(orphan[0].action.length > 0, label);
+  }
+  // Only a `[ ]` epic is parked: the INFO does not fire for [/] or [x].
+  const done = reviewFindings(reviewProject({ now: { roadmap: reviewRoadmap({ states: { "2.2": "x" }, parked: { "2.2": PARKED } }) } }));
+  assert.deepEqual(done.filter((f) => f.check === "epic-parked"), []);
+  // A parked epic of a project that never opened a review: its batch has no register.
+  const noReviews = createProject({ ...CLEAN, "docs/04-roadmap/ROADMAP.md": reviewRoadmap({ parked: { "2.3": PARKED } }), "docs/01-requirements/business_requirements.md": reviewRequirements() });
+  assert.equal(reviewFindings(noReviews).filter((f) => f.check === "parked-orphan").length, 1);
+});
+
+test("review-malformed: a register without ID / ESTADO / EPICS, or a file outside the naming, is a WARNING", () => {
+  const broken = "# Revisión de tanda — cobros\n\n- REGULATORIOS: (ninguno)\n\n## AGENDA\n### Ronda 1\n- A-1 — 2.2 — sin respuesta\n";
+  const projectRoot = reviewProject({ extra: { "docs/05-specs/_reviews/2026-09-30-rota.md": broken, "docs/05-specs/_reviews/notas-sueltas.md": "# notas\n" } });
+  const { status, json } = runDoctor(projectRoot);
+  const found = json.findings.filter((f) => f.check === "review-malformed");
+  assert.equal(status, 0);
+  assert.equal(found.length, 2, JSON.stringify(json.findings));
+  assert.ok(found.every((f) => f.severity === "WARNING" && f.group === "review"));
+  const rota = found.find((f) => f.file === "docs/05-specs/_reviews/2026-09-30-rota.md");
+  assert.ok(rota, JSON.stringify(found));
+  for (const field of ["ID", "ESTADO", "EPICS"]) assert.match(rota.detail, new RegExp(`- ${field}:`), field);
+  assert.match(rota.detail, /línea A-n mal formada/);
+  assert.match(rota.action, /BATCH_REVIEW_TEMPLATE\.md/);
+  assert.match(rota.action, /review\.js status/, "it is the current register: status answers UNVERIFIABLE");
+  const loose = found.find((f) => f.file === "docs/05-specs/_reviews/notas-sueltas.md");
+  assert.ok(loose, JSON.stringify(found));
+  assert.match(loose.detail, /<YYYY-MM-DD>-<slug>\.md/);
+  // A malformed current register hides the batch: review-open is not judged over a register
+  // whose ESTADO cannot be read.
+  assert.deepEqual(json.findings.filter((f) => f.check === "review-open"), []);
 });
 
 test("--brief prints a one-line summary", () => {

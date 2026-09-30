@@ -30,6 +30,14 @@
 //   plus `effort` ({<agent>: <level>}, not numeric — carried, never averaged).
 // `validator_dispatches` counts gate dispatches only; the correction-loop ones (`— loop`,
 // legacy `(loop de corrección)`) go to `validator_dispatches_loop`.
+// Additive fields (v2.3.0, review stage — skills/build/REVIEW_STAGE.md): `batch_id` (string: the
+//   review register's ID), the six figures of the register's `## MÉTRICAS` line — review_rounds,
+//   review_questions, review_filtered, review_human_contacts, late_questions, premises_false —
+//   and, per epic, `parked` (numeric) and `park_class` (string, carried). The six belong to the
+//   batch, not to the epic: every epic line of a batch may repeat them, so they are counted once
+//   per `batch_id` (the first line of the batch that carries each one) — averaged per batch and
+//   totalled in `review_totals`. R1 ("el planner no pregunta") counts open_questions + the
+//   batch's review_questions on a line that carries `batch_id`.
 
 const fs = require("fs");
 const path = require("path");
@@ -48,8 +56,12 @@ const NUMERIC = [
   // v2.2.0
   "gate_rounds", "gate_human_contacts", "exec_human_contacts", "planner_redispatch_after_approved",
   "validator_dispatches_loop", "planner_dispatches_loop", "supersede_loops", "supersede_tests", "j9_regressions",
-  "exec_blocked_compile", "exec_blocked_runtime", "baseline_failures", "late_findings"
+  "exec_blocked_compile", "exec_blocked_runtime", "baseline_failures", "late_findings",
+  // v2.3.0 — per epic
+  "parked"
 ];
+// v2.3.0 — per batch (one review register), read once per `batch_id`.
+const BATCH_FIELDS = ["review_rounds", "review_questions", "review_filtered", "review_human_contacts", "late_questions", "premises_false"];
 // Rounds of validation per epic from which the reading asks to review the validator's criterion.
 const GATE_ROUNDS_CEILING = 3;
 
@@ -95,13 +107,52 @@ function mean(values) {
   return nums.length === 0 ? null : Math.round((nums.reduce((a, b) => a + b, 0) / nums.length) * 100) / 100;
 }
 
+function isNumber(value) {
+  return typeof value === "number" && Number.isFinite(value);
+}
+
+function batchIdOf(entry) {
+  return typeof entry.batch_id === "string" && entry.batch_id.trim() !== "" ? entry.batch_id.trim() : null;
+}
+
+// batch_id → {field: value} with the first value each BATCH_FIELDS field takes in the batch.
+function batchFigures(entries) {
+  const batches = new Map();
+  for (const e of entries) {
+    const id = batchIdOf(e);
+    if (id === null) continue;
+    const figures = batches.get(id) || {};
+    for (const key of BATCH_FIELDS) if (!(key in figures) && isNumber(e[key])) figures[key] = e[key];
+    batches.set(id, figures);
+  }
+  return batches;
+}
+
+// Questions asked for an epic: open_questions, plus its batch's review_questions when the line
+// carries batch_id (the review stage asked them before the epic ran). null when neither is known.
+function askedQuestions(entry, batches) {
+  const id = batchIdOf(entry);
+  if (id === null) return isNumber(entry.open_questions) ? entry.open_questions : null;
+  return sumOrNull([entry.open_questions, batches.get(id).review_questions]);
+}
+
 function aggregate(entries) {
   const out = { count: entries.length };
   for (const key of NUMERIC) out[key] = mean(entries.map((e) => e[key]));
   out.review_major = mean(entries.map((e) => e.review_rejections && e.review_rejections.major));
   out.review_minor = mean(entries.map((e) => e.review_rejections && e.review_rejections.minor));
-  const withQuestions = entries.filter((e) => typeof e.open_questions === "number");
-  out.zero_question_share = withQuestions.length === 0 ? null : Math.round((withQuestions.filter((e) => e.open_questions === 0).length / withQuestions.length) * 100) / 100;
+  const batches = batchFigures(entries);
+  out.batches = batches.size;
+  out.review_totals = {};
+  for (const key of BATCH_FIELDS) {
+    const values = [...batches.values()].map((b) => b[key]);
+    out[key] = mean(values);
+    out.review_totals[key] = sumOrNull(values);
+  }
+  // Review figures on a line without batch_id cannot be counted once per batch: left out, and said.
+  out.review_unbatched = entries.filter((e) => batchIdOf(e) === null && BATCH_FIELDS.some((k) => isNumber(e[k]))).length;
+  const asked = entries.map((e) => askedQuestions(e, batches)).filter((q) => q !== null);
+  out.zero_question_share = asked.length === 0 ? null : Math.round((asked.filter((q) => q === 0).length / asked.length) * 100) / 100;
   out.downstream_defects = mean(entries.map((e) => sumOrNull([e.needs_context_spec, e.iteration_cap_spec, e.blocked_spec])));
   out.tokens = mean(entries.map((e) => (e.tokens && typeof e.tokens === "object" ? (e.tokens.input || 0) + (e.tokens.output || 0) : null)));
   out.outcomes = entries.reduce((acc, e) => ({ ...acc, [e.outcome || "unknown"]: (acc[e.outcome || "unknown"] || 0) + 1 }), {});
@@ -125,7 +176,7 @@ function reading(gate, baseline) {
   const after = gate.downstream_defects;
   if (before !== null && after !== null) {
     if (after < before) notes.push(`Bajan needs_context/iteration_cap/blocked por epic (${before} → ${after}): el gate atrapa ambigüedad real — objetivo del release cumplido.`);
-    else if (gate.zero_question_share !== null && gate.zero_question_share >= 0.8) notes.push(`No bajan (${before} → ${after}) y open_questions ≈ 0 en el ${Math.round(gate.zero_question_share * 100)} % de los epics: el planner no pregunta (R1). Corregir el planner (criterio de escalado, escenarios 1 y 5), no agregar validación.`);
+    else if (gate.zero_question_share !== null && gate.zero_question_share >= 0.8) notes.push(`No bajan (${before} → ${after}) y ${gate.batches > 0 ? "preguntas (open_questions + review_questions de su tanda)" : "open_questions"} ≈ 0 en el ${Math.round(gate.zero_question_share * 100)} % de los epics: el planner no pregunta (R1). Corregir el planner (criterio de escalado, escenarios 1 y 5), no agregar validación.`);
     else notes.push(`No bajan (${before} → ${after}) aunque el planner pregunta: revisar los OPEN_QUESTIONS convertidos y los C7 antes de tocar el gate.`);
   }
   if (gate.reviewer_rejected_major_spec_defect !== null) {
@@ -139,6 +190,9 @@ function reading(gate, baseline) {
   }
   if (typeof gate.gate_rounds === "number" && gate.gate_rounds >= GATE_ROUNDS_CEILING) {
     notes.push(`gate_rounds ≥ ${GATE_ROUNDS_CEILING} sostenido (${gate.gate_rounds} por epic): revisar criterio del validador antes de agregar validación.`);
+  }
+  if (gate.review_unbatched > 0) {
+    notes.push(`${gate.review_unbatched} línea(s) con métricas de revisión (review_*) sin batch_id: no se cuentan por tanda ni suman a R1 — el coordinador escribe batch_id en cada epic de una tanda revisada.`);
   }
   if (gate.tokens !== null && baseline.tokens !== null) {
     notes.push(gate.tokens > baseline.tokens ? `Tokens por epic suben (${baseline.tokens} → ${gate.tokens}): si los defectos bajan menos de lo que cuesta, ajustar 4a (más fast path mecánico) antes de tocar el gate.` : `Tokens por epic no suben (${baseline.tokens} → ${gate.tokens}).`);
@@ -161,15 +215,19 @@ function renderSummary(result) {
   const out = [];
   out.push(`metrics-report: ${result.file} — ${result.total} epic(s)${result.shown !== result.total ? `, showing last ${result.shown}` : ""}${result.skipped ? `, ${result.skipped} malformed line(s) skipped` : ""}`);
   out.push("");
-  out.push("epic | source | specs | Q | R | c7 | mech | val | rnd | nctx | cap | blk | spec_def | rej m/M | sup | sup-loop | outcome");
+  // `rev` = the line's review_questions (its batch's figure; the aggregate counts it once per batch).
+  out.push("epic | source | specs | Q | rev | R | c7 | mech | val | rnd | nctx | cap | blk | spec_def | rej m/M | sup | sup-loop | outcome");
   for (const e of result.entries) {
     const v = (x) => (x === null || x === undefined ? "-" : x);
     const rr = e.review_rejections || {};
-    out.push(`${e.epic} | ${e.source || "gate"} | ${v(e.specs)} | ${v(e.open_questions)} | ${v(e.resolved_alone)} | ${v(e.c7_rejections)} | ${v(e.mech_check_failures)} | ${v(e.validator_dispatches)} | ${v(e.gate_rounds)} | ${v(e.needs_context_spec)} | ${v(e.iteration_cap_spec)} | ${v(e.blocked_spec)} | ${v(e.reviewer_rejected_major_spec_defect)} | ${v(rr.minor)}/${v(rr.major)} | ${v(e.supersessions)} | ${v(e.supersede_loops)} | ${v(e.outcome)}`);
+    out.push(`${e.epic} | ${e.source || "gate"} | ${v(e.specs)} | ${v(e.open_questions)} | ${v(e.review_questions)} | ${v(e.resolved_alone)} | ${v(e.c7_rejections)} | ${v(e.mech_check_failures)} | ${v(e.validator_dispatches)} | ${v(e.gate_rounds)} | ${v(e.needs_context_spec)} | ${v(e.iteration_cap_spec)} | ${v(e.blocked_spec)} | ${v(e.reviewer_rejected_major_spec_defect)} | ${v(rr.minor)}/${v(rr.major)} | ${v(e.supersessions)} | ${v(e.supersede_loops)} | ${v(e.outcome)}`);
   }
   out.push("");
   for (const [label, agg] of [["gate", result.gate], ["baseline", result.baseline]]) {
     out.push(`${label}: ${agg.count} epic(s) · defectos aguas abajo/epic ${agg.downstream_defects ?? "-"} · spec_defect/epic ${agg.reviewer_rejected_major_spec_defect ?? "-"} · open_questions=0 en ${agg.zero_question_share === null ? "-" : Math.round(agg.zero_question_share * 100) + " %"} · c7/epic ${agg.c7_rejections ?? "-"} · tokens/epic ${agg.tokens ?? "-"}`);
+    if (agg.batches > 0) {
+      out.push(`${label} revisión: ${agg.batches} tanda(s) · preguntas/tanda ${agg.review_questions ?? "-"} (total ${agg.review_totals.review_questions ?? "-"}) · filtradas/tanda ${agg.review_filtered ?? "-"} · contactos/tanda ${agg.review_human_contacts ?? "-"} · late/tanda ${agg.late_questions ?? "-"} · premisas falsas/tanda ${agg.premises_false ?? "-"} · aparcados/epic ${agg.parked ?? "-"}`);
+    }
   }
   out.push("");
   out.push("Lectura (§6.5):");
@@ -303,6 +361,16 @@ function reconstructEpic(projectRoot, epicSlug, epicState, commits, gitOk, plugi
     exec_blocked_runtime: null,
     baseline_failures: null,
     late_findings: null,
+    // v2.3.0 review-stage fields: the epic ran before any batch review.
+    batch_id: null,
+    review_rounds: null,
+    review_questions: null,
+    review_filtered: null,
+    review_human_contacts: null,
+    late_questions: null,
+    parked: null,
+    park_class: null,
+    premises_false: null,
     outcome: epicState === "done" ? "DONE" : epicState === "in-progress" ? "ESCALATED" : "unknown",
     tokens: null
   };
