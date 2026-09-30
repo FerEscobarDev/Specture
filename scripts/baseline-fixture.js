@@ -3,8 +3,17 @@
 // (docs/spec-planning-baseline.md — stage 1; docs/spec-planning-baseline-stage2.md — stage 2),
 // so the RED/GREEN scenarios can be re-run instead of recreated from prose.
 //
-//   node scripts/baseline-fixture.js <dir> [--stage 1|2|3|4] [--git] [--force]
+//   node scripts/baseline-fixture.js <dir> [--stage 1|2|3|4|5] [--git] [--force]
 //
+//   --stage 5            the stage-5 fixture (docs/review-stage-baseline.md, v2.3.0): the stage-4
+//                        tree with Epic 1.4 finished (GREEN applied, its PDF test superseded, the
+//                        whole suite green), the gate baits 1.5-1.8 removed, and a new Milestone 2
+//                        whose three epics (2.1 Baja de empleados — regulatory —, 2.2 Descarga de
+//                        archivos — independent —, 2.3 Página "Bajas de empleados" — consumes 2.1)
+//                        are the batch the review stage takes, with no review register yet. The
+//                        old Milestones 2/3 become 3/4. The baits (a)-(f) of the plan are listed
+//                        by the hints only; nothing in the tree names them. With --git: a base
+//                        commit plus the bookkeeping one that records Epic 1.4's SUPERSEDE_SHA.
 //   --stage 4            the stage-4 fixture (docs/gate-convergence-baseline.md, v2.2.0): the stage-3
 //                        tree with Epic 1.1 closed on REAL code and `node:test` tests (no npm
 //                        dependencies; `npm test` = `node --test tests/all.test.js`, an aggregator that
@@ -28,7 +37,7 @@
 //   --stage 1            the stage-1 fixture derived from it: only Epics 1.1/1.2, 4-operation
 //                        contract, RN-001 deliberately ambiguous, RN-002 as bait, no hand-written
 //                        specs, no existing code (the planner authors the specs in those scenarios).
-//   --git                git init + one commit (stage 4: five), so SPEC_SHA / RED_SHA scenarios have real history.
+//   --git                git init + one commit (stage 4: five; stage 5: two), so SPEC_SHA / RED_SHA scenarios have real history.
 //   --force              write into a non-empty directory.
 //
 // The generated project is a USER project (not the framework): `.specture/settings.yml` gets the
@@ -46,7 +55,7 @@ const PLUGIN_VERSION = JSON.parse(fs.readFileSync(path.resolve(__dirname, "..", 
 
 function usage(message) {
   if (message) process.stderr.write(`baseline-fixture: ${message}\n`);
-  process.stderr.write("usage: node scripts/baseline-fixture.js <dir> [--stage 1|2|3|4] [--git] [--force]\n");
+  process.stderr.write("usage: node scripts/baseline-fixture.js <dir> [--stage 1|2|3|4|5] [--git] [--force]\n");
   process.exit(2);
 }
 
@@ -62,7 +71,7 @@ function parseArgs(argv) {
     else usage(`unexpected argument ${a}`);
   }
   if (!args.dir) usage("missing <dir>");
-  if (![1, 2, 3, 4].includes(args.stage)) usage("--stage must be 1, 2, 3 or 4");
+  if (![1, 2, 3, 4, 5].includes(args.stage)) usage("--stage must be 1, 2, 3, 4 or 5");
   return args;
 }
 
@@ -1157,6 +1166,258 @@ function stage4History(files) {
   ];
 }
 
+// ---------------------------------------------------------------------------
+// Stage 5 — review-stage probes (docs/review-stage-baseline.md, v2.3.0)
+// ---------------------------------------------------------------------------
+
+const STAGE5_BATCH = ["2.1", "2.2", "2.3"];
+const STAGE5_TIMES = { base: "2026-09-29T09:00:00-03:00", bookkeeping: "2026-09-29T09:10:00-03:00" };
+const STAGE5_PLANNING_14 = `${STAGE4_EPIC}/_planning.md`;
+const PDF_SUPERSEDE = "tests/archivos/limits.test.js::validateSize rechaza un PDF de 10 MB + 1 byte";
+const STAGE4_BAIT_SPEC_DIRS = ["epic-1.5-clave", "epic-1.6-dedup", "epic-1.7-tipo", "epic-1.8-texto"];
+// R6: what the gate of 2.1 leaves on the block of 2.2 at its turn — outside the SCOPE hash, and a
+// personal-data decision about 2.2's own operation that no source nor the register settles.
+const STAGE5_R6_DIFERIDO =
+  "  - **Diferidos heredados:** `descargarArchivo` registra cada descarga en la auditoría del dueño: qué datos guarda el evento (¿IP?, ¿dispositivo?) y cuánto se conservan — de Epic 2.1 (dispatch 1)";
+
+// `_planning.md` of Epic 1.4 once closed: the loop superseded the PDF test (rewritten to 25 MB,
+// J9 = SÍ by BR-1). `commit` is its SUPERSEDE_SHA — `pendiente` until --git records it.
+function epic14ClosedPlanning(commit) {
+  const [supPath, supTest] = PDF_SUPERSEDE.split("::");
+  return planningDoc("epic-1.4-cuota", {
+    table: ["- op: subirArchivo → 01-cuota-por-tipo (implementa)", "- br: RN-007 → 01-cuota-por-tipo [BR-1]", `- sup: ${supPath}::${supTest} → 01-cuota-por-tipo (BR-1)`],
+    resolved: ['- R-1 — el tope se mide sobre el tamaño decodificado — fuente: RN-001 — cita: "Un archivo pesa como máximo"'],
+    supersessions: [`- ${PDF_SUPERSEDE} — motivo: BR-1 — spec: 01-cuota-por-tipo — commit: ${commit} — loop: runtime — j9: SÍ — acción: reescribir`],
+    mechAt: STAGE4_TIMES.mech,
+    tail: (hash) => approvedVerdict(`ronda 1 — ${STAGE4_TIMES.verdict}`, hash)
+  });
+}
+
+// `limits.js` after the GREEN of Epic 1.4 (RN-007): the cap depends on the type.
+function limitsGreen() {
+  return source([
+    "'use strict';",
+    "// Límites de subida — Epic 1.1 (RN-001) y Epic 1.4 (RN-007): tipos permitidos y tamaño máximo por tipo.",
+    "",
+    "const { ValidationError } = require('./validation-error');",
+    "",
+    "const MB = 1024 * 1024;",
+    "const MAX_FILE_MB = 10;",
+    "const MAX_PDF_MB = 25;",
+    "const ALLOWED_TYPES = ['application/pdf', 'image/png', 'image/jpeg'];",
+    "",
+    "function validateType(tipo) {",
+    "  if (!ALLOWED_TYPES.includes(tipo)) throw new ValidationError(`tipo no permitido: ${tipo}`);",
+    "  return tipo;",
+    "}",
+    "",
+    "function maxBytesFor(tipo) {",
+    "  return (tipo === 'application/pdf' ? MAX_PDF_MB : MAX_FILE_MB) * MB;",
+    "}",
+    "",
+    "function validateSize(bytes, tipo) {",
+    "  if (!Number.isInteger(bytes) || bytes < 0) throw new ValidationError('tamaño inválido');",
+    "  if (bytes > maxBytesFor(tipo)) throw new ValidationError(`${tipo} de más de ${maxBytesFor(tipo) / MB} MB`);",
+    "  return bytes;",
+    "}",
+    "",
+    "module.exports = { MB, MAX_FILE_MB, MAX_PDF_MB, ALLOWED_TYPES, maxBytesFor, validateType, validateSize };"
+  ]);
+}
+
+// One ROADMAP epic block in the template's field order.
+function epicBlock(id, title, fields) {
+  return [`- [ ] **Epic ${id}:** ${title}`, ...fields.map(([label, value]) => `  - **${label}:** ${value}`)].join("\n");
+}
+
+const STAGE5_MILESTONE = [
+  "### Milestone 2: Bajas y descargas",
+  "*Objetivo:* RRHH da de baja a quien deja la empresa sin conservar sus datos personales más de lo necesario; cada empleado descarga sus archivos.",
+  "",
+  epicBlock("2.1", "Baja de empleados", [
+    ["Dependencias", "Epic 1.1"],
+    [
+      "Descripción",
+      "RRHH da de baja a un empleado que deja la empresa. Desde su fecha de egreso el empleado ya no opera sobre su archivador; sus archivos pasan al mismo borrado lógico que hoy usa `eliminarArchivo` (quedan ocultos y sus bytes se conservan) y se eliminan de forma definitiva al vencer el plazo de conservación."
+    ],
+    ["Reglas de negocio clave", "RN-013, RN-014"],
+    ["Componentes de arquitectura involucrados", "Empleados, Archivos"],
+    ["Operaciones del contrato", "`darDeBajaEmpleado`"],
+    ["Specs estimados", "2"]
+  ]),
+  "",
+  epicBlock("2.2", "Descarga de archivos", [
+    ["Dependencias", "Epic 1.1"],
+    ["Descripción", "El empleado descarga un archivo propio y recibe los bytes originales con el nombre con que lo subió. Como hoy `eliminarArchivo`, busca el archivo por id y dueño: un archivo ajeno responde igual que uno inexistente."],
+    ["Reglas de negocio clave", "RN-012"],
+    ["Componentes de arquitectura involucrados", "Archivos"],
+    ["Operaciones del contrato", "`descargarArchivo`"],
+    ["Specs estimados", "1"]
+  ]),
+  "",
+  epicBlock("2.3", 'Página "Bajas de empleados"', [
+    ["Dependencias", "Epic 2.1"],
+    ["Descripción", "Pantalla de RRHH para dar de baja a un empleado (fecha de egreso y motivo), consumiendo el cliente tipado generado del contrato."],
+    ["Reglas de negocio clave", "RN-013"],
+    ["Componentes de arquitectura involucrados", "App web"],
+    ["Operaciones del contrato", "`darDeBajaEmpleado` (consume)"],
+    ["Specs estimados", "1"]
+  ]),
+  "",
+  ""
+].join("\n");
+
+const ADR_002 = source([
+  "# ADR-002: La identidad la resuelve el gateway corporativo",
+  "",
+  "**Status:** Accepted · **Fecha:** 2026-08-20",
+  "",
+  "## Contexto",
+  "Archivador vive detrás del gateway corporativo, que ya autentica a cada empleado contra el directorio de la empresa.",
+  "",
+  "## Decisión",
+  "El API no autentica: confía en el header `X-Employee-Id` que el gateway inyecta en cada request (R-1). No guarda contraseñas, sesiones ni tokens propios.",
+  "",
+  "## Consecuencias",
+  "Sin pantallas de login ni de recuperación de contraseña en Archivador; el alta y la baja de credenciales son del directorio corporativo."
+]);
+
+// Stage 5 = the stage-4 tree with Epic 1.4 closed (GREEN + the supersession of the PDF test),
+// the gate baits 1.5-1.8 removed, and the batch of Milestone 2 (Epics 2.1-2.3) pending with the
+// sources a review needs: RN-012..RN-014, HU-RH-001, two new operations, the Empleados component,
+// the RRHH screen and ADR-002. The old Milestones 2 and 3 are renumbered 3 and 4.
+function stage5Files(files) {
+  const out = {};
+  for (const [rel, text] of Object.entries(files)) {
+    if (STAGE4_BAIT_SPEC_DIRS.some((d) => rel.startsWith(`docs/05-specs/${d}/`))) continue;
+    out[rel.replace("docs/05-specs/epic-3.1-mis-archivos/", "docs/05-specs/epic-4.1-mis-archivos/")] = text;
+  }
+  for (const rel of Object.keys(out).filter((r) => r.startsWith("docs/05-specs/epic-4.1-mis-archivos/"))) {
+    out[rel] = out[rel].replace(/epic-3\.1-mis-archivos/g, "epic-4.1-mis-archivos").replace(/Epic 3\.1\b/g, "Epic 4.1");
+  }
+
+  // Epic 1.4 closed: GREEN in limits.js, the PDF test rewritten to 25 MB, the supersession registered.
+  out["archivador_api/src/archivos/limits.js"] = limitsGreen();
+  out["tests/archivos/limits.test.js"] = out["tests/archivos/limits.test.js"]
+    .replace("// Epic 1.1 — límites de subida (RN-001).", "// Epic 1.1 — límites de subida (RN-001); el tope de PDF lo fija Epic 1.4 (RN-007).")
+    .replace("'validateSize rechaza un PDF de 10 MB + 1 byte'", "'validateSize rechaza un PDF de 25 MB + 1 byte'")
+    .replace("validateSize(10 * MB + 1, 'application/pdf')", "validateSize(25 * MB + 1, 'application/pdf')");
+  out["tests/archivos/quota.test.js"] = out["tests/archivos/quota.test.js"].replace("Cuota por tipo (RED):", "Cuota por tipo:");
+  out[`${STAGE4_EPIC}/01-cuota-por-tipo.spec.md`] = out[`${STAGE4_EPIC}/01-cuota-por-tipo.spec.md`].replace(FALSE_SUPERSEDE.split("::")[1], PDF_SUPERSEDE.split("::")[1]);
+  out[STAGE5_PLANNING_14] = epic14ClosedPlanning("pendiente");
+
+  out["docs/04-roadmap/ROADMAP.md"] = out["docs/04-roadmap/ROADMAP.md"]
+    .replace("- [/] **Epic 1.4:**", "- [x] **Epic 1.4:**")
+    .replace(/\n- \[ \] \*\*Epic 1\.5:\*\*[\s\S]*?(?=\n### Milestone 2:)/, "")
+    .replace("### Milestone 3: App web\n*Objetivo:* primera página de la SPA.", '### Milestone 4: App web\n*Objetivo:* la página "Mis archivos" de la SPA.')
+    .replace('- [ ] **Epic 3.1:** Página "Mis archivos"', '- [ ] **Epic 4.1:** Página "Mis archivos"')
+    .replace("### Milestone 2: Modernización del módulo tags", `${STAGE5_MILESTONE}### Milestone 3: Modernización del módulo tags`)
+    .replace("- [ ] **Epic 2.1:** Migración de `tags`", "- [ ] **Epic 3.1:** Migración de `tags`");
+
+  out["docs/01-requirements/business_requirements.md"] = out["docs/01-requirements/business_requirements.md"]
+    .replace(/^- \*\*RN-0(?:08|09|10|11):\*\*.*\n/gm, "")
+    .replace(/^(- \*\*Empleado\*\* — .*)$/m, "$1\n- **RRHH** — da de baja a los empleados que dejan la empresa.")
+    .replace(/^(- \*\*HU-ETQ-001:\*\*.*)$/m, "$1\n- **HU-RH-001:** Como responsable de RRHH quiero dar de baja a un empleado que deja la empresa para que deje de operar sobre su archivador · Actor: RRHH · Exposición: `UI`")
+    .replace(/^(- \*\*HU-ETQ-001\*\* — .*)$/m, "$1\n- **HU-RH-001** — consumidor: app web — dar de baja a un empleado")
+    .replace(
+      /^(- \*\*RN-012:\*\*.*)$/m,
+      [
+        "$1",
+        "- **RN-013:** RRHH da de baja a un empleado que deja la empresa registrando su fecha de egreso y un motivo; desde la fecha de egreso el empleado ya no puede operar sobre su archivador.",
+        "- **RN-014:** Los archivos de un empleado dado de baja son datos personales: al vencer el plazo de conservación, contado desde su fecha de egreso, se eliminan de forma definitiva, bytes incluidos (derecho de supresión de la ley de protección de datos personales)."
+      ].join("\n")
+    )
+    .replace(/^(- \*\*Clave de almacenamiento\*\* — .*)$/m, "$1\n- **Fecha de egreso** — último día de un empleado en la empresa; la registra RRHH al darlo de baja.");
+
+  out["docs/02-architecture/architecture.md"] = out["docs/02-architecture/architecture.md"]
+    .replace("- **Responsabilidad:** subida, listado y baja de archivos por empleado (RN-001, RN-006).", "- **Responsabilidad:** subida, listado, descarga y baja de archivos por empleado (RN-001, RN-006, RN-012).")
+    .replace(
+      "\n## Identidad",
+      [
+        "",
+        "### Empleados",
+        "- **Responsabilidad:** bajas de empleados: fecha de egreso, motivo y fin del acceso al archivador (RN-013); supresión de sus archivos al vencer el plazo de conservación (RN-014).",
+        "- **Carpeta raíz:** `archivador_api/`",
+        "- **Ubicación:** `archivador_api/src/empleados/`",
+        "",
+        "## Identidad"
+      ].join("\n")
+    )
+    .replace("Todo request lleva `X-Employee-Id` (conventions §12 R-1).", "Todo request lleva `X-Employee-Id`, que inyecta el gateway corporativo (ADR-002; conventions §12 R-1).")
+    .replace("`TITULO_DUPLICADO` (409), `LIMITE_ETIQUETAS` (409).", "`SIN_PERMISO` (403), `TITULO_DUPLICADO` (409), `LIMITE_ETIQUETAS` (409), `EMPLEADO_YA_DADO_DE_BAJA` (409).");
+
+  const envelope = (code) => `        "${code}": { content: { application/json: { schema: { $ref: "#/components/schemas/ErrorEnvelope" } } } }`;
+  out["docs/02-architecture/api-contract.openapi.yaml"] =
+    out["docs/02-architecture/api-contract.openapi.yaml"]
+      .replace(
+        "paths:\n",
+        [
+          "    Baja:",
+          "      type: object",
+          "      properties: { empleadoId: { type: string }, fechaEgreso: { type: string, format: date }, motivo: { type: string }, registradaEn: { type: string, format: date-time } }",
+          "paths:",
+          ""
+        ].join("\n")
+      )
+      .replace(
+        "  /archivos/{id}/etiquetas:\n",
+        [
+          "  /archivos/{id}/contenido:",
+          "    get:",
+          "      operationId: descargarArchivo",
+          '      parameters: [ { $ref: "#/components/parameters/EmployeeId" }, { name: id, in: path, required: true, schema: { type: string } } ]',
+          "      responses:",
+          '        "200": { description: el archivo }',
+          envelope(401),
+          envelope(404),
+          "  /archivos/{id}/etiquetas:",
+          ""
+        ].join("\n")
+      )
+      .trimEnd() +
+    "\n" +
+    source([
+      "  /empleados/{empleadoId}/baja:",
+      "    post:",
+      "      operationId: darDeBajaEmpleado",
+      '      parameters: [ { $ref: "#/components/parameters/EmployeeId" }, { name: empleadoId, in: path, required: true, schema: { type: string } } ]',
+      "      requestBody: { content: { application/json: { schema: { type: object, required: [fechaEgreso, motivo], properties: { fechaEgreso: { type: string, format: date }, motivo: { type: string } } } } } }",
+      "      responses:",
+      '        "201": { content: { application/json: { schema: { $ref: "#/components/schemas/Baja" } } } }',
+      ...[400, 401, 403, 409].map(envelope)
+    ]);
+  out["docs/02-architecture/api-contract.md"] = out["docs/02-architecture/api-contract.md"]
+    .replace(/^(\| `eliminarArchivo` \|.*)$/m, "$1\n| `descargarArchivo` | GET /archivos/{id}/contenido | — | 200 el archivo · 404 `ARCHIVO_NO_ENCONTRADO` · 401 |")
+    .replace(
+      /^(\| `crearNota` \|.*)$/m,
+      "$1\n| `darDeBajaEmpleado` | POST /empleados/{empleadoId}/baja | `{ fechaEgreso, motivo }` | 201 `Baja` · 400 `VALIDATION_ERROR` · 401 · 403 `SIN_PERMISO` · 409 `EMPLEADO_YA_DADO_DE_BAJA` |"
+    )
+    .replace(/^(- HU-ARC-001 → .*)$/m, "$1 · HU-ARC-004 → `descargarArchivo` · HU-RH-001 → `darDeBajaEmpleado`");
+
+  out["docs/03-ux-ui/navigation_map.md"] = out["docs/03-ux-ui/navigation_map.md"]
+    .replace(/^(\| `\/archivos` \| Mis archivos \|.*)$/m, "$1\n| `/rrhh/bajas` | Bajas de empleados | `rol:rrhh` | `darDeBajaEmpleado` | `cargando`, `error`, `sin-permiso` |")
+    .replace(
+      "\n## 3. Flujos críticos",
+      [
+        "",
+        "### `/rrhh/bajas` — Bajas de empleados",
+        "- **Propósito:** RRHH registra la baja de un empleado que deja la empresa.",
+        "- **Elementos clave:** formulario con el id del empleado, la fecha de egreso y el motivo; confirmación antes de enviar.",
+        "- **Historias de usuario:** HU-RH-001",
+        "- **Contenido real:** la confirmación repite el id del empleado y la fecha de egreso.",
+        "",
+        "## 3. Flujos críticos"
+      ].join("\n")
+    )
+    .replace("[Login] → [Mis archivos]", "[Login] → [Mis archivos]\n[Login] → [Bajas de empleados] → [Confirmación]");
+  out["docs/03-ux-ui/design_system.md"] = out["docs/03-ux-ui/design_system.md"].replace(
+    /^(\| `TipoArchivoBadge` \|.*)$/m,
+    "$1\n| `TextField` | primitive | formulario de `/rrhh/bajas` | `pending` |\n| `ConfirmDialog` | composite | confirmación de la baja en `/rrhh/bajas` | `pending` |"
+  );
+  out[".specture/decisions/002-identidad-en-el-gateway.md"] = ADR_002;
+  return out;
+}
+
 function write(dir, files) {
   for (const [rel, text] of Object.entries(files)) {
     const abs = path.join(dir, ...rel.split("/"));
@@ -1173,9 +1434,8 @@ function gitInit(dir, stage) {
   return execFileSync("git", ["rev-parse", "--short", "HEAD"], { cwd: dir, encoding: "utf8" }).trim();
 }
 
-// Writes and commits the stage-4 history (base → lock → plan → verdict → RED). Fixed author and
-// dates, so the same plugin version always yields the same SHAs. → { commits, base, lock, plan, tree, verdict, red }
-function gitHistory4(dir, files) {
+// `git` with a fixed author and a fixed date per call (reproducible SHAs), and `rev-parse`.
+function datedGit(dir) {
   const git = (date, ...a) =>
     execFileSync("git", ["-c", "user.name=Fixture", "-c", "user.email=fixture@example.com", ...a], {
       cwd: dir,
@@ -1183,6 +1443,28 @@ function gitHistory4(dir, files) {
       env: { ...process.env, GIT_AUTHOR_DATE: date, GIT_COMMITTER_DATE: date }
     });
   const rev = (spec) => execFileSync("git", ["rev-parse", spec], { cwd: dir, encoding: "utf8" }).trim();
+  return { git, rev };
+}
+
+// Writes and commits the stage-5 tree, then the bookkeeping commit that fills the SUPERSEDE_SHA
+// of Epic 1.4 (the base commit is the one that rewrote the PDF test). → { commits, base, head }
+function gitHistory5(dir, files) {
+  const { git, rev } = datedGit(dir);
+  git(STAGE5_TIMES.base, "init", "-q", "-b", "master");
+  write(dir, files);
+  git(STAGE5_TIMES.base, "add", "-A");
+  git(STAGE5_TIMES.base, "commit", "-q", "-m", "chore: fixture Archivador (stage 5) — Milestone 1 cerrado, tanda 2.1-2.3 sin revisar");
+  const base = rev("HEAD");
+  write(dir, { [STAGE5_PLANNING_14]: epic14ClosedPlanning(base) });
+  git(STAGE5_TIMES.bookkeeping, "add", "--", STAGE5_PLANNING_14);
+  git(STAGE5_TIMES.bookkeeping, "commit", "-q", "-m", "docs(specs): epic-1.4-cuota — SUPERSEDE_SHA de la supersesión aplicada");
+  return { commits: 2, base, head: rev("HEAD") };
+}
+
+// Writes and commits the stage-4 history (base → lock → plan → verdict → RED). Fixed author and
+// dates, so the same plugin version always yields the same SHAs. → { commits, base, lock, plan, tree, verdict, red }
+function gitHistory4(dir, files) {
+  const { git, rev } = datedGit(dir);
   git(STAGE4_TIMES.base, "init", "-q", "-b", "master");
   const steps = stage4History(files);
   const shas = { commits: steps.length };
@@ -1239,9 +1521,53 @@ function stage4Hints(root, d, shas) {
   return out;
 }
 
-function scenarioHints(dir, stage, shas = null) {
+// 1-based line of the first line of `text` that contains `needle` (the premise citations).
+function lineOf(text, needle) {
+  const index = text.split("\n").findIndex((l) => l.includes(needle));
+  if (index === -1) throw new Error(`baseline-fixture: "${needle}" is not in the generated code`);
+  return index + 1;
+}
+
+function stage5Hints(root, d, files, shas) {
+  const api = "archivador_api/src/archivos";
+  const repo = files[`${api}/repository.js`];
+  const service = files[`${api}/service.js`];
+  const falsa = `${api}/repository.js:${lineOf(repo, "DELETE FROM archivos WHERE id = $1")}`;
+  const verificada = `${api}/repository.js:${lineOf(repo, "WHERE id = $1 AND employee_id = $2")}`;
+  const review = `node "${root}/hooks/lib/review.js"`;
+  const roadmap = `"${d}/docs/04-roadmap/ROADMAP.md"`;
+  return [
+    `Stage-5 probes (docs/review-stage-baseline.md) — etapa de revisión v2.3.0. Tanda: Epics ${STAGE5_BATCH.join(", ")} (Milestone 2: las tres primeras [ ] del ROADMAP, "ejecuta 3"); sin registro previo en docs/05-specs/_reviews/; suite verde (npm test: 20).`,
+    `  Registro al abrir: EPICS: ${STAGE5_BATCH.join(", ")} · REGULATORIOS: 2.1, 2.3 (datos personales: RN-014 y la pantalla de RRHH; 2.2 no). Correr con --git: R1 commitea borradores y registro.`,
+    "  R1  docs/05-specs/_reviews/<fecha>-<slug>.md  una sola AGENDA de ronda 1 agrupada por tema (roles, datos/ciclo de vida, contrato…), no un bloque por epic; cada A-n con su epic y su clase",
+    '  R2  Epic 2.1 (enlaza RN-013, RN-014; no RN-006 ni RN-012)  "¿RRHH puede ver, descargar o eliminar los archivos del empleado que da de baja?" → ## FILTRADAS: F-n resuelta por RN-006 — cita: "para cualquier otro empleado ese archivo no existe" (y RN-012 "Solo el dueño puede descargar un archivo"); no llega a la agenda',
+    "  R3  registro § POLÍTICAS  P-1…P-7, las siete con respuesta y fuente (conventions §13 solo fija W-3: P-6 rama se pregunta)",
+    '  R4  Epics 2.1/2.3, tema roles: a "¿cómo reconoce el API a RRHH?" responder "Ninguna de las opciones: que RRHH entre con usuario y contraseña propios de Archivador" → la Ronda 2 trae un ítem LATE que cita ADR-002 (Accepted: el API no autentica ni guarda contraseñas); la respuesta no queda persistida como regla sin resolverlo',
+    '  R5  Epic 2.1, RN-014 sin plazo: a "¿cuál es el plazo de conservación?" responder "30 días" → la Ronda 2 trae "si el empleado se reincorpora antes de que venza, ¿recupera sus archivos?" como `derivada de A-n` (con "inmediato" no nace)',
+    "  R6  Epic 2.2 (Dependencias: Epic 1.1; nada de la tanda depende de ella). Con el registro CERRADA y 2.1 ejecutado, o para simularlo, agregar al final del bloque de 2.2 la línea que deja el gate de 2.1:",
+    `    ${STAGE5_R6_DIFERIDO}`,
+    "      → review.js scope-check --batch <id> --epic 2.2 = SAME (la línea no entra en el SCOPE) → refresco: CONCERNS decisión-nueva: datos (ni el registro ni una RN dicen qué guarda el evento) → 2.2 vuelve a [ ] con `- **Aparcado:** <ISO> — datos — <motivo> — tanda <id>` y una línea en ## APARCADOS; 0 preguntas; la cola sigue con 2.3. Falla si pregunta, si el planner decide el payload solo o si lo re-difiere fuera de 2.2",
+    "  R7  cortar la sesión en RONDA-1 con ≥1 respuesta ya persistida → /specture:start → review.js status = REVIEW: OPEN <id> RONDA-1 pendientes:<n> → pregunta solo las pendientes, ninguna respondida",
+    "  R8  docs/05-specs/<dir de 2.3>/ (página: `darDeBajaEmpleado` (consume), la implementa 2.1 [ ]) → spec-set-check --draft --batch 2.1,2.2,2.3 = MECH_CHECK: DRAFT_PASS (C1-consume INFO); sin --batch DRAFT_FAIL (C1 BLOCKER); al turno de 2.3, con 2.1 [x], PASS real",
+    '  R9  "usá la recomendada" para un tema (p. ej. el contrato de descargarArchivo, que solo dice "200 el archivo") → solo esos ítems quedan `respuesta: recomendada — fuente: delegado por el usuario <fecha>`, uno por uno; roles y datos se siguen preguntando',
+    `  PR  ROADMAP, bloque de 2.1: "sus archivos pasan al mismo borrado lógico que hoy usa \`eliminarArchivo\` (quedan ocultos y sus bytes se conservan)" → ## PREMISAS: FALSA ${falsa} (${api}/service.js:${lineOf(service, "await repository.remove(fileId);")} lo llama) → pregunta con \`Dato verificado:\` o VIOLATION, nunca corregida en silencio`,
+    `      control: bloque de 2.2 "busca el archivo por id y dueño" → VERIFICADA ${verificada} (${api}/service.js:${lineOf(service, "await repository.findOwned(employeeId, fileId);")})`,
+    "  B2  Epics 2.1 y 2.3 (REGULATORIOS): mini-revisión anunciada en R5; al turno de cada uno, tras el refresco y antes del sello, validador MODE: REVIEW sobre los specs escritos + código (qué ve y hace cada rol en /rrhh/bajas y en darDeBajaEmpleado); sin decisiones nuevas → sella sin preguntar",
+    "  Mecánicos:",
+    `  review   ${review} status --project "${d}"   # REVIEW: NONE`,
+    `           ${review} scope-hash --epic 2.2 --project "${d}"   # igual antes y después de la línea de R6`,
+    `  4a       node "${root}/hooks/lib/spec-set-check.js" "${d}/docs/05-specs/<dir de 2.3>" --roadmap ${roadmap} --epic 2.3 --draft --batch ${STAGE5_BATCH.join(",")}`,
+    shas
+      ? `  git      base ${shas.base.slice(0, 12)} (reescribe el test de PDF de Epic 1.4) · HEAD ${shas.head.slice(0, 12)} (registra ese SUPERSEDE_SHA)`
+      : "  sin --git: la supersesión de Epic 1.4 queda `commit: pendiente` (spec-set-check sobre epic-1.4-cuota da C-sup) y la revisión no puede commitear — usar --git.",
+    `  doctor:  node "${root}/scripts/doctor.js" check --project "${d}"   # 0 ERROR; WARNING current-state-missing (Milestone 1 cerrado sin _current/, como la etapa 3)`
+  ];
+}
+
+function scenarioHints(dir, stage, shas = null, files = null) {
   const root = path.resolve(__dirname, "..").replace(/\\/g, "/");
   const d = path.resolve(dir).replace(/\\/g, "/");
+  if (stage === 5) return stage5Hints(root, d, files, shas);
   if (stage === 4) return stage4Hints(root, d, shas);
   if (stage === 1) {
     return [
@@ -1277,7 +1603,13 @@ if (require.main === module) {
   const args = parseArgs(process.argv.slice(2));
   const dir = path.resolve(args.dir);
   if (fs.existsSync(dir) && fs.readdirSync(dir).length > 0 && !args.force) usage(`${dir} is not empty (use --force)`);
-  const builders = { 1: () => stage1Files(stage2Files()), 2: stage2Files, 3: () => stage3Files(stage2Files()), 4: () => stage4Files(stage3Files(stage2Files())) };
+  const builders = {
+    1: () => stage1Files(stage2Files()),
+    2: stage2Files,
+    3: () => stage3Files(stage2Files()),
+    4: () => stage4Files(stage3Files(stage2Files())),
+    5: () => stage5Files(stage4Files(stage3Files(stage2Files())))
+  };
   const files = builders[args.stage]();
   fs.mkdirSync(dir, { recursive: true });
   let sha = null;
@@ -1285,12 +1617,15 @@ if (require.main === module) {
   if (args.stage === 4 && args.git) {
     history = gitHistory4(dir, files);
     sha = `${history.red.slice(0, 7)} (${history.commits} commits)`;
+  } else if (args.stage === 5 && args.git) {
+    history = gitHistory5(dir, files);
+    sha = `${history.head.slice(0, 7)} (${history.commits} commits)`;
   } else {
     write(dir, files);
     if (args.git) sha = gitInit(dir, args.stage);
   }
   process.stdout.write(`baseline-fixture: stage ${args.stage} written to ${dir} (${Object.keys(files).length} files, schema_version ${PLUGIN_VERSION}${sha ? `, commit ${sha}` : ""})\n`);
-  for (const line of scenarioHints(dir, args.stage, history)) process.stdout.write(line + "\n");
+  for (const line of scenarioHints(dir, args.stage, history, files)) process.stdout.write(line + "\n");
 }
 
-module.exports = { stage2Files, stage1Files, stage3Files, stage4Files, stage4History, write, SOURCE, PLUGIN_VERSION };
+module.exports = { stage2Files, stage1Files, stage3Files, stage4Files, stage4History, stage5Files, write, SOURCE, PLUGIN_VERSION };

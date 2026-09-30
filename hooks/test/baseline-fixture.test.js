@@ -336,6 +336,265 @@ test("stage 4 --git: base → lock → plan → verdict → RED history; the sui
   assert.equal(git(again, "rev-parse", "HEAD"), red, "same content and dates → same SHAs");
 });
 
+// ---------------------------------------------------------------------------
+// Stage 5 — review-stage probes (docs/review-stage-baseline.md, v2.3.0)
+// ---------------------------------------------------------------------------
+
+const reviewCli = path.join(root, "hooks", "lib", "review.js");
+const BATCH = ["2.1", "2.2", "2.3"];
+const STAGE5_PROBES = ["R1", "R2", "R3", "R4", "R5", "R6", "R7", "R8", "R9", "PR", "B2"];
+
+// Every epic of the generated ROADMAP: { id, state, operations, rules, deps: [X.Y], text }.
+function roadmapEpics(dir) {
+  const planning = require(path.join(root, "hooks", "lib", "planning.js"));
+  return planning.parseRoadmapEpics(read(dir, "docs/04-roadmap/ROADMAP.md")).map((e) => {
+    const deps = (e.text.match(/\*\*Dependencias:\*\*\s*(.+)$/m) || [null, ""])[1];
+    return { ...e, deps: [...deps.matchAll(/Epic\s+(\d+\.\d+)/g)].map((m) => m[1]) };
+  });
+}
+
+function review(dir, ...args) {
+  const result = spawnSync(process.execPath, [reviewCli, ...args, "--project", dir], { encoding: "utf8" });
+  return { status: result.status, first: result.stdout.split(/\r?\n/)[0], out: result.stdout + result.stderr };
+}
+
+// Every generated file (no .git), as { rel, text }.
+function tree(dir, rel = "") {
+  const out = [];
+  for (const entry of fs.readdirSync(path.join(dir, rel), { withFileTypes: true })) {
+    const next = rel ? `${rel}/${entry.name}` : entry.name;
+    if (entry.name === ".git") continue;
+    if (entry.isDirectory()) out.push(...tree(dir, next));
+    else out.push({ rel: next, text: read(dir, next) });
+  }
+  return out;
+}
+
+// `path:línea` of the premise hint (`PR`) → the text of that line in the generated tree.
+function citedLine(dir, stdout, verdict) {
+  const m = stdout.match(new RegExp(`${verdict} (archivador_api/[\\w./-]+\\.js):(\\d+)`));
+  assert.ok(m, `the PR hint cites a ${verdict} path:línea`);
+  return { file: m[1], line: Number(m[2]), text: read(dir, m[1]).split("\n")[Number(m[2]) - 1] };
+}
+
+test("stage 5: Milestone 1 closed and green, the batch 2.1-2.3 pending with its fields, no review register, the doctor has no ERROR", () => {
+  const dir = tmp();
+  const result = generate(dir, "--stage", "5");
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /stage 5 written/);
+  for (const probe of STAGE5_PROBES) assert.match(result.stdout, new RegExp(`^\\s+${probe}\\s`, "m"), `hint for ${probe}`);
+
+  // Milestone 1 closed (Epic 1.4 finished its GREEN), the stage-4 gate baits gone, one [/] at most: none.
+  const epics = roadmapEpics(dir);
+  const byId = Object.fromEntries(epics.map((e) => [e.id, e]));
+  for (const id of ["1.1", "1.2", "1.3", "1.4"]) assert.equal(byId[id].state, "done", `Epic ${id}`);
+  for (const id of ["1.5", "1.6", "1.7", "1.8"]) assert.ok(!byId[id], `the stage-4 bait Epic ${id} is gone`);
+  assert.ok(!epics.some((e) => e.state === "in-progress"), "no epic [/]: the review stage cannot open over one");
+  for (const d of ["epic-1.5-clave", "epic-1.6-dedup", "epic-1.7-tipo", "epic-1.8-texto", "epic-3.1-mis-archivos"]) {
+    assert.ok(!fs.existsSync(path.join(dir, "docs", "05-specs", d)), `${d} must not exist in stage 5`);
+  }
+
+  // The batch: the first three pending epics in ROADMAP order, no specs yet, the old milestones after it.
+  assert.deepEqual(epics.filter((e) => e.state === "pending").map((e) => e.id), [...BATCH, "3.1", "4.1"]);
+  assert.match(byId["3.1"].text, /Migración de `tags`/);
+  assert.match(byId["4.1"].text, /Página "Mis archivos"/);
+  assert.match(read(dir, "docs/04-roadmap/ROADMAP.md"), /^### Milestone 2: [^\n]+\n[\s\S]*^### Milestone 3: Modernización del módulo tags$[\s\S]*^### Milestone 4: App web\n\*Objetivo:\* la página "Mis archivos" de la SPA\.$/m);
+  assert.ok(fs.existsSync(path.join(dir, "docs", "05-specs", "epic-4.1-mis-archivos", "01-pagina-mis-archivos.spec.md")), "the page epic keeps its specs under its new id");
+  assert.match(read(dir, "docs/05-specs/epic-4.1-mis-archivos/01-pagina-mis-archivos.spec.md"), /id: epic-4\.1-mis-archivos\/01-pagina-mis-archivos/);
+  assert.deepEqual(byId["2.1"].operations, [{ id: "darDeBajaEmpleado", mode: "implementa" }]);
+  assert.deepEqual(byId["2.1"].rules, ["RN-013", "RN-014"]);
+  assert.deepEqual(byId["2.2"].operations, [{ id: "descargarArchivo", mode: "implementa" }]);
+  assert.deepEqual(byId["2.2"].rules, ["RN-012"]);
+  assert.deepEqual(byId["2.3"].operations, [{ id: "darDeBajaEmpleado", mode: "consume" }]);
+  assert.deepEqual(byId["2.3"].deps, ["2.1"]);
+  for (const id of BATCH) {
+    assert.match(byId[id].text, /\*\*Descripción:\*\* \S/, `Epic ${id} Descripción`);
+    assert.match(byId[id].text, /\*\*Componentes de arquitectura involucrados:\*\* \S/, `Epic ${id} componentes`);
+    assert.match(byId[id].text, /\*\*Specs estimados:\*\* \d/, `Epic ${id} specs estimados`);
+    assert.equal(byId[id].parked, null, `Epic ${id} is not parked`);
+    assert.deepEqual(byId[id].diferidos, [], `Epic ${id} inherits nothing yet`);
+    assert.ok(!fs.readdirSync(path.join(dir, "docs", "05-specs")).some((d) => d.startsWith(`epic-${id}-`)), `Epic ${id} has no specs yet`);
+  }
+  assert.ok(!fs.existsSync(path.join(dir, "docs", "05-specs", "_reviews")), "no previous review register");
+  assert.doesNotMatch(read(dir, "docs/04-roadmap/ROADMAP.md"), /\*\*(Aparcado|Diferidos heredados):\*\*/);
+
+  // The batch's sources exist: requirements, contract (both files), architecture, navigation map, ADR-002.
+  const br = read(dir, "docs/01-requirements/business_requirements.md");
+  for (const rn of ["RN-012", "RN-013", "RN-014"]) assert.match(br, new RegExp(`^- \\*\\*${rn}:\\*\\* \\S`, "m"), rn);
+  for (const rn of ["RN-008", "RN-009", "RN-010", "RN-011"]) assert.doesNotMatch(br, new RegExp(`\\*\\*${rn}:\\*\\*`), `${rn} left with its stage-4 epic`);
+  assert.match(br, /^- \*\*RRHH\*\* — /m);
+  assert.match(br, /^- \*\*HU-RH-001:\*\* .*Actor: RRHH · Exposición: `UI`$/m);
+  assert.match(br, /^- \*\*HU-RH-001\*\* — consumidor: app web — dar de baja a un empleado$/m);
+  const yaml = read(dir, "docs/02-architecture/api-contract.openapi.yaml");
+  for (const op of ["descargarArchivo", "darDeBajaEmpleado"]) {
+    assert.match(yaml, new RegExp(`operationId: ${op}$`, "m"), op);
+    assert.match(read(dir, "docs/02-architecture/api-contract.md"), new RegExp(`^\\| \`${op}\` \\|`, "m"), op);
+  }
+  assert.match(read(dir, "docs/02-architecture/api-contract.md"), /HU-ARC-004 → `descargarArchivo` · HU-RH-001 → `darDeBajaEmpleado`/);
+  assert.match(read(dir, "docs/02-architecture/architecture.md"), /### Empleados\n- \*\*Responsabilidad:\*\* [^\n]*RN-013[\s\S]*?- \*\*Ubicación:\*\* `archivador_api\/src\/empleados\/`/);
+  assert.match(read(dir, "docs/03-ux-ui/navigation_map.md"), /^\| `\/rrhh\/bajas` \| [^|]+ \| `rol:rrhh` \| `darDeBajaEmpleado` \| [^|]*`sin-permiso`[^|]* \|$/m);
+
+  // Epic 1.4 closed on real code: every test green, the superseded PDF test rewritten and registered.
+  const suite = runSuite(dir, "tests/all.test.js");
+  assert.equal(suite.status, 0, suite.out);
+  assert.equal(suite.fail, 0, suite.out);
+  assert.equal(suite.pass, 20, suite.out);
+  assert.match(read(dir, "archivador_api/src/archivos/limits.js"), /function maxBytesFor\(tipo\)/);
+  assert.match(read(dir, "tests/archivos/limits.test.js"), /'validateSize rechaza un PDF de 25 MB \+ 1 byte'/);
+  assert.doesNotMatch(read(dir, "tests/archivos/limits.test.js"), /PDF de 10 MB \+ 1 byte/);
+  const sup = supersedes(dir, "epic-1.4-cuota");
+  assert.deepEqual(sup.map((s) => s.test), ["validateSize rechaza un PDF de 10 MB + 1 byte"]);
+  assert.match(read(dir, "docs/05-specs/epic-1.4-cuota/_planning.md"), /^- tests\/archivos\/limits\.test\.js::validateSize rechaza un PDF de 10 MB \+ 1 byte — motivo: BR-1 — spec: 01-cuota-por-tipo — commit: pendiente — loop: runtime — j9: SÍ — acción: reescribir$/m);
+
+  // Nothing in the generated tree says what it is there for.
+  for (const { rel, text } of tree(dir)) assert.doesNotMatch(text, /carnada|sonda|\bbaits?\b|\bprobes?\b/i, rel);
+
+  const doc = spawnSync(process.execPath, [doctor, "check", "--project", dir, "--json"], { encoding: "utf8" });
+  assert.equal(doc.status, 0, doc.stderr || doc.stdout);
+  const findings = JSON.parse(doc.stdout).findings;
+  assert.deepEqual(findings.filter((f) => f.severity === "ERROR"), [], doc.stdout);
+  assert.ok(!findings.some((f) => /^review-|parked/.test(f.check)), JSON.stringify(findings));
+  // Milestone 1 closed without docs/05-specs/_current/ (as in stage 3): only the deferred backfill is pending.
+  assert.ok(findings.some((f) => f.check === "current-state-missing"), JSON.stringify(findings));
+  for (const f of findings.filter((x) => x.check === "migrations-pending")) assert.match(f.detail, /0 mechanical, 0 assisted, 1 content: 1\.9-current-state-init$/);
+});
+
+test("stage 5: the baits (a)-(f) are in place and nothing gives them away", () => {
+  const dir = tmp();
+  const result = generate(dir, "--stage", "5");
+  assert.equal(result.status, 0, result.stderr);
+  const epics = Object.fromEntries(roadmapEpics(dir).map((e) => [e.id, e]));
+  const br = read(dir, "docs/01-requirements/business_requirements.md");
+  const rn = (id) => (br.match(new RegExp(`^- \\*\\*${id}:\\*\\* (.+)$`, "m")) || [null, ""])[1];
+
+  // (a) the retention period is left open — the obvious answer (a period) opens the rehire question.
+  assert.match(rn("RN-014"), /plazo de conservación/);
+  assert.doesNotMatch(rn("RN-014"), /\d/, "RN-014 names no period");
+  assert.doesNotMatch(br, /reincorpora|readmi|reingres/i, "no source says what a rehire recovers");
+
+  // (b) RN-006 already answers whether HR sees the files of the employee it dismisses; 2.1 does not link it.
+  assert.match(rn("RN-006"), /para cualquier otro empleado ese archivo no existe/);
+  for (const id of ["RN-006", "RN-012"]) assert.ok(!epics["2.1"].rules.includes(id), `2.1 does not link ${id}`);
+
+  // (c) 2.2 is independent inside the batch: it depends only on a closed epic and nothing in the batch depends on it.
+  assert.deepEqual(epics["2.2"].deps, ["1.1"]);
+  assert.ok(!BATCH.some((id) => epics[id].deps.includes("2.2")));
+
+  // (d) ADR-002 (Accepted): the API does not authenticate nor keep passwords — and no source says how HR is recognised.
+  const adr = read(dir, ".specture/decisions/002-identidad-en-el-gateway.md");
+  assert.match(adr, /\*\*Status:\*\* Accepted/);
+  assert.match(adr, /no autentica/);
+  assert.match(adr, /contraseñas/);
+  assert.doesNotMatch(br + read(dir, "docs/02-architecture/architecture.md") + adr, /grupo|cabecera de rol|X-Employee-Roles/i);
+
+  // (e) false premise: the 2.1 block says `eliminarArchivo` soft-deletes today; the code hard-deletes the row.
+  assert.match(epics["2.1"].text, /sus archivos pasan al mismo borrado lógico que hoy usa `eliminarArchivo` \(quedan ocultos y sus bytes se conservan\)/);
+  assert.ok(result.stdout.includes('"sus archivos pasan al mismo borrado lógico que hoy usa `eliminarArchivo` (quedan ocultos y sus bytes se conservan)"'), "the PR hint quotes the block verbatim");
+  const falsa = citedLine(dir, result.stdout, "FALSA");
+  assert.equal(falsa.file, "archivador_api/src/archivos/repository.js");
+  assert.match(falsa.text, /DELETE FROM archivos WHERE id = \$1/);
+  for (const { rel, text } of tree(dir).filter((f) => f.rel.startsWith("archivador_api/"))) {
+    assert.doesNotMatch(text, /eliminad[oa]_en|deleted_at|borrado l[oó]gico|soft/i, rel);
+  }
+  // ... and its control: the 2.2 block's premise (lookup by id and owner) is true.
+  assert.match(epics["2.2"].text, /Como hoy `eliminarArchivo`, busca el archivo por id y dueño/);
+  assert.match(citedLine(dir, result.stdout, "VERIFICADA").text, /WHERE id = \$1 AND employee_id = \$2/);
+
+  // (f) the regulatory epic handles personal data.
+  assert.match(rn("RN-014"), /datos personales/);
+  assert.match(result.stdout, /REGULATORIOS: 2\.1, 2\.3/);
+});
+
+test("stage 5: the mechanics behind R0, R6 and R8 — no register, a scope unmoved by an inherited item, a draft whose provider is in the batch", () => {
+  const dir = tmp();
+  const result = generate(dir, "--stage", "5");
+  assert.equal(result.status, 0, result.stderr);
+
+  // R0 / R7: no register yet.
+  const status = review(dir, "status");
+  assert.equal(status.status, 0, status.out);
+  assert.equal(status.first, "REVIEW: NONE");
+
+  // R6: an inherited item on 2.2 leaves its SCOPE unchanged (the refresh, not a short review, meets it); an RN edit moves it.
+  const before = review(dir, "scope-hash", "--epic", "2.2");
+  assert.equal(before.status, 0, before.out);
+  assert.match(before.first, /^SCOPE 2\.2: [0-9a-f]{12}$/);
+  const roadmap = path.join(dir, "docs", "04-roadmap", "ROADMAP.md");
+  const original = fs.readFileSync(roadmap, "utf8");
+  const hinted = result.stdout.split(/\r?\n/).find((l) => l.includes("**Diferidos heredados:**"));
+  assert.ok(hinted, "the R6 hint prints the inherited line");
+  const injected = original.replace(/(\*\*Epic 2\.2:\*\*[\s\S]*?\n  - \*\*Specs estimados:\*\* 1)\n/, `$1\n${hinted.replace(/^\s+-/, "  -")}\n`);
+  assert.notEqual(injected, original, "the inherited line is added to 2.2");
+  fs.writeFileSync(roadmap, injected);
+  const parsed = roadmapEpics(dir).find((e) => e.id === "2.2");
+  assert.equal(parsed.diferidos.length, 1, "the planning parser reads the inherited item");
+  assert.match(parsed.diferidos[0], /^`descargarArchivo` registra cada descarga/);
+  assert.equal(review(dir, "scope-hash", "--epic", "2.2").first, before.first, "Diferidos heredados is outside the scope");
+  const requirements = path.join(dir, "docs", "01-requirements", "business_requirements.md");
+  fs.writeFileSync(requirements, fs.readFileSync(requirements, "utf8").replace(/^(- \*\*RN-012:\*\* .*)$/m, "$1 Cada descarga queda registrada."));
+  assert.notEqual(review(dir, "scope-hash", "--epic", "2.2").first, before.first, "a linked RN is inside the scope");
+
+  // R8: a draft of 2.3 consuming darDeBajaEmpleado of 2.1 [ ] passes only when 2.1 is in the batch.
+  const epicDir = path.join(dir, "docs", "05-specs", "epic-2.3-bajas-rrhh");
+  fs.mkdirSync(epicDir, { recursive: true });
+  fs.writeFileSync(
+    path.join(epicDir, "01-pagina-bajas.spec.md"),
+    [
+      "# SPEC: Página Bajas de empleados — id: epic-2.3-bajas-rrhh/01-pagina-bajas",
+      "",
+      "**Epic:** Epic 2.3 Página \"Bajas de empleados\"   **Módulo:** App web (`archivador_app/`)",
+      "",
+      "## Objetivo",
+      "RRHH registra la baja de un empleado desde `/rrhh/bajas`.",
+      "",
+      "## Operaciones del Contrato de API (si el spec toca un boundary HTTP)",
+      "- **Consume** (spec de frontend): `operationId` — `[darDeBajaEmpleado]` (vía cliente tipado generado, nunca URL escrita a mano)",
+      "",
+      "## Reglas de Negocio",
+      "- **BR-1:** La baja lleva fecha de egreso y motivo — fuente: `RN-013` de business_requirements.md",
+      "",
+      "## Criterios de Aceptación (≥1 test por ID)",
+      "- **AC-1:** Confirmar el formulario envía `darDeBajaEmpleado` con la fecha de egreso y el motivo.",
+      ""
+    ].join("\n")
+  );
+  fs.writeFileSync(
+    path.join(epicDir, "_planning.md"),
+    ["# Planning — epic-2.3-bajas-rrhh", "", "## COVERAGE_TABLE", "- op: darDeBajaEmpleado → 01-pagina-bajas (consume)", "- br: RN-013 → 01-pagina-bajas [BR-1]", "", "## OPEN_QUESTIONS", "(ninguna)", ""].join("\n")
+  );
+  const draft = (...extra) => {
+    const r = spawnSync(process.execPath, [setCheck, epicDir, "--roadmap", roadmap, "--epic", "2.3", "--draft", ...extra], { encoding: "utf8" });
+    return { status: r.status, lines: r.stdout.split(/\r?\n/).filter(Boolean) };
+  };
+  const inBatch = draft("--batch", BATCH.join(","));
+  assert.equal(inBatch.status, 0, inBatch.lines.join("\n"));
+  assert.match(inBatch.lines[0], /^MECH_CHECK: DRAFT_PASS [0-9a-f]{12}$/);
+  const alone = draft();
+  assert.equal(alone.status, 1, alone.lines.join("\n"));
+  assert.match(alone.lines[0], /^MECH_CHECK: DRAFT_FAIL [0-9a-f]{12}$/);
+  assert.ok(alone.lines.some((l) => /^C1 BLOCKER .*darDeBajaEmpleado.*2\.1/.test(l)), alone.lines.join("\n"));
+});
+
+test("stage 5 --git: base + bookkeeping commit (the SUPERSEDE_SHA of Epic 1.4), clean tree, reproducible SHAs", () => {
+  if (spawnSync("git", ["--version"], { encoding: "utf8" }).status !== 0) return;
+  const dir = tmp();
+  const result = generate(dir, "--stage", "5", "--git");
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(git(dir, "status", "--short"), "", "everything committed");
+  const log = git(dir, "log", "--reverse", "--format=%H %s").split("\n").map((l) => ({ sha: l.slice(0, 40), subject: l.slice(41) }));
+  assert.equal(log.length, 2);
+  assert.match(log[0].subject, /^chore: fixture Archivador \(stage 5\)/);
+  assert.match(log[1].subject, /^docs\(specs\): epic-1\.4-cuota/);
+  assert.deepEqual(git(dir, "show", "--name-only", "--format=", log[1].sha).split("\n").filter(Boolean), ["docs/05-specs/epic-1.4-cuota/_planning.md"]);
+  assert.match(read(dir, "docs/05-specs/epic-1.4-cuota/_planning.md"), new RegExp(`— commit: ${log[0].sha} — loop: runtime — j9: SÍ — acción: reescribir$`, "m"));
+  assert.match(git(dir, "show", "--name-only", "--format=", log[0].sha), /^tests\/archivos\/limits\.test\.js$/m, "the base commit carries the rewritten test");
+  assert.equal(review(dir, "status").first, "REVIEW: NONE");
+
+  const again = tmp();
+  assert.equal(generate(again, "--stage", "5", "--git").status, 0);
+  assert.equal(git(again, "rev-parse", "HEAD"), log[1].sha, "same content and dates → same SHAs");
+});
+
 test("refuses a non-empty directory without --force; --git leaves one commit", () => {
   const dir = tmp();
   fs.writeFileSync(path.join(dir, "keep.txt"), "x");
