@@ -71,8 +71,9 @@ sentada corta que ya sabías que podía llegar, porque te la anuncié al cerrar 
 Si al refrescar un epic (no regulatorio) aparece una decisión nueva de dinero, legal, datos,
 contrato o modelo, el epic **se aparca**: vuelve a `[ ]` con una línea
 `**Aparcado:** <fecha> — <clase> — <motivo> — tanda <id>` en el ROADMAP, y la cola sigue con los
-epics que no dependen de él. Al terminar la tanda te listo los aparcados con su decisión
-pendiente, para la próxima sentada. Límite honesto: si los epics dependen casi todos unos de
+epics que no dependen de él. En un epic regulatorio esa decisión va a su mini-revisión
+anunciada, y solo lo que quede abierto después lo aparca. Al terminar la tanda te listo los
+aparcados con su decisión pendiente, para la próxima sentada. Límite honesto: si los epics dependen casi todos unos de
 otros, aparcar uno suele detener el resto.
 
 ## Qué pasa si no estás
@@ -86,5 +87,5 @@ aparca lo demás.
 El registro `docs/05-specs/_reviews/<fecha>-<tanda>.md` es la evidencia: agenda con cada
 respuesta y su fuente, filtradas con su cita, premisas con `path:línea`, dónde quedó persistida
 cada decisión, la huella (`SCOPE`) de cada epic —si el bloque del epic o sus RN cambian después,
-ese epic vuelve a una revisión corta— y el estado de ejecución. `node hooks/lib/review.js status`
-resume dónde está la tanda.
+ese epic vuelve a una revisión corta— y el estado de ejecución.
+`node "${CLAUDE_PLUGIN_ROOT}/hooks/lib/review.js" status` resume dónde está la tanda.

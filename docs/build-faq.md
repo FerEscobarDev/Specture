@@ -1,9 +1,12 @@
 # Preguntas frecuentes sobre `/specture:build`
 
-> Desde v2.2.0. Responde a lo que más se pregunta cuando un epic tarda en arrancar o cuando la
-> ejecución toca tests de epics anteriores. El detalle técnico está en `skills/build/SKILL.md`,
-> `skills/build/EPIC_LOOP.md` y `docs/tdd-honesty-reference.md`; la evidencia que motivó los
-> cambios, en `docs/spec-gate-convergence-design.md`.
+> Desde v2.2.0 (la etapa de revisión, desde v2.3.0). Responde a lo que más se pregunta cuando un
+> epic tarda en arrancar, cuando la ejecución toca tests de epics anteriores o cuando la tanda
+> empieza por una sentada de decisiones. El detalle técnico está en `skills/build/SKILL.md`,
+> `skills/build/EPIC_LOOP.md`, `skills/build/REVIEW_STAGE.md` y `docs/tdd-honesty-reference.md`;
+> la guía de la revisión, en [`docs/review-stage-guide.md`](review-stage-guide.md); la evidencia
+> que motivó los cambios, en `docs/spec-gate-convergence-design.md` y
+> `docs/milestone-decision-stage-simulation.md`.
 
 ## ¿Por qué se validan los specs antes de ejecutar?
 
@@ -35,8 +38,16 @@ preguntarte.
 
 ## ¿Cuántas veces me va a preguntar el gate?
 
-Como mucho **dos rondas** de preguntas por epic, vengan de donde vengan (dudas del planner,
-dudas de contrato de la validación, tamaño del epic), con hasta 4 preguntas cada una. Las
+Desde v2.3.0, si la tanda pasó por la **etapa de revisión**, el gate de cada epic no te pregunta:
+las decisiones se toman antes, en una sola sentada (dos rondas como mucho), y en su turno cada
+epic se refresca y se sella sin preguntas. Los únicos contactos previstos durante la ejecución
+son la mini-revisión anunciada de los epics regulatorios, una revisión corta si el bloque de un
+epic o sus RN cambiaron desde la sentada, y los casos de la lista de abajo. Cómo funciona:
+[`docs/review-stage-guide.md`](review-stage-guide.md).
+
+Para un epic que no pasó por una revisión, como mucho **dos rondas** de preguntas por epic,
+vengan de donde vengan (dudas del planner, dudas de contrato de la validación, tamaño del
+epic), con hasta 4 preguntas cada una. Las
 opciones que ves son las del planner, tal cual, con las decisiones que cada una abriría
 (`derivadas:`), para que la segunda ronda sea opcional.
 
@@ -53,6 +64,69 @@ Además:
   proyecto, un spec atascado en el tope de iteraciones (`BLOCKED: debug`) o un rechazo mayor
   del reviewer. Un spec inejecutable (`BLOCKED: spec`) vuelve al gate por el loop de
   corrección; solo te pregunta si ese gate lo necesita, dentro del mismo presupuesto.
+
+## ¿Puedo delegar decisiones?
+
+Sí, pero solo de forma explícita. La opción recomendada **nunca se aplica sola**: en la
+simulación con decisiones reales coincidió con lo que el usuario eligió solo en 3 de 11 y en 5
+de 12 casos. Si quieres delegar, dilo por ítem o por tema ("en los de roles usá la
+recomendada"). En la etapa de revisión esa delegación vale solo para lo que nombraste y queda
+escrita en el registro de la tanda, ítem por ítem, como `fuente: delegado por el usuario
+<fecha>`; como está escrita, el refresco de cada epic la cita aunque ejecutes en otra sesión.
+Nada se infiere: la presión vaga ("hazlo rápido, no preguntes") no es delegación.
+
+Si ninguna opción te sirve, responde "ninguna de las opciones" y escribe tu regla: queda
+registrada tal cual. En el gate de un epic que no pasó por una revisión rige la regla de
+siempre: la delegación vale para el epic nombrado, o para la tanda entera si lo dices antes de
+arrancarla, no sobrevive la sesión y nunca autoriza tocar el contrato.
+
+## ¿Qué es un epic aparcado?
+
+Un epic (no regulatorio) que la cola dejó para la próxima sentada porque, al refrescarlo en su
+turno, apareció una decisión que nadie previó en la revisión: de dinero, legal, datos
+personales, contrato o modelo. En vez de interrumpirte a mitad de la tanda, el coordinador lo
+devuelve de `[/]` a `[ ]` con una línea en su bloque del ROADMAP:
+
+```
+- **Aparcado:** <fecha> — <clase> — <motivo> — tanda <id>
+```
+
+En un epic regulatorio esa decisión va a su mini-revisión anunciada; solo lo que esa sentada
+deja abierto lo aparca. No es un estado nuevo: el epic queda pendiente y la cola sigue con los
+epics que no dependen de él. Al terminar la tanda, el coordinador te lista los aparcados con su decisión pendiente;
+la siguiente sentada de revisión la toma y borra la línea, y el epic vuelve a la cola.
+`/specture:doctor check` los muestra como `epic-parked`. Límite honesto: si los epics dependen
+casi todos unos de otros, aparcar uno suele detener el resto.
+
+## ¿Por qué dos rondas y una mini-revisión?
+
+Porque es lo que capturó las decisiones reales cuando se probó a ciegas, antes de construirlo
+(`docs/milestone-decision-stage-simulation.md`):
+
+- **Una sola ronda no alcanza.** En el epic regulatorio, un barrido previo anticipó 11 de 12
+  preguntas de primera ronda, pero no las de segundo orden: las que nacen de tus propias
+  respuestas, las que el coordinador descubre después y las que el validador solo ve sobre
+  specs ya escritos.
+- **La ronda 2 captura lo que nace de tus respuestas.** En el experimento "ronda 2" (tres
+  corridas independientes sobre un epic regulatorio real), la decisión que en la realidad nació
+  de seguir dos respuestas salió completa en 2 de 3 corridas. Por eso la ronda 2 solo trae
+  preguntas derivadas de tus respuestas o que chocan con un ADR, una regla o el contrato.
+- **Leer código en la ronda 1 adelanta los huecos de dinero.** El hueco de los enlaces de pago
+  sin vencimiento, que en la realidad apareció tarde, salió en la ronda 1 en las 3 corridas
+  (completo en una, parcial en dos).
+- **Lo que solo aparece con el spec escrito en detalle no llega a ninguna de las dos.** Las
+  acciones de un rol sobre una cita anonimizada en el dashboard y la autorización en un portal
+  público solo se rozaron: el tema aparece, pero no la elección concreta. Para eso está la
+  **mini-revisión**: justo antes de ejecutar un epic regulatorio, con sus specs ya escritos, el
+  validador los relee contra el código, mirando qué puede hacer cada rol en cada pantalla o
+  endpoint y qué datos personales entran por superficies públicas. Si no encuentra nada nuevo, el
+  epic corre sin preguntarte; si encuentra algo, es una sola sentada corta, que se te anunció al
+  cerrar la revisión.
+
+No hay tercera ronda: lo que siga abierto después de la segunda se resuelve con un `discover`
+acotado o se difiere explícitamente, con dueño. Y la mini-revisión es solo para los
+regulatorios porque en los epics de infraestructura o de esquema la simulación ya mostró que el
+barrido previo captura casi todo (5 o 6 de 6 decisiones, con 0 o 1 paradas tardías).
 
 ## ¿Esto debilita el TDD?
 
@@ -138,6 +212,6 @@ exacto están en `hooks/README.md` § Permisos; `/specture:doctor check` te avis
 
 ## La sesión del coordinador se volvió muy larga. ¿Pierdo algo si la cierro?
 
-No. Todo lo que importa vive en disco: el ROADMAP, el `_planning.md` de cada epic, el sello y
-`build-metrics.jsonl`. Después de cualquier epic puedes cerrar la sesión y seguir con
+No. Todo lo que importa vive en disco: el ROADMAP, el registro de la revisión de la tanda, el
+`_planning.md` de cada epic, el sello y `build-metrics.jsonl`. Después de cualquier epic puedes cerrar la sesión y seguir con
 `/specture:start`; para una tanda larga es lo recomendado.

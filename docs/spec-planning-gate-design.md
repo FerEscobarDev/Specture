@@ -1,5 +1,6 @@
 > **Estado: IMPLEMENTADO — etapa 1 en v1.17.0 (ítems 19-28), etapa 2 en v1.18.0 (ítems
-> 29-37 del roadmap del framework); D5 y D8 revisadas en v2.2.0 (§8, gate convergente).**
+> 29-37 del roadmap del framework); D5 y D8 revisadas en v2.2.0 (§8, gate convergente); D2,
+> D7 y D19 refinadas en v2.3.0 (§9, etapa de revisión).**
 > Deltas vs este diseño, decididos por la revisión y el
 > roadmap: la evidencia vive en `docs/05-specs/<epic>/_planning.md` trackeado (M1 — no en el
 > commit message ni al pie de cada spec) con gramática fija en `templates/PLANNING_TEMPLATE.md`;
@@ -624,3 +625,31 @@ decisiones de §7 y se agrega una:
 D1, D2, D3, D6, D7 y D19 no cambian en v2.2.0. La etapa de revisión por tanda (una sola
 sentada de decisiones antes de ejecutar) es la fase siguiente, v2.3.0
 (`docs/milestone-planning-stage-analysis.md`, `docs/milestone-decision-stage-simulation.md`).
+
+## 9. Addendum v2.3.0 — etapa de revisión (2026-09-30)
+
+Con el gate por epic, el usuario respondía en tres momentos —al escribir el ROADMAP, en el gate
+de cada epic y en cada validación— y la tanda se detenía esperándolo. Las mediciones de v2.2 en
+Psikora mostraron además un defecto que ningún gate podía ver sin leer código: premisas falsas
+sobre el sistema actual (AC-13 de HC-IHCE.5, EC-4 de HC-IHCE.6). La v2.3.0 agrega una **etapa
+de revisión por tanda** (`skills/build/REVIEW_STAGE.md`; guía para el usuario:
+`docs/review-stage-guide.md`) en la variante B2 que decidió el experimento "ronda 2"
+(`docs/milestone-decision-stage-simulation.md` §7): una sentada de decisiones antes de ejecutar
+(dos rondas como mucho), refresco y sello de cada epic en su turno sin preguntas, mini-revisión
+anunciada antes de cada epic regulatorio y epics aparcados ante una decisión imprevista. Así
+quedan las decisiones de §7 que toca:
+
+| ID | Cambio | Por qué |
+|----|--------|---------|
+| D1 (se mantiene para escribir y sellar) | Los specs sellables se siguen escribiendo y sellando **por epic, justo a tiempo**, en su turno de la cola: "Refresh & seal" con un planner fresco en `MODE: REFRESH`, la Code Surface de ese momento, 4a real, validador delta y sello. Lo que sube a la tanda es **decidir** y borradorear el núcleo de comportamiento (`MODE: DRAFT`, sin Superficie). | El argumento original de D1 sigue en pie: las firmas de la Superficie dependen del código que dejan los epics anteriores de la tanda. Las decisiones de negocio no dependen de ese código. |
+| D2 (refinada) | Una revisión por tanda **no es un gate por epic**: nada se aprueba epic por epic. Es el presupuesto humano consolidado —una sentada antes de ejecutar, más la mini-revisión anunciada de cada epic regulatorio— y, durante la ejecución, una decisión que nadie previó **aparca** el epic en vez de preguntar. Un epic sin revisión sigue por el gate por epic, sin gate humano obligatorio. | Lo que D2 evitaba era la fatiga de aprobar por epic. Repartir las preguntas en tres momentos por epic tenía el mismo costo: la tanda se detenía cada vez. |
+| D3 (se mantiene) | **Sin Plan mode en el loop.** Las rondas son `AskUserQuestion` (preguntas cerradas en el chat en Copilot y Antigravity), cada respuesta se escribe y se commitea durante la sentada, y el cierre es una pregunta: "¿Ejecutamos ya la tanda o más tarde?". El análisis proponía Plan mode como puerta de lanzamiento opcional; no se envió. | Plan mode bloquea Edit/Write: no se podría persistir cada respuesta al momento, y los subagentes heredan el modo, así que el planner no podría escribir borradores (`milestone-planning-stage-analysis` §4). |
+| D7 (absorbida por el cierre de la revisión) | Para los epics de una tanda revisada, lo que daba el modo revisión a pedido lo da R5: un resumen legible de las decisiones tomadas, las preguntas filtradas y por qué, las premisas verificadas y falsas, las políticas y las mini-revisiones anunciadas, y la pregunta de si se ejecuta ya. El modo revisión a pedido sigue para el gate de los epics sin revisión. | El usuario ya está presente y decidiendo en la sentada; un segundo punto de confirmación por epic reintroduciría la parada que la etapa elimina. |
+| D19 (refinada) | Las decisiones y la **delegación explícita** quedan **escritas en el registro de la tanda** (`docs/05-specs/_reviews/<id>.md`), ítem por ítem: "usá la recomendada" vale solo para los ítems o el tema que el usuario nombra y se registra como `respuesta: recomendada — fuente: delegado por el usuario <fecha>`; nunca se infiere. Por estar escritas, el refresco de una sesión posterior las cita (`fuente: revisión <id> A-n`). El tope de 4 preguntas es **por llamada** de `AskUserQuestion`, no por ronda. | En la simulación la recomendada coincidió con la respuesta real solo en 3 de 11 y 5 de 12 decisiones: aplicarla por defecto habría decidido mal la mayoría. Y los planners de la agenda recortaban candidatos a 4 por ronda (§7 de la simulación). |
+| D21 (se mantiene para el planner) | El planner **sigue ciego al código** en sus tres modos nuevos (`DRAFT`, `QUESTIONS`, `REFRESH`), como desde M4. Quien lee código es el validador en `MODE: REVIEW` —y solo ahí, con `Read`/`Glob`—, para descubrir lo que solo el usuario puede decidir (`HUMAN_DECISIONS`) y verificar las premisas de los borradores (`PREMISAS`, con `path:línea`); nunca para decidir una respuesta ni juzgar la implementación. | El código es fuente de premisas y de preguntas, nunca de decisiones (`milestone-planning-stage-analysis` §7). La protección antisesgo del planner se mantiene, y la premisa falsa —el defecto que antes aparecía horas después, en ejecución— aparece en la preparación. |
+
+D18 gana el marcador `(aclarado en revisión <id>, <fecha>)` para las respuestas de la sentada.
+D5 sigue rigiendo el gate tal como lo dejó §8: en `SPEC_SET`, por spec, `DELTA` y `J9` el
+validador nunca abre tests ni código de producción; `MODE: REVIEW` es de la etapa de revisión,
+no del gate. Las demás decisiones de §7 y §8 no cambian en v2.3.0. El coordinador por epic en subagente
+queda para una v2.4.0 condicional (ítem 72 de `docs/framework-roadmap.md`).

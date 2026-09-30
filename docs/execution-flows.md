@@ -110,15 +110,15 @@ distintas.
 flowchart LR
     O["Orquestador<br/>(build / architecture / modernize / new-feature)<br/>ensambla contexto RESTRINGIDO por agente"]
 
-    O -->|"bloque del epic + fuentes + slice contrato + template<br/>(firmas y paths, NUNCA comportamiento)"| SP["spec-planner · Opus · effort medium<br/>1-3 specs + OPEN_QUESTIONS / RESOLVED_ALONE<br/>(despacho fresco por pase · MODE: SUPERSESSIONS en el loop)"]
-    O -->|"documento + .specture/<br/>(SIN código)"| AV["architecture-validator · Opus · effort medium<br/>tools: Read, Glob<br/>APPROVED / REJECTED / BLOCKED · MODE: DELTA / J9"]
+    O -->|"bloque del epic + fuentes + slice contrato + template<br/>(firmas y paths, NUNCA comportamiento)"| SP["spec-planner · Opus · effort medium<br/>1-3 specs + OPEN_QUESTIONS / RESOLVED_ALONE<br/>(despacho fresco por pase · MODE: SUPERSESSIONS en el loop<br/>· MODE: DRAFT / QUESTIONS / REFRESH en la revisión, v2.3.0)"]
+    O -->|"documento + .specture/<br/>(SIN código · salvo MODE: REVIEW)"| AV["architecture-validator · Opus · effort medium<br/>tools: Read, Glob<br/>APPROVED / REJECTED / BLOCKED · MODE: DELTA / J9<br/>· MODE: REVIEW: lee código para decisiones y premisas (v2.3.0)"]
     O -->|"spec + business rules + framework de test<br/>(SIN implementación — anti-bias)"| TW["tdd-test-writer · Sonnet<br/>tests RED (fallidos)"]
     O -->|"spec + tests RED + archivos a tocar + RED_SHA"| IM["implementer · Sonnet<br/>código GREEN (lógica)"]
     O -->|"spec + design_system + slice contrato<br/>+ tests + checklist de marca"| UX["ux-implementer · Sonnet<br/>UI fiel a tokens/contrato/a11y"]
     O -->|"diff + spec + .specture/<br/>+ resultado del gate 5.5"| CR["code-reviewer · Opus<br/>APPROVED / REJECTED_MINOR / REJECTED_MAJOR"]
 
     SP -.->|"NO recibe"| X5["comportamiento del código · memoria · Context7"]
-    AV -.->|"NO recibe"| X1["código de implementación"]
+    AV -.->|"NO recibe"| X1["código de implementación<br/>(salvo en MODE: REVIEW)"]
     TW -.->|"NO recibe"| X2["archivos de implementación"]
     IM -.->|"NO recibe"| X3["conversación · memoria · resto del repo"]
     CR -.->|"NO hace"| X4["modificar código (solo reporta)"]
@@ -142,6 +142,14 @@ descartan al terminar; los despachos y preguntas del gate sí se acumulan en el 
 sello, `.specture/state/gate/`, `build-metrics.jsonl`), así que después de cualquier epic se
 puede cerrar la sesión y seguir con `/specture:start`.
 
+**Etapa de revisión (v2.3.0, paso 4.5 de la cola).** Antes de ejecutar nada, `review.js status`
+dice si un registro `CERRADA` ya cubre toda la cola; si no, el coordinador corre la revisión de
+la tanda (3.7): una sentada contigo, dos rondas como mucho, y el registro en
+`docs/05-specs/_reviews/`. Después, cada epic de un registro cerrado pasa por **Refresh & seal**
+sin preguntas (3.8); uno que no pasó por la revisión sigue por el Spec Planning Gate (3.2). Una
+decisión nueva al refrescar un epic no regulatorio lo **aparca** y la cola sigue con los que no
+dependen de él.
+
 ```mermaid
 flowchart TD
     A(["Usuario: 'ejecuta N'<br/>(sin número → N=1 · 'todas' → todos los pendientes)"]) --> B["Leer solo los checkbox + línea Dependencias<br/>de cada epic en ROADMAP"]
@@ -150,9 +158,18 @@ flowchart TD
     Br -->|Sí| Br2["Crear UNA rama de sesión<br/>(sin stacked-branches · sin auto-merge)"]
     Br -->|No| D["TaskCreate por epic encolado<br/>(cola visible)"]
     Br2 --> D
-    D --> L{"¿Quedan epics en la cola?"}
+    D --> RV{"Paso 4.5 · review.js status<br/>¿un registro CERRADA cubre toda la cola?"}
+    RV -->|"no (NONE · OPEN · DRAINED)"| RVS[["Etapa de revisión de la tanda (ver 3.7)<br/>una sentada · ≤2 rondas · cierre con SCOPE por epic"]]
+    RVS -->|"'¿ejecutamos ya?' → sí"| L
+    RVS -.->|"'más tarde'"| LATER(["El registro guarda todo<br/>/specture:start retoma"])
+    RV -->|"sí"| L{"¿Quedan epics en la cola?"}
     L -->|Sí| E["Marcar epic [/] + commit → LOCK_SHA"]
-    E --> SPG["Spec Planning Gate (ver 3.2):<br/>Code Surface → spec-planner → ≤2 rondas de preguntas (presupuesto único)<br/>→ 4a spec-set-check (MECH_CHECK) → validator por rondas (set + por spec · re-validación delta)<br/>→ resumen (GATE_NOTES · Diferidos) → commit specs + _planning.md<br/>→ sello: seal-cli write (spec_sha · spec_paths · allowed_paths · lock_sha)"]
+    E --> RQ{"¿El epic está en un<br/>registro CERRADA?"}
+    RQ -->|"sí"| RS["Refresh & seal (ver 3.8) · sin preguntas<br/>scope-check → planner MODE: REFRESH → 4a real → validador delta<br/>(+ mini-revisión anunciada si es regulatorio) → sello"]
+    RS -->|"sellado"| F
+    RS -.->|"decisión nueva (epic no regulatorio)"| PK["Aparcar: [/] → [ ] + línea Aparcado: en el ROADMAP<br/>+ APARCADOS del registro · commit<br/>(la cola sigue con los que no dependen de él)"]
+    PK --> L
+    RQ -->|"no (sin revisión)"| SPG["Spec Planning Gate (ver 3.2):<br/>Code Surface → spec-planner → ≤2 rondas de preguntas (presupuesto único)<br/>→ 4a spec-set-check (MECH_CHECK) → validator por rondas (set + por spec · re-validación delta)<br/>→ resumen (GATE_NOTES · Diferidos) → commit specs + _planning.md<br/>→ sello: seal-cli write (spec_sha · spec_paths · allowed_paths · lock_sha)"]
     SPG --> F["epic-agent ejecuta build/EPIC_LOOP.md (Steps 3.9–8)<br/>(contexto aislado, se descarta al terminar)"]
     F --> G{"Procesar el reporte:<br/>1º git diff SPEC_SHA..HEAD -- specs"}
     G -->|"diff ≠ vacío"| ESC
@@ -166,7 +183,7 @@ flowchart TD
     G -->|"BLOCKED: debug"| DBG[["Ofrecer /specture:debug al usuario<br/>(la cola se detiene: debug pide Plan mode)"]]
     G -->|"BLOCKED: entorno / otro · REJECTED_MAJOR"| ESC(["Escalar al usuario · sin auto-retry"])
     H --> L
-    L -->|No| FIN(["Cola drenada · sugerir merge/PR (W-4)<br/>Specture nunca mergea solo"])
+    L -->|No| FIN(["Cola drenada · listar los aparcados con su decisión pendiente<br/>· registro ESTADO: EJECUTADA si todos están [x] o aparcados<br/>· sugerir merge/PR (W-4) · Specture nunca mergea solo"])
 ```
 
 ### 3.2 El loop por epic — `spec → validate → RED → GREEN → review → verify`
@@ -354,6 +371,98 @@ el test-writer se re-despacha una vez con ese dato y, a la segunda, es `BLOCKED:
 si no compilan en la base, el resultado es `REVIEW` y lo juzga el reviewer. Para auditarlo a
 mano: `git log --oneline <red_sha_orig>..HEAD -- <globs de test>` y cada SHA tiene que estar
 en `## SUPERSESIONES` del `_planning.md` del epic (`docs/build-faq.md`).
+
+### 3.7 Etapa de revisión por tanda — R0–R5 (v2.3.0)
+
+La corre el **coordinador** en el paso 4.5 de la cola, con el procedimiento de
+`build/REVIEW_STAGE.md` (el epic-agent nunca lo ve). Concentra en **una sentada antes de
+ejecutar** —dos rondas como mucho— toda decisión que la máquina puede prever, y deja a la
+ejecución una sola regla: una decisión que nadie previó aparca el epic, nunca se pregunta a
+mitad de la cola (salvo la mini-revisión anunciada de un epic regulatorio, 3.8). El planner
+sigue ciego al código; el que lee código es el validador en `MODE: REVIEW`, para encontrar
+decisiones y verificar premisas, nunca para decidir una respuesta. **La recomendada nunca se
+aplica por defecto.** Cada respuesta se escribe al momento en el registro
+`docs/05-specs/_reviews/<fecha>-<slug>.md` (plantilla `templates/BATCH_REVIEW_TEMPLATE.md`), así
+que una sentada cortada se retoma en su estado sin repreguntar. Guía para el usuario:
+`docs/review-stage-guide.md`.
+
+```mermaid
+flowchart TD
+    Q(["Paso 4.5 de la cola<br/>(ningún registro CERRADA cubre la cola)"]) --> R0{"R0 · review.js status"}
+    R0 -.->|"hay un epic [/]"| WAIT(["No se abre: terminarlo<br/>o aparcarlo primero"])
+    R0 -->|"NONE / DRAINED"| NEW["Abrir el registro docs/05-specs/_reviews/fecha-slug.md<br/>ESTADO: PREPARANDO · EPICS en orden de ejecución<br/>· REGULATORIOS (datos personales · salud · dinero · consentimiento legal), con su porqué"]
+    R0 -->|"OPEN (sentada cortada)"| RES["Retomar en su estado · persistir lo que falte<br/>'quedan X de Y decisiones'<br/>nunca repreguntar lo que el registro ya responde"]
+    R0 -->|"CLOSED"| BACK(["Volver a la cola → Refresh & seal (3.8)"])
+    NEW --> CS
+    RES -.->|"PREPARANDO"| CS
+    RES -.->|"RONDA-1"| R2
+    RES -.->|"RONDA-2"| R4
+    subgraph PREP ["R1 · preparación desatendida, por epic (sin preguntas)"]
+    CS["Code Surface Resolution"] --> DR["spec-planner fresco · MODE: DRAFT<br/>ciego al código · sin Superficie<br/>duda abierta → recomendada marcada 'sujeto a Q-n'"]
+    DR --> DC{"spec-set-check --draft --batch<br/>DRAFT_PASS / DRAFT_FAIL · nunca habilita un sello"}
+    DC -->|"DRAFT_FAIL"| MP["una micro-pasada del planner con las VIOLATIONS<br/>(si sigue fallando: nota en el registro, no bloquea)"]
+    MP --> AV
+    DC -->|"DRAFT_PASS"| AV["architecture-validator · MODE: REVIEW<br/>LEE CÓDIGO (Read / Glob)<br/>HUMAN_DECISIONS + PREMISAS con path:línea"]
+    AV --> PR["PREMISAS → registro<br/>FALSA: VIOLATION si las fuentes deciden · pregunta si no"]
+    PR --> QS["spec-planner · MODE: QUESTIONS (sin código)<br/>preguntas cerradas: 2-4 opciones · recomendada con fuente de negocio<br/>· derivadas · Dato verificado: path:línea"]
+    QS --> FL["Filtro A LA VISTA: lo que una RN · ADR · contrato · rules.yml<br/>o una revisión anterior ya decide → FILTRADAS con su cita"]
+    FL --> AG["Políticas P-1…P-7 + agenda POR TEMA<br/>ESTADO: RONDA-1 · commit docs(review): preparación"]
+    end
+    AG --> R2{"R2 · Ronda 1 contigo (una sentada)<br/>anuncio: N decisiones · T temas · M min + las filtradas ('inclúyela')<br/>AskUserQuestion por tema · ≤4 por LLAMADA, no por ronda<br/>(más de ~40 → dos sentadas · ≤3 regulatorios por sentada)"}
+    R2 --> PER["Persistir al momento: registro · RN en su sitio (aclarado en revisión) · ADR nuevo<br/>la recomendada NUNCA por defecto · delegación solo explícita, ítem por ítem<br/>· 'ninguna de las opciones' → tu regla, textual · commit antes de R3"]
+    PER --> R3["R3 · desatendido: planner MODE: DRAFT con ANSWERS (edición mínima)<br/>→ spec-set-check --draft --batch → validador MODE: DELTA<br/>+ MODE: REVIEW sobre lo que abrieron las respuestas"]
+    R3 --> R3Q{"¿Preguntas derivadas de tus respuestas, o LATE<br/>(chocan con un ADR · una regla BLOCKER · el contrato)?<br/>¿Una HUMAN_DECISION cerrada solo por mapeo?"}
+    R3Q -->|"sí"| R4["R4 · Ronda 2 · mismas reglas que R2 · ESTADO: RONDA-2<br/>no hay tercera ronda: lo que siga abierto → discover acotado<br/>o diferido explícito con dueño"]
+    R3Q -->|"no"| R5
+    R4 --> R5["R5 · Cierre: DECISIONES PERSISTIDAS · review.js scope-hash → SCOPE por epic<br/>resumen: decisiones · filtradas · premisas · mini-revisiones anunciadas<br/>ESTADO: CERRADA · MÉTRICAS · commit docs(review): cierre"]
+    R5 --> GO{"'¿Ejecutamos ya la tanda o más tarde?'"}
+    GO -->|"ya"| BACK
+    GO -->|"más tarde"| LATER(["El registro guarda todo<br/>/specture:start retoma"])
+```
+
+### 3.8 Refresh & seal, mini-revisión anunciada y epics aparcados (v2.3.0)
+
+En el turno de cada epic de un registro cerrado las decisiones ya están tomadas: el
+coordinador solo convierte los borradores en specs sellables contra el código **de ese
+momento** (los epics anteriores de la tanda lo cambiaron), sin preguntar. Hay dos contactos
+previstos: si el bloque del epic o sus RN cambiaron desde la sentada (`scope-check` →
+`CHANGED`), ese epic vuelve a una revisión corta propia; y un epic **regulatorio** tiene su
+**mini-revisión anunciada** (variante B2) justo antes del sello, con el validador leyendo los
+specs ya escritos contra el código. En un epic no regulatorio, una decisión nueva de dinero,
+legal, datos personales, contrato o modelo **aparca** el epic; en uno regulatorio va a su
+mini-revisión, y lo que esa sentada deje abierto lo aparca. Por qué B2: el experimento
+"ronda 2" (`docs/milestone-decision-stage-simulation.md` §7) mostró que las decisiones que solo
+aparecen con el spec escrito en detalle —qué hace cada rol en cada pantalla, datos personales
+que entran por superficies públicas— no las captura ninguna de las dos rondas.
+
+```mermaid
+flowchart TD
+    T(["Turno del epic · registro CERRADA"]) --> LK["Lock: epic [/] + commit → LOCK_SHA"]
+    LK --> SC{"review.js scope-check --batch id --epic X.Y"}
+    SC -->|"CHANGED: el bloque o sus RN se movieron desde la sentada"| SR[["Revisión corta de este epic (R1–R5, ver 3.7)<br/>el único caso en que un epic no regulatorio pregunta"]]
+    SC -->|"SAME"| CS["Code Surface Resolution (el código de AHORA)"]
+    CS --> RF["spec-planner fresco · MODE: REFRESH (sin código)<br/>borradores + registro + CODE_SURFACE → specs sellables<br/>cita 'fuente: revisión id A-n' · nunca pregunta"]
+    RF --> MC{"4a REAL (no --draft) → validador MODE: DELTA<br/>contra los veredictos de la revisión"}
+    MC -->|"hallazgo que una respuesta ya resuelve"| VA["VIOLATION que cita esa A-n<br/>→ planner · nunca una pregunta"]
+    VA --> RF
+    MC -.->|"decisión nueva que el registro no cubre<br/>(CONCERNS: decisión-nueva · HUMAN_DECISION)<br/>en un epic no regulatorio"| PK["APARCAR: [/] → [ ]<br/>+ línea Aparcado: fecha — clase — motivo — tanda id en el ROADMAP<br/>+ APARCADOS del registro · commit"]
+    PK --> NX(["La cola sigue con los epics que no dependen de él<br/>al drenar: aparcados listados con su decisión pendiente<br/>(en una cadena casi lineal, aparcar uno suele detener el resto)"])
+    MC -->|"APPROVED"| RG{"¿Epic en REGULATORIOS?"}
+    RG -->|"no"| SEAL
+    RG -->|"sí"| MR{"Mini-revisión anunciada (B2)<br/>validador MODE: REVIEW sobre los specs ESCRITOS, leyendo código:<br/>qué ve y hace cada rol en cada pantalla o endpoint<br/>· datos personales que entran por superficies públicas"}
+    MR -->|"sin HUMAN_DECISIONS nuevas"| SEAL
+    MR -->|"nuevas (o una decisión-nueva del refresco de este epic)"| MS["UNA sentada, anunciada en R5<br/>mismas reglas que R2 · sección Mini-revisión X.Y del registro"]
+    MS --> MSR["persistir y commitear las respuestas → planner fresco MODE: REFRESH con ANSWERS<br/>→ 4a real → validador MODE: DELTA"]
+    MSR -->|"resuelta"| SEAL
+    MSR -.->|"decisión aún abierta tras la sentada"| PK["commit docs(specs): plan … — refresco de revisión id<br/>· SPEC_SHA · sello (seal-cli write) · EJECUCIÓN: en curso"]
+    SEAL --> EA(["epic-agent (3.2, Steps 3.9–8)"])
+```
+
+Un epic aparcado **no es un estado nuevo**: vuelve a `[ ]` con la línea
+`**Aparcado:** <ISO-8601> — <clase> — <motivo> — tanda <id>` en su bloque del ROADMAP, y la
+siguiente sentada de revisión toma la decisión y borra la línea. `/specture:doctor check` lo
+muestra como `epic-parked` (INFO), y como `parked-orphan` si la línea quedó en un epic `[/]` o
+`[x]` o nombra una tanda sin registro.
 
 ---
 

@@ -1,6 +1,6 @@
 # 04c — Review Stage (one sitting of decisions per batch, then execution without questions)
 
-Read **only by the coordinator** of `build`, when the queue step 2.5 opens a batch. The
+Read **only by the coordinator** of `build`, when the queue step 4.5 opens a batch. The
 epic-agent never sees this file. Grammar of the register:
 `templates/BATCH_REVIEW_TEMPLATE.md`; parser and CLI: `hooks/lib/review.js`.
 
@@ -128,8 +128,11 @@ detail and **before** sealing, dispatch the validator in `MODE: REVIEW` over the
 reading code, focused on what the simulation showed no earlier sweep catches: **what each role
 can see and do on each screen or endpoint the epic touches**, and **personal data that enters
 through public surfaces** (portals, public forms, tokens). No new `HUMAN_DECISIONS` → seal and
-execute without asking. New ones → **one** sitting, announced at R5, with the same rules as R2
-(`### Mini-revisión <X.Y>` in the register). It is the only planned contact during execution.
+execute without asking. New ones (and any `CONCERNS: decisión-nueva` of this epic's refresh) →
+**one** sitting, announced at R5, with the same rules as R2 (`### Mini-revisión <X.Y>` in the
+register); then persist and commit the answers, a fresh planner in `MODE: REFRESH` with them as
+`ANSWERS`, the real 4a and the validator in `MODE: DELTA`, and seal. A decision still open after
+that sitting parks the epic. It is the only planned contact during execution.
 
 ## What never happens
 

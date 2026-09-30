@@ -28,7 +28,7 @@ This skill **fuses** what was previously split into "planificación", "ejecució
 - The contract file (`stack.yml.api.contract_file`) + its readable companion `docs/02-architecture/api-contract.md` — to slice each epic's `operationId`s for the `spec-planner`.
 - `templates/SPEC_TEMPLATE.md` / `templates/MIGRATION_SPEC_TEMPLATE.md` — handed to the `spec-planner` per the epic's `Template:` field.
 - `templates/PLANNING_TEMPLATE.md` — the grammar of `docs/05-specs/<epic>/_planning.md` (`COVERAGE_TABLE`, `MECH_CHECK`, verdicts, `SPEC_SHA`); handed to the `spec-planner` and parsed by `hooks/lib/spec-set-check.js`.
-- `templates/BATCH_REVIEW_TEMPLATE.md` + `build/REVIEW_STAGE.md` — the batch review register (`docs/05-specs/_reviews/<id>.md`, read by `hooks/lib/review.js`) and the procedure of the review stage (queue step 2.5, since v2.3.0).
+- `templates/BATCH_REVIEW_TEMPLATE.md` + `build/REVIEW_STAGE.md` — the batch review register (`docs/05-specs/_reviews/<id>.md`, read by `hooks/lib/review.js`) and the procedure of the review stage (queue step 4.5, since v2.3.0).
 
 ## Preconditions (what degrades when an artifact is missing)
 
@@ -368,14 +368,16 @@ it). In order:
    refresh changed). A finding that an answer of the register already settles is a
    `VIOLATION` citing that `A-n`, never a question.
 5. **Regulatory epic** (`REGULATORIOS` of the register) → the announced **mini-review** of
-   `build/REVIEW_STAGE.md` over the written specs: no new decision → go on; new decisions → the
-   one announced sitting.
+   `build/REVIEW_STAGE.md` over the written specs: no new decision → go on; new decisions — its
+   own, or a `CONCERNS: decisión-nueva` of steps 3-4 of this epic — → the one announced sitting.
 6. Commit (`docs(specs): plan <epic-slug> — refresco de revisión <id>`), `SPEC_SHA`, seal
    (gate step 7), mark `EJECUCIÓN: <X.Y>: en curso` in the register, dispatch the epic-agent.
 
 **Parked epics.** A **new** decision of money, legal, personal data, contract or model that
 appears here — the planner's `CONCERNS: decisión-nueva`, or a validator `HUMAN_DECISION` the
-register does not cover — **parks** the epic instead of asking: set it back from `[/]` to `[ ]`,
+register does not cover — **parks** a non-regulatory epic instead of asking (a regulatory one
+takes it to its announced mini-review, step 5; what that sitting leaves open parks it too):
+set it back from `[/]` to `[ ]`,
 add `- **Aparcado:** <ISO-8601> — <clase> — <motivo> — tanda <id>` to its ROADMAP block and a line
 to `## APARCADOS` of the register, commit, and continue the queue with the epics that do not
 depend on it. Parked epics are listed when the queue drains, with their pending decision, for
