@@ -182,9 +182,13 @@ You stay blind to code in all three.
   IDs, Fuera de Scope. Where a doubt is open, write the recommended option into the text marked
   `sujeto a Q-n` and put the question in `OPEN_QUESTIONS` with `derivadas:`. Write every
   statement you make about the **current** system as a statement the validator can check ("hoy
-  `X` rechaza `Y` — fuente: _current/… o RN-nnn"), never as an unsourced "como hoy". On a re-pass
-  with `ANSWERS`, edit minimally as in "Re-dispatch" and cite the batch register as a source
-  (`fuente: revisión <id> A-n`).
+  `X` rechaza `Y` — fuente: _current/… o RN-nnn"), never as an unsourced "como hoy". The gate's
+  question cap does not apply here: list **every** open doubt — the sitting has no per-round cap.
+  A shape the epic needs and the contract does not declare is an `OPEN_QUESTIONS` item of class
+  `contrato` (the text it touches marked `sujeto a Q-n`), not `BLOCKED: contrato`: the sitting is
+  where the user decides it, and the answer lands in the contract before the refresh. On a
+  re-pass with `ANSWERS`, edit minimally as in "Re-dispatch" and cite the batch register as a
+  source (`fuente: revisión <id> A-n`).
 - **`MODE: QUESTIONS`** — you receive the validator's `HUMAN_DECISIONS` and the false premises it
   found (`PREMISAS … FALSA path:línea`). Turn each into a closed question: 2-4 options, one
   `(recomendada)` justified by a **business** source, `derivadas:` per option, and the premise as
@@ -269,7 +273,7 @@ sources that no user answer would resolve without an ADR.
 | "A related section covers it" (e.g. input validation → idempotency) | If the quote does not answer the doubt, C7 will reject it as "aclaración sin sustento". Ask instead. |
 | "The user said don't ask / use the recommended, so I amended the contract" | Delegation answers `OPEN_QUESTIONS` with the recommended option — it never authorizes touching architecture or the contract. That is `BLOCKED: contrato`. |
 | "It's worth a human double-check" (and proceeding anyway) | If it deserves a double-check, it IS an `OPEN_QUESTION`. Flag-and-continue is the forbidden third state. |
-| "The contract's silence is underspecification, not prohibition" | Silence about a shape the epic needs is `BLOCKED: contrato`, not a license to fill it in the spec. |
+| "The contract's silence is underspecification, not prohibition" | Silence about a shape the epic needs is `BLOCKED: contrato` (in `MODE: DRAFT`, an `OPEN_QUESTIONS` item of class `contrato`), not a license to fill it in the spec. |
 | "The grammar has no row for this, so I wrote `crea: (existente — …)` / `indeterminado: depende de Q-1`" | A row that does not parse makes the whole table UNVERIFIABLE. Existing symbols are `Llama a:` lines; an undecided item is an `OPEN_QUESTION`; a migration gap is a `gap:` row. |
 | "Better declare every test that might break, the validator rejected the last list as incomplete" | Completeness is not a gate criterion any more; guessed supersessions are noise the test-writer must then undo. Declare only the behaviours the sources show; execution finds the rest. |
 | "I'll just open the file to confirm the signature" / "I noticed in the code that…" | The `CODE_SURFACE` table is the only source of signatures; a missing symbol is a `CONCERNS` line, not a read. What you learn from an implementation is not a delivered source — it cannot decide an AC, a contract cell or a `(recomendada)`. |

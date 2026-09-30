@@ -53,7 +53,9 @@ For each epic of `EPICS`, in order:
    as a `DRAFT_FAIL`. No `DRAFT_*` token ever counts as a `MECH_CHECK` for sealing.
 5. **Fresh `architecture-validator` in `MODE: REVIEW`** — it **may read code** (Read/Glob only)
    to discover what forces a decision and to **verify premises**; it returns `VIOLATIONS`,
-   `HUMAN_DECISIONS` and `PREMISAS` (validator AGENT.md "Modes").
+   `HUMAN_DECISIONS` and `PREMISAS` (validator AGENT.md "Modes"). Hand it the `MECH_CHECK:
+   DRAFT_*` line, `RULES_RESOLVED`, the code roots of the epic's components, and the
+   `OPEN_QUESTIONS` of the batch's other drafts (a decision shared by two epics is asked once).
 6. **Premises.** Every `PREMISAS` line goes to `## PREMISAS` of the register. A `FALSA` premise
    is never silently corrected: if the sources decide what should happen, it is a `VIOLATION`
    for the planner; if they do not, it becomes a question (step 7). This is what the per-epic
@@ -87,7 +89,8 @@ For each epic of `EPICS`, in order:
   `respuesta: recomendada — fuente: delegado por el usuario <fecha>` item by item. Never inferred.
 - **Persist as you go**: each answer is written to the register immediately (a cut session loses
   nothing); an answer that creates or changes a rule edits `business_requirements.md` **in
-  place** (`(aclarado en revisión <id>, <fecha>)`); an architectural one is a new ADR. Commit the
+  place** (`(aclarado en revisión <id>, <fecha>)`); an architectural one is a new ADR; a
+  `contrato` one edits `api-contract.md` and the OpenAPI file in place. Commit the
   sources and the register before R3 (`docs(requirements): decisiones de la revisión <id> —
   ronda N`) — the delta re-validation diffs them by commit.
 
