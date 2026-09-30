@@ -50,6 +50,7 @@
   - **Operaciones del contrato:** `operationId` *(en backticks, separados por coma; sufijo `(consume)` en epics frontend, ej. `` `listarArchivos` (consume) `` — por defecto el epic las *implementa*. Omitir la línea si el epic no toca el boundary HTTP. Un epic de página frontend que consume una operación debe depender del epic backend que la implementa; `spec-set-check.js` C1 exige que ese backend esté `[x]`.)*
   - **Specs estimados:** [N — orientativo, se concretará en Fase 4]
   - **Diferidos heredados:** <ítem> — de Epic <X.Y> (dispatch <N>) *(opcional; lo escribe el coordinador de `build` cuando el gate de otro epic aprueba con una observación de alcance que pertenece a éste por componente o RN. El gate de este epic la recibe como candidata de C3: se cubre o se difiere con dueño. Una línea por ítem; separados por ` · ` si hay varios.)*
+  - **Aparcado:** <ISO-8601> — <clase> — <motivo> — tanda <id> *(opcional; lo escribe el coordinador de `build` cuando, al refrescar un epic ya revisado, aparece una decisión nueva de dinero, legal, datos personales, contrato o modelo: el epic vuelve a `[ ]` —no es un estado nuevo— y la cola sigue con los independientes. La decisión se toma en la siguiente sentada de revisión, que borra la línea.)*
 
 - [ ] **Epic 1.2:** [Nombre del Epic]
   - **Dependencias:** Epic 1.1

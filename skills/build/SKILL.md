@@ -7,7 +7,7 @@ description: 'Use when `docs/04-roadmap/ROADMAP.md` exists and contains epics ma
 
 You are the **Coordinator** of the build phase. You do NOT write code, tests, reviews, or specs directly. Your job is to:
 
-1. Build the queue of ready epics and lock one at a time.
+1. Build the queue of ready epics and, since v2.3.0, **review the batch with the user in one sitting** (`build/REVIEW_STAGE.md`) before executing it; then lock one epic at a time.
 2. Run the **Spec Planning Gate** per epic: dispatch the `spec-planner`, resolve its open questions with the user (one budget of two rounds), validate by rounds, commit the specs + `_planning.md`.
 3. Dispatch one fresh **epic-agent** per epic, whose complete procedure is `build/EPIC_LOOP.md` (TDD → review → verification over the validated specs).
 4. Process each epic-agent's report before starting the next — including the **supersession loop**, which fixes old tests broken by design without asking the user.
@@ -28,6 +28,7 @@ This skill **fuses** what was previously split into "planificación", "ejecució
 - The contract file (`stack.yml.api.contract_file`) + its readable companion `docs/02-architecture/api-contract.md` — to slice each epic's `operationId`s for the `spec-planner`.
 - `templates/SPEC_TEMPLATE.md` / `templates/MIGRATION_SPEC_TEMPLATE.md` — handed to the `spec-planner` per the epic's `Template:` field.
 - `templates/PLANNING_TEMPLATE.md` — the grammar of `docs/05-specs/<epic>/_planning.md` (`COVERAGE_TABLE`, `MECH_CHECK`, verdicts, `SPEC_SHA`); handed to the `spec-planner` and parsed by `hooks/lib/spec-set-check.js`.
+- `templates/BATCH_REVIEW_TEMPLATE.md` + `build/REVIEW_STAGE.md` — the batch review register (`docs/05-specs/_reviews/<id>.md`, read by `hooks/lib/review.js`) and the procedure of the review stage (queue step 2.5, since v2.3.0).
 
 ## Preconditions (what degrades when an artifact is missing)
 
@@ -327,7 +328,7 @@ files**: you hand it a table `SYMBOL | PATH | SIGNATURE` of the component's exis
 split to the user (it touches `ROADMAP.md`); `contrato`: the epic needs a contract change
 → `architecture`/ADR, never a spec; `contradicción`: escalate for an ADR.
 
-**Human contacts.** Inside the gate there is **one budget**: at most 2 question rounds
+**Human contacts.** With a review stage (v2.3.0) the user's contacts are the batch sitting (rounds 1-2), the announced mini-review of each regulatory epic, and the exceptions listed below; a decision nobody foresaw **parks** the epic instead of asking. Without one, inside the gate there is **one budget**: at most 2 question rounds
 (step 3) plus the single closed question of the cap (step 5). After the seal the epic runs
 without asking, except for: **`DONE: pendiente de aprobación visual`** (the design-system
 foundation epic — you run the gate; routine on any project with a frontend) · `BLOCKED:
@@ -342,12 +343,44 @@ broken by design is not a human contact** — it goes through the supersession l
 2. Build the **queue**: walk the ROADMAP in stable order (earliest epics first) and collect the first **N** epics that will be runnable in dependency order — an epic whose only unmet dependency is an earlier queue member is eligible (it simply runs after it).
 3. If no epic is ready and none can be made ready within the queue → dependency cycle, or everything is blocked by an escalated epic. Stop and escalate to the user.
 4. `TaskCreate` **one task per queued epic** (subject `<epic-slug>`, `activeForm` "queued"). This is the visible queue; each epic-agent's internal step tracking is discarded with its context.
+4.5. **Review stage for the batch (v2.3.0)** — `node "${CLAUDE_PLUGIN_ROOT}/hooks/lib/review.js" status`. Unless a `CLOSED` register already covers every queued epic, run `build/REVIEW_STAGE.md` for the queue **before** executing anything: one sitting (two rounds at most) where the user takes every decision the machine can foresee; then the queue runs without questions. An epic the review did not cover (a register from before v2.3.0, or the user declined the review for it) goes through the per-epic Spec Planning Gate above, unchanged.
 5. **Process the queue one epic at a time** (never concurrently). For each epic, in order:
    1. Mark the epic `[/]` in `ROADMAP.md`; commit. Only ONE epic is `[/]` at any moment. That commit is the epic's **`LOCK_SHA`**: record it as `- LOCK_SHA: <sha> — <ISO-8601>` under `## SPEC_SHA` of `_planning.md` as soon as the file exists.
    2. Set that epic's task `in_progress`.
-   3. Run the **Spec Planning Gate** (above) for this epic. When it completes (specs committed, `SPEC_SHA` recorded), assemble the epic-agent's base context (`.specture/stack.yml`, `.specture/conventions.md`, all ADRs, `docs/01-requirements/business_requirements.md`, `docs/02-architecture/architecture.md`, the validated specs, and the full text of `build/EPIC_LOOP.md` — **never** this coordinator file) and dispatch one fresh **epic-agent** (below). Wait for its report.
+   3. If the epic is in a `CLOSED` review register → **Refresh & seal** (below) — no questions; otherwise run the **Spec Planning Gate** (above). When it completes (specs committed, `SPEC_SHA` recorded), assemble the epic-agent's base context (`.specture/stack.yml`, `.specture/conventions.md`, all ADRs, `docs/01-requirements/business_requirements.md`, `docs/02-architecture/architecture.md`, the validated specs, and the full text of `build/EPIC_LOOP.md` — **never** this coordinator file) and dispatch one fresh **epic-agent** (below). Wait for its report.
    4. Process the report (below) before starting the next epic.
-6. **Stop when the queue drains** (N epics processed) or a report escalates. Do not pull epics beyond N. With N > 1, Step 8.5 is offered **once**, here, for all the epics of the batch — never between epics; so are the `## DIFERIDOS` lines with `dueño: sin epic` (each one a possible `new-feature`). If a session branch was created (§13), announce it now and suggest the merge/PR per `W-4` — Specture does not merge for you.
+6. **Stop when the queue drains** (N epics processed) or a report escalates. Do not pull epics beyond N. With N > 1, Step 8.5 is offered **once**, here, for all the epics of the batch — never between epics; so are the `## DIFERIDOS` lines with `dueño: sin epic` (each one a possible `new-feature`). List the **parked** epics with their pending decision and mark `ESTADO: EJECUTADA` in the review register when every epic is `[x]` or parked. If a session branch was created (§13), announce it now and suggest the merge/PR per `W-4` — Specture does not merge for you.
+
+### Refresh & seal (per epic, after a closed review — no questions)
+
+The decisions were taken in the batch sitting; at the epic's turn the coordinator only turns the
+drafts into sealed specs against the code as it is **now** (earlier epics of the batch changed
+it). In order:
+
+1. Lock `[/]` + `LOCK_SHA` (queue step 5.1).
+2. `review.js scope-check --batch <id> --epic <X.Y>` — `CHANGED` means the epic block or one of
+   its RN moved since the sitting: that epic goes back to a short review of its own (R1-R5 of
+   `build/REVIEW_STAGE.md` for this one epic) — the only case where a non-regulatory epic asks.
+3. Code Surface Resolution → fresh `spec-planner` in `MODE: REFRESH` with the drafts, the
+   register and `CODE_SURFACE`.
+4. Gate step 4a (**real**, not `--draft`) → validator per the gate's step 5, in `MODE: DELTA`
+   against the review's verdicts (an epic reviewed as a draft is revalidated only on what the
+   refresh changed). A finding that an answer of the register already settles is a
+   `VIOLATION` citing that `A-n`, never a question.
+5. **Regulatory epic** (`REGULATORIOS` of the register) → the announced **mini-review** of
+   `build/REVIEW_STAGE.md` over the written specs: no new decision → go on; new decisions → the
+   one announced sitting.
+6. Commit (`docs(specs): plan <epic-slug> — refresco de revisión <id>`), `SPEC_SHA`, seal
+   (gate step 7), mark `EJECUCIÓN: <X.Y>: en curso` in the register, dispatch the epic-agent.
+
+**Parked epics.** A **new** decision of money, legal, personal data, contract or model that
+appears here — the planner's `CONCERNS: decisión-nueva`, or a validator `HUMAN_DECISION` the
+register does not cover — **parks** the epic instead of asking: set it back from `[/]` to `[ ]`,
+add `- **Aparcado:** <ISO-8601> — <clase> — <motivo> — tanda <id>` to its ROADMAP block and a line
+to `## APARCADOS` of the register, commit, and continue the queue with the epics that do not
+depend on it. Parked epics are listed when the queue drains, with their pending decision, for
+the next sitting. Honest limit: in an almost linear chain of dependencies, parking one epic
+usually stops the rest.
 
 ### Dispatch the epic-agent
 
@@ -517,6 +550,7 @@ here, by evidence, before building the queue:
   first (and re-validate only if it fails). If `.specture/state/build-locked.json` is missing
   (gitignored — a fresh clone never has it), rewrite it with `seal-cli.js write` from the
   recorded `SPEC_SHA` and `LOCK_SHA` before dispatching.
+- **A review register `OPEN`** (`review.js status`) → the batch sitting was cut: resume `build/REVIEW_STAGE.md` at its state, asking only the pending items. **`CLOSED` with epics left** → continue the queue with Refresh & seal.
 - **A seal with `lifted_spec_paths`** → a supersession loop was interrupted: resume it from
   its step 4 (`spec-delta`) if the planner's edit is on disk, else from step 3.
 - **A last verdict `REJECTED` on supersession grounds recorded before v2.2.0** (`doctor`
@@ -583,7 +617,7 @@ bind **this coordinator** specifically: never hand-edit `.specture/state/build-l
 (`seal-cli.js` is the only writer — `write` / `merge-spec` / `lift-spec` / `unseal-spec` /
 `supersede` / `release`); never skip the `git diff <SPEC_SHA>..HEAD` spec-seal check when
 processing a report — after a supersession loop, the range starts at the loop's new
-`SPEC_SHA`. The gate adds three: never resume the planner with `SendMessage` (always a fresh
+`SPEC_SHA`. The review stage adds three: never apply a recommended option the user did not choose; never ask during the refresh of a non-regulatory epic (a new decision parks it); never drop a filtered question silently. The gate adds three: never resume the planner with `SendMessage` (always a fresh
 dispatch per pass); never ask the user or re-plan because of a WARNING or a NOTE of an
 APPROVED verdict (route it with the table of step 5); never invoke `skills/debug` from the
 queue (it needs Plan mode — report `BLOCKED: debug` and let the user choose). The

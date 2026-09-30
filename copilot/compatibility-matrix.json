@@ -39,6 +39,8 @@
     "test-supersession",
     "supersession-loop",
     "delta-revalidation",
+    "review-stage",
+    "parked-epic",
     "build-metrics",
     "roadmap-validation",
     "red-commit",

@@ -79,7 +79,7 @@ Read **only the epic checkbox lines** of `docs/04-roadmap/ROADMAP.md` (grep the 
 
 | State | Action |
 |-------|--------|
-| Any epic marked `[ ]` (pending) or `[/]` (in progress) | Invoke `./skills/build/SKILL.md` |
+| Any epic marked `[ ]` (pending) or `[/]` (in progress) | Invoke `./skills/build/SKILL.md` — since v2.3.0 it opens (or resumes, if `review.js status` says `OPEN`) the batch review first: one sitting of decisions, then execution without questions |
 | All epics marked `[x]` (complete) | Ask the user: "El ROADMAP está 100% completo. ¿Quieres (a) auditar el código completo, (b) agregar una nueva funcionalidad, o (c) finalizar?" Then route to the chosen path. |
 
 ## Transversal Skills

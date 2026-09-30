@@ -165,6 +165,6 @@ If `REJECTED`, fix the ROADMAP and re-dispatch. Do NOT announce the documents as
 ## After All Documents Exist
 
 Announce in Spanish:
-> "Arquitectura, contrato de API (en la ruta de `stack.yml.api.contract_file`, + `api-contract.md` legible) y ROADMAP en `docs/04-roadmap/ROADMAP.md` — los tres aprobados por el `architecture-validator`. Por favor revísalos. Cuando estés listo, podemos pasar a la Fase 3 (UX) si tienes frontend, o directamente a la Fase 4 (build) para empezar a construir el primer epic."
+> "Arquitectura, contrato de API (en la ruta de `stack.yml.api.contract_file`, + `api-contract.md` legible) y ROADMAP en `docs/04-roadmap/ROADMAP.md` — los tres aprobados por el `architecture-validator`. Por favor revísalos. Cuando estés listo, podemos pasar a la Fase 3 (UX) si tienes frontend, o directamente a la Fase 4 (build): primero revisamos juntos, en una sola sentada, las decisiones de la tanda de epics que elijas; después se ejecutan sin preguntarte."
 
 Wait for the user. Do not auto-advance.

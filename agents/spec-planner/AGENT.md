@@ -171,6 +171,29 @@ user's answers hang from them). Emit a `CHANGELOG` with every change; the coordi
 contrasts it against `git diff -- docs/05-specs/<epic-slug>/` — a diff that exceeds the
 `CHANGELOG` is a finding.
 
+## Review-stage modes (v2.3.0 — `skills/build/REVIEW_STAGE.md`)
+
+You stay blind to code in all three.
+
+- **`MODE: DRAFT`** — before the batch sitting. Write the epic's specs **without** "Superficie
+  de Código Existente" (nobody has sealed anything yet): Objetivo, Contrato, BR/AC/EC with stable
+  IDs, Fuera de Scope. Where a doubt is open, write the recommended option into the text marked
+  `sujeto a Q-n` and put the question in `OPEN_QUESTIONS` with `derivadas:`. Write every
+  statement you make about the **current** system as a statement the validator can check ("hoy
+  `X` rechaza `Y` — fuente: _current/… o RN-nnn"), never as an unsourced "como hoy". On a re-pass
+  with `ANSWERS`, edit minimally as in "Re-dispatch" and cite the batch register as a source
+  (`fuente: revisión <id> A-n`).
+- **`MODE: QUESTIONS`** — you receive the validator's `HUMAN_DECISIONS` and the false premises it
+  found (`PREMISAS … FALSA path:línea`). Turn each into a closed question: 2-4 options, one
+  `(recomendada)` justified by a **business** source, `derivadas:` per option, and the premise as
+  `Dato verificado: <path:línea>`. Do not invent options the sources exclude; do not answer.
+- **`MODE: REFRESH`** — at the epic's turn in the queue, after the batch was reviewed. Complete
+  the drafts into sealable specs: fill the Superficie from `CODE_SURFACE`, re-anchor planned
+  signatures, add the `COVERAGE_TABLE` rows. Every decision you rely on cites the register
+  (`fuente: revisión <id> A-n` or a `F-n`). **You never ask here**: a decision the register does
+  not cover goes to `CONCERNS: decisión-nueva: <clase> — <qué hay que decidir>` and the
+  coordinator parks the epic.
+
 ## `MODE: SUPERSESSIONS` (execution loop)
 
 The spec is sealed and GREEN is in progress; some tests of closed epics fail and the

@@ -1,13 +1,14 @@
 {
   "files": {
     "skills/architecture/SKILL.md#required-inputs": "3ca81e44ce5435c14d6c2b0dd6c87ac6b91cbbc70c9d09c5ea4d8451e939956f",
-    "skills/build/SKILL.md#required-inputs": "5270bd62a935d50cc028111d2793b83ff65e4e7671a5537c438c6141fb1c1e9a",
+    "skills/build/SKILL.md#required-inputs": "e0faaf619240b0a41efb003d53158277b0cbbfd5bba65ad4a471715efae51460",
     "skills/contract-sync-audit/SKILL.md#required-inputs": "8e0e5960283a11cc8b6f8d271777a105f3951a004876c9df72c1ee5c6ea45592",
     "skills/discover/SKILL.md#required-inputs": "891bbe500e062f890fbee530e7ce3cdb3eeb2893b5b73647aac69562b0c163f6",
     "skills/knowledge/SKILL.md#required-inputs": "8222d4a91a8bba309db8b9c71299159061c14b3ff59f70978bb2d041fe46ccd7",
     "skills/new-feature/SKILL.md#required-inputs": "1348774715d0d2e30222bc1592b0092e20287a546107dc40f60a2f0124bf4119",
     "skills/setup-docs-bridge/SKILL.md#required-inputs": "253dca0930481e265cd541fa60292a417b39a2f74303c418ee0ec3d1acb425e9",
     "skills/ux-design/SKILL.md#required-inputs": "981343f0fac80094904064d4a1a34e0e2cda4b7cdf7901a28d2445ea5bb6cb37",
+    "templates/BATCH_REVIEW_TEMPLATE.md": "ffaf5b0c6dfabb0a552eabcc738a2ec339a79f81199958286358567dc4d6ffd4",
     "templates/BRAND_BRIEF_TEMPLATE.md": "e62a57a57a875c863bbf827c57d625b9eae48fb97671b14dd8789af947a6358e",
     "templates/BUSINESS_REQUIREMENTS_TEMPLATE.md": "bf79c9b7400e6714a56133c5322ecaf6bfea9bb058836653f6e417d174f2eedb",
     "templates/COMPONENT_REFERENCE_TEMPLATE.md": "2ba836cfcf41d83e34636a630e8dd6452ed37a59dce4cd812e01f0e2e98e6095",
@@ -22,7 +23,7 @@
     "templates/project-config/rules.template.yml": "68592f1052b23837613075599af575797139e53c1c8339278656101dcfe5a114",
     "templates/project-config/settings.template.yml": "c1b0765e237d6a5f775dac44cd9ec3ea7a0a7f5eaca57ec2e8bd4a25fca3560a",
     "templates/project-config/stack.template.yml": "9cdffd6e7fbf40c822725c0c5d736ba0d1a4a18bded457422b7f8005df743370",
-    "templates/ROADMAP_TEMPLATE.md": "5916fa28478b736a07747d5cff8e4642aa4883171d00d00d56cef8c2e22b8e16",
+    "templates/ROADMAP_TEMPLATE.md": "51b0fbc8e0ddeaa104b2b07b0b2a7e9a59d30c6c4961df67e4f2dab616271112",
     "templates/SPEC_TEMPLATE.md": "f05512fd658becd472f38270775e682d508e774fbaf5313a39e0469052bebb2f"
   }
 }

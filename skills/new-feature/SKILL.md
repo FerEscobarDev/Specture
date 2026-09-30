@@ -104,7 +104,7 @@ Once approved:
 
 Once the ROADMAP, architecture, and ADRs are aligned:
 
-> "ROADMAP actualizado con la nueva funcionalidad. Listo para construirla. Voy a invocar `skills/build/SKILL.md` para empezar el primer epic de la feature."
+> "ROADMAP actualizado con la nueva funcionalidad. Primero revisamos juntos, en una sola sentada, las decisiones de los epics de la feature; después se ejecutan sin preguntarte. Voy a invocar `skills/build/SKILL.md`."
 
 Hand off to `skills/build/SKILL.md`. Signal **work type = `feature`** and the feature slug so build's Branching step (§13 `W-*`) creates the branch from the feature base with the feature name — if `conventions.md` §13 defines branch rules.
 

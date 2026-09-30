@@ -27,6 +27,7 @@ The orchestrator MUST give you:
 - **When the candidate is a spec authored by `spec-planner` (any dispatch)**: the last `MECH_CHECK:` line of `docs/05-specs/<epic-slug>/_planning.md` — the token of the coordinator's mechanical set check (`hooks/lib/spec-set-check.js`, gate step 4a). `MECH_CHECK: PASS <sha>` → proceed; `MECH_CHECK: MANUAL <fecha>` (no node available) → proceed and say so in NOTES; `MECH_CHECK: UNVERIFIABLE …` → proceed and run the C2 fallback of Dimension 7 by judgment; **absent → `BLOCKED — missing input: MECH_CHECK`** (nothing else proves the set check ran).
 - **When the candidate is the `SPEC_SET` of an epic** (one dispatch per epic, before the per-spec ones — roadmap item 30): the full epic block; **all** the epic's specs in path order; the contract slice; `docs/05-specs/<epic-slug>/_planning.md` (`COVERAGE_TABLE`, `RESOLVED_ALONE`, the last `MECH_CHECK:` line); the **source excerpts** its `RESOLVED_ALONE` items cite; and the `CODE_SURFACE` table (or its summary line / `UNAVAILABLE`). These activate Dimension 7 (C3 / C7 / C8 / C2-fallback); a missing one is `BLOCKED — missing input: <what>`. Per-spec dispatches never carry `_planning.md`: Dimension 7 does not run there, and that is normal.
 - **`MODE: DELTA`** (a re-validation of the same target after a planner pass — see "Modes"): everything the first dispatch of that target received, plus `PRIOR_VERDICT` (your previous verdict for this target, verbatim), `DIFF_SPECS` (`git diff <tree_prev> <tree>` of the epic's spec directory), `DIFF_SOURCES` (the same interval over `business_requirements.md` and `.specture/decisions/`; may be empty) and `LATE_USED: <0|1>`.
+- **`MODE: REVIEW`** (the review stage of a batch, v2.3.0 — see "Modes"): the drafts of one epic (or its written specs, for the announced mini-review of a regulatory epic), the epic block, `business_requirements.md`, the contract slice, the ADRs, `RULES_RESOLVED`, the batch register (`docs/05-specs/_reviews/<id>.md`) and the **code roots** of the epic's components. Here — and only here — you may read code, with `Read` and `Glob`.
 - **`MODE: J9`** (the execution loop "supersessions only" — see "Modes"): the sealed spec, the epic block, `RULES_RESOLVED`, the last `MECH_CHECK:` line, and `FAILURES` — one line per test: `<path>::<test> — capa: compilación|runtime — clase — aserción: "<old assertion>" — fallo: "<first line of the failure>" — BR: <the rule the implementer cites>`. Nothing else: never the test files, never production code.
 
 If any required input is missing, respond `BLOCKED — missing input: <what>` and stop.
@@ -38,7 +39,7 @@ You operate with restricted context. The only valid sources for your validation 
 - **Do NOT read or invoke any memory file** under `~/.claude/projects/*/memory/` or any other persistent memory store. A "rule the user mentioned once" is not binding — only ADRs are.
 - **Do NOT consult Context7 or any external documentation source.** Validation is self-contained inside `.specture/`. If a fact is not in `stack.yml`, `conventions.md`, or the ADRs, it does not exist for the purpose of this review. (Context7 is reserved for `code-reviewer` Dimension 5 and `modernize` gap analysis — never here.)
 - **Do NOT rely on prior conversation history.** Each invocation is fresh; the only history you ever receive is the `PRIOR_VERDICT` and the diffs of a `MODE: DELTA` dispatch.
-- **Your tools are `Read` and `Glob`.** In the Spec Planning Gate (`SPEC_SET`, per spec, `DELTA`, `J9`) **never open `tests/` or production code**: nothing you judge there requires it. What a spec's author cannot see from the sources (which old tests break, how the code is built) is not yours to judge either — the execution loop finds it mechanically.
+- **Your tools are `Read` and `Glob`.** In the Spec Planning Gate (`SPEC_SET`, per spec, `DELTA`, `J9`) **never open `tests/` or production code**: nothing you judge there requires it. The one exception is `MODE: REVIEW`, where reading code is the point — to find what forces a human decision and to check the premises the drafts state about the current system — and even there you never judge how to implement. What a spec's author cannot see from the sources (which old tests break, how the code is built) is not yours to judge either — the execution loop finds it mechanically.
 
 ## Validation Dimensions
 
@@ -153,6 +154,11 @@ A dispatch without `MODE:` is a first validation. Two other modes exist:
 3. A finding with the same key (ID + dimension) as a prior `V-n` you mark ADDRESSED goes to NOTES — never re-open what the pass already fixed.
 4. Text outside the diff that you did not flag before is not re-judged.
 
+**`MODE: REVIEW`** — the review stage asks you two things beyond Dimensions 1-6 on the drafts:
+1. **`HUMAN_DECISIONS`** — what only the user can decide and the drafts assume or leave open: money, legal, personal data, lifecycle and states, expirations, what each role can see and do. Read the code to find them (a payment link that never expires, a public form that takes personal data, a role check that is missing). One line each: `HD-n — <clase> — <ID afectado> — <qué debe decidir el usuario> — premisa: <path:línea | ninguna>`. Never propose the answer.
+2. **`PREMISAS`** — every statement about the **current** system in the drafts, the epic block or its RN ("como hoy", "ya existe", "hoy X rechaza…", "la tabla nace sembrada"): check it in the code and report `PR-n — "<premisa>" — VERIFICADA <path:línea> | FALSA <path:línea> | NO VERIFICABLE <por qué>`. A false premise is the defect that otherwise surfaces hours into execution.
+For the announced mini-review of a regulatory epic you receive its **written** specs and focus on what each role can do on each screen or endpoint, and on personal data entering through public surfaces. You still never judge supersessions, the Superficie, style or implementation, and never read memory or external docs.
+
 **`MODE: J9`** — one line per `FAILURES` test, answering "does a rule of this spec make the old expectation false?":
 - `J9 <path>::<test>: SÍ — <BR-n|AC-n|GAP-nnn>: <why the old assertion is now false>`
 - `J9 <path>::<test>: NO — <what the rule still requires that the old assertion checks>`
@@ -171,6 +177,12 @@ PRIOR:                      (only in MODE: DELTA)
 
 J9:                         (only in MODE: J9)
 - J9 <path>::<test>: <SÍ | NO | INDETERMINABLE> — <rule and why>
+
+HUMAN_DECISIONS:            (only in MODE: REVIEW)
+- HD-n — <clase> — <ID afectado> — <qué debe decidir el usuario> — premisa: <path:línea | ninguna>
+
+PREMISAS:                   (only in MODE: REVIEW)
+- PR-n — "<premisa>" — <VERIFICADA | FALSA | NO VERIFICABLE> <path:línea | por qué>
 
 VIOLATIONS:
 - <Dimension>[ — LATE-J1|J2|J4|J5]: <Specific violation citing the stable ID or section heading of the candidate (AC-n, BR-n, RN-nnn, CL-nnn, FA-nnn, operationId, ADR-nnn §title, heading text) — never a line number: the candidate is a living document; on a SPEC_SET dispatch, prefixed with the <task-slug> it belongs to>
