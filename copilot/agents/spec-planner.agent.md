@@ -188,7 +188,12 @@ You stay blind to code in all three.
   `contrato` (the text it touches marked `sujeto a Q-n`), not `BLOCKED: contrato`: the sitting is
   where the user decides it, and the answer lands in the contract before the refresh. On a
   re-pass with `ANSWERS`, edit minimally as in "Re-dispatch" and cite the batch register as a
-  source (`fuente: revisión <id> A-n`).
+  source (`fuente: revisión <id> A-n`). A `derivadas:` of the chosen option that the answer
+  leaves undecided is an `OPEN_QUESTIONS` item marked `derivada de A-n` — never a CONCERNS
+  note, even when it does not touch this epic's contract: whether it reaches round 2 is the
+  validator's and the coordinator's call. An answer you cannot carry into the spec without
+  contradicting an Accepted ADR, the contract or an RN goes to `CONCERNS: respuesta contradice
+  fuente: A-n — <cita>`; never resolve it yourself.
 - **`MODE: QUESTIONS`** — you receive the validator's `HUMAN_DECISIONS` and the false premises it
   found (`PREMISAS … FALSA path:línea`). Turn each into a closed question: 2-4 options, one
   `(recomendada)` justified by a **business** source, `derivadas:` per option, and the premise as

@@ -107,6 +107,26 @@ registra en `docs/gate-convergence-baseline.md` y en la entrada del changelog. (
 `docs/spec-gate-convergence-design.md` F1-02, aplica la misma regla a los defectos de nivel
 proyecto de G8.)
 
+**Etapa de revisión (desde v2.3.0).** Un release que toca `skills/build/REVIEW_STAGE.md`, los
+modos `DRAFT`/`QUESTIONS`/`REFRESH` del planner o `MODE: REVIEW` del validador corre además el
+pipeline sobre la etapa 5:
+
+```
+node scripts/baseline-fixture.js <dir> --stage 5 --git
+```
+
+La tanda 2.1–2.3 lleva sus carnadas en la pista que imprime el script (con las respuestas que
+debe dar el operador). El resultado se documenta en `docs/review-stage-baseline.md`:
+
+| # | Escenario (revisión) | Resultado exigido |
+|---|---|---|
+| PR | Premisa falsa en el bloque de 2.1 | `FALSA repository.js:29` → pregunta con `Dato verificado:`; control de 2.2 `VERIFICADA` |
+| R1 | Tanda completa | una sola agenda por tema; `review.js status` = `OPEN … RONDA-1` (el registro parsea) |
+| R4 | Respuesta contra ADR-002 | `LATE` en la ronda 2, nunca persistida como regla |
+| R5 | Respuesta "30 días" | una pregunta `derivada de A-n` en la ronda 2 |
+| R6 | Decisión nueva al refrescar 2.2 | aparcado; 0 preguntas; la cola sigue |
+| R8 | Borrador de 2.3 con su proveedor en la tanda | `DRAFT_PASS` con `--batch` |
+
 ## Reglas
 
 - **Semver del plugin:** *patch* = higiene, docs, fixes sin cambio de comportamiento de

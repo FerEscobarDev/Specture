@@ -90,7 +90,9 @@ For each epic of `EPICS`, in order:
 - **Persist as you go**: each answer is written to the register immediately (a cut session loses
   nothing); an answer that creates or changes a rule edits `business_requirements.md` **in
   place** (`(aclarado en revisión <id>, <fecha>)`); an architectural one is a new ADR; a
-  `contrato` one edits `api-contract.md` and the OpenAPI file in place. Commit the
+  `contrato` one edits `api-contract.md` and the OpenAPI file in place; one that corrects the
+  epic block (a false premise in its description, its `Dependencias` or `Componentes`) edits
+  the ROADMAP block in place — `SCOPE` is taken at R5, so it is not drift. Commit the
   sources and the register before R3 (`docs(requirements): decisiones de la revisión <id> —
   ronda N`) — the delta re-validation diffs them by commit.
 
@@ -101,7 +103,9 @@ For each epic of `EPICS`, in order:
 2. `spec-set-check --draft --batch` → validator in `MODE: DELTA` over the diff, **plus `MODE:
    REVIEW` for what the answers opened**: only questions **born of the answers** (derived) or
    **LATE** (an answer that contradicts an Accepted ADR, a BLOCKER rule or the contract) pass.
-   The validator may read code again to verify the premises the answers created.
+   The validator may read code again to verify the premises the answers created. An answer
+   that changes a source (RN, ADR, contract, ROADMAP block) and does not show in
+   `DIFF_SOURCES` is reported as `NO PERSISTIDA: A-n` — persist it before round 2.
 3. **An answer closes a decision only if it addresses its premise.** A `HUMAN_DECISION` that was
    mapped to an answer that does not touch it (the validator marks it "cerrada solo por mapeo")
    goes back to round 2 — in the simulation that mapping silently lost the payment-link hole.
