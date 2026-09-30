@@ -652,6 +652,21 @@ Specture está en desarrollo activo. Para decisiones arquitectónicas internas, 
 
 ## Changelog
 
+### v2.2.2 — El gate desde cero en una ronda, y un red-fix que no desarma lo que ya funciona
+
+**Motivación:** HC-IHCE.6 de Psikora fue el primer gate completo bajo v2.2: **una ronda**, 4 preguntas en una sola sentada, ningún APROBADO reabierto, y el epic cerrado con 104 tests viejos supersedidos sin una regresión. Las dos preguntas que quedaron en la ejecución las provocó el propio procedimiento: la regla de v2.2.1 de revertir toda la producción para corregir un test del RED (el coordinador ofreció una "corrección puntual" y el usuario la eligió) y la regla de "un loop por capa", que obligó a pedir permiso para reescribir tests que el reviewer había marcado como débiles. Y apareció un defecto mecánico nuevo del C-sup.
+
+**Cambios:**
+- **Red-fix y loop de corrección puntuales, sin revert.** Los tests del RED que hay que corregir —por un defecto mecánico o porque el spec cambió— se abren con `seal-cli supersede --shared-with-red` y el test-writer, en el nuevo `MODE: RED-FIX`, reescribe **solo** los de los IDs afectados en un commit `test(red-fix)` registrado por SHA. La producción que ya pasa no se toca y ya no hace falta `unseal-spec`. La honestidad la prueban tres controles: `honesty-check red-lines --epic-dir` exige que el resto del RED original sobreviva y toma las líneas del red-fix como el contrato nuevo; un **RED retroactivo** en `<red_sha_orig>^` —el código sin este spec— exige que los tests corregidos fallen allí; y la Dim 4 del reviewer lee cada red-fix contra el spec. El loop de corrección usa `lift-spec` para liberar solo el spec y termina en ese mismo red-fix (`RESUME_AT: red-fix`, EPIC_LOOP Step 5.3). Reemplaza el "revertir el RED y la producción y restaurar" de v2.2.1.
+- **La reescritura que pide el reviewer no es un loop nuevo.** Si el reviewer marca una reescritura del loop o de un red-fix como más débil que su regla (por ejemplo, una mutación que el test no detecta), el epic-agent la devuelve al test-writer con el hallazgo textual, la registra igual que la primera y re-revisa: cuenta para el tope de iteraciones, no pregunta nada.
+- **C-sup con dos specs sobre el mismo test.** Cuando dos specs del mismo epic supersiden el mismo test viejo, el chequeo tomaba la primera fila `sup:` y daba un BLOCKER falso al segundo ("la tabla la asigna a …"); ahora busca la fila del propio spec. En HC-IHCE.6 hizo fallar tres corridas del chequeo mecánico.
+- **Docs:** `docs/tdd-honesty-reference.md` (clasificación y opciones de recuperación), `docs/execution-flows.md`, `docs/native-integration-guide.md`, `hooks/README.md`, `docs/build-faq.md`.
+- Tests: 268 (266 → 268: `red-lines` con red-fix registrado, C-sup con dos specs sobre el mismo test).
+
+**Migración para proyectos existentes:** ninguna. `/specture:doctor migrate` registra el `schema_version`.
+
+**Backward-compat:** sin cambios de esquema. `red-lines` sin `--epic-dir` se comporta como antes. Las reglas de permisos de v2.2.1 siguen valiendo; `unseal-spec` sigue existiendo para uso manual.
+
 ### v2.2.1 — Lo que la primera medición real encontró
 
 **Motivación:** HC-IHCE.5 de Psikora, el epic que se había atascado un día entero en el gate bajo v2.1, se cerró con v2.2.0: el gate reanudado aprobó en **una** ronda delta y el epic llegó a `[x]` con 197 tests viejos supersedidos en 3 loops. La medición dejó tres fricciones reales y una métrica mal definida, todas de la ejecución.
