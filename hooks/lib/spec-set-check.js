@@ -318,7 +318,10 @@ function runChecks({ table, specs, epic, roadmapEpics, epicDir, register = [] })
   const projectRoot = findProjectRoot(epicDir) || process.cwd();
   for (const spec of specs) {
     for (const sup of spec.supersedes) {
-      const row = rows.sup.find((r) => r.path === sup.path && r.test === sup.test);
+      // The same old test may be superseded by two specs of the epic (each rewrites it in turn):
+      // prefer the row of this spec; any other row for the test is the "assigned elsewhere" case.
+      const matches = rows.sup.filter((r) => r.path === sup.path && r.test === sup.test);
+      const row = matches.find((r) => r.slug === spec.slug) || matches[0];
       if (!row) add("C-sup", "BLOCKER", spec.slug, `Supersede \`${sup.path}::${sup.test}\` sin fila sup: en la COVERAGE_TABLE`);
       else if (row.slug !== spec.slug) add("C-sup", "BLOCKER", spec.slug, `Supersede \`${sup.path}::${sup.test}\` la tabla la asigna a ${row.slug}`);
       if (applied.has(`${sup.path}::${sup.test}`)) continue;

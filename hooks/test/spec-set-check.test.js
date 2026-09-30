@@ -377,6 +377,25 @@ function supersedeProject(testName, fileText) {
 
 const supFindings = (result) => result.lines.filter((l) => l.startsWith("C-sup"));
 
+test("C-sup: the same old test superseded by two specs of the epic, each with its own sup: row, passes (v2.2.2)", () => {
+  const line = "- Supersede: `tests/old/nota.test.js::rechaza titulo repetido` — motivo: BR-1 — epic origen: epic-0.9-old\n";
+  const specs = {
+    ...CLEAN_SPECS,
+    "01-subir": CLEAN_SPECS["01-subir"] + "\n## Supersesiones de tests sellados\n" + line,
+    "02-listar": CLEAN_SPECS["02-listar"] + "\n## Supersesiones de tests sellados\n" + line
+  };
+  const bothRows = `${CLEAN_ROWS}\n- sup: tests/old/nota.test.js::rechaza titulo repetido → 01-subir (BR-1)\n- sup: tests/old/nota.test.js::rechaza titulo repetido → 02-listar (BR-1)`;
+  const ok = runCheck(createProject({ specs, planning: planningDoc(bothRows), files: { "tests/old/nota.test.js": NOTA_TEST } }));
+  assert.equal(ok.status, 0, ok.lines.join("\n"));
+  assert.deepEqual(supFindings(ok), []);
+
+  // One row only: the spec without its own row is still a BLOCKER.
+  const oneRow = `${CLEAN_ROWS}\n- sup: tests/old/nota.test.js::rechaza titulo repetido → 01-subir (BR-1)`;
+  const missing = runCheck(createProject({ specs, planning: planningDoc(oneRow), files: { "tests/old/nota.test.js": NOTA_TEST } }));
+  assert.equal(missing.status, 1);
+  assert.ok(missing.lines.some((l) => /^C-sup BLOCKER 02-listar: .*la tabla la asigna a 01-subir/.test(l)), missing.lines.join("\n"));
+});
+
 test("C-sup: an applied supersession (register commit is a SHA) is not re-checked on disk — the rewrite may rename, retire or delete it", () => {
   const withRegister = (testName, commit, files) => {
     const section = `\n## Supersesiones de tests sellados (omitir si no aplica)\n- Supersede: \`tests/old/nota.test.js::${testName}\` — motivo: BR-1 — epic origen: epic-0.9-old\n`;
