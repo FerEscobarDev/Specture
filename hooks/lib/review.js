@@ -49,13 +49,15 @@ const COMMAND_FLAGS = {
 
 const DASH = "\\s+(?:—|–|--|-)\\s+"; // field separator, as in planning.js
 const ITEM_EPIC = "([^\\s—–]+)";
+// An agenda item may belong to several epics of the batch: `2.1, 2.3`.
+const ITEM_EPICS = "([^\\s—–,]+(?:\\s*,\\s*[^\\s—–,]+)*)";
 // A template marker left unfilled: `<X.Y>`, `<sha12>`, `<pregunta cerrada>` (not `< 24 h`).
 const PLACEHOLDER = /<[^\s<>](?:[^<>]*[^\s<>])?>/;
 const EPIC_ID = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
 
-const AGENDA_ITEM = new RegExp(`^-\\s*\\*{0,2}(A-\\d+)\\*{0,2}${DASH}${ITEM_EPIC}${DASH}(.+?)${DASH}(.+?)${DASH}respuesta\\s*:\\s*(.+?)(?:${DASH}fuente\\s*:\\s*(.+?))?\\s*$`, "i");
+const AGENDA_ITEM = new RegExp(`^-\\s*\\*{0,2}(A-\\d+)\\*{0,2}${DASH}${ITEM_EPICS}${DASH}(.+?)${DASH}(.+?)${DASH}respuesta\\s*:\\s*(.+?)(?:${DASH}fuente\\s*:\\s*(.+?))?\\s*$`, "i");
 const FILTERED_ITEM = new RegExp(`^-\\s*\\*{0,2}(F-\\d+)\\*{0,2}${DASH}${ITEM_EPIC}${DASH}(.+?)${DASH}resuelta por\\s*:\\s*(.+?)(?:${DASH}cita\\s*:\\s*(.+?))?\\s*$`, "i");
-const PREMISE_ITEM = new RegExp(`^-\\s*\\*{0,2}(PR-\\d+)\\*{0,2}${DASH}${ITEM_EPIC}${DASH}(.+?)${DASH}(VERIFICADA|FALSA)\\s+(\\S+)(?:\\s*(?:→|->)\\s*(\\S+))?\\s*$`, "i");
+const PREMISE_ITEM = new RegExp(`^-\\s*\\*{0,2}(PR-\\d+)\\*{0,2}${DASH}${ITEM_EPIC}${DASH}(.+?)${DASH}(?:(VERIFICADA|FALSA)\\s+(\\S+)(?:\\s*(?:→|->)\\s*(\\S+))?|(NO\\s+VERIFICABLE)\\s+(\\S.*?))\\s*$`, "i");
 const SCOPE_ITEM = new RegExp(`^-\\s*([^\\s:]+)\\s*:\\s*SCOPE\\s+([0-9a-f]{12})(?![0-9A-Za-z])(?:${DASH}(\\S+).*)?\\s*$`);
 const PARKED_ITEM = new RegExp(`^-\\s*${ITEM_EPIC}${DASH}(\\S+)${DASH}(.+?)${DASH}(.+?)\\s*$`);
 const EXECUTION_ITEM = /^-\s*([^\s:]+)\s*:\s*(.+?)\s*$/;
@@ -208,11 +210,12 @@ function parseBatchReview(text) {
       case "AGENDA": {
         if (!/^-\s*\*{0,2}A-\d+/.test(line)) break;
         const m = line.match(AGENDA_ITEM);
-        if (!m || !EPIC_ID.test(m[2])) {
+        const itemEpics = m ? m[2].split(",").map((s) => s.trim()) : [];
+        if (!m || !itemEpics.every((e) => EPIC_ID.test(e))) {
           errors.push(malformed("AGENDA", line, "línea A-n mal formada"));
           break;
         }
-        out.agenda.push({ id: m[1].toUpperCase(), ronda, epic: m[2], clase: m[3].trim(), pregunta: m[4].trim(), respuesta: pendingValue(m[5]), fuente: m[6] ? pendingValue(m[6]) : null });
+        out.agenda.push({ id: m[1].toUpperCase(), ronda, epic: itemEpics[0], epics: itemEpics, clase: m[3].trim(), pregunta: m[4].trim(), respuesta: pendingValue(m[5]), fuente: m[6] ? pendingValue(m[6]) : null });
         break;
       }
       case "FILTRADAS": {
@@ -232,7 +235,9 @@ function parseBatchReview(text) {
           errors.push(malformed("PREMISAS", line, "línea PR-n mal formada"));
           break;
         }
-        out.premisas.push({ id: m[1].toUpperCase(), epic: m[2], estado: m[4].toUpperCase(), ref: m[5], destino: m[6] || null });
+        out.premisas.push(m[4]
+          ? { id: m[1].toUpperCase(), epic: m[2], estado: m[4].toUpperCase(), ref: m[5], destino: m[6] || null }
+          : { id: m[1].toUpperCase(), epic: m[2], estado: "NO VERIFICABLE", ref: m[8].trim(), destino: null });
         break;
       }
       case "SCOPE": {
@@ -488,7 +493,7 @@ function token(result) {
 function render(result) {
   const body = [];
   if (result.command === "status" && result.file && result.status !== "UNVERIFIABLE") body.push(`registro: ${result.file}`);
-  for (const item of result.pendingItems || []) body.push(`pendiente: ${item.id} — ${item.epic} — ${item.clase} — ${item.pregunta}`);
+  for (const item of result.pendingItems || []) body.push(`pendiente: ${item.id} — ${(item.epics || [item.epic]).join(", ")} — ${item.clase} — ${item.pregunta}`);
   if (result.porEjecutar && result.porEjecutar.length > 0) body.push(`por ejecutar: ${result.porEjecutar.join(", ")}`);
   if (result.aparcados && result.aparcados.length > 0) body.push(`aparcados: ${result.aparcados.join(", ")}`);
   for (const e of result.epics || []) {

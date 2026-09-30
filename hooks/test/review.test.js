@@ -169,10 +169,10 @@ test("parseBatchReview: a complete register parses every grammar line and has no
   assert.deepEqual(r.epics, ["2.1", "2.2", "2.3"]);
   assert.deepEqual(r.regulatorios, ["2.3"]);
   assert.deepEqual(r.agenda, [
-    { id: "A-1", ronda: 1, epic: "2.2", clase: "dinero", pregunta: "¿Se cobra la sesión cancelada con menos de 24 h?", respuesta: "sí, el 50 %", fuente: "usuario 2026-09-29" },
-    { id: "A-2", ronda: 1, epic: "2.3", clase: "datos", pregunta: "¿El recibo muestra el diagnóstico?", respuesta: null, fuente: null },
-    { id: "A-3", ronda: 2, epic: "2.2", clase: "derivada de A-1", pregunta: "¿El 50 % aplica a la primera sesión?", respuesta: null, fuente: null },
-    { id: "A-4", ronda: 2, epic: "2.2", clase: "LATE", pregunta: "¿Reemplaza al ADR-004?", respuesta: "no — con matiz", fuente: "usuario 2026-09-30" }
+    { id: "A-1", ronda: 1, epic: "2.2", epics: ["2.2"], clase: "dinero", pregunta: "¿Se cobra la sesión cancelada con menos de 24 h?", respuesta: "sí, el 50 %", fuente: "usuario 2026-09-29" },
+    { id: "A-2", ronda: 1, epic: "2.3", epics: ["2.3"], clase: "datos", pregunta: "¿El recibo muestra el diagnóstico?", respuesta: null, fuente: null },
+    { id: "A-3", ronda: 2, epic: "2.2", epics: ["2.2"], clase: "derivada de A-1", pregunta: "¿El 50 % aplica a la primera sesión?", respuesta: null, fuente: null },
+    { id: "A-4", ronda: 2, epic: "2.2", epics: ["2.2"], clase: "LATE", pregunta: "¿Reemplaza al ADR-004?", respuesta: "no — con matiz", fuente: "usuario 2026-09-30" }
   ]);
   assert.deepEqual(r.filtradas, [{ id: "F-1", epic: "2.1", pregunta: "¿La tarifa es por paciente?", resueltaPor: "RN-001", cita: "La tarifa se fija por paciente." }]);
   assert.deepEqual(r.premisas, [
@@ -188,6 +188,34 @@ test("parseBatchReview: a complete register parses every grammar line and has no
   assert.deepEqual(r.metricas, { review_rounds: 2, review_questions: 4, review_filtered: 1, review_human_contacts: 2, late_questions: 1, premises_false: 1 });
   // CRLF parses the same.
   assert.deepEqual(review.parseBatchReview(COMPLETE.replace(/\n/g, "\r\n")), r);
+});
+
+test("parseBatchReview: an A-n shared by several epics and a NO VERIFICABLE premise parse (the validator's three states)", () => {
+  const text = [
+    "- ID: 2026-09-30-bajas",
+    "- ESTADO: RONDA-1",
+    "- EPICS: 2.1, 2.2, 2.3",
+    "",
+    "## AGENDA",
+    "### Ronda 1",
+    "- A-1 — 2.1, 2.3 — roles — ¿Cómo reconoce el API a RRHH? — respuesta: pendiente — fuente: pendiente",
+    "- A-2 — 2.2 — contrato — ¿Qué nombre entrega la descarga? — respuesta: pendiente — fuente: pendiente",
+    "",
+    "## PREMISAS",
+    '- PR-1 — 2.1 — bloque del epic: "el mismo borrado lógico que hoy usa eliminarArchivo" — FALSA archivador_api/src/archivos/repository.js:29 → A-1',
+    '- PR-2 — 2.2 — 01-descargar: "responde 404 con el envelope de error" — NO VERIFICABLE no hay capa HTTP en archivador_api/src/'
+  ].join("\n");
+  const r = review.parseBatchReview(text);
+  assert.deepEqual(r.errors, []);
+  assert.deepEqual(r.agenda.map((a) => [a.id, a.epic, a.epics]), [["A-1", "2.1", ["2.1", "2.3"]], ["A-2", "2.2", ["2.2"]]]);
+  assert.deepEqual(r.premisas, [
+    { id: "PR-1", epic: "2.1", estado: "FALSA", ref: "archivador_api/src/archivos/repository.js:29", destino: "A-1" },
+    { id: "PR-2", epic: "2.2", estado: "NO VERIFICABLE", ref: "no hay capa HTTP en archivador_api/src/", destino: null }
+  ]);
+  // A shared item still needs every epic to be a valid id, and NO VERIFICABLE still needs its reason.
+  const bad = review.parseBatchReview(text.replace("2.1, 2.3 —", "2.1, <X.Z> —").replace(/NO VERIFICABLE .*$/, "NO VERIFICABLE"));
+  assert.ok(bad.errors.some((e) => /^AGENDA: /.test(e)), bad.errors.join("\n"));
+  assert.ok(bad.errors.some((e) => /^PREMISAS: línea PR-n mal formada/.test(e)), bad.errors.join("\n"));
 });
 
 test("parseBatchReview: missing ID/ESTADO/EPICS, malformed item lines (A-n, F-n, PR-n, SCOPE, APARCADOS, EJECUCIÓN) and template leftovers are errors", () => {

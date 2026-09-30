@@ -22,7 +22,7 @@
 
 ## AGENDA
 ### Ronda 1
-> Formato: `- A-n — <X.Y> — <dinero | legal | datos | contrato | ciclo-de-vida | roles | negocio | politica> — <pregunta cerrada> — respuesta: <texto | pendiente> — fuente: <usuario <fecha> | delegado por el usuario <fecha> | pendiente>`
+> Formato: `- A-n — <X.Y>[, <X.Z>] — <dinero | legal | datos | contrato | ciclo-de-vida | roles | negocio | politica> — <pregunta cerrada> — respuesta: <texto | pendiente> — fuente: <usuario <fecha> | delegado por el usuario <fecha> | pendiente>`
 
 ### Ronda 2
 > Solo preguntas nacidas de las respuestas (clase `derivada de A-n`) o LATE; misma gramática que la ronda 1.
@@ -31,7 +31,7 @@
 > Formato: `- F-n — <X.Y> — <pregunta> — resuelta por: <RN-nnn | ADR-nnn | contrato op | rules.yml R-n | revisión <id> A-n> — cita: "<texto>"`
 
 ## PREMISAS
-> Formato: `- PR-n — <X.Y> — <borrador o bloque del epic>: "<premisa sobre el estado actual>" — <VERIFICADA | FALSA> <path:línea> [→ <A-n | VIOLATION>]`
+> Formato: `- PR-n — <X.Y> — <borrador o bloque del epic>: "<premisa sobre el estado actual>" — <VERIFICADA | FALSA> <path:línea> [→ <A-n | VIOLATION>] | NO VERIFICABLE <por qué>`
 
 ## DECISIONES PERSISTIDAS
 > Formato: `- A-n → <business_requirements.md RN-nnn (aclarado en revisión <id>) | ADR-nnn | _planning.md de <epic>>`
