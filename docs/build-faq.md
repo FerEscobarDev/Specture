@@ -128,8 +128,9 @@ esperando sin que nadie lo sepa. El coordinador te lo muestra y te ofrece `/spec
 
 No lo pidió el framework: lo pidió el **modo auto** de Claude Code. Su clasificador de
 permisos puede leer `seal-cli.js unseal-spec` como "quitar tests de seguridad" y negarlo; el
-coordinador entonces te pregunta. Desde v2.2.1 el epic-agent nunca desella nada (reporta
-`BLOCKED: red-fix` y lo hace el coordinador), y puedes evitar la pregunta dejando correr los
+coordinador entonces te pregunta. Desde v2.2.2 el build ya no necesita `unseal-spec`: un test
+del RED que hay que corregir se abre con `supersede --shared-with-red` y se reescribe en un
+commit `test(red-fix)` registrado, sin revertir nada. Y puedes evitar la pregunta dejando correr los
 scripts de Specture sin revisión: reglas estrechas en `permissions.allow` del proyecto y, para
 el modo auto, una entrada `autoMode.allow` en `~/.claude/settings.json`. El detalle y el texto
 exacto están en `hooks/README.md` § Permisos; `/specture:doctor check` te avisa

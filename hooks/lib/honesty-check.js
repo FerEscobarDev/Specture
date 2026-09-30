@@ -13,8 +13,10 @@
 //                 register of <d>/_planning.md, touching only the paths registered with it — or the
 //                 first RED of a sibling spec touching no other spec's sealed tests; and
 //                 `supersede_paths` is empty. RED_ORIG = specs[s].red_sha_orig ‖ red_sha.
-//   red-lines     [--slug <s>]                              (3) every non-blank line the RED_ORIG commit
+//   red-lines     [--slug <s>] [--epic-dir <d>]             (3) every non-blank line the RED_ORIG commit
 //                 added to the spec's test_paths survives in HEAD (multiset); a deleted file fails.
+//                 With --epic-dir, a `red-fix` of the spec registered in `## SUPERSESIONES`
+//                 replaces the lines it changed: its new lines become the contract (v2.2.2).
 //   spec-delta    --epic-dir <d> --base <SPEC_SHA> --slug <s>  (6) against `git show <base>:…`, the tree
 //                 changed only the `## Supersesiones` section of <s>.spec.md; every other spec is
 //                 identical; `_planning.md` changed only its `- sup:` rows and the coordinator
@@ -45,7 +47,7 @@ const { readRules } = require("./rules");
 const COMMAND_FLAGS = {
   "clean-tree": ["test-globs"],
   range: ["slug", "epic-dir", "head"],
-  "red-lines": ["slug"],
+  "red-lines": ["slug", "epic-dir"],
   "spec-delta": ["epic-dir", "base", "slug"],
   protected: ["epic-dir", "slug"],
   "base-worktree": ["lock", "files", "dir", "remove"]
@@ -186,6 +188,33 @@ function addedLinesByFile(diff) {
   return out;
 }
 
+// Unified diff (-U0) → Map(file → { added: [], removed: [] }), keyed by the `+++` target.
+function changedLinesByFile(diff) {
+  const out = new Map();
+  let file = null;
+  let inHunk = false;
+  for (const raw of String(diff).split("\n")) {
+    const line = raw.replace(/\r$/, "");
+    if (line.startsWith("diff --git ")) {
+      file = null;
+      inHunk = false;
+    } else if (!inHunk) {
+      if (line.startsWith("+++ ")) {
+        const target = line.slice(4).replace(/\t$/, "").replace(/^"(.*)"$/, "$1");
+        file = target === "/dev/null" ? null : target.replace(/^b\//, "");
+      } else if (line.startsWith("@@")) {
+        inHunk = true;
+      }
+    } else if (file && (line.startsWith("+") || line.startsWith("-"))) {
+      if (!out.has(file)) out.set(file, { added: [], removed: [] });
+      out.get(file)[line.startsWith("+") ? "added" : "removed"].push(line.slice(1));
+    } else if (line.startsWith("@@")) {
+      inHunk = true;
+    }
+  }
+  return out;
+}
+
 function countLines(list) {
   const counts = new Map();
   for (const line of list) counts.set(line, (counts.get(line) || 0) + 1);
@@ -194,8 +223,12 @@ function countLines(list) {
 
 // Lines of `added` (blank ones ignored) that `headText` holds fewer times than the RED added them.
 function missingLines(added, headText) {
+  return missingCounts(countLines(added.filter((l) => l.trim() !== "")), headText);
+}
+
+// Lines whose required count (`need`: line → n) `headText` does not reach.
+function missingCounts(need, headText) {
   const have = countLines(String(headText).split(/\r?\n/));
-  const need = countLines(added.filter((l) => l.trim() !== ""));
   const out = [];
   for (const [line, n] of need) {
     const got = have.get(line) || 0;
@@ -454,6 +487,17 @@ function redLines(opts, root) {
   const specs = slug ? seal.specs.filter((s) => s.slug === slug) : seal.specs;
   if (specs.length === 0) return unverifiable(cmd, slug ? `el sello no tiene specs[${slug}]` : "el sello no tiene specs[]");
 
+  // v2.2.2: a red-fix registered in `## SUPERSESIONES` (`- red-fix: <path> — spec: <slug> — commit: <sha>`)
+  // is a sanctioned change to the spec's own RED: the lines it removed stop being required and
+  // the lines it added join the contract. Without --epic-dir no red-fix is known.
+  let redFixes = [];
+  if (opts.flags["epic-dir"]) {
+    const dir = epicDirOf(root, opts.flags["epic-dir"]);
+    const planningFile = path.join(dir.abs, "_planning.md");
+    if (!fs.existsSync(planningFile)) return unverifiable(cmd, `no existe ${dir.rel}/_planning.md`);
+    redFixes = parseSupersessionRegister(fs.readFileSync(planningFile, "utf8")).filter((e) => e.kind === "red-fix" && e.commit && SHA.test(e.commit));
+  }
+
   const findings = [];
   const notes = [];
   let lines = 0;
@@ -466,6 +510,20 @@ function redLines(opts, root) {
     if (!sha) return unverifiable(cmd, `commit desconocido: RED ${red} de ${label}`);
     const show = git(root, ["show", "-U0", "--no-renames", "--no-color", "--no-ext-diff", "--src-prefix=a/", "--dst-prefix=b/", "--format=", sha]);
     if (!show.ok) return unverifiable(cmd, `git show ${short(sha)} falló: ${firstLine(show.stderr)}`);
+    // This spec's red-fix commits after its RED, oldest first, each with its per-file changes.
+    const mine = [...new Set(redFixes.filter((e) => e.slug === spec.slug).map((e) => e.commit.toLowerCase()))];
+    let fixes = [];
+    if (mine.length > 0) {
+      const after = git(root, ["rev-list", "--reverse", `${sha}..HEAD`]);
+      if (!after.ok) return unverifiable(cmd, `git rev-list falló: ${firstLine(after.stderr)}`);
+      fixes = after.stdout
+        .split(/\r?\n/)
+        .filter((c) => c && mine.some((m) => c.startsWith(m)))
+        .map((c) => {
+          const diff = git(root, ["show", "-U0", "--no-renames", "--no-color", "--no-ext-diff", "--src-prefix=a/", "--dst-prefix=b/", "--format=", c]);
+          return diff.ok ? changedLinesByFile(diff.stdout) : new Map();
+        });
+    }
     let checked = 0;
     for (const [gitPath, added] of addedLinesByFile(show.stdout)) {
       const rel = toProject(gitPath, ctx.prefix);
@@ -480,7 +538,14 @@ function redLines(opts, root) {
         findings.push(`${rel}: archivo borrado en HEAD (RED ${short(sha)} de ${label})`);
         continue;
       }
-      for (const miss of missingLines(added, head.stdout)) {
+      const need = countLines(nonBlank);
+      for (const fix of fixes) {
+        const change = fix.get(gitPath);
+        if (!change) continue;
+        for (const l of change.removed) if (l.trim() !== "" && need.get(l) > 0) need.set(l, need.get(l) - 1);
+        for (const l of change.added) if (l.trim() !== "") need.set(l, (need.get(l) || 0) + 1);
+      }
+      for (const miss of missingCounts(need, head.stdout)) {
         findings.push(`${rel}: falta «${miss.line}» (RED ${short(sha)} de ${label}: ${miss.need}×, HEAD: ${miss.have}×)`);
       }
     }

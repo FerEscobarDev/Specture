@@ -36,16 +36,14 @@ Ground rules:
   setup contradicts a premise the spec states — while the spec is right; list each test, the
   defect and the spec line); `DONE: pendiente de aprobación visual` (design-system foundation
   epic — Visual Approval Gate, "Frontend Epics" below). **You never run `seal-cli.js
-  unseal-spec` or `release` mid-epic, and never edit a sealed RED test**: unsealing is the
-  coordinator's, and doing it from a subagent is also what permission classifiers block.
+  unseal-spec` or `release` mid-epic, and never edit a sealed RED test outside Step 5.3**:
+  sealing is the coordinator's, and unsealing from a subagent is also what permission
+  classifiers block.
 - **Resumed dispatch** (`RESUME_AT:` in the prompt): skip the specs already `APPROVED` +
   verified and enter at the named point — `supersede <task-slug>` → Step 5.2;
-  `regresiones <task-slug>` → Step 5 with the `REGRESIONES:` list; `<task-slug>` → Step 4.
-  Use the `BASELINE_FALLOS` you are handed instead of taking a new baseline. With
-  `REVERTED_PROD:` (after a correction loop or a red-fix): write and commit the new RED
-  first — against the code without the implementation — then restore that work with `git revert
-  <revert-sha>` for each listed SHA, and continue at GREEN. `merge-spec` of the new RED uses
-  `--reset-orig`: it is the spec's new first RED.
+  `red-fix <task-slug>` → Step 5.3 with the `RED_FIX:` block; `regresiones <task-slug>` →
+  Step 5 with the `REGRESIONES:` list; `<task-slug>` → Step 4. Use the `BASELINE_FALLOS` you
+  are handed instead of taking a new baseline. Nothing is ever reverted on a resume.
 - You fill the `commit:` field of your spec's pending lines in `## SUPERSESIONES` of
   `_planning.md` (the spec files stay sealed; `_planning.md` does not).
 
@@ -318,9 +316,24 @@ The spec now declares the tests the loop judged superseded (`commit: pendiente �
 4. `seal-cli.js supersede --clear`.
 5. `seal-cli.js merge-spec --slug <task-slug> --red-sha <RED_SHA> --add-test-paths "<declared paths>"` — the original `red_sha_orig` is preserved.
 6. Fill `commit:` of the register lines with the `SUPERSEDE_SHA` (`sin cambio` for the tests the writer left alone).
-7. `honesty-check.js red-lines --slug <task-slug>` — every line the original RED added must survive.
+7. `honesty-check.js red-lines --slug <task-slug> --epic-dir docs/05-specs/<epic-slug>` — every line the original RED added must survive (a registered red-fix of the spec counts as its new version).
 8. **Retroactive RED** for the `aserción` class: `honesty-check.js base-worktree --lock <LOCK_SHA> --files "<rewritten test files>" --dir <tmp>`, run only the rewritten tests there, then `--remove <tmp>`. They must **fail** at the lock and **pass** at HEAD. Passing in both → they do not express the rule: re-dispatch the writer once with that fact; a second time → `BLOCKED: spec <rule>`. Not compiling at the lock → `REVIEW`, handed to the reviewer.
 9. `REGRESIONES:` non-empty → Step 5 for them. Compile layer → continue Step 5 from the WIP to GREEN. Then Step 5.5.
+
+## Step 5.3 — Red-fix of the spec's own RED (`RESUME_AT: red-fix <task-slug>`, v2.2.2)
+
+The coordinator sends you here after a spec correction (the `RED_FIX:` block names the changed
+`AC/BR/EC`) or after your own `BLOCKED: red-fix` (it names the defective tests). The spec is
+sealed again and right; only some of its RED tests must change. Nothing is reverted:
+
+1. `honesty-check.js clean-tree` — `PASS` required.
+2. `seal-cli.js supersede --slug <task-slug> --paths "<the spec's RED test files involved>" --shared-with-red` — lifts the deny for exactly those files.
+3. Dispatch the `tdd-test-writer` in `MODE: RED-FIX` with the spec and the `RED_FIX:` block — never the implementation. It rewrites or adds **only** the tests of those IDs / defects and commits `test(red-fix): <epic>/<task-slug> — <IDs>`.
+4. `seal-cli.js supersede --clear`, then `seal-cli.js merge-spec --slug <task-slug> --red-sha <RED_SHA> --add-test-paths "<files the red-fix added>"` (`red_sha_orig` stays).
+5. Register one line per file in `## SUPERSESIONES`: `- red-fix: <path> — spec: <task-slug> — commit: <sha>`.
+6. `honesty-check.js red-lines --slug <task-slug> --epic-dir docs/05-specs/<epic-slug>` — the rest of the original RED survives; the red-fix's own lines are now the contract.
+7. **Retroactive RED:** `honesty-check.js base-worktree --lock <red_sha_orig>^ --files "<red-fix files>" --dir <tmp>`, run only the red-fixed tests there, then `--remove <tmp>`. They must **fail** at the commit before the spec's RED (the code without this spec) and — once GREEN — **pass** at HEAD. Passing in both → they do not discriminate: send them back to the writer once with that fact; a second time → `BLOCKED: spec`. Not compiling at that base → `REVIEW`, handed to the reviewer.
+8. Continue at Step 5: the implementer makes the corrected tests pass (production only), then Step 5.5.
 
 ## Step 5.5 — TDD Honesty Gate (mandatory, automated)
 
@@ -329,7 +342,7 @@ Before dispatching the code-reviewer, the orchestrator runs the gate itself — 
 ```
 node "${CLAUDE_PLUGIN_ROOT}/hooks/lib/honesty-check.js" clean-tree
 node "${CLAUDE_PLUGIN_ROOT}/hooks/lib/honesty-check.js" range --slug <task-slug> --epic-dir docs/05-specs/<epic-slug>
-node "${CLAUDE_PLUGIN_ROOT}/hooks/lib/honesty-check.js" red-lines --slug <task-slug>
+node "${CLAUDE_PLUGIN_ROOT}/hooks/lib/honesty-check.js" red-lines --slug <task-slug> --epic-dir docs/05-specs/<epic-slug>
 ```
 
 `range` is an **allowlist**: every commit in `<red_sha_orig>..HEAD` that touches the test globs must be a SHA registered in `## SUPERSESIONES` (a loop supersession or a `red-fix`) and touch only the paths registered with it, and `supersede_paths` must be empty. `red_sha_orig` is the spec's first RED — it never moves.
@@ -382,7 +395,7 @@ Do NOT proceed to Step 7 until all three have reported. Use the `Monitor` tool (
 **Expected output**: a structured review at `docs/07-reviews/review-<epic>-<spec>-<date>.md` with status:
 
 - `APPROVED` → proceed to Step 7 (verification).
-- `REJECTED_MINOR` → loop back to Step 5 with the issues; implementer fixes; re-review.
+- `REJECTED_MINOR` → loop back to Step 5 with the issues; implementer fixes; re-review. **Exception — a test rewrite weaker than its rule** (Dimension 4 on a `test(supersede): … — loop …` or `test(red-fix)` commit, e.g. a mutation the rewritten test does not catch): the fix belongs to the **tdd-test-writer**, never the implementer. Lift exactly those files (`seal-cli.js supersede --slug <task-slug> --paths … [--shared-with-red]`), re-dispatch the writer in the same mode (`SUPERSEDE-HEAD` or `RED-FIX`) with the reviewer's finding verbatim, register the new commit like the first, re-run `red-lines` and the retroactive RED, then re-review. It counts toward the Iteration Cap — it is **not** a new supersession loop, and it asks nothing of the user.
 - `REJECTED_MAJOR` → either large fix needed (loop with fresh context) or architectural issue (escalate to user). With `CAUSE: spec_defect` the problem is the sealed spec, not the code: report `BLOCKED: spec <ID>` (the coordinator runs the correction loop) instead of re-dispatching the implementer.
 - **Tally every review's `STATUS` + `CAUSE`** (`none | implementation | spec_defect | architecture`): the `METRICS` block of your final report sums `review_rejections` minor/major and `spec_defect` per epic — a review without a parseable `CAUSE:` line is incomplete, ask the reviewer for it.
 

@@ -158,6 +158,22 @@ section — lines with `commit: pendiente — loop: <capa>`). You receive the sp
 
 No RED commit in this mode, and no test beyond the declared ones.
 
+#### `MODE: RED-FIX` — tests of this spec's own RED (v2.2.2)
+
+Dispatched after a spec correction (the `RED_FIX:` block names the changed `AC/BR/EC`) or
+after a mechanically defective RED test (it names the test and the defect: it does not compile
+or load, or its setup contradicts a premise the spec states). You receive the spec and that
+block — never production code, never the failure values.
+
+1. Rewrite or add **only** the tests of the listed IDs / defects, so that they express the spec
+   as it stands now. Every other line of the RED stays untouched (`RED-LINES` checks it).
+2. Commit only those test files: `git commit -m "test(red-fix): <epic>/<task-slug> — <IDs>"`,
+   and report the SHA as `RED_FIX_SHA` with the list of files.
+3. You do not need the tests to fail at HEAD — production may already satisfy them. Their
+   discrimination is proven by the orchestrator at the commit before this spec's RED
+   (retroactive RED). A test that would pass even without this spec's code is useless: write
+   the assertion that the rule demands, not the one the code happens to meet.
+
 ### Step 6 — Commit the failing tests (RED commit) — MANDATORY
 
 This commit is the **audit trail of the TDD contract**. After this commit, the tests are immutable until the implementation is reviewed. The TDD Honesty Gate in `skills/build/SKILL.md` uses this commit's SHA as the reference point to detect any test tampering during implementation.

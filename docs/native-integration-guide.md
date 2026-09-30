@@ -209,9 +209,9 @@ El TDD Honesty Gate existe precisamente porque "es legítimo" es la racionalizac
 Si genuinamente necesitás cambiar el contrato de test mid-epic:
 
 1. Reportá `BLOCKED: spec <AC-n/BR-n/EC-n>` (o abortá el epic si estás en el chat).
-2. El coordinador corre el **loop de corrección**: `seal-cli.js unseal-spec` quita la entrada de ese spec de `build-locked.json` **y libera su archivo** del sello (desde v2.2.0; los hermanos siguen sellados), re-despacha al `spec-planner` con `VIOLATIONS` (edición mínima), re-valida en modo delta, y hace `git revert` del RED afectado.
-3. Re-dispatch `tdd-test-writer` para producir el nuevo RED commit con el contrato corregido.
-4. El `RED_SHA` se actualiza, el state file se reescribe, y el epic-agent reanuda **desde el spec afectado**.
+2. El coordinador corre el **loop de corrección** (puntual desde v2.2.2): `seal-cli.js lift-spec` libera solo el archivo de ese spec (su entrada y su RED siguen sellados), re-despacha un `spec-planner` fresco con `VIOLATIONS` (edición mínima), re-valida en modo delta, commitea y re-sella. No se revierte nada.
+3. El epic-agent reanuda con `RESUME_AT: red-fix`: el `tdd-test-writer` (`MODE: RED-FIX`) reescribe solo los tests de los IDs que cambiaron, en un commit `test(red-fix)` registrado por SHA.
+4. `honesty-check red-lines --epic-dir` exige que el resto del RED original sobreviva, y el RED retroactivo en `<red_sha_orig>^` prueba que los tests corregidos fallan sin el código del spec.
 
 Nunca edites un test "rapidito" para hacerlo pasar — eso destruye el audit trail que justifica todo el framework.
 

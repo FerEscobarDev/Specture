@@ -58,6 +58,7 @@ git diff <RED_SHA>..<HEAD_SHA> -- <test-path-globs>
 | Snapshot file regenerated to match new output | `BLOCKER` | If the snapshot was the test's primary assertion. |
 | A **closed epic's** sealed test edited in a declared `test(supersede)` commit **before** `RED_SHA` | not a violation | Sanctioned supersession (below): the path is in the spec's `Supersede:` section, the commit precedes the RED commit, so it is outside the range by construction. |
 | A closed epic's test edited **after** `RED_SHA` in a `test(supersede): … — loop <capa>` commit whose SHA is registered in `## SUPERSESIONES` with `j9: SÍ` and exactly those paths | not a violation | Supersession discovered in execution (below): `range` accepts it by SHA, `red-lines` proves the RED survived, the reviewer judges the rewrite against its rule. |
+| A test of this spec's **own** RED edited after `RED_SHA` in a `test(red-fix)` commit whose SHA is registered as `red-fix:` with exactly those files (v2.2.2) | not a violation | Punctual red-fix (option 2): `range` accepts it by SHA, `red-lines --epic-dir` takes its lines as the new contract, the retroactive RED at `<red_sha_orig>^` proves the tests fail without the spec's code. |
 | A closed epic's sealed test edited **after** `RED_SHA` without that registration, or one not declared under `Supersede:` | `BLOCKER` | Undeclared supersession = a test modification like any other. |
 
 ## Additional checks (run regardless of the diff result)
@@ -78,25 +79,32 @@ git diff <RED_SHA>..<HEAD_SHA> -- <test-path-globs>
    and re-dispatch the implementer with a stronger Iron-Rule-1 reminder.
 2. **RED-fix — the implementer was right that the sealed test was wrong** (rare, audited):
    never edit the test in place. The epic-agent reports `BLOCKED: spec <AC-n/BR-n/EC-n>`
-   when the spec itself was wrong (the coordinator runs the spec-correction loop: unseal
-   that spec's entry with `seal-cli.js unseal-spec`, re-plan, re-validate, `git revert` the
-   RED commit, resume from that spec), or — when only the test is **mechanically** defective
-   (it does not compile or load, or its setup contradicts a premise the spec states: a
-   fixture, a seed, the route or role it names) — reports `BLOCKED: red-fix <task-slug>`.
-   Since v2.2.1 the epic-agent never unseals anything itself: the coordinator runs
-   `unseal-spec`, re-seals with `write`, reverts the RED **and the spec's production commits**
-   (so the new RED fails against code without the implementation), and re-dispatches with the
-   defect list; the test-writer writes a **new RED commit** (never an amend), the epic-agent
-   restores the production work after it and merges the new `RED_SHA` with `--reset-orig`. A
-   disagreement about *what* a test asserts is never a red-fix — it is `BLOCKED: spec`.
-   Either way the coordinator records the RED-fix in the epic's `_planning.md`
-   (`## SUPERSESIONES`, line `- red-fix: <path>::<test> — motivo: … — spec: <slug> — commit:
-   <new RED_SHA>`) so the audit trail is on disk, not in a chat.
-3. **Abort the spec entirely** if the violation signals a fundamental
-   spec/implementation mismatch — report `BLOCKED: spec <AC-n/BR-n/EC-n>`;
-   the coordinator runs the spec-correction loop (re-plan → re-validate →
-   revert the affected RED and its production commits → resume from that spec; the
-   epic-agent restores the production work right after the new RED commit).
+   when the spec itself was wrong (the coordinator runs the spec-correction loop — option 3),
+   or — when only the test is **mechanically** defective (it does not compile or load, or its
+   setup contradicts a premise the spec states: a fixture, a seed, the route or role it
+   names) — `BLOCKED: red-fix <task-slug>`. A disagreement about *what* a test asserts is
+   never a red-fix: it is `BLOCKED: spec`. Since v2.2.2 a red-fix is **punctual**, with no
+   `unseal-spec` and no revert (`build/EPIC_LOOP.md` Step 5.3):
+   - `seal-cli supersede --slug <s> --paths <RED files> --shared-with-red` lifts the deny for
+     exactly those files; the test-writer (`MODE: RED-FIX`) rewrites or adds only the tests
+     of the listed IDs / defects in a `test(red-fix)` commit on HEAD; the coordinator's
+     register gets `- red-fix: <path> — spec: <slug> — commit: <sha>` per file.
+   - `honesty-check range` accepts that commit because its SHA is registered with exactly
+     its files; `honesty-check red-lines --epic-dir` requires the rest of the original RED to
+     survive and makes the red-fix's own lines the new contract.
+   - **Retroactive RED** at `<red_sha_orig>^` — the commit before this spec's RED, i.e. the
+     code without it: the red-fixed tests must fail there and pass at HEAD. Not compiling at
+     that base is `REVIEW` for the reviewer, whose Dimension 4 reads each red-fixed test
+     against the spec.
+   Why not revert and re-RED: reverting production to prove a one-line fixture fix tears down
+   work that is already green, and in a real epic it was the reason the coordinator stopped to
+   ask the user. The retroactive RED gives the same evidence — the test fails without the
+   spec's code — without touching production.
+3. **Correct the spec** if the violation signals a spec/implementation mismatch — report
+   `BLOCKED: spec <AC-n/BR-n/EC-n>`. The coordinator runs the spec-correction loop:
+   `lift-spec` → fresh planner → 4a → delta re-validation → commit + re-seal → resume with
+   `RESUME_AT: red-fix <slug>` for the tests of the changed IDs (the same punctual red-fix as
+   option 2).
 
 ## Sanctioned supersession of a closed epic's tests (v1.18.0, roadmap item 35)
 

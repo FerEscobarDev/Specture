@@ -159,10 +159,10 @@ flowchart TD
     G -->|DONE| H["Verificar [x] + commit por git log<br/>(no confiar en el reporte) · seal-cli release<br/>· línea en build-metrics.jsonl (docs(metrics))"]
     G -->|"BLOCKED: supersesiones (capa)"| SUP["Loop de supersesiones (ver 3.6)<br/>sin revert · sin preguntar"]
     SUP -->|"epic-agent fresco · RESUME_AT"| F
-    G -->|"BLOCKED: spec"| COR["Loop de corrección del spec<br/>unseal-spec → planner → 4a → re-validación delta<br/>→ re-sello → git revert del RED y de la producción del spec"]
-    COR -->|"epic-agent desde el spec afectado · REVERTED_PROD<br/>(nuevo RED primero, después restaura la producción)"| F
-    G -->|"BLOCKED: red-fix"| RFX["Red-fix (v2.2.1): defecto mecánico de un test del RED<br/>unseal-spec → re-sello → revert del RED y de la producción<br/>sin planner · sin preguntar"]
-    RFX -->|"epic-agent · RESUME_AT + REVERTED_PROD"| F
+    G -->|"BLOCKED: spec"| COR["Loop de corrección del spec (puntual, v2.2.2)<br/>lift-spec → planner → 4a → re-validación delta<br/>→ re-sello · sin revert"]
+    COR -->|"epic-agent · RESUME_AT: red-fix (tests de los IDs cambiados)"| F
+    G -->|"BLOCKED: red-fix"| RFX["Red-fix (v2.2.2): defecto mecánico de un test del RED<br/>sin planner · sin revert · sin preguntar"]
+    RFX -->|"epic-agent · RESUME_AT: red-fix<br/>(Step 5.3: test(red-fix) registrado + RED retroactivo)"| F
     G -->|"BLOCKED: debug"| DBG[["Ofrecer /specture:debug al usuario<br/>(la cola se detiene: debug pide Plan mode)"]]
     G -->|"BLOCKED: entorno / otro · REJECTED_MAJOR"| ESC(["Escalar al usuario · sin auto-retry"])
     H --> L
@@ -338,7 +338,7 @@ flowchart TD
     J9 -->|"algún SÍ"| LIFT["2 · seal-cli lift-spec --slug<br/>libera solo ese spec (lifted_spec_paths)"]
     LIFT --> PL["3 · spec-planner fresco · MODE: SUPERSESSIONS<br/>solo los tests SÍ con su regla<br/>→ líneas Supersede: · filas sup: · registro SUPERSESIONES"]
     PL --> SD{"4 · honesty-check spec-delta<br/>¿cambió solo la sección Supersesiones?"}
-    SD -->|"FAIL"| COR[["loop de corrección completo<br/>(unseal-spec · re-validación · git revert del RED y de la producción · re-RED · restaurar la producción)"]]
+    SD -->|"FAIL"| COR[["loop de corrección completo<br/>(lift-spec · re-validación delta · red-fix puntual de los tests cambiados)"]]
     SD -->|"PASS"| PR{"5 · honesty-check protected<br/>¿un test de un verify: de rules.yml<br/>o de un GUARD de otro epic?"}
     PR -->|"FAIL"| ESC2(["Escalar al usuario:<br/>enmendar una invariante es decisión humana"])
     PR -->|"PASS"| MC["6 · 4a spec-set-check (debe dar PASS)"]

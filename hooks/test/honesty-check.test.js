@@ -255,6 +255,32 @@ test("red-lines: every line the RED added survives in HEAD = PASS; a deleted lin
   assert.match(r.stdout, /tests\/a\.test\.js.*borrado/);
 });
 
+test("red-lines: a registered red-fix of the spec's own RED replaces the lines it changed — its new lines become the contract (v2.2.2)", () => {
+  const { root } = redRepo();
+  // The RED's setup was mechanically wrong; the red-fix rewrites that line and nothing else.
+  write(root, "tests/a.test.js", "const x = require('../src/x');\n\ntest('uno', () => {\n  expect(x).toBe(1); // fixture corregida\n});\n");
+  const fix = commit(root, "test(red-fix): 01", "tests/a.test.js");
+
+  // Without the register (or without --epic-dir) the changed RED line is missing → FAIL.
+  assert.equal(hc(root, "red-lines", "--slug", "01").status, 1);
+  write(root, `${EPIC_DIR}/_planning.md`, planning([`- red-fix: tests/a.test.js — spec: 01 — commit: ${fix.slice(0, 8)}`]));
+  let r = hc(root, "red-lines", "--slug", "01", "--epic-dir", EPIC_DIR);
+  assert.equal(r.status, 0, r.stdout + r.stderr);
+  assert.match(r.token, /^HONESTY red-lines: PASS /);
+
+  // A red-fix registered for another spec does not excuse this one.
+  write(root, `${EPIC_DIR}/_planning.md`, planning([`- red-fix: tests/a.test.js — spec: 02 — commit: ${fix.slice(0, 8)}`]));
+  assert.equal(hc(root, "red-lines", "--slug", "01", "--epic-dir", EPIC_DIR).status, 1);
+
+  // The red-fix's own lines are now part of the contract: weakening them later is a FAIL.
+  write(root, `${EPIC_DIR}/_planning.md`, planning([`- red-fix: tests/a.test.js — spec: 01 — commit: ${fix.slice(0, 8)}`]));
+  write(root, "tests/a.test.js", "const x = require('../src/x');\n\ntest('uno', () => {\n});\n");
+  commit(root, "weaken after red-fix", "tests/a.test.js");
+  r = hc(root, "red-lines", "--slug", "01", "--epic-dir", EPIC_DIR);
+  assert.equal(r.status, 1);
+  assert.match(r.stdout, /fixture corregida/);
+});
+
 test("red-lines: UNVERIFIABLE without a seal or with an unknown slug", () => {
   const { root } = redRepo();
   assert.equal(hc(root, "red-lines", "--slug", "99").status, 2);
