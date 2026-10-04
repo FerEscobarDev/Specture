@@ -20,10 +20,10 @@ Missing input → report `BLOCKED — missing input: <what>` and change nothing.
    ```
    Must `PASS`, and `git status --porcelain` must show no tracked change. Record `BASE` = `git rev-parse HEAD`.
 2. **Baseline.** Run `TEST_COMMAND` once and record the failing tests (`BASELINE`). Corrections must leave exactly this result.
-3. **One finding at a time.** For each finding, dispatch the `implementer` (the `ux-implementer` for UI files) with `MODE: CUMPLIMIENTO`, the finding block, the file(s) of its location as the only files to touch, `TEST_COMMAND`, `BASELINE`, and the base context. The finding's line may have moved since the review: the implementer re-locates it by `path::symbol` and the fragment. It returns `CORREGIDO <sha>` or `NO_CORREGIDO <motivo>`.
-4. **Mechanical check.**
+3. **Declare each finding's files, then correct it — one finding at a time.** Before any edit, write down the files the fix needs, and nothing more: the finding's file; the **new** files a structural fix creates (splitting two classes into two files, a rename — name them now); and the **non-test** files that use what moves or is renamed and must follow (find them with a search for the module's path and symbol). Never a test: a fix whose callers include a test is not a refactor you can make — it returns `NO_CORREGIDO` (the test-writer owns tests). Then dispatch the `implementer` (the `ux-implementer` for UI files) with `MODE: CUMPLIMIENTO`, the finding block, that file list, `TEST_COMMAND`, `BASELINE`, and the base context. The finding's line may have moved since the review: the implementer re-locates it by `path::symbol` and the fragment. It returns `CORREGIDO <sha>` or `NO_CORREGIDO <motivo>`.
+4. **Mechanical check.** `--allowed` is the union of the lists declared in step 3 — declared before editing, never widened after:
    ```
-   node "${CLAUDE_PLUGIN_ROOT}/hooks/lib/honesty-check.js" fix-range --base <BASE> --test-globs <TEST_GLOBS> --allowed <the files of the findings>
+   node "${CLAUDE_PLUGIN_ROOT}/hooks/lib/honesty-check.js" fix-range --base <BASE> --test-globs <TEST_GLOBS> --allowed <the declared files>
    ```
    `FAIL` → stop: report the token and its lines verbatim. Do not revert anything; the coordinator escalates to the user.
 5. **Suite.** Run `TEST_COMMAND` again: the result must equal `BASELINE`. A new failure → stop and report it (same rule as step 4).

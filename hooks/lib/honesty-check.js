@@ -31,7 +31,7 @@
 //                 current tree — the base where rewritten tests must FAIL (retroactive RED).
 //   fix-range     --base <sha> --test-globs a,b --allowed a,b [--head <rev>]
 //                 (8) the compliance correction loop (v2.4.0, no seal): every commit in BASE..HEAD
-//                 touches only the `--allowed` files of the findings chosen for correction, and no test.
+//                 touches only the `--allowed` files declared for the chosen findings, and no test.
 //
 // stdout: first line is the token — `HONESTY <cmd>: PASS <detalle>` | `HONESTY <cmd>: FAIL <n>` |
 // `HONESTY <cmd>: UNVERIFIABLE <motivo>` (base-worktree: `READY <dir>` | `REMOVED <dir>`); then one
@@ -707,7 +707,8 @@ function baseWorktree(opts, root) {
 
 // (8) The compliance correction loop (v2.4.0) runs with no epic `[/]`, so there is no seal to
 // deny a write: this is its after-the-fact check. Every commit in BASE..HEAD may touch only the
-// files of the findings chosen for correction (`--allowed`) and never a test (`--test-globs`).
+// files declared for the findings chosen for correction (`--allowed`: the finding's file, the new
+// files a structural fix creates, the non-test files that follow a move) and never a test.
 function fixRange(opts, root) {
   const cmd = "fix-range";
   requireFlags(opts, "base");

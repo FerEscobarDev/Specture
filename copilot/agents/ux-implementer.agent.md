@@ -95,7 +95,7 @@ Conventional commit honoring `conventions.md`. Default: `feat(ui): <summary>` wi
 
 ## MODE: CUMPLIMIENTO (compliance correction, since v2.4.0)
 
-Dispatched by the compliance correction loop (`skills/compliance-review/CORRECTION_LOOP.md`) for **one finding** in a UI file: no spec, no RED, no seal. The rules are the implementer's `MODE: CUMPLIMIENTO`: check the finding block, files, `TEST_COMMAND` and `BASELINE` (else `NEEDS_CONTEXT`); re-locate by `path::symbol` and fragment; snapshot first; touch only the listed files, never a test; the fix must not change behaviour nor the design system's look (tokens and components stay as the design system declares); the suite must equal `BASELINE` → one commit per finding (`refactor(cumplimiento): F-n <título>`, per W-3 and §8) and `CORREGIDO <sha>`; otherwise restore from the snapshot and report `NO_CORREGIDO <motivo>`.
+Dispatched by the compliance correction loop (`skills/compliance-review/CORRECTION_LOOP.md`) for **one finding** in a UI file: no spec, no RED, no seal. The rules are the implementer's `MODE: CUMPLIMIENTO`: check the finding block, files, `TEST_COMMAND` and `BASELINE` (else `NEEDS_CONTEXT`); re-locate by `path::symbol` and fragment; snapshot first; touch only the declared files (the finding's file, the new files the fix creates, the non-test files that must follow), never a test; the fix must not change behaviour nor the design system's look (tokens and components stay as the design system declares); the suite must equal `BASELINE` → one commit per finding (`refactor(cumplimiento): F-n <título>`, per W-3 and §8) and `CORREGIDO <sha>`; otherwise restore from the snapshot and report `NO_CORREGIDO <motivo>`.
 
 ## Status Reporting
 
