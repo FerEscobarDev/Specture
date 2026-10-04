@@ -657,6 +657,20 @@ Specture está en desarrollo activo. Para decisiones arquitectónicas internas, 
 
 ## Changelog
 
+### v2.3.1 — El gate de sellos intercepta multi_replace_file_content de Antigravity
+
+**Motivación:** el hook `PreToolUse` que hace cumplir los sellos del build (TDD Honesty Gate, Spec Seal y Allowed Paths) solo se dispara para las herramientas que nombra el matcher de `hooks.json`. Ese matcher cubría `write_to_file` y `replace_file_content` de Antigravity, pero no `multi_replace_file_content`, la que aplica varios reemplazos a un archivo en una sola llamada. En Antigravity, un agente podía editar un test sellado por el RED, un spec validado o código fuera de la superficie declarada sin que el hook lo viera.
+
+**Cambios:**
+- **`hooks.json`:** el matcher pasa a `Edit|Write|NotebookEdit|write_to_file|replace_file_content|multi_replace_file_content`. El hook ya leía `tool_input.TargetFile`, así que no cambia su lógica.
+- **`agents/code-reviewer/AGENT.md`:** la descripción decía que las invariantes del proyecto salen de `conventions.md` §12; desde v1.19.0 salen de `.specture/rules.yml`, resueltas por spec en el bloque `RULES_RESOLVED`. La introducción hablaba de tres dimensiones; son cuatro obligatorias y tres opcionales. Solo cambia el texto, no lo que revisa el agente. Espejo Copilot regenerado.
+- **Docs:** `hooks/README.md` y `docs/antigravity-cli-plugin.md` con el matcher nuevo.
+- Tests: 304 (302 → 304: el matcher de `hooks.json` cubre todas las herramientas de escritura de Claude Code, Copilot y Antigravity; el hook deniega `multi_replace_file_content` sobre un test sellado).
+
+**Migración para proyectos existentes:** ninguna. `/specture:doctor migrate` registra el `schema_version`.
+
+**Backward-compat:** sin cambios de esquema. En Claude Code y Copilot no cambia nada; en Antigravity, una edición con `multi_replace_file_content` sobre una ruta sellada ahora se deniega, como ya pasaba con `replace_file_content`.
+
 ### v2.3.0 — Decidir una vez antes de ejecutar: la etapa de revisión por tanda
 
 **Motivación:** con el gate por epic se te preguntaba en tres momentos —al escribir el ROADMAP, en el gate de cada epic y en cada validación— y la tanda se detenía esperándote. v2.2 hizo converger el gate: HC-IHCE.5 de Psikora aprobó en una ronda delta y HC-IHCE.6 hizo su gate completo en una ronda, con 4 preguntas en una sola sentada. Pero las preguntas seguían llegando epic por epic, y las dos mediciones dejaron un defecto que ningún gate podía ver, porque ni el planner ni el validador leían código: **premisas falsas**. Un spec afirmaba "como hoy" un comportamiento que el código no tenía (AC-13 de HC-IHCE.5, EC-4 de HC-IHCE.6) y la ejecución lo encontró horas después. La simulación a ciegas sobre 31 decisiones reales (`docs/milestone-decision-stage-simulation.md`) mostró que, en el epic regulatorio, un barrido previo anticipa 11 de 12 preguntas de primera ronda pero no las de segundo orden, y que la recomendada coincidió con tu respuesta real solo en 3 de 11 y en 5 de 12: las decisiones siguen siendo tuyas, pero se pueden concentrar. El experimento "ronda 2" (mismo documento, §7) eligió la variante **B2**: dos rondas por tanda más una mini-revisión anunciada antes de cada epic regulatorio. Análisis: `docs/milestone-planning-stage-analysis.md`; guía para el usuario: [`docs/review-stage-guide.md`](docs/review-stage-guide.md).
