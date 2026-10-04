@@ -3,7 +3,16 @@
 // (docs/spec-planning-baseline.md — stage 1; docs/spec-planning-baseline-stage2.md — stage 2),
 // so the RED/GREEN scenarios can be re-run instead of recreated from prose.
 //
-//   node scripts/baseline-fixture.js <dir> [--stage 1|2|3|4|5] [--git] [--force]
+//   node scripts/baseline-fixture.js <dir> [--stage 1|2|3|4|5|6] [--git] [--force]
+//
+//   --stage 6            the stage-6 fixture (docs/compliance-review-baseline.md, v2.4.0): the stage-5
+//                        tree with Milestone 2 executed and closed (2.1-2.3 [x], their code in place,
+//                        the suite green) and the review rules of a fictional team ("Acme", which
+//                        reviewed pull requests with its own agent) linked from .specture/review-rules.md
+//                        by section. The code carries what only a milestone-wide review against every
+//                        rule catches; the baits are listed by the hints only. Needs --git: the
+//                        compliance range is computed from the history (base → per epic lock →
+//                        [plan] → code → close; Epic 2.2's code commit is not a Conventional Commit).
 //
 //   --stage 5            the stage-5 fixture (docs/review-stage-baseline.md, v2.3.0): the stage-4
 //                        tree with Epic 1.4 finished (GREEN applied, its PDF test superseded, the
@@ -55,7 +64,7 @@ const PLUGIN_VERSION = JSON.parse(fs.readFileSync(path.resolve(__dirname, "..", 
 
 function usage(message) {
   if (message) process.stderr.write(`baseline-fixture: ${message}\n`);
-  process.stderr.write("usage: node scripts/baseline-fixture.js <dir> [--stage 1|2|3|4|5] [--git] [--force]\n");
+  process.stderr.write("usage: node scripts/baseline-fixture.js <dir> [--stage 1|2|3|4|5|6] [--git] [--force]\n");
   process.exit(2);
 }
 
@@ -71,7 +80,7 @@ function parseArgs(argv) {
     else usage(`unexpected argument ${a}`);
   }
   if (!args.dir) usage("missing <dir>");
-  if (![1, 2, 3, 4, 5].includes(args.stage)) usage("--stage must be 1, 2, 3, 4 or 5");
+  if (![1, 2, 3, 4, 5, 6].includes(args.stage)) usage("--stage must be 1, 2, 3, 4, 5 or 6");
   return args;
 }
 
@@ -1418,6 +1427,295 @@ function stage5Files(files) {
   return out;
 }
 
+// ---------------------------------------------------------------------------
+// Stage 6 — compliance-review probes (docs/compliance-review-baseline.md, v2.4.0)
+// ---------------------------------------------------------------------------
+
+const STAGE6_EPICS = ["2.1", "2.2", "2.3"];
+const STAGE6_PLANNING_21 = "docs/05-specs/epic-2.1-baja/_planning.md";
+const STAGE6_TIMES = {
+  base: "2026-10-05T09:00:00-03:00",
+  "2.1": { lock: "2026-10-05T10:00:00-03:00", plan: "2026-10-05T10:30:00-03:00", code: "2026-10-05T12:00:00-03:00", close: "2026-10-05T12:30:00-03:00" },
+  "2.2": { lock: "2026-10-05T14:00:00-03:00", code: "2026-10-05T16:00:00-03:00", close: "2026-10-05T16:30:00-03:00" },
+  "2.3": { lock: "2026-10-06T09:00:00-03:00", code: "2026-10-06T11:00:00-03:00", close: "2026-10-06T11:30:00-03:00" }
+};
+const STAGE6_MESSAGES = {
+  "2.1": "feat(empleados): baja de empleados",
+  "2.2": "agrega descarga de archivos",
+  "2.3": "feat(app): página de bajas de empleados"
+};
+
+// A fictional team ("Acme") that reviewed pull requests with its own agent before adopting
+// Specture: the custom review rules link its sections instead of copying them.
+function stage6TeamFiles() {
+  return {
+    ".claude/agents/acme-reviewer.md": source([
+      "---",
+      "name: acme-reviewer",
+      "description: Revisor de pull requests del equipo Acme",
+      "---",
+      "",
+      "# Revisor Acme",
+      "",
+      "## Cómo ejecutar",
+      "",
+      "1. Obtené el diff con `gh pr diff <número>`.",
+      "2. Guardá el resultado en `Acme.Docs/hallazgos/PR-<número>.md`.",
+      "",
+      "## Bloqueantes",
+      "",
+      "- Ningún `console.log` en código de producción: es bloqueante.",
+      "- Sin secretos ni tokens en el código: es bloqueante.",
+      "",
+      "## Tests",
+      "",
+      '- Cada test nombra la condición y el resultado esperado ("rechaza X cuando Y"); un nombre vago es una observación.',
+      "",
+      "## Nivel flexible",
+      "",
+      "En código legado solo rige:",
+      "- Sin secretos ni tokens en el código.",
+      "- Sin código comentado sin justificación."
+    ]),
+    ".claude/agents/acme-reviewer-reglas.md": source([
+      "# Reglas por tecnología — Acme",
+      "",
+      "## Backend Node",
+      "",
+      "- Los archivos de módulos se nombran en PascalCase (`DescargaArchivo.js`); otro formato es una observación.",
+      "- Los handlers validan la entrada antes de llamar al servicio.",
+      "",
+      "## SQL",
+      "",
+      "- Toda clave foránea nueva lleva su índice: es bloqueante."
+    ]),
+    ".specture/review-rules.md": source([
+      "# Reglas de revisión del proyecto",
+      "",
+      "## Incluye",
+      "- .claude/agents/acme-reviewer.md § Bloqueantes",
+      "- .claude/agents/acme-reviewer.md § Tests — cuando: tests/**",
+      "- .claude/agents/acme-reviewer-reglas.md § Backend Node — cuando: archivador_api/**",
+      "- .claude/agents/acme-reviewer-reglas.md § SQL — cuando: *.sql",
+      "",
+      "## Severidades",
+      "- bloqueante = BLOCKER · observación = IMPORTANT",
+      "",
+      "## Nivel flexible",
+      "- rutas: legacy/**",
+      "- reglas: .claude/agents/acme-reviewer.md § Nivel flexible",
+      "",
+      "## Reglas"
+    ])
+  };
+}
+
+// The code each epic of Milestone 2 left behind. Built, tested and reviewed spec by spec — and
+// still carrying what only a milestone-wide review against every rule catches.
+function stage6Code() {
+  return {
+    "2.1": {
+      "archivador_api/src/empleados/baja.js": source([
+        "'use strict';",
+        "// Baja de empleados — Epic 2.1 (RN-013).",
+        "",
+        "class BajaRepository {",
+        "  constructor(db) {",
+        "    this.db = db;",
+        "  }",
+        "",
+        "  async registrar({ employeeId, fechaEgreso, motivo }) {",
+        "    await this.db.query('UPDATE empleados SET fecha_egreso = $2, motivo_egreso = $3 WHERE id = $1', [employeeId, fechaEgreso, motivo]);",
+        "  }",
+        "}",
+        "",
+        "class BajaService {",
+        "  constructor(repository) {",
+        "    this.repository = repository;",
+        "  }",
+        "",
+        "  async darDeBaja(employeeId, fechaEgreso, motivo) {",
+        "    console.log('baja', employeeId);",
+        "    await this.repository.registrar({ employeeId, fechaEgreso, motivo });",
+        "    return { employeeId, fechaEgreso };",
+        "  }",
+        "}",
+        "",
+        "module.exports = { BajaRepository, BajaService };"
+      ]),
+      "tests/empleados/baja.test.js": source([
+        "'use strict';",
+        "// Epic 2.1 — baja de empleados (RN-013).",
+        "",
+        "const test = require('node:test');",
+        "const assert = require('node:assert/strict');",
+        "const { BajaService } = require('../../archivador_api/src/empleados/baja');",
+        "",
+        "test('funciona', async () => {",
+        "  const calls = [];",
+        "  const service = new BajaService({ registrar: async (data) => calls.push(data) });",
+        "  const result = await service.darDeBaja('e-1', '2026-10-31', 'renuncia');",
+        "  assert.deepEqual(result, { employeeId: 'e-1', fechaEgreso: '2026-10-31' });",
+        "  assert.equal(calls.length, 1);",
+        "});"
+      ])
+    },
+    "2.2": {
+      "archivador_api/src/descargas/DescargaArchivo.js": source([
+        "'use strict';",
+        "// Descarga de un archivo propio — Epic 2.2 (RN-012).",
+        "",
+        "const { FileNotFoundError } = require('../archivos/file-not-found-error');",
+        "",
+        "async function descargarArchivo(repository, employeeId, fileId) {",
+        "  const archivo = await repository.findOwned(employeeId, fileId);",
+        "  if (!archivo) throw new FileNotFoundError(fileId);",
+        "  return archivo;",
+        "}",
+        "",
+        "module.exports = { descargarArchivo };"
+      ]),
+      "archivador_api/src/descargas/handler.js": source([
+        "'use strict';",
+        "// Handler HTTP de GET /archivos/{id}/contenido — Epic 2.2.",
+        "",
+        "const { descargarArchivo } = require('./DescargaArchivo');",
+        "",
+        "function crearHandlerDescarga(repository) {",
+        "  return async function handle(req, res) {",
+        "    const employeeId = req.query.employeeId;",
+        "    const archivo = await descargarArchivo(repository, employeeId, req.params.id);",
+        "    res.setHeader('Content-Disposition', `attachment; filename=\"${archivo.nombre}\"`);",
+        "    res.end(archivo.contenido);",
+        "  };",
+        "}",
+        "",
+        "module.exports = { crearHandlerDescarga };"
+      ]),
+      "legacy/reportes/exportar.js": source([
+        "'use strict';",
+        "// Exportador de reportes heredado — Epic 2.2 le suma las descargas.",
+        "",
+        "class ExportadorCsv {",
+        "  exportar(filas) {",
+        "    return filas.map((f) => f.join(',')).join('\\n');",
+        "  }",
+        "}",
+        "",
+        "class ExportadorTxt {",
+        "  exportar(filas) {",
+        "    return filas.map((f) => f.join('\\t')).join('\\n');",
+        "  }",
+        "}",
+        "",
+        "// function exportarXml(filas) {",
+        "//   return '<filas>' + filas.length + '</filas>';",
+        "// }",
+        "",
+        "module.exports = { ExportadorCsv, ExportadorTxt };"
+      ])
+    },
+    "2.3": {
+      "archivador_app/src/pages/bajas-empleados.js": source([
+        "// Página \"Bajas de empleados\" — Epic 2.3.",
+        "",
+        "export const BAJAS_EMPLEADOS_TITLE = 'Bajas de empleados';"
+      ])
+    }
+  };
+}
+
+function stage6Roadmap(text, states) {
+  let out = text;
+  for (const id of STAGE6_EPICS) {
+    const box = states[id] || " ";
+    out = out.replace(new RegExp(`- \\[[ /x]\\] \\*\\*Epic ${id.replace(".", "\\.")}:\\*\\*`), `- [${box}] **Epic ${id}:**`);
+  }
+  return out;
+}
+
+function stage6Planning(lockSha) {
+  return source(["# Planning — Epic 2.1 Baja de empleados", "", "## SPEC_SHA (coordinador)", `- LOCK_SHA: ${lockSha} — ${STAGE6_TIMES["2.1"].lock}`]);
+}
+
+// The stage-5 tree with the Acme files, Milestone 2 executed and closed: every epic [x], its code
+// in place, the suite green. Without --git there is no history, so the compliance range cannot
+// be computed — the hints say so.
+function stage6Files(files) {
+  const code = stage6Code();
+  const out = { ...files, ...stage6TeamFiles(), ...code["2.1"], ...code["2.2"], ...code["2.3"] };
+  out["tests/all.test.js"] = files["tests/all.test.js"].replace(/\n$/, "\nrequire('./empleados/baja.test.js');\n");
+  out["docs/04-roadmap/ROADMAP.md"] = stage6Roadmap(files["docs/04-roadmap/ROADMAP.md"], { "2.1": "x", "2.2": "x", "2.3": "x" });
+  out[STAGE6_PLANNING_21] = stage6Planning("pendiente");
+  return out;
+}
+
+// base (stage 5 + Acme files) → for each epic: lock → (2.1: plan with LOCK_SHA) → code → close.
+// Epic 2.2's code commit is not a Conventional Commit (the W-3 bait). Fixed dates: same SHAs on
+// every run of the same plugin version. → { commits, base, head, "2.1": {lock, close}, … }
+function gitHistory6(dir, files5, files6) {
+  const { git, rev } = datedGit(dir);
+  const roadmapRel = "docs/04-roadmap/ROADMAP.md";
+  const code = stage6Code();
+  git(STAGE6_TIMES.base, "init", "-q", "-b", "master");
+  write(dir, { ...files5, ...stage6TeamFiles() });
+  git(STAGE6_TIMES.base, "add", "-A");
+  git(STAGE6_TIMES.base, "commit", "-q", "-m", "chore: fixture Archivador (stage 6) — Milestone 2 por ejecutar, reglas de revisión de Acme enlazadas");
+  const shas = { commits: 1, base: rev("HEAD") };
+  const states = {};
+  const commit = (date, message, changes) => {
+    write(dir, changes);
+    git(date, "add", "--", ...Object.keys(changes));
+    git(date, "commit", "-q", "-m", message);
+    shas.commits += 1;
+    return rev("HEAD");
+  };
+  const roadmap = () => ({ [roadmapRel]: stage6Roadmap(files5[roadmapRel], states) });
+  for (const id of STAGE6_EPICS) {
+    const t = STAGE6_TIMES[id];
+    states[id] = "/";
+    const lock = commit(t.lock, `chore(roadmap): Epic ${id} → [/]`, roadmap());
+    if (id === "2.1") commit(t.plan, "docs(specs): plan epic-2.1-baja", { [STAGE6_PLANNING_21]: stage6Planning(lock) });
+    const changes = { ...code[id] };
+    if (id === "2.1") changes["tests/all.test.js"] = files6["tests/all.test.js"];
+    commit(t.code, STAGE6_MESSAGES[id], changes);
+    states[id] = "x";
+    const close = commit(t.close, `chore(roadmap): Epic ${id} → [x]`, roadmap());
+    shas[id] = { lock, close };
+  }
+  shas.head = rev("HEAD");
+  return shas;
+}
+
+function stage6Hints(root, d, files, shas) {
+  const at = (rel, needle) => `${rel}:${lineOf(files[rel], needle)}`;
+  const baja = "archivador_api/src/empleados/baja.js";
+  const compliance = `node "${root}/hooks/lib/compliance.js"`;
+  return [
+    "Stage-6 compliance-review probes (docs/compliance-review-baseline.md): Milestone 2 closed on real code; Acme's review rules linked from .specture/review-rules.md.",
+    shas
+      ? `  git      base ${shas.base.slice(0, 12)} · HEAD ${shas.head.slice(0, 12)} (${shas.commits} commits; Epic 2.1 LOCK en _planning.md, 2.2 y 2.3 desde el historial del ROADMAP)`
+      : "  sin --git: no hay historial y el rango del milestone no se puede calcular — usar --git.",
+    `  range:   ${compliance} range --milestone 2 --project "${d}"`,
+    `  rules:   node "${root}/hooks/lib/review-rules-resolve.js" --project "${d}" --all`,
+    `  doctor:  node "${root}/scripts/doctor.js" check --project "${d}"   # 0 ERROR`,
+    "  run:     /specture:compliance-review milestone 2 (then triage)",
+    "",
+    "  # | Probe | Required result",
+    `  C1 | team rule (Acme § Bloqueantes): console.log in production | BLOCKER at ${at(baja, "console.log")} — ORIGEN the Acme section, not a Specture rule`,
+    `  C2 | R-FILE-002 (backend, two exported units in one file) | BLOCKER at ${at(baja, "class BajaRepository")} or ${at(baja, "class BajaService")} — origin R-FILE-002`,
+    `  C3 | Acme says PascalCase file names; conventions §1 says kebab-case | finding on archivador_api/src/descargas/DescargaArchivo.js by conventions §1 + one CONFLICTO line naming both`,
+    `  C4 | flexible level: legacy/reportes/exportar.js | commented-out code reported (${at("legacy/reportes/exportar.js", "// function exportarXml")}); its two classes NOT reported; a NO_EVALUADO line`,
+    `  C5 | Acme § Tests: vague test name | finding at ${at("tests/empleados/baja.test.js", "test('funciona'")} with TIPO: test (never correctable)`,
+    `  C6 | R-1: the handler takes the employee from the query, not X-Employee-Id | BLOCKER at ${at("archivador_api/src/descargas/handler.js", "req.query.employeeId")} with TIPO: comportamiento`,
+    `  C7 | W-3: commit "${STAGE6_MESSAGES["2.2"]}" is not a Conventional Commit | one process finding, reported once`,
+    "  C8 | Acme § SQL (cuando: *.sql) | never loaded — no .sql file in the range",
+    "  C9 | Acme's procedure (gh pr diff, Acme.Docs/hallazgos/) | not followed: nothing written outside the part files; the report goes to docs/07-reviews/",
+    `  C10 | suggested comments | ${compliance} lint --id milestone-2-<fecha> → PASS (no rule ids, no framework files, no § nor Acme file names)`,
+    "  C11 | archivador_app/src/pages/bajas-empleados.js | control: no finding"
+  ];
+}
+
 function write(dir, files) {
   for (const [rel, text] of Object.entries(files)) {
     const abs = path.join(dir, ...rel.split("/"));
@@ -1567,6 +1865,7 @@ function stage5Hints(root, d, files, shas) {
 function scenarioHints(dir, stage, shas = null, files = null) {
   const root = path.resolve(__dirname, "..").replace(/\\/g, "/");
   const d = path.resolve(dir).replace(/\\/g, "/");
+  if (stage === 6) return stage6Hints(root, d, files, shas);
   if (stage === 5) return stage5Hints(root, d, files, shas);
   if (stage === 4) return stage4Hints(root, d, shas);
   if (stage === 1) {
@@ -1608,13 +1907,17 @@ if (require.main === module) {
     2: stage2Files,
     3: () => stage3Files(stage2Files()),
     4: () => stage4Files(stage3Files(stage2Files())),
-    5: () => stage5Files(stage4Files(stage3Files(stage2Files())))
+    5: () => stage5Files(stage4Files(stage3Files(stage2Files()))),
+    6: () => stage6Files(stage5Files(stage4Files(stage3Files(stage2Files()))))
   };
   const files = builders[args.stage]();
   fs.mkdirSync(dir, { recursive: true });
   let sha = null;
   let history = null;
-  if (args.stage === 4 && args.git) {
+  if (args.stage === 6 && args.git) {
+    history = gitHistory6(dir, stage5Files(stage4Files(stage3Files(stage2Files()))), files);
+    sha = `${history.head.slice(0, 7)} (${history.commits} commits)`;
+  } else if (args.stage === 4 && args.git) {
     history = gitHistory4(dir, files);
     sha = `${history.red.slice(0, 7)} (${history.commits} commits)`;
   } else if (args.stage === 5 && args.git) {
@@ -1628,4 +1931,4 @@ if (require.main === module) {
   for (const line of scenarioHints(dir, args.stage, history, files)) process.stdout.write(line + "\n");
 }
 
-module.exports = { stage2Files, stage1Files, stage3Files, stage4Files, stage4History, stage5Files, write, SOURCE, PLUGIN_VERSION };
+module.exports = { stage2Files, stage1Files, stage3Files, stage4Files, stage4History, stage5Files, stage6Files, write, SOURCE, PLUGIN_VERSION };

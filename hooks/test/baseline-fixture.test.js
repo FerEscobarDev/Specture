@@ -595,6 +595,67 @@ test("stage 5 --git: base + bookkeeping commit (the SUPERSEDE_SHA of Epic 1.4), 
   assert.equal(git(again, "rev-parse", "HEAD"), log[1].sha, "same content and dates → same SHAs");
 });
 
+const compliance = path.join(root, "hooks", "lib", "compliance.js");
+const reviewRules = path.join(root, "hooks", "lib", "review-rules-resolve.js");
+
+test("stage 6 --git: Milestone 2 closed on real code with Acme's rules linked; green suite, no doctor ERROR, reproducible SHAs", () => {
+  if (spawnSync("git", ["--version"], { encoding: "utf8" }).status !== 0) return;
+  const dir = tmp();
+  const result = generate(dir, "--stage", "6", "--git");
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(git(dir, "status", "--short"), "", "everything committed");
+  const subjects = git(dir, "log", "--reverse", "--format=%s").split("\n");
+  assert.equal(subjects.length, 11);
+  assert.ok(subjects.includes("agrega descarga de archivos"), "the W-3 bait commit");
+  assert.match(read(dir, "docs/04-roadmap/ROADMAP.md"), /- \[x\] \*\*Epic 2\.1:\*\*[\s\S]*- \[x\] \*\*Epic 2\.2:\*\*[\s\S]*- \[x\] \*\*Epic 2\.3:\*\*/);
+  const lock21 = git(dir, "log", "--format=%H", "--grep", "Epic 2.1 → \\[/\\]");
+  assert.match(read(dir, "docs/05-specs/epic-2.1-baja/_planning.md"), new RegExp(`^- LOCK_SHA: ${lock21} — `, "m"));
+
+  const suite = runSuite(dir, "tests/all.test.js");
+  assert.equal(suite.status, 0, suite.out);
+  assert.equal(suite.fail, 0);
+
+  const doc = spawnSync(process.execPath, [doctor, "check", "--project", dir, "--json"], { encoding: "utf8" });
+  const findings = JSON.parse(doc.stdout).findings;
+  assert.deepEqual(findings.filter((f) => f.severity === "ERROR"), [], JSON.stringify(findings));
+  assert.deepEqual(findings.filter((f) => f.group === "compliance").map((f) => f.check), ["review-rules-glob"], "only the *.sql section (C8) has no file to match");
+
+  const again = tmp();
+  assert.equal(generate(again, "--stage", "6", "--git").status, 0);
+  assert.equal(git(again, "rev-parse", "HEAD"), git(dir, "rev-parse", "HEAD"), "same content and dates → same SHAs");
+});
+
+test("stage 6: the range and the custom rules resolve as the probes need, and nothing in the tree names a bait", () => {
+  if (spawnSync("git", ["--version"], { encoding: "utf8" }).status !== 0) return;
+  const dir = tmp();
+  const generated = generate(dir, "--stage", "6", "--git");
+  assert.equal(generated.status, 0, generated.stderr);
+
+  const range = spawnSync(process.execPath, [compliance, "range", "--milestone", "2", "--project", dir, "--date", "2026-10-06"], { encoding: "utf8" });
+  assert.equal(range.status, 0, range.stdout);
+  assert.match(range.stdout, /READY milestone-2-2026-10-06 · 3 epics · 7 archivos · 4 bloques/);
+  const data = JSON.parse(read(dir, ".specture/state/compliance/milestone-2-2026-10-06/range.json"));
+  assert.equal(data.epics.find((e) => e.id === "2.1").lockSource, "planning");
+  assert.equal(data.epics.find((e) => e.id === "2.2").lockSource, "roadmap");
+  assert.deepEqual(data.chunks.map((c) => c.label), ["Archivos", "App web", "otros: legacy", "otros: tests"]);
+  assert.ok(!data.chunks.some((c) => c.files.some((f) => f.startsWith(".claude/") || f.startsWith("archivador_api/src/archivos/"))), "only the milestone's own files");
+  assert.match(read(dir, ".specture/state/compliance/milestone-2-2026-10-06/commits.txt"), /^Epic 2\.2\t[0-9a-f]+\tagrega descarga de archivos$/m);
+
+  const legacy = spawnSync(process.execPath, [reviewRules, "--project", dir, "--paths", "legacy/reportes/exportar.js"], { encoding: "utf8" });
+  assert.equal(legacy.status, 0, legacy.stderr);
+  assert.match(legacy.stdout, /NIVEL FLEXIBLE · \.claude\/agents\/acme-reviewer\.md § Nivel flexible/);
+  assert.doesNotMatch(legacy.stdout, /§ Bloqueantes -----|§ Backend Node -----/, "a flexible path gets only the flexible level");
+  const backend = spawnSync(process.execPath, [reviewRules, "--project", dir, "--paths", "archivador_api/src/empleados/baja.js"], { encoding: "utf8" });
+  assert.match(backend.stdout, /§ Bloqueantes -----[\s\S]*§ Backend Node -----/);
+  assert.doesNotMatch(backend.stdout, /§ SQL -----|§ Tests -----/);
+  assert.doesNotMatch(backend.stdout, /Acme\.Docs\/hallazgos|gh pr diff/, "Acme's procedure section is never part of the criteria");
+
+  const words = /carnada|bait|\bC\d+\b|probe|R-FILE-00\d|cumplimiento/i;
+  for (const rel of ["archivador_api/src/empleados/baja.js", "archivador_api/src/descargas/DescargaArchivo.js", "archivador_api/src/descargas/handler.js", "legacy/reportes/exportar.js", "tests/empleados/baja.test.js", ".specture/review-rules.md", ".claude/agents/acme-reviewer.md"]) {
+    assert.doesNotMatch(read(dir, rel), words, rel);
+  }
+});
+
 test("refuses a non-empty directory without --force; --git leaves one commit", () => {
   const dir = tmp();
   fs.writeFileSync(path.join(dir, "keep.txt"), "x");
