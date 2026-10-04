@@ -66,6 +66,10 @@ puede hacer cada rol en cada pantalla o endpoint y qué datos personales entran 
 públicas. Si no encuentra nada nuevo, el epic corre sin preguntarte; si encuentra algo, es **una**
 sentada corta que ya sabías que podía llegar, porque te la anuncié al cerrar la revisión.
 
+Desde v2.7.0 la mini-revisión (y toda la ejecución del epic) la corre el **coordinador del
+epic**, un subagente que nunca pregunta: si encuentra decisiones nuevas, devuelve las preguntas
+tal cual y te llegan igual, en el chat principal; con tus respuestas registradas, el epic sigue.
+
 ## Epics aparcados
 
 Si al refrescar un epic (no regulatorio) aparece una decisión nueva de dinero, legal, datos,

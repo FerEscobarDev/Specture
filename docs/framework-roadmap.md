@@ -4,7 +4,7 @@
 > (revisión: C-1…C-9, M1-M7, G1-G12), `psikora-scale-review.md` (N1-N10) y
 > `doctor-and-migrations-design.md` (doctor, catálogo de migraciones, principios). Cada
 > ítem cita su fuente; las definiciones son las de origen, no reinterpretaciones. Estado:
-> **M0 hecho (v1.14.1) · M1 hecho (v1.15.0) · M2 hecho (v1.16.0) · M3 hecho (v1.17.0) · M4 hecho (v1.18.0) · M5 hecho (v1.19.0) · M7 hecho (v2.0.0; cierre v2.1.0) · M8 en curso (v2.2.0 y v2.3.0 hechos; ítem 72 condicional, versión por definir) · M9 hecho (v2.4.0 · v2.5.0 · v2.6.0)**; M6 espera medición. Última actualización: 2026-10-06 (v2.6.0, el doctor ofrece las reglas de revisión del equipo). M7 y M8 suman
+> **M0 hecho (v1.14.1) · M1 hecho (v1.15.0) · M2 hecho (v1.16.0) · M3 hecho (v1.17.0) · M4 hecho (v1.18.0) · M5 hecho (v1.19.0) · M7 hecho (v2.0.0; cierre v2.1.0) · M8 hecho (v2.2.0 · v2.3.0 · ítem 72 en v2.7.0) · M9 hecho (v2.4.0 · v2.5.0 · v2.6.0)**; M6 espera medición. Última actualización: 2026-10-04 (v2.7.0, coordinador por epic en subagente). M7 y M8 suman
 > las fuentes `frontend-design-track-design.md`, `spec-gate-convergence-design.md` y
 > `milestone-planning-stage-analysis.md` (Apéndice C). Las **decisiones** que
 > condicionan el orden están en el Apéndice A (A1-A7 cerradas). **Solo contiene ajustes del framework**: las acciones sobre el proyecto
@@ -664,7 +664,7 @@ de verdad pueda ocurrir.
 
 ---
 
-## Milestone 8 — Gate convergente y etapa de revisión (v2.2.0 · v2.3.0 · ítem 72 condicional)
+## Milestone 8 — Gate convergente y etapa de revisión (v2.2.0 · v2.3.0 · v2.7.0)
 
 *Objetivo:* que cada propiedad la decida quien puede verla —el negocio el humano, una vez y en un
 presupuesto único; la coherencia con ADR, contrato y reglas el validador; lo mecánico un script;
@@ -681,7 +681,7 @@ que después de una revisión concentrada antes de ejecutar la ejecución fluya 
 > experimento "ronda 2" (revisión de dos rondas + mini-revisión anunciada antes de cada epic
 > regulatorio), y la verificación de premisas contra el código que ataca las dos premisas falsas
 > de las mediciones de v2.2 (AC-13 de HC-IHCE.5, EC-4 de HC-IHCE.6). Fixture de sondas
-> `--stage 5`. **El ítem 72** (antes "v2.4.0 condicional") solo si los datos lo piden; su versión queda por definir porque v2.4.0 la tomó la revisión de cumplimiento (Milestone 9). Análisis de la etapa de revisión:
+> `--stage 5`. **El ítem 72** (antes "v2.4.0 condicional"; v2.4.0 la tomó la revisión de cumplimiento, Milestone 9) quedó a la espera de los datos, y los datos lo pidieron en la primera tanda real de tres epics: **v2.7.0 "coordinador por epic en subagente" hecho el 2026-10-04**. Análisis de la etapa de revisión:
 > `docs/milestone-planning-stage-analysis.md` y `docs/milestone-decision-stage-simulation.md`;
 > guía para el usuario: `docs/review-stage-guide.md`.
 
@@ -747,16 +747,22 @@ que después de una revisión concentrada antes de ejecutar la ejecución fluya 
 - [x] **71. Epic aparcado (PARKED)** · hecho 2026-09-30, v2.3.0 (`4a15516`, `4e282f7`, `06d4edc`) — una decisión **nueva** de dinero, legal, datos, contrato o modelo que aparece al refrescar un epic ya revisado lo aparca: vuelve de `[/]` a `[ ]` con la línea `**Aparcado:** <ISO> — <clase> — <motivo> — tanda <id>` en el ROADMAP (no es un cuarto estado de checkbox; `ROADMAP_TEMPLATE.md` la documenta y `parseEpicBlock` la lee) y una línea en `## APARCADOS` del registro, y la cola sigue con los epics independientes; al drenar la cola se listan con su decisión pendiente, y la siguiente sentada decide y borra la línea. Doctor: `epic-parked` (INFO) y `parked-orphan`. Honesto: en una cadena casi lineal de dependencias, aparcar suele equivaler a parar
   `Fuente: milestone-planning-stage-analysis §5, §6, §9 (decisión 5)` · `Esfuerzo: medio` · `Depende de: 68`
 
-- [ ] **72. Coordinador por epic en subagente (condicional, versión por definir)** — `skills/build/EPIC_COORDINATOR.md`: un subagente por epic que hace refresco, sello, epic-agent, loop de supersesiones y métricas; **nunca pregunta** y devuelve `EPIC_REPORT: DONE | PARKED | STOPPED | VISUAL_PENDING | NESTING_UNAVAILABLE`. Anidamiento de exactamente 3 niveles (principal → coordinador de epic → epic-agent → workers), con smoke test previo; si falla, el coordinador de epic corre `EPIC_LOOP` en línea. Solo Claude Code: Copilot y Antigravity se quedan con el coordinador principal. **Condición:** tras v2.3.0, ≥2 tandas N≥3 que obligaron a reiniciar la sesión, o un contexto del coordinador >~400k tokens antes del epic 3
-  `Fuente: milestone-planning-stage-analysis §5, §9 (decisión 6)` · `Esfuerzo: alto` · `Depende de: 68-71`
+- [x] **72. Coordinador por epic en subagente** · hecho 2026-10-04, v2.7.0 (`0314ad0`, `2140536`, `b15a5c5`) — `skills/build/EPIC_COORDINATOR.md`: un subagente por epic, con contexto fresco, que hace refresco y sello, mini-revisión anunciada, aparcamiento, despacho del epic-agent y todos sus loops (supersesiones, corrección, red-fix), chequeo del sello, liberación, métricas y reanudación desde disco (`ENTRY: refresh | sealed | resume | mini-review-answers | visual-adjust`); **nunca pregunta** y devuelve `EPIC_REPORT: DONE | PARKED | MINI_REVIEW | STOPPED | VISUAL_PENDING | NESTING_UNAVAILABLE`, de 40 líneas como máximo. El chat principal conserva la cola, la sentada, el gate por epic con preguntas, las preguntas de la mini-revisión, las escalaciones, la aprobación visual, el cierre de milestone y el drenaje. Anidamiento de 3 niveles (principal → coordinador de epic → epic-agent → workers), todos asíncronos. Respecto del diseño: `MINI_REVIEW` es un estado propio del reporte (la mini-revisión pregunta desde el chat principal); sin anidamiento, el coordinador principal corre **el mismo archivo en línea** (Copilot, Antigravity o `NESTING_UNAVAILABLE`, `coordinator_mode: inline`), y un epic-agent sin herramienta `Agent` (`BLOCKED: nesting`) hace que el coordinador del epic corra `EPIC_LOOP` él mismo. Métricas `coordinator_mode` y `epic_coordinator_dispatches` por epic en `knowledge stats` (columna `mode`). **Condición:** tras v2.3.0, ≥2 tandas N≥3 que obligaron a reiniciar la sesión, o un contexto del coordinador >~400k tokens antes del epic 3 — **cumplida en la primera tanda N=3**
+  Evidencia: en la tanda HC-IHCE.9–.11 de Psikora (plugin 2.3.0, tres epics, registro `2026-10-03-hc-ihce-9-11`) el contexto del coordinador fue 401k durante la sentada, 570k al empezar el primer epic, 687k al empezar el segundo y llegó a 961k, donde se compactó solo, en medio del segundo; el tercero arrancó en 176k tras la compactación. El resto del diseño de v2.3.0 se sostuvo —0 contactos después del sello en los tres epics, la única interrupción del usuario fue la mini-revisión anunciada del .11 y un corte por límite de uso de la API se retomó bien desde disco—, pero tras la compactación el coordinador gastó ~10 turnos sondeando ("sigo esperando"). Prueba de anidamiento (2026-10-04): tres niveles de subagentes bajo el principal (L1 y L2 tienen la herramienta `Agent`; L3 no), que coincide con el límite por defecto documentado de Claude Code, configurable con `CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH`; todo despacho anidado es asíncrono.
+  `Fuente: milestone-planning-stage-analysis §5, §9 (decisión 6); tanda HC-IHCE.9–.11` · `Esfuerzo: alto` · `Depende de: 68-71`
 
 - [x] **73. Verificación de premisas contra el código** · hecho 2026-09-30, v2.3.0 (`4a15516`, `06d4edc`) — el validador en `MODE: REVIEW` (el único modo en que lee código, con `Read`/`Glob`) verifica cada afirmación sobre el sistema **actual** de los borradores, el bloque del epic o sus RN ("como hoy", "ya existe", "hoy X rechaza…") y la reporta `PR-n — VERIFICADA | FALSA | NO VERIFICABLE` con `path:línea`, en `## PREMISAS` del registro. Una premisa falsa nunca se corrige en silencio: si las fuentes deciden qué debe pasar, es una `VIOLATION` para el planner; si no, una pregunta con `Dato verificado:`. El planner (`MODE: DRAFT`) escribe cada afirmación sobre el sistema actual como algo verificable y con fuente, nunca un "como hoy" suelto; una sonda de ≤20 líneas puede verificar una premisa, nunca decidir una respuesta. Métrica `premises_false` por tanda; la fixture `--stage 5` (`bd14657`) planta una premisa falsa verificable en el código
   Evidencia: en las mediciones reales de v2.2, un spec afirmó "como hoy" un comportamiento que el código no tenía —AC-13 de HC-IHCE.5 y EC-4 de HC-IHCE.6— y la ejecución lo encontró horas después: ni el planner (ciego al código desde el ítem 33) ni el validador del gate (que nunca abre código de producción) podían verlo. En la simulación, con el código como fuente de premisas, ninguna de las 5 preguntas que no debieron hacerse se repitió (`milestone-decision-stage-simulation` §2.3).
   `Fuente: milestone-planning-stage-analysis §2, §7 (D21/M4, F1-04.3); milestone-decision-stage-simulation §2.3; skills/build/REVIEW_STAGE.md R1.6` · `Esfuerzo: medio` · `Depende de: 68`
 
+### Lo que v2.7.0 deliberadamente NO envió
+
+- **Reducir el contexto de la sentada de revisión**: sigue en el chat principal (~400k tokens en una tanda de tres epics regulatorios; 401k en HC-IHCE.9–.11). Para una tanda grande sigue valiendo el checkpoint declarado (ítem 64).
+- **Coordinador por epic en Copilot y Antigravity**: sin subagentes anidados, el procedimiento corre en línea en el coordinador principal y el chat crece con cada epic, como en v2.6.
+
 ### Lo que v2.3.0 deliberadamente NO envió
 
-- **El coordinador por epic en subagente** (ítem 72, condicional; versión por definir): refresco, sello, epic-agent, loop de supersesiones y métricas siguen en el coordinador principal hasta que se cumpla su condición.
+- **El coordinador por epic en subagente** (ítem 72, condicional en ese momento): refresco, sello, epic-agent, loop de supersesiones y métricas siguieron en el coordinador principal hasta que se cumplió su condición; se envió en v2.7.0.
 - **Plan mode como puerta de lanzamiento** de la ejecución (`milestone-planning-stage-analysis` §4, §9 decisión 4): el cierre de la revisión es una pregunta en el chat ("¿Ejecutamos ya la tanda o más tarde?") y el loop sigue sin Plan mode (D3).
 
 ### Lo que v2.2.0 deliberadamente NO envió

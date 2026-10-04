@@ -70,6 +70,9 @@ copilot --plugin-dir C:\Proyectos\VibeCoding
 6. **Revisión de cumplimiento (v2.4.0)**:
    Al cerrar un milestone, `build` invoca `compliance-review` sin preguntar; el triage llega al vaciarse la cola como **pregunta cerrada en el chat** (aplicar la propuesta · hallazgo por hallazgo · diferir todo · no aplica a todo), con las mismas reglas que en Claude Code (guía en `docs/compliance-review-guide.md`). El `compliance-reviewer` tiene `read`/`search`/`edit` en la matriz: `edit` es para escribir **solo** su parte en `.specture/state/compliance/`; como Copilot no restringe rutas, el skill comprueba después de cada despacho que `git status` no muestre cambios en archivos con seguimiento. Nunca publica en GitHub. La matriz declara el gate `compliance-review`. Desde v2.5.0 también revisa un PR (`pr <número|url>`, GitHub o Azure DevOps) o una rama (`rama <rama>`) en solo lectura, con las reglas de la rama destino y un reporte sin commitear; necesita `gh` (con `gh auth login`) o `az` con la extensión `azure-devops` (con `az login`).
 
+7. **Coordinador por epic (v2.7.0) — en línea**:
+   En Claude Code, cada epic corre en un subagente **coordinador del epic** (`skills/build/EPIC_COORDINATOR.md`) que despacha el epic-agent, y este a los workers. Copilot no tiene subagentes anidados, así que el coordinador principal corre ese mismo archivo **en línea**, en su chat y tal cual: mismo procedimiento —refresco y sello, mini-revisión, aparcamiento, loops de supersesiones, corrección y red-fix, chequeo del sello, métricas—, con `coordinator_mode: inline` en `build-metrics.jsonl`, y te lo avisa una vez por tanda. Como el chat crece con cada epic entero, en una tanda larga el checkpoint declarado sigue siendo el uso previsto: cerrá la sesión entre epics y seguí con `start`. La matriz declara el gate `epic-coordinator`.
+
 ---
 
 ## Sello del build en Copilot CLI (TDD Honesty Gate + Spec Seal + Allowed Paths)

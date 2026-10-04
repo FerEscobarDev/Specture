@@ -58,7 +58,7 @@ flowchart TB
       T8["setup-docs-bridge"]
     end
 
-    F4 -.->|"BLOCKED: debug → el coordinador lo ofrece<br/>(nunca desde el epic-agent · no por BLOCKED: supersesiones)"| T1
+    F4 -.->|"BLOCKED: debug → el chat principal lo ofrece<br/>(nunca desde el epic-agent ni el coordinador del epic · no por BLOCKED: supersesiones)"| T1
     F4 -.->|"feature fuera del ROADMAP"| T2
     F4 -.->|"antes de 'completado'"| T3
     FASES -.->|"migrar/subir versión"| T4
@@ -135,20 +135,23 @@ Todos los implementadores validan el **Dispatch Manifest** como primera acción 
 ### 3.1 Modelo coordinador / cola secuencial
 
 Hay **un solo** modo de ejecución. El chat es **solo coordinador**: autoriza specs únicamente vía el `spec-planner` (Spec Planning Gate) y no corre tests.
-Construye una cola de hasta **N** epics y despacha **un epic-agent aislado a la vez**
-(concurrencia = 1). Tests, implementación y reviews viven dentro de cada epic-agent y se
-descartan al terminar; los despachos y preguntas del gate sí se acumulan en el coordinador.
-**Checkpoint declarado** (v2.2.0): todo lo que importa vive en disco (ROADMAP, `_planning.md`,
-sello, `.specture/state/gate/`, `build-metrics.jsonl`), así que después de cualquier epic se
-puede cerrar la sesión y seguir con `/specture:start`.
+Construye una cola de hasta **N** epics y despacha **un coordinador del epic a la vez**
+(v2.7.0; concurrencia = 1): un subagente de contexto fresco (`build/EPIC_COORDINATOR.md`) que
+despacha el epic-agent, que despacha los workers. Refresco, sello, loops, tests,
+implementación y reviews viven dentro del coordinador del epic y se descartan al terminar; en el
+chat principal se acumulan la sentada de revisión, los gates por epic de los epics no revisados
+y un `EPIC_REPORT` corto por epic (3.9). **Checkpoint declarado** (v2.2.0): todo lo que importa
+vive en disco (ROADMAP, `_planning.md`, sello, `.specture/state/gate/`, `build-metrics.jsonl`),
+así que después de cualquier epic se puede cerrar la sesión y seguir con `/specture:start`.
 
 **Etapa de revisión (v2.3.0, paso 4.5 de la cola).** Antes de ejecutar nada, `review.js status`
 dice si un registro `CERRADA` ya cubre toda la cola; si no, el coordinador corre la revisión de
 la tanda (3.7): una sentada contigo, dos rondas como mucho, y el registro en
 `docs/05-specs/_reviews/`. Después, cada epic de un registro cerrado pasa por **Refresh & seal**
-sin preguntas (3.8); uno que no pasó por la revisión sigue por el Spec Planning Gate (3.2). Una
-decisión nueva al refrescar un epic no regulatorio lo **aparca** y la cola sigue con los que no
-dependen de él.
+sin preguntas, dentro de su coordinador del epic (3.8); uno que no pasó por la revisión sigue
+por el Spec Planning Gate en el chat principal (3.2) y después se despacha sellado. Una decisión
+nueva al refrescar un epic no regulatorio lo **aparca** y la cola sigue con los que no dependen
+de él.
 
 ```mermaid
 flowchart TD
@@ -163,16 +166,19 @@ flowchart TD
     RVS -->|"'¿ejecutamos ya?' → sí"| L
     RVS -.->|"'más tarde'"| LATER(["El registro guarda todo<br/>/specture:start retoma"])
     RV -->|"sí"| L{"¿Quedan epics en la cola?"}
-    L -->|Sí| E["Marcar epic [/] + commit → LOCK_SHA"]
+    L -->|Sí| E["Marcar epic [/] + commit (solo ROADMAP.md) → LOCK_SHA"]
     E --> RQ{"¿El epic está en un<br/>registro CERRADA?"}
-    RQ -->|"sí"| RS["Refresh & seal (ver 3.8) · sin preguntas<br/>scope-check → planner MODE: REFRESH → 4a real → validador delta<br/>(+ mini-revisión anunciada si es regulatorio) → sello"]
+    RQ -->|"sí"| DR["Despachar el coordinador del epic (3.9)<br/>ENTRY: refresh · en segundo plano"]
+    RQ -->|"no (sin revisión)"| SPG["Spec Planning Gate (ver 3.2), en el chat principal:<br/>Code Surface → spec-planner → ≤2 rondas de preguntas (presupuesto único)<br/>→ 4a spec-set-check (MECH_CHECK) → validator por rondas (set + por spec · re-validación delta)<br/>→ resumen (GATE_NOTES · Diferidos) → commit specs + _planning.md<br/>→ sello: seal-cli write (spec_sha · spec_paths · allowed_paths · lock_sha)"]
+    SPG --> DS["Despachar el coordinador del epic (3.9)<br/>ENTRY: sealed + SPEC_SHA + GATE_METRICS"]
+    DR --> RS
+    DS --> F
+    subgraph ECO ["coordinador del epic · build/EPIC_COORDINATOR.md · contexto fresco · nunca pregunta"]
+    RS["Refresh & seal (ver 3.8) · sin preguntas<br/>scope-check → planner MODE: REFRESH → 4a real → validador delta<br/>(+ mini-revisión anunciada si es regulatorio) → sello"]
     RS -->|"sellado"| F
-    RS -.->|"decisión nueva (epic no regulatorio)"| PK["Aparcar: [/] → [ ] + línea Aparcado: en el ROADMAP<br/>+ APARCADOS del registro · commit<br/>(la cola sigue con los que no dependen de él)"]
-    PK --> L
-    RQ -->|"no (sin revisión)"| SPG["Spec Planning Gate (ver 3.2):<br/>Code Surface → spec-planner → ≤2 rondas de preguntas (presupuesto único)<br/>→ 4a spec-set-check (MECH_CHECK) → validator por rondas (set + por spec · re-validación delta)<br/>→ resumen (GATE_NOTES · Diferidos) → commit specs + _planning.md<br/>→ sello: seal-cli write (spec_sha · spec_paths · allowed_paths · lock_sha)"]
-    SPG --> F["epic-agent ejecuta build/EPIC_LOOP.md (Steps 3.9–8)<br/>(contexto aislado, se descarta al terminar)"]
+    RS -.->|"decisión nueva (epic no regulatorio)"| PK["Aparcar: [/] → [ ] + línea Aparcado: en el ROADMAP<br/>+ APARCADOS del registro · commit · métricas PARKED"]
+    F["epic-agent ejecuta build/EPIC_LOOP.md (Steps 3.9–8)<br/>y despacha los workers (contexto aislado, se descarta al terminar)"]
     F --> G{"Procesar el reporte:<br/>1º git diff SPEC_SHA..HEAD -- specs"}
-    G -->|"diff ≠ vacío"| ESC
     G -->|DONE| H["Verificar [x] + commit por git log<br/>(no confiar en el reporte) · seal-cli release<br/>· línea en build-metrics.jsonl (docs(metrics))"]
     G -->|"BLOCKED: supersesiones (capa)"| SUP["Loop de supersesiones (ver 3.6)<br/>sin revert · sin preguntar"]
     SUP -->|"epic-agent fresco · RESUME_AT"| F
@@ -180,9 +186,22 @@ flowchart TD
     COR -->|"epic-agent · RESUME_AT: red-fix (tests de los IDs cambiados)"| F
     G -->|"BLOCKED: red-fix"| RFX["Red-fix (v2.2.2): defecto mecánico de un test del RED<br/>sin planner · sin revert · sin preguntar"]
     RFX -->|"epic-agent · RESUME_AT: red-fix<br/>(Step 5.3: test(red-fix) registrado + RED retroactivo)"| F
-    G -->|"BLOCKED: debug"| DBG[["Ofrecer /specture:debug al usuario<br/>(la cola se detiene: debug pide Plan mode)"]]
-    G -->|"BLOCKED: entorno / otro · REJECTED_MAJOR"| ESC(["Escalar al usuario · sin auto-retry"])
-    H --> L
+    G -->|"diff ≠ vacío · loop repetido · test protegido<br/>· BLOCKED: entorno / debug / otro · REJECTED_MAJOR"| STP["STOPPED — motivo · sin auto-retry<br/>(seal-diff: sin acción automática)"]
+    end
+    H --> RPT
+    PK --> RPT
+    STP --> RPT
+    G -.->|"DONE: pendiente de aprobación visual"| RPT
+    RS -.->|"mini-revisión con decisiones nuevas · scope-changed · tope del gate"| RPT
+    RPT{"EPIC_REPORT (≤40 líneas)<br/>lo procesa el chat principal"}
+    RPT -->|DONE| DN["confirmar [x] y sello liberado · task completed<br/>· Step 8.7 si cerró el milestone"]
+    DN --> L
+    RPT -->|"PARKED (la cola sigue con los que no dependen de él)"| L
+    RPT -->|"MINI_REVIEW"| MRQ["preguntar tal cual (reglas de la ronda 2)<br/>· persistir en el registro + commit"]
+    MRQ -->|"ENTRY: mini-review-answers"| RS
+    RPT -->|"VISUAL_PENDING"| VIS[["Visual Approval Gate (ver 3.4)<br/>ajustes → ENTRY: visual-adjust"]]
+    RPT -->|"STOPPED — motivo"| ESC(["Escalar al usuario · la cola se detiene<br/>debug → ofrecer /specture:debug (pide Plan mode)<br/>tras la decisión → ENTRY: resume (o refresh)"])
+    RPT -.->|"NESTING_UNAVAILABLE"| INL["Modo en línea (ver 3.9): el chat principal<br/>corre EPIC_COORDINATOR.md para el resto de la tanda"]
     L -->|No| FIN(["Cola drenada · listar los aparcados con su decisión pendiente<br/>· registro ESTADO: EJECUTADA si todos están [x] o aparcados<br/>· diferidos sin dueño · triage de cumplimiento (v2.4.0, sin epic [/])<br/>· Step 8.5 · sugerir merge/PR (W-4) al final · Specture nunca mergea solo"])
 ```
 
@@ -191,8 +210,11 @@ flowchart TD
 El diagrama central del framework. La planificación vive en el **coordinador** (Spec
 Planning Gate: `spec-planner` + validación por rondas); los Steps 3.9–8 son el procedimiento
 del epic-agent y viven en `build/EPIC_LOOP.md` (único archivo que recibe); Step 1 y Steps
-8.5/8.7/9 son del coordinador (`build/SKILL.md`). Los **gates** (rombos) son innegociables:
-planificación validada, RED commit, TDD Honesty Gate, code review y verificación.
+8.5/8.7/9 son del coordinador (`build/SKILL.md`). Desde v2.7.0, entre el sello y el
+epic-agent hay un **coordinador del epic** (3.9): el gate termina en el chat principal, que lo
+despacha con `ENTRY: sealed`; él despacha el epic-agent y corre los loops de sus reportes. Los
+**gates** (rombos) son innegociables: planificación validada, RED commit, TDD Honesty Gate,
+code review y verificación.
 
 Desde v2.2.0 el gate **converge**: un solo presupuesto humano (≤2 rondas de preguntas, de
 cualquier origen, más una única pregunta cerrada en el tope); una **ronda** es el conjunto de
@@ -234,7 +256,7 @@ flowchart TD
     S4 --> S4c{"Post-checks: ¿fallan por la razón correcta?<br/>¿RED commit solo-tests? · capturar RED_SHA<br/>· seal-cli merge-spec (lista de archivos del RED)"}
     S4c -->|No| S4
     S4c -->|Sí| S5["Step 5 · GREEN · implementer / ux-implementer · por capas (ver 3.5)<br/>código mínimo · tests sellados · solo paths Crea:/Modifica:<br/>(re-lectura de firmas del spec anterior antes del Manifest)"]
-    S5 -.->|"tests viejos que una regla del spec vuelve falsos"| SUPB(["BLOCKED: supersesiones (capa)<br/>→ loop de supersesiones del coordinador (ver 3.6)"])
+    S5 -.->|"tests viejos que una regla del spec vuelve falsos"| SUPB(["BLOCKED: supersesiones (capa)<br/>→ loop de supersesiones del coordinador del epic (ver 3.6)"])
     SUPB -.->|"RESUME_AT: supersede"| S52["Step 5.2 · reescritura SUPERSEDE-HEAD registrada por SHA<br/>· red-lines · RED retroactivo en LOCK_SHA"]
     S52 -->|"regresiones J9 NO o WIP de compilación"| S5
     S52 -->|"sin pendientes"| S55
@@ -250,7 +272,7 @@ flowchart TD
     end
     S8 --> S85["Step 8.5 · Capturar aprendizajes (coordinador)<br/>(opt-in default No → knowledge)"]
     S85 --> S87["Step 8.7 · Reconciliación de milestone<br/>(si cierra: _current/ + revisión de cumplimiento (v2.4.0, sin preguntar)<br/>+ lápidas en ROADMAP)"]
-    S87 --> S9(["Step 9 · Reset de contexto (automático)<br/>el epic-agent se descarta → siguiente epic"])
+    S87 --> S9(["Step 9 · Reset de contexto (automático)<br/>el coordinador del epic y su epic-agent se descartan → siguiente epic"])
 ```
 
 ### 3.3 Sello del build — secuencia (tests, specs y superficie)
@@ -258,9 +280,9 @@ flowchart TD
 Tres contratos se **sellan** en `.specture/state/build-locked.json` (schema v3, escrito solo por
 `hooks/lib/seal-cli.js`): los specs validados (`spec_sha` + `spec_paths`, coordinador), los
 tests de cada RED commit (`specs[]`, epic-agent) y la superficie declarada por los specs
-(`allowed_paths`). Un hook opcional lo bloquea mecánicamente; el coordinador y el epic-agent
-siempre corren los chequeos mecánicos (`honesty-check.js` en el Step 5.5, `git diff
-<SPEC_SHA>..HEAD` al procesar el reporte) como defensa en profundidad. Una supersesión
+(`allowed_paths`). Un hook opcional lo bloquea mecánicamente; el coordinador (desde v2.7.0, el
+coordinador del epic) y el epic-agent siempre corren los chequeos mecánicos (`honesty-check.js`
+en el Step 5.5, `git diff <SPEC_SHA>..HEAD` al procesar el reporte) como defensa en profundidad. Una supersesión
 declarada (`Supersede:`) levanta el deny de test **solo** para esos paths y **solo** durante el
 dispatch del tdd-test-writer — antes del RED si la declaró el gate, o en el Step 5.2 si la
 descubrió la ejecución (`supersede --slug`, que rechaza un archivo del RED de un spec salvo
@@ -270,7 +292,7 @@ guarda el primer RED de cada spec y no se mueve.
 
 ```mermaid
 sequenceDiagram
-    participant C as Coordinador
+    participant C as Coordinador<br/>(del epic desde v2.7.0)
     participant O as epic-agent
     participant TW as tdd-test-writer
     participant H as Hook PreToolUse<br/>(opcional)
@@ -289,7 +311,7 @@ sequenceDiagram
     O->>O: honesty-check clean-tree · range · red-lines<br/>(sin node: git diff RED_SHA..HEAD -- test-globs)
     Note over O: 3 PASS → ✅ code review (Dim 1 verifica firmas Crea:)<br/>algún FAIL → ❌ violación TDD (recovery)
     O-->>C: DONE + METRICS + SUPERSESSIONS
-    C->>C: git diff SPEC_SHA..HEAD -- specs (vacío ✅ / ≠ vacío → REJECTED_MAJOR)<br/>seal-cli release · build-metrics.jsonl
+    C->>C: git diff SPEC_SHA..HEAD -- specs (vacío ✅ / ≠ vacío → STOPPED — seal-diff)<br/>seal-cli release · build-metrics.jsonl
 ```
 
 ### 3.4 Epics de frontend — Design-System-First + Visual Approval Gate
@@ -338,26 +360,29 @@ flowchart TD
 
 ### 3.6 Loop de supersesiones — sin revert y sin preguntar (v2.2.0)
 
-Lo corre el **coordinador** al recibir `BLOCKED: supersesiones (<capa>)`. No hay `git revert`
-del RED, ni `unseal-spec`, ni pregunta al usuario: quien decide "regresión o diseño" es un
-validador fresco con el dato (J9), nunca el implementer. Como mucho **un loop por spec y por
-capa**; el segundo se escala. El usuario solo aparece si un test está protegido por una
-invariante del proyecto. En un epic de migración J9 acepta `AC-n` / `GAP-nnn` como regla, y los
+Lo corre el **coordinador del epic** (v2.7.0; antes, el coordinador principal) al recibir
+`BLOCKED: supersesiones (<capa>)`. No hay `git revert` del RED, ni `unseal-spec`, ni pregunta al
+usuario: quien decide "regresión o diseño" es un validador fresco con el dato (J9), nunca el
+implementer. Como mucho **un loop por spec y por capa**; el segundo vuelve como `EPIC_REPORT:
+STOPPED — loop repetido` y el chat principal lo escala. El usuario solo aparece si un test está
+protegido por una invariante del proyecto (`STOPPED — protected`). El veredicto J9 y los
+`FAILURES:` se escriben en `_planning.md` apenas llegan, y una línea `- LOOP: supersesiones
+<capa> <spec>` bajo `## SPEC_SHA` le dice a una reanudación qué loop se cortó. En un epic de migración J9 acepta `AC-n` / `GAP-nnn` como regla, y los
 characterization tests nunca entran al loop salvo que el spec declare el `GAP-nnn` que retira
 ese comportamiento.
 
 ```mermaid
 flowchart TD
     INR(["Reporte: BLOCKED: supersesiones (capa)<br/>+ FAILURES: aserción vieja + primer fallo por test"]) --> Q{"¿Ya hubo un loop<br/>para este spec y esta capa?"}
-    Q -->|"sí"| ESC(["Escalar al usuario"])
+    Q -->|"sí"| ESC(["EPIC_REPORT: STOPPED — loop repetido<br/>→ el chat principal escala al usuario"])
     Q -->|"no"| J9{"1 · J9 · validador fresco (MODE: J9)<br/>por test: ¿una regla de este spec<br/>vuelve falsa la expectativa vieja?"}
     J9 -->|"todos NO / INDETERMINABLE"| RES2["epic-agent fresco · RESUME_AT: regresiones<br/>(sin cambio de spec)"]
-    J9 -->|"algún SÍ"| LIFT["2 · seal-cli lift-spec --slug<br/>libera solo ese spec (lifted_spec_paths)"]
+    J9 -->|"algún SÍ"| LIFT["2 · línea - LOOP: supersesiones en _planning.md<br/>· seal-cli lift-spec --slug: libera solo ese spec (lifted_spec_paths)"]
     LIFT --> PL["3 · spec-planner fresco · MODE: SUPERSESSIONS<br/>solo los tests SÍ con su regla<br/>→ líneas Supersede: · filas sup: · registro SUPERSESIONES"]
     PL --> SD{"4 · honesty-check spec-delta<br/>¿cambió solo la sección Supersesiones?"}
     SD -->|"FAIL"| COR[["loop de corrección completo<br/>(lift-spec · re-validación delta · red-fix puntual de los tests cambiados)"]]
     SD -->|"PASS"| PR{"5 · honesty-check protected<br/>¿un test de un verify: de rules.yml<br/>o de un GUARD de otro epic?"}
-    PR -->|"FAIL"| ESC2(["Escalar al usuario:<br/>enmendar una invariante es decisión humana"])
+    PR -->|"FAIL"| ESC2(["EPIC_REPORT: STOPPED — protected → el chat principal escala:<br/>enmendar una invariante es decisión humana"])
     PR -->|"PASS"| MC["6 · 4a spec-set-check (debe dar PASS)"]
     MC --> CM["7 · commit docs(specs): supersesiones … — loop (capa)<br/>→ SPEC_SHA nuevo + veredicto J9 en _planning.md<br/>· seal-cli write (mismo lock_sha · vacía el lift)"]
     CM --> RES["8 · epic-agent fresco · RESUME_AT: supersede<br/>SUPERSEDE: (tests SÍ) · REGRESIONES: (NO / INDETERMINABLE)"]
@@ -422,40 +447,54 @@ flowchart TD
 
 ### 3.8 Refresh & seal, mini-revisión anunciada y epics aparcados (v2.3.0)
 
-En el turno de cada epic de un registro cerrado las decisiones ya están tomadas: el
-coordinador solo convierte los borradores en specs sellables contra el código **de ese
-momento** (los epics anteriores de la tanda lo cambiaron), sin preguntar. Hay dos contactos
-previstos: si el bloque del epic o sus RN cambiaron desde la sentada (`scope-check` →
-`CHANGED`), ese epic vuelve a una revisión corta propia; y un epic **regulatorio** tiene su
-**mini-revisión anunciada** (variante B2) justo antes del sello, con el validador leyendo los
-specs ya escritos contra el código. En un epic no regulatorio, una decisión nueva de dinero,
-legal, datos personales, contrato o modelo **aparca** el epic; en uno regulatorio va a su
-mini-revisión, y lo que esa sentada deje abierto lo aparca. Por qué B2: el experimento
+En el turno de cada epic de un registro cerrado las decisiones ya están tomadas: el chat
+principal bloquea el epic y despacha su **coordinador del epic** con `ENTRY: refresh` (v2.7.0,
+`build/EPIC_COORDINATOR.md` Steps 2-3; en Copilot y Antigravity lo corre en línea, 3.9), que solo
+convierte los borradores en specs sellables contra el código **de ese momento** (los epics
+anteriores de la tanda lo cambiaron), sin preguntar. Hay dos contactos previstos, y los dos
+pasan por el chat principal porque el coordinador del epic **nunca pregunta**: si el bloque del
+epic o sus RN cambiaron desde la sentada (`scope-check` → `CHANGED`), devuelve `EPIC_REPORT:
+STOPPED — scope-changed` y el chat principal corre una revisión corta de ese epic antes de
+despacharlo de nuevo; y un epic **regulatorio** tiene su **mini-revisión anunciada** (variante
+B2) justo antes del sello, con el validador leyendo los specs ya escritos contra el código. Si
+encuentra decisiones nuevas, el coordinador del epic commitea el refresco **sin sellar** y
+devuelve `EPIC_REPORT: MINI_REVIEW` con las preguntas tal cual; el chat principal te las hace con
+las reglas de la ronda 2, las registra y lo despacha con `ENTRY: mini-review-answers`. En un epic
+no regulatorio, una decisión nueva de dinero, legal, datos personales, contrato o modelo
+**aparca** el epic (`EPIC_REPORT: PARKED`); en uno regulatorio va a su mini-revisión, y lo que
+esa sentada deje abierto lo aparca. Por qué B2: el experimento
 "ronda 2" (`docs/milestone-decision-stage-simulation.md` §7) mostró que las decisiones que solo
 aparecen con el spec escrito en detalle —qué hace cada rol en cada pantalla, datos personales
 que entran por superficies públicas— no las captura ninguna de las dos rondas.
 
 ```mermaid
 flowchart TD
-    T(["Turno del epic · registro CERRADA"]) --> LK["Lock: epic [/] + commit → LOCK_SHA"]
-    LK --> SC{"review.js scope-check --batch id --epic X.Y"}
-    SC -->|"CHANGED: el bloque o sus RN se movieron desde la sentada"| SR[["Revisión corta de este epic (R1–R5, ver 3.7)<br/>el único caso en que un epic no regulatorio pregunta"]]
+    T(["Turno del epic · registro CERRADA"]) --> LK["chat principal: lock [/] + commit (solo ROADMAP.md) → LOCK_SHA<br/>→ despacha el coordinador del epic · ENTRY: refresh"]
+    LK --> SC
+    subgraph ECO ["coordinador del epic · EPIC_COORDINATOR.md Steps 2-3 · nunca pregunta"]
+    SC{"review.js scope-check --batch id --epic X.Y"}
     SC -->|"SAME"| CS["Code Surface Resolution (el código de AHORA)"]
     CS --> RF["spec-planner fresco · MODE: REFRESH (sin código)<br/>borradores + registro + CODE_SURFACE → specs sellables<br/>cita 'fuente: revisión id A-n' · nunca pregunta"]
     RF --> MC{"4a REAL (no --draft) → validador MODE: DELTA<br/>contra los veredictos de la revisión"}
     MC -->|"hallazgo que una respuesta ya resuelve"| VA["VIOLATION que cita esa A-n<br/>→ planner · nunca una pregunta"]
     VA --> RF
-    MC -.->|"decisión nueva que el registro no cubre<br/>(CONCERNS: decisión-nueva · HUMAN_DECISION)<br/>en un epic no regulatorio"| PK["APARCAR: [/] → [ ]<br/>+ línea Aparcado: fecha — clase — motivo — tanda id en el ROADMAP<br/>+ APARCADOS del registro · commit"]
-    PK --> NX(["La cola sigue con los epics que no dependen de él<br/>al drenar: aparcados listados con su decisión pendiente<br/>(en una cadena casi lineal, aparcar uno suele detener el resto)"])
+    MC -.->|"decisión nueva que el registro no cubre<br/>(CONCERNS: decisión-nueva · HUMAN_DECISION)<br/>en un epic no regulatorio"| PK["APARCAR: [/] → [ ]<br/>+ línea Aparcado: fecha — clase — motivo — tanda id en el ROADMAP<br/>+ APARCADOS del registro · seal-cli release si había sello<br/>· commit · métricas (outcome PARKED)"]
     MC -->|"APPROVED"| RG{"¿Epic en REGULATORIOS?"}
     RG -->|"no"| SEAL
     RG -->|"sí"| MR{"Mini-revisión anunciada (B2)<br/>validador MODE: REVIEW sobre los specs ESCRITOS, leyendo código:<br/>qué ve y hace cada rol en cada pantalla o endpoint<br/>· datos personales que entran por superficies públicas"}
     MR -->|"sin HUMAN_DECISIONS nuevas"| SEAL
-    MR -->|"nuevas (o una decisión-nueva del refresco de este epic)"| MS["UNA sentada, anunciada en R5<br/>mismas reglas que R2 · sección Mini-revisión X.Y del registro"]
-    MS --> MSR["persistir y commitear las respuestas → planner fresco MODE: REFRESH con ANSWERS<br/>→ 4a real → validador MODE: DELTA"]
-    MSR -->|"resuelta"| SEAL
-    MSR -.->|"decisión aún abierta tras la sentada"| PK["commit docs(specs): plan … — refresco de revisión id<br/>· SPEC_SHA · sello (seal-cli write) · EJECUCIÓN: en curso"]
-    SEAL --> EA(["epic-agent (3.2, Steps 3.9–8)"])
+    MR -->|"nuevas (o una decisión-nueva del refresco de este epic)"| MQ["planner fresco · MODE: QUESTIONS → preguntas cerradas<br/>· commit del refresco SIN sellar (pendiente de mini-revisión)"]
+    MSR["planner fresco MODE: REFRESH con ANSWERS<br/>→ 4a real → validador MODE: DELTA"]
+    MSR -->|"resuelta"| SEAL["commit docs(specs): plan … — refresco de revisión id<br/>· SPEC_SHA · sello (seal-cli write) · EJECUCIÓN: en curso"]
+    MSR -.->|"decisión aún abierta tras la sentada"| PK
+    SEAL --> EA["despacha el epic-agent (3.2, Steps 3.9–8)<br/>y procesa sus reportes (3.1)"]
+    end
+    SC -->|"CHANGED: el bloque o sus RN se movieron desde la sentada"| STC(["EPIC_REPORT: STOPPED — scope-changed"])
+    STC --> SR[["chat principal: revisión corta de este epic (R1–R5, ver 3.7)<br/>el único caso en que un epic no regulatorio pregunta<br/>→ ENTRY: refresh de nuevo"]]
+    MQ --> MRR(["EPIC_REPORT: MINI_REVIEW<br/>(las preguntas, tal cual)"])
+    MRR --> MS["chat principal: UNA sentada, anunciada en R5<br/>mismas reglas que R2 · sección Mini-revisión X.Y del registro<br/>· persistir y commitear las respuestas"]
+    MS -->|"ENTRY: mini-review-answers"| MSR
+    PK --> NX(["EPIC_REPORT: PARKED · la cola sigue con los epics que no dependen de él<br/>al drenar: aparcados listados con su decisión pendiente<br/>(en una cadena casi lineal, aparcar uno suele detener el resto)"])
 ```
 
 Un epic aparcado **no es un estado nuevo**: vuelve a `[ ]` con la línea
@@ -463,6 +502,76 @@ Un epic aparcado **no es un estado nuevo**: vuelve a `[ ]` con la línea
 siguiente sentada de revisión toma la decisión y borra la línea. `/specture:doctor check` lo
 muestra como `epic-parked` (INFO), y como `parked-orphan` si la línea quedó en un epic `[/]` o
 `[x]` o nombra una tanda sin registro.
+
+### 3.9 Coordinador por epic (v2.7.0)
+
+Hasta v2.6 el chat principal corría todo lo que le pasa a cada epic: el refresco y el sello, cada
+reporte del epic-agent y cada loop. En la tanda real HC-IHCE.9–.11 (tres epics) su contexto fue
+401k tokens durante la sentada de revisión, 570k al empezar el primer epic, 687k al empezar el
+segundo y 961k —compactación automática— en medio del segundo. Desde v2.7.0 cada epic corre en
+un subagente con contexto fresco, el **coordinador del epic** (`build/EPIC_COORDINATOR.md`), y al
+chat principal solo vuelve un `EPIC_REPORT` de 40 líneas como máximo: la evidencia queda en disco
+y el reporte dice dónde. El coordinador del epic **nunca pregunta**: lo que necesita del usuario
+vuelve como reporte, y el chat principal pregunta, persiste la respuesta y lo despacha de nuevo
+con el `ENTRY` que corresponde. Son tres niveles de subagentes bajo el chat principal, el límite
+por defecto de Claude Code; todo despacho anidado es **asíncrono** (se espera la notificación,
+nunca se sondea) y escribe un solo agente a la vez.
+
+```mermaid
+flowchart LR
+    subgraph MAIN ["chat principal · build/SKILL.md (lo que habla contigo)"]
+    Q["cola · etapa de revisión (3.7)<br/>· gate por epic de los epics no revisados (3.2)"]
+    P["procesa el EPIC_REPORT:<br/>preguntas de la mini-revisión · escalaciones<br/>· aprobación visual · Step 8.7 · drenaje"]
+    end
+    subgraph EC ["nivel 1 · coordinador del epic · build/EPIC_COORDINATOR.md<br/>contexto fresco · nunca pregunta"]
+    R["Refresh & seal · mini-revisión · aparcar<br/>· loops: supersesiones · corrección · red-fix<br/>· chequeo del sello · release · métricas"]
+    end
+    subgraph EA ["nivel 2 · epic-agent · build/EPIC_LOOP.md · Sonnet"]
+    S["Steps 3.9–8: RED → GREEN → review → verify → [x]"]
+    end
+    W["nivel 3 · workers<br/>tdd-test-writer · implementer / ux-implementer · code-reviewer<br/>(sin herramienta Agent)"]
+    Q -->|"ENTRY: refresh · sealed · resume<br/>· mini-review-answers · visual-adjust"| R
+    R -->|"prompt autocontenido + EPIC_LOOP.md"| S
+    S --> W
+    W -.->|"reporte"| S
+    S -.->|"DONE · BLOCKED · REJECTED_MAJOR"| R
+    R -.->|"EPIC_REPORT ≤40 líneas: DONE · PARKED · MINI_REVIEW<br/>· STOPPED · VISUAL_PENDING · NESTING_UNAVAILABLE"| P
+    P -.->|"tras tu respuesta: el ENTRY que corresponde"| R
+```
+
+**Modo en línea.** Copilot y Antigravity no tienen subagentes anidados: el chat principal corre
+`build/EPIC_COORDINATOR.md` él mismo, tal cual (`coordinator_mode: inline`), y lo avisa una vez
+por tanda. Es el comportamiento de v2.6 con el procedimiento en su propio archivo; el chat crece
+con cada epic, así que en una tanda larga el checkpoint declarado sigue siendo el uso previsto.
+En Claude Code, si el nivel de anidamiento disponible es menor, cada nivel lo detecta antes de
+tocar nada:
+
+```mermaid
+flowchart TD
+    T(["Turno del epic"]) --> PL{"¿Subagentes anidados?"}
+    PL -->|"no: Copilot · Antigravity"| IN["modo en línea: el chat principal corre<br/>EPIC_COORDINATOR.md tal cual (sin su Step 0)<br/>coordinator_mode: inline · aviso una vez por tanda"]
+    PL -->|"sí: Claude Code"| D["despachar el coordinador del epic (en segundo plano)"]
+    D --> S0{"Step 0 · ¿tiene la herramienta Agent?"}
+    S0 -->|"no"| NU(["EPIC_REPORT: NESTING_UNAVAILABLE<br/>sin tocar nada"])
+    NU -->|"el resto de la tanda · este epic desde su Step 1, mismo ENTRY"| IN
+    S0 -->|"sí"| EA["despacha el epic-agent"]
+    EA --> E0{"EPIC_LOOP Step 0 · ¿el epic-agent tiene Agent?"}
+    E0 -->|"no: BLOCKED: nesting"| SELF["el coordinador del epic corre EPIC_LOOP Steps 4-8<br/>y despacha él los workers (coordinator_mode: subagent)"]
+    E0 -->|"sí"| W["el epic-agent despacha los workers"]
+```
+
+**Reanudación (`ENTRY: resume`).** Si la sesión se corta (se cerró, o llegó un límite de uso) o
+un despacho no vuelve, `/specture:start` encuentra el epic `[/]` y el chat principal lo
+re-despacha con `ENTRY: resume`; el epic reanudado se termina antes de armar la cola y no cuenta
+para N. El coordinador del epic decide por la evidencia en disco, nunca por inferencia (Step R):
+un sello con `lifted_spec_paths` es un loop interrumpido —la última línea `- LOOP:` de
+`_planning.md` dice cuál— y se retoma; specs sellados → el epic-agent sigue desde el primer spec
+sin aprobar y verificar (si falta el sello, lo reescribe desde el `SPEC_SHA` y el `LOCK_SHA`
+registrados); un refresco commiteado "pendiente de mini-revisión" sin respuestas en el registro →
+`MINI_REVIEW` otra vez, con las mismas preguntas; un refresco sin commitear → 4a y validación
+delta, sin descartar nada; solo borradores → el refresco desde el principio; algo que no puede
+atribuir → `STOPPED — reanudación` y el chat principal pregunta. Cuesta un despacho, nunca un
+re-plan.
 
 ---
 
@@ -585,10 +694,11 @@ Modo emergencia. Prohíbe fixes sin investigación. La hipótesis se escribe **d
 hasta que el usuario aprueba, no se puede tocar código. Límite duro de **3 hipótesis** antes de
 escalar arquitectónicamente.
 
-**Excepciones dentro de `build` (v2.2.0).** El epic-agent **nunca** invoca `debug`: Plan mode
-dejaría la cola esperando una aprobación que nadie puede dar. Al llegar al Iteration Cap reporta
-`BLOCKED: debug <spec>`, la cola se detiene y el coordinador le ofrece `/specture:debug` al
-usuario. Y un `BLOCKED: supersesiones` del implementer no dispara `debug` aunque el mismo test
+**Excepciones dentro de `build` (v2.2.0).** El epic-agent **nunca** invoca `debug` (ni, desde
+v2.7.0, el coordinador del epic): Plan mode dejaría la cola esperando una aprobación que nadie
+puede dar. Al llegar al Iteration Cap reporta `BLOCKED: debug <spec>`, el coordinador del epic lo
+devuelve como `EPIC_REPORT: STOPPED`, la cola se detiene y el chat principal le ofrece
+`/specture:debug` al usuario. Y un `BLOCKED: supersesiones` del implementer no dispara `debug` aunque el mismo test
 haya fallado dos veces: ya está clasificado y va al loop de supersesiones (3.5 y 3.6).
 
 ```mermaid

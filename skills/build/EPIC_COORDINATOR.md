@@ -47,6 +47,7 @@ GATE_METRICS: <the per-epic gate counters> (ENTRY: sealed — the build coordina
 ANSWERS: <A-n — respuesta — fuente>   (ENTRY: mini-review-answers; already persisted and committed)
 VISUAL_FEEDBACK: <user's words>       (ENTRY: visual-adjust)
 HUMAN_CONTACTS: <n>                    (contacts the build coordinator already had for this epic)
+DECISION: <the user's answer>          (ENTRY: resume after a STOPPED — gate | decisión; already persisted)
 BASE_CONTEXT: <paths the epic-agent needs: stack.yml, conventions.md, ADRs, business_requirements.md, architecture.md>
 ```
 
@@ -56,9 +57,11 @@ the first dispatch of a reviewed epic (the sitting is counted once, in the regis
 
 ## Step 1 — Entry
 
-First, if `_planning.md` exists and has no `- LOCK_SHA:` line, add
-`- LOCK_SHA: <sha> — <ISO-8601>` under its `## SPEC_SHA` — it rides with your first commit (the
-build coordinator's lock commit touches only `ROADMAP.md`).
+First, under `## SPEC_SHA` of `_planning.md` (once the file exists): add `- LOCK_SHA: <sha> —
+<ISO-8601>` if it is not there (the build coordinator's lock commit touches only `ROADMAP.md`),
+and append `- EPIC_COORDINATOR: despacho <n> — ENTRY <entry> — <ISO-8601>` (`n` = the previous
+such lines + 1; inline, write `en línea` instead of `despacho <n>`). Both ride with your next
+commit; Step 6 counts the dispatches from them.
 
 - `refresh` → Step 2.
 - `sealed` → Step 4 with `SPEC_SHA` (the per-epic gate already ran in the build coordinator).
@@ -289,8 +292,8 @@ seal-diff | protected | loop repetido | entorno | debug | insufficient context |
 counters: yours for a refresh, the dispatch's `GATE_METRICS` for `ENTRY: sealed`;
 `gate_human_contacts` = the dispatch's `HUMAN_CONTACTS`; the report's `METRICS` values) plus
 `coordinator_mode: "subagent"` (`"inline"` when the build coordinator runs this file itself),
-`epic_coordinator_dispatches` (your dispatch number for this epic, from `## SPEC_SHA` /
-`_planning.md` history or the dispatch), `parked` (`0`|`1`), `batch_id` when the epic belongs to
+`epic_coordinator_dispatches` (the `- EPIC_COORDINATOR: despacho` lines of `_planning.md`; `0`
+inline), `parked` (`0`|`1`), `batch_id` when the epic belongs to
 a review register, and `ts` with time. `git add docs/.specture-meta/build-metrics.jsonl` and
 commit `docs(metrics): <epic-slug> — <outcome>` together with the epic's `_planning.md` appends.
 
@@ -313,6 +316,13 @@ A session or a usage limit cut the run. Decide by evidence, never by inference:
 - **Refresh in the working tree, uncommitted** → gate step 4a and the delta validation of
   Step 2.3 (the drafts are reviewed; nothing is discarded).
 - **No specs beyond the drafts** → Step 2.
+- **A `DECISION:` in the dispatch** answers the `STOPPED` that paused the run (the last
+  `### … — STOPPED` note you left under `## VEREDICTOS`): `decisión` → a fresh planner with it as
+  `ANSWERS` for the spec that raised it, then the step that stopped (4a and delta validation);
+  `gate` → the option the user chose from the menu you pre-built (comply → planner with it as
+  `VIOLATIONS` context; pause → `STOPPED — pausado`; amend an ADR or split the epic are
+  `architecture`/ROADMAP work → `STOPPED` again naming it). Before answering any `STOPPED` that waits
+  for an answer, leave that `### <target> — <ISO-8601> — STOPPED — <motivo>` note with the question.
 - Anything else (several `[/]`, files you cannot attribute) → `EPIC_REPORT: STOPPED — reanudación`
   with what you found: the build coordinator asks.
 
@@ -326,7 +336,7 @@ SUMMARY: <≤ 5 lines for the user: what was built or what happened, in plain la
  decisión pendiente · MINI_REVIEW → the closed questions verbatim + the unsealed refresh commit ·
  STOPPED → reason, minimal evidence, the closed options when the procedure pre-builds them ·
  VISUAL_PENDING → dev command + showcase route · NESTING_UNAVAILABLE → what was missing>
-METRICS: <the line was written | not written (why)>
+METRICS: <the line was written | not written (why) | VISUAL_PENDING: the counters as one JSON object>
 ```
 
 Never paste whole verdicts, diffs or logs: the evidence stays on disk and you name where.

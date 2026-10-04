@@ -377,7 +377,7 @@ goes back to me as an EPIC_REPORT of at most 40 lines.
 ENTRY: refresh | sealed | resume | mini-review-answers | visual-adjust
 EPIC: <full epic block>
 LOCK_SHA: <sha> · REVIEW_REGISTER: <path | none> · REGULATORIO: <sí | no>
-SPEC_SHA / GATE_METRICS (ENTRY: sealed) · ANSWERS (mini-review-answers) · VISUAL_FEEDBACK (visual-adjust)
+SPEC_SHA / GATE_METRICS (ENTRY: sealed) · ANSWERS (mini-review-answers) · VISUAL_FEEDBACK (visual-adjust) · DECISION (resume after STOPPED — gate | decisión)
 HUMAN_CONTACTS: <n> · BASE_CONTEXT: <paths>
 ~~~
 
@@ -420,14 +420,15 @@ diffs unless the status below asks for it.
   - `scope-changed` → run R1-R5 of `build/REVIEW_STAGE.md` for this one epic (the only case where
     a non-regulatory epic asks), then dispatch again with `ENTRY: refresh`;
   - `gate` (the refresh's cap) → the single closed question of gate step 5 with the options the
-    report pre-built;
+    report pre-built; dispatch again with `ENTRY: resume` and the chosen option as `DECISION:`;
   - `seal-diff` → show the diff summary; a `[x]` that landed is reverted only on the user's word;
   - `protected` → amending a project invariant is the user's decision;
   - `entorno` → the log; no agent can fix it · `debug <slug>` → offer `/specture:debug` for that
     spec (it needs Plan mode) · `insufficient context` → offer to split the epic ·
     `REJECTED_MAJOR` / other → the summary;
   - `decisión` (a correction loop of a regulatory epic needs a human answer) → ask it with the
-    rules of round 2 and dispatch again with `ENTRY: resume`;
+    rules of round 2, persist it as in `MINI_REVIEW`, and dispatch again with `ENTRY: resume` and
+    the answer as `DECISION:`;
   - `reanudación` → the evidence it found; ask which way to continue.
   After the decision, dispatch the epic coordinator again with `ENTRY: resume` (or `refresh`),
   never by running its steps yourself.

@@ -1,8 +1,9 @@
 # Preguntas frecuentes sobre `/specture:build`
 
-> Desde v2.2.0 (la etapa de revisión, desde v2.3.0). Responde a lo que más se pregunta cuando un
-> epic tarda en arrancar, cuando la ejecución toca tests de epics anteriores o cuando la tanda
-> empieza por una sentada de decisiones. El detalle técnico está en `skills/build/SKILL.md`,
+> Desde v2.2.0 (la etapa de revisión, desde v2.3.0; el coordinador por epic, desde v2.7.0).
+> Responde a lo que más se pregunta cuando un epic tarda en arrancar, cuando la ejecución toca
+> tests de epics anteriores o cuando la tanda empieza por una sentada de decisiones. El detalle
+> técnico está en `skills/build/SKILL.md`, `skills/build/EPIC_COORDINATOR.md`,
 > `skills/build/EPIC_LOOP.md`, `skills/build/REVIEW_STAGE.md` y `docs/tdd-honesty-reference.md`;
 > la guía de la revisión, en [`docs/review-stage-guide.md`](review-stage-guide.md); la evidencia
 > que motivó los cambios, en `docs/spec-gate-convergence-design.md` y
@@ -84,8 +85,8 @@ arrancarla, no sobrevive la sesión y nunca autoriza tocar el contrato.
 
 Un epic (no regulatorio) que la cola dejó para la próxima sentada porque, al refrescarlo en su
 turno, apareció una decisión que nadie previó en la revisión: de dinero, legal, datos
-personales, contrato o modelo. En vez de interrumpirte a mitad de la tanda, el coordinador lo
-devuelve de `[/]` a `[ ]` con una línea en su bloque del ROADMAP:
+personales, contrato o modelo. En vez de interrumpirte a mitad de la tanda, el coordinador del
+epic lo devuelve de `[/]` a `[ ]` con una línea en su bloque del ROADMAP:
 
 ```
 - **Aparcado:** <fecha> — <clase> — <motivo> — tanda <id>
@@ -183,9 +184,10 @@ bloquean el epic, pero se reportan, nunca se esconden.
 ## ¿Qué es `BLOCKED: debug` y por qué la cola no invoca `debug` sola?
 
 Cuando un spec agota sus tres intentos de implementación y revisión, el epic-agent se detiene
-y reporta `BLOCKED: debug <spec>`. No invoca la skill `debug` por su cuenta porque esa skill
-trabaja en Plan mode, que necesita tu aprobación: invocarla dentro de la cola dejaría todo
-esperando sin que nadie lo sepa. El coordinador te lo muestra y te ofrece `/specture:debug`.
+y reporta `BLOCKED: debug <spec>`. No invoca la skill `debug` por su cuenta (ni el coordinador
+del epic) porque esa skill trabaja en Plan mode, que necesita tu aprobación: invocarla dentro de
+la cola dejaría todo esperando sin que nadie lo sepa. El coordinador te lo muestra y te ofrece
+`/specture:debug`.
 
 ## Actualicé a v2.2.0 con un epic a medio planificar. ¿Qué hago?
 
@@ -215,6 +217,61 @@ exacto están en `hooks/README.md` § Permisos; `/specture:doctor check` te avis
 No. Todo lo que importa vive en disco: el ROADMAP, el registro de la revisión de la tanda, el
 `_planning.md` de cada epic, el sello y `build-metrics.jsonl`. Después de cualquier epic puedes cerrar la sesión y seguir con
 `/specture:start`; para una tanda larga es lo recomendado.
+
+Desde v2.7.0 en Claude Code crece mucho menos: cada epic corre en su propio subagente y aquí
+solo vuelve un reporte corto por epic. Lo que sigue pesando en el chat principal es la sentada
+de revisión (unos 400k tokens en una tanda de tres epics regulatorios). En Copilot y Antigravity
+el epic sigue corriendo en el chat principal, así que ahí el consejo de cerrar entre epics vale
+igual que antes.
+
+## ¿Por qué un coordinador por epic?
+
+Porque el chat principal no aguantaba una tanda de tres epics. Hasta v2.6 corría en su propio
+contexto todo lo que le pasa a cada epic: el refresco y el sello, cada reporte del epic-agent y
+cada loop. En la primera tanda real de tres epics con etapa de revisión (HC-IHCE.9–.11 de
+Psikora, con v2.3.0) el contexto del coordinador fue 401k tokens durante la sentada, 570k al
+empezar el primer epic, 687k al empezar el segundo y llegó a 961k en medio del segundo, donde se
+compactó solo; el tercero arrancó en 176k, después de la compactación. Lo demás funcionó: ningún
+contacto después del sello en los tres epics, la única interrupción fue la mini-revisión
+anunciada del HC-IHCE.11, y un corte por límite de uso se retomó bien desde disco. Pero después
+de compactarse el coordinador gastó unos diez turnos preguntando por un despacho en curso ("sigo
+esperando"), y cada uno de esos turnos relee todo el contexto.
+
+Desde v2.7.0 cada epic corre en su propio **coordinador del epic**, un subagente con contexto
+fresco que hace el refresco, el sello, el epic-agent, los loops y las métricas, y al chat
+principal le devuelve un reporte de 40 líneas como máximo; la evidencia queda en disco. Para ti
+casi nada cambia: el coordinador del epic **nunca te pregunta**. Lo que necesita de ti (la
+mini-revisión de un epic regulatorio, un problema que solo tú puedes decidir, la aprobación
+visual del design system) vuelve al chat principal, que te pregunta igual que antes y lo
+despacha de nuevo con tu respuesta. Mientras un epic corre puedes escribir en el chat y se te
+responde; el chat espera el aviso de que el epic terminó, sin consultar a cada rato. En Copilot y
+Antigravity, que no tienen subagentes anidados, el mismo procedimiento corre en el chat
+principal, como en v2.6.
+
+## ¿Qué pasa si la sesión se corta a mitad de un epic?
+
+Nada se pierde y nada se re-planifica. Corre `/specture:start`: `build` encuentra el epic `[/]`,
+lo termina antes de armar la cola nueva (no cuenta para el tamaño de la tanda) y despacha su
+coordinador del epic con `ENTRY: resume`. Ese coordinador no supone dónde había quedado: lo
+decide por la evidencia en disco.
+
+- **Un loop a medias** (un spec liberado del sello): la última línea `- LOOP:` del
+  `_planning.md` dice cuál era, y lo retoma desde el último paso que dejó rastro.
+- **Specs sellados y aprobados**: el epic-agent sigue desde el primer spec que no estaba
+  aprobado y verificado. Si falta el sello (no viaja en git), lo reescribe desde el `SPEC_SHA` y
+  el `LOCK_SHA` registrados.
+- **Un refresco "pendiente de mini-revisión"** sin tus respuestas en el registro: te vuelve a
+  llegar la misma mini-revisión, con las mismas preguntas.
+- **Un refresco sin commitear**: lo chequea y lo re-valida; no descarta nada.
+- **Solo los borradores de la revisión**: empieza el refresco.
+- **Algo que no puede atribuir** (varios epics `[/]`, archivos que no sabe de dónde salen): se
+  detiene y el chat principal te pregunta por dónde seguir.
+
+Cuesta un despacho, nunca un re-plan. Un epic que no pasó por una revisión y quedó con specs sin
+commitear sigue la regla de siempre: te pregunta si se descartan o se retoman, y nunca borra
+nada sin preguntarte. En la tanda HC-IHCE.9–.11 (todavía con v2.3.0) un corte por límite de uso
+de la API se retomó bien desde disco; `ENTRY: resume` lleva ese mismo principio al coordinador
+del epic.
 
 ## Se cerró un milestone y la tanda terminó con una pregunta sobre "cumplimiento". ¿Qué es?
 
