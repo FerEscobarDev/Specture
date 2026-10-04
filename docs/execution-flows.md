@@ -763,6 +763,10 @@ flowchart TD
     TS --> DEF["diferidos (dueño: sin epic) → ofrecidos una vez como new-feature"]
     CO --> REC["compliance.js record → línea kind: compliance en build-metrics.jsonl"]
     DEF --> REC
+    PRM{"pr número|url · rama (v2.5.0)"} --> PRR["compliance.js range --pr | --branch<br/>pr.js: gh pr view · az repos pr show (solo lectura) · git fetch a refs/specture/pr/<br/>copia la cabeza (head/) y las reglas de la rama DESTINO (base/)"]
+    PRR -->|UNVERIFIABLE| PRE(["mensaje con el arreglo: gh auth login · az login · extensión azure-devops"])
+    PRR -->|READY| PRC["por bloque: resolvers sobre base/ · CONTEXT pr|rama · FILES_ROOT head/<br/>· BRANCH / BASE_BRANCH (W-1/W-2/W-4)"]
+    PRC --> PRA["lint · assemble → cumplimiento-pr-gh|pr-az|rama-…md<br/>TRIAGE NO REQUERIDO · sin commit · nada publicado"]
 ```
 
 ---
