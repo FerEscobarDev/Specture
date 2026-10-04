@@ -260,14 +260,23 @@ function repoBoundary(root) {
   return top ? path.resolve(top) : path.resolve(root);
 }
 
-function inside(child, parent) {
-  const real = (p) => {
+// The native realpath expands Windows 8.3 short names (`C:\Users\RUNNER~1\…`), which the JS one
+// keeps: git answers --show-toplevel with the long name, so comparing a short-named project path
+// with it would put every included file "outside the repository".
+function realPath(p) {
+  try {
+    return fs.realpathSync.native(p);
+  } catch {
     try {
       return fs.realpathSync(p);
     } catch {
       return path.resolve(p);
     }
-  };
+  }
+}
+
+function inside(child, parent) {
+  const real = realPath;
   let c = real(child);
   let p = real(parent);
   if (process.platform === "win32") {
@@ -462,6 +471,7 @@ module.exports = {
   globMatches,
   matchesAny,
   repoBoundary,
+  inside,
   inspect,
   resolveReviewRules,
   formatBlock

@@ -212,6 +212,22 @@ test("inspect rejects URLs, absolute paths, escapes, self-inclusion, missing fil
   assert.match(text, /^9 review-rules-schema .*llaves/m);
 });
 
+test("inside() compares real paths: a Windows 8.3 short name and its long name are the same place", () => {
+  const root = project({ "docs/a.md": "x" });
+  assert.equal(rr.inside(path.join(root, "docs", "a.md"), root), true);
+  assert.equal(rr.inside(path.join(root, "..", "elsewhere.md"), root), false);
+  if (process.platform !== "win32") return;
+  // `C:\PROGRA~1` is the 8.3 short name of `C:\Program Files` where the volume keeps short names
+  // (as GitHub's Windows runners do for the temp dir). Skip when it does not.
+  const long = "C:\\Program Files";
+  const short = "C:\\PROGRA~1";
+  if (!fs.existsSync(short) || fs.realpathSync.native(short).toLowerCase() !== long.toLowerCase()) return;
+  const child = fs.readdirSync(long).find((name) => fs.existsSync(path.join(short, name)));
+  if (!child) return;
+  assert.equal(rr.inside(path.join(short, child), long), true, `${short}\\${child} is inside ${long}`);
+  assert.equal(rr.inside(path.join(long, child), short), true);
+});
+
 test("globs: with a slash they anchor at the project root, without one they match a file name anywhere", () => {
   assert.equal(rr.globMatches("web/src/app/Form.tsx", "web/src/**"), true);
   assert.equal(rr.globMatches("tools/web/src/x.tsx", "web/src/**"), false, "anchored");
