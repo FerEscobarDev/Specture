@@ -16,12 +16,19 @@
 //                                        travels with its criteria
 //   review-rules-glob           WARNING  a `cuando:` or flexible-level glob matches no tracked file
 //                                        (git only) — usually a typo that silently drops criteria
+//   compliance-triage-pending   WARNING  a compliance report (docs/07-reviews/cumplimiento-*.md) still
+//                                        waits for the user's triage, or has findings marked "corregir"
+//                                        with no result under CORRECCIÓN
+//   compliance-report-malformed WARNING  a compliance report whose STATUS / TRIAGE / Milestone header
+//                                        or a finding's Tipo does not parse — compliance.js cannot
+//                                        triage or count it
 //
 // Absent file → no findings (it is opt-in). The resolver (`review-rules-resolve.js`) refuses to run
 // with any ERROR here, so a build or a compliance review stops on the same problems.
 
 const { spawnSync } = require("child_process");
 const { inspect, matchesAny } = require("../../review-rules");
+const { listReports } = require("../../compliance");
 
 const FILE = ".specture/review-rules.md";
 
@@ -72,8 +79,28 @@ function reviewRules(project) {
   return out;
 }
 
+function reports(project) {
+  const out = [];
+  for (const { rel, report } of listReports(project.root)) {
+    const f = (severity, check, detail, action) => ({ severity, group: "compliance", check, file: rel, detail, action });
+    if (report.errors.length) {
+      out.push(f("WARNING", "compliance-report-malformed", report.errors.join(" · "), "el reporte lo arma compliance.js: no lo edites a mano — regeneralo con /specture:compliance-review milestone <N>"));
+      continue;
+    }
+    if (report.triage === "PENDIENTE") {
+      out.push(f("WARNING", "compliance-triage-pending", `${report.findings.length} hallazgo(s) esperan tu decisión`, "decidí qué abordar con /specture:compliance-review triage (o al vaciar la cola de /specture:build)"));
+      continue;
+    }
+    const open = Object.entries(report.decisions).filter(([id, d]) => d.decision === "corregir" && !report.correction[id]).map(([id]) => id);
+    if (open.length) {
+      out.push(f("WARNING", "compliance-triage-pending", `corrección pendiente: ${open.join(", ")}`, "retomá la corrección con /specture:compliance-review triage"));
+    }
+  }
+  return out;
+}
+
 function run(project) {
-  return reviewRules(project);
+  return [...reviewRules(project), ...reports(project)];
 }
 
 module.exports = { run };

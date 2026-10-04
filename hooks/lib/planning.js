@@ -145,6 +145,18 @@ function lastVisualApproval(text) {
   return last;
 }
 
+// The last `- LOCK_SHA: <sha> — <ISO>` line of `_planning.md` (`## SPEC_SHA`, written by the
+// coordinator at queue step 5.1), or null. The last one wins: an epic parked and locked again
+// starts its work at the newer lock. Used to compute a milestone's per-epic windows.
+function parseLockSha(text) {
+  let last = null;
+  for (const line of lines(text)) {
+    const m = line.match(/^\s*-\s*LOCK_SHA\s*:\s*`?([0-9a-f]{7,40})`?/i);
+    if (m) last = m[1].toLowerCase();
+  }
+  return last;
+}
+
 // ---------------------------------------------------------------------------
 // ROADMAP epic block
 // ---------------------------------------------------------------------------
@@ -531,6 +543,7 @@ module.exports = {
   coverageHash,
   lastMechCheck,
   lastVisualApproval,
+  parseLockSha,
   parseOperations,
   parseEpicBlock,
   parseRoadmapEpics,

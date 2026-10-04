@@ -719,6 +719,27 @@ test("review-rules-glob: a cuando: or flexible glob that matches no tracked file
   assert.ok(globs.every((f) => f.severity === "WARNING"));
 });
 
+test("compliance reports: pending triage, open corrections and malformed headers are WARNINGs; a closed one is silent", () => {
+  const report = (triage, extra = "") =>
+    `# Revisión de cumplimiento — Milestone 1\n\n**Milestone:** 1\n\n## Veredicto\n\n**STATUS: REJECTED_MINOR**\n**TRIAGE:** ${triage}\n\n## Hallazgos\n\n### F-1 [IMPORTANT] Número sin nombre\n\n- **Ubicación:** \`api/a.js:3\` @abc1234\n- **Tipo:** refactor\n\n${extra}`;
+  const projectRoot = createProject({
+    ...CLEAN,
+    "docs/07-reviews/cumplimiento-milestone-1-2026-02-01.md": report("PENDIENTE"),
+    "docs/07-reviews/cumplimiento-milestone-2-2026-02-01.md": report("HECHO 2026-02-02", "## TRIAGE\n\n- F-1 — corregir\n\n## CORRECCIÓN\n\n(ninguna)\n"),
+    "docs/07-reviews/cumplimiento-milestone-3-2026-02-01.md": report("HECHO 2026-02-02", "## TRIAGE\n\n- F-1 — corregir\n\n## CORRECCIÓN\n\n- F-1 — corregido — abc1234\n"),
+    "docs/07-reviews/cumplimiento-milestone-4-2026-02-01.md": "# Revisión\n\n**STATUS: APPROVED**\n"
+  });
+  const found = runDoctor(projectRoot).json.findings.filter((f) => f.group === "compliance");
+  const by = (file) => found.filter((f) => f.file === `docs/07-reviews/cumplimiento-milestone-${file}-2026-02-01.md`);
+
+  assert.ok(found.every((f) => f.severity === "WARNING"));
+  assert.match(by(1)[0].detail, /1 hallazgo\(s\) esperan tu decisión/);
+  assert.match(by(2)[0].detail, /corrección pendiente: F-1/);
+  assert.deepEqual(by(3), []);
+  assert.equal(by(4)[0].check, "compliance-report-malformed");
+  assert.match(by(4)[0].detail, /sin \*\*TRIAGE:\*\*/);
+});
+
 test("flags off-template spec sections with a suggested destination; template sections pass", () => {
   const projectRoot = createProject({
     ...CLEAN,
