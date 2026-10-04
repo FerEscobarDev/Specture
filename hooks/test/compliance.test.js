@@ -312,3 +312,100 @@ test("assemble fails on a missing or broken part; stub writes a BLOCKED report t
   assert.match(text, /\*\*Motivo:\*\* LOCK no verificable/);
   assert.deepEqual(compliance.parseReport(text).errors, []);
 });
+
+// ---------- pull requests and local branches (v2.5.0) ----------
+
+// origin (bare) + a clone on main with Specture config and an included team file; the PR
+// branch changes code AND tries to relax the rules (rules.yml and the included file).
+function prRepo() {
+  const base = tmp();
+  const origin = path.join(base, "origin.git");
+  const root = path.join(base, "app");
+  git(base, "init", "-q", "--bare", "-b", "main", origin);
+  fs.mkdirSync(root);
+  git(root, "init", "-q", "-b", "main");
+  write(root, ".specture/stack.yml", "schema: 1\n");
+  write(root, ".specture/conventions.md", "# Convenciones\n\n## 1. Naming\n- Archivos: kebab-case.js\n");
+  write(root, ".specture/rules.yml", "schema: 1\nrules:\n  - id: R-1\n    tags: [all]\n    rule: \"Sin console.log en producción\"\n    severity: BLOCKER\n");
+  write(root, ".specture/review-rules.md", "## Incluye\n- docs/estandares/guia.md § Backend\n");
+  write(root, "docs/estandares/guia.md", "## Backend\n\n- Los handlers validan la entrada.\n");
+  write(root, "api/orders.js", "module.exports = () => 1;\n");
+  commit(root, "chore: base");
+  git(root, "remote", "add", "origin", origin);
+  git(root, "push", "-q", "origin", "main");
+  git(root, "checkout", "-q", "-b", "feature/pedidos");
+  write(root, "api/orders.js", "module.exports = () => { console.log('x'); return 2; };\n");
+  write(root, "api/handler.js", "module.exports = (req) => req.query.id;\n");
+  write(root, ".specture/rules.yml", "schema: 1\nrules: []\n");
+  write(root, "docs/estandares/guia.md", "## Backend\n\n- Todo vale.\n");
+  const head = commit(root, "agrega pedidos");
+  git(root, "push", "-q", "origin", "feature/pedidos", "feature/pedidos:refs/pull/7/head");
+  git(root, "checkout", "-q", "main");
+  return { root, head, main: git(root, "rev-parse", "main") };
+}
+
+function fakeGh(dir, json) {
+  const script = path.join(dir, "fake-gh.js");
+  fs.writeFileSync(script, `require('fs').appendFileSync(${JSON.stringify(path.join(dir, "gh.log"))}, JSON.stringify(process.argv.slice(2)) + '\\n'); process.stdout.write(${JSON.stringify(JSON.stringify(json))});`);
+  return script;
+}
+
+function runEnv(root, env, ...args) {
+  return spawnSync(process.execPath, [cli, ...args, "--project", root], { encoding: "utf8", env: { ...process.env, ...env } });
+}
+
+test("range --pr: rules from the target branch, head files copied, rule changes flagged; the report has no triage and posts nothing", () => {
+  const { root, head, main } = prRepo();
+  const dir = tmp();
+  const gh = fakeGh(dir, { number: 7, title: "Pedidos", url: "https://github.com/acme/app/pull/7", baseRefName: "main", headRefName: "feature/pedidos", baseRefOid: main, headRefOid: head });
+  const res = runEnv(root, { SPECTURE_GH_BIN: gh }, "range", "--pr", "7", "--platform", "github", "--date", "2026-11-01");
+  assert.equal(res.status, 0, res.stdout + res.stderr);
+  assert.match(res.stdout, /^COMPLIANCE range: READY pr-gh-7-2026-11-01 · PR #7 \(main → feature\/pedidos\) · 2 archivos/);
+  assert.match(res.stdout, /cambia reglas \(se revisa con las de main\): .*\.specture\/rules\.yml/);
+  assert.equal(git(root, "rev-parse", "--abbrev-ref", "HEAD"), "main", "the checkout did not move");
+
+  const state = path.join(root, ".specture/state/compliance/pr-gh-7-2026-11-01");
+  const data = JSON.parse(fs.readFileSync(path.join(state, "range.json"), "utf8"));
+  assert.equal(data.kind, "pr");
+  assert.deepEqual(data.chunks.flatMap((c) => c.files).sort(), ["api/handler.js", "api/orders.js"]);
+  assert.deepEqual(data.rulesChanged.sort(), [".specture/rules.yml", "docs/estandares/guia.md"]);
+  assert.match(fs.readFileSync(path.join(state, "head/api/orders.js"), "utf8"), /console\.log/, "the reviewer reads the PR's version");
+  assert.match(fs.readFileSync(path.join(state, "base/.specture/rules.yml"), "utf8"), /Sin console\.log/, "rules of the target branch, not the PR's");
+  assert.match(fs.readFileSync(path.join(state, "base/docs/estandares/guia.md"), "utf8"), /validan la entrada/);
+  assert.match(fs.readFileSync(path.join(state, "commits.txt"), "utf8"), /^PR #7\t[0-9a-f]+\tagrega pedidos$/m);
+
+  const resolved = spawnSync(process.execPath, [path.resolve(__dirname, "..", "lib", "review-rules-resolve.js"), "--project", path.join(state, "base"), "--paths-file", path.join(state, "chunk-1.files")], { encoding: "utf8" });
+  assert.equal(resolved.status, 0, resolved.stderr);
+  assert.match(resolved.stdout, /Los handlers validan la entrada/, "CUSTOM_RULES from the base config");
+
+  fs.writeFileSync(path.join(state, "part-chunk-1.md"), PART("chunk-1", [FINDING({ loc: "api/orders.js:1", origin: "R-1", sev: "BLOCKER", comment: "Este console.log quedó en código de producción; conviene quitarlo." })]));
+  const assembled = run(root, "assemble", "--id", "pr-gh-7-2026-11-01");
+  assert.match(assembled.stdout, /WRITTEN docs\/07-reviews\/cumplimiento-pr-gh-7-2026-11-01\.md · STATUS REJECTED_MAJOR/);
+  const report = fs.readFileSync(path.join(root, "docs/07-reviews/cumplimiento-pr-gh-7-2026-11-01.md"), "utf8");
+  assert.match(report, /^# Revisión de cumplimiento — PR #7: Pedidos$/m);
+  assert.match(report, /^\*\*PR:\*\* GitHub #7 · https:\/\/github\.com\/acme\/app\/pull\/7$/m);
+  assert.match(report, /^\*\*TRIAGE:\*\* NO REQUERIDO$/m);
+  assert.match(report, /^\*\*Publicado:\*\* nada/m);
+  assert.match(report, /## Cambios a las reglas\n\nEste cambio modifica archivos de reglas; se revisó con las de `main`/);
+  const parsed = compliance.parseReport(report);
+  assert.deepEqual(parsed.errors, []);
+  assert.equal(parsed.scope, "pr");
+  assert.match(run(root, "triage", "--report", "docs/07-reviews/cumplimiento-pr-gh-7-2026-11-01.md", "--set", "F-1=diferir").stdout, /no tiene triage ni corrección/);
+  assert.match(run(root, "status").stdout, /^COMPLIANCE status: NONE/, "a PR report never waits for triage");
+  assert.deepEqual(JSON.parse(fs.readFileSync(path.join(dir, "gh.log"), "utf8").trim()), ["pr", "view", "7", "--json", require("../lib/pr").GH_FIELDS]);
+});
+
+test("range --branch: a local branch against --base; usage needs exactly one of --milestone, --pr or --branch", () => {
+  const { root } = prRepo();
+  git(root, "fetch", "-q", "origin", "feature/pedidos:feature/pedidos");
+  const res = run(root, "range", "--branch", "feature/pedidos", "--base", "main", "--date", "2026-11-01");
+  assert.equal(res.status, 0, res.stdout);
+  assert.match(res.stdout, /READY rama-feature-pedidos-2026-11-01 · rama feature\/pedidos \(main → feature\/pedidos\)/);
+  const data = JSON.parse(fs.readFileSync(path.join(root, ".specture/state/compliance/rama-feature-pedidos-2026-11-01/range.json"), "utf8"));
+  assert.equal(data.kind, "rama");
+  assert.equal(data.platform, "local");
+
+  assert.equal(run(root, "range", "--milestone", "1", "--pr", "7").status, 2);
+  assert.equal(run(root, "range").status, 2);
+  assert.match(run(root, "range", "--branch", "no-existe", "--base", "main").stdout, /UNVERIFIABLE no existe la rama no-existe/);
+});

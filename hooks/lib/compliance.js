@@ -12,6 +12,14 @@
 //              component ("Carpeta raíz", else first directory) into chunks of at most ~120 000
 //              characters of diff. Writes .specture/state/compliance/<id>/ (range.json,
 //              chunk-<k>.files, chunk-<k>.diff, commits.txt).
+//   range      --pr <número|url> [--platform github|azure] [--remote origin] [--org <url>] [--date]
+//   range      --branch <rama> [--base <rama>] [--date]                               (v2.5.0)
+//              A pull request (read through hooks/lib/pr.js, never written to) or a local branch,
+//              from the merge-base with its target branch to its head. Also copies the changed
+//              files as the head leaves them into <state>/head/ (the reviewer reads them without a
+//              checkout) and the TARGET branch's Specture config into <state>/base/ (the resolvers
+//              run there: a PR can never relax the rules that review it); `rulesChanged` lists the
+//              rule files the change itself modifies. Reports are `TRIAGE: NO REQUERIDO`.
 //   lint       --id <id>              every part the reviewer wrote: grammar, and no Specture
 //              vocabulary in the suggested comments (rule IDs, Specture file names, `§`, the
 //              included paths of review-rules.md).
@@ -50,7 +58,7 @@ const CHUNK_LIMIT = 120000;
 const SEVERITIES = ["BLOCKER", "IMPORTANT", "NIT"];
 const TIPOS = ["refactor", "comportamiento", "test", "proceso"];
 const LOCKFILES = /(^|\/)(package-lock\.json|npm-shrinkwrap\.json|yarn\.lock|pnpm-lock\.yaml|composer\.lock|Gemfile\.lock|poetry\.lock|Cargo\.lock|packages\.lock\.json|go\.sum)$/i;
-const REPORT_NAME = /^cumplimiento-milestone-([A-Za-z0-9.]+)-(\d{4}-\d{2}-\d{2})(?:-p(\d+))?\.md$/;
+const REPORT_NAME = /^cumplimiento-(milestone-[A-Za-z0-9.]+|pr-(?:gh|az)-\d+|rama-[a-z0-9-]+)-(\d{4}-\d{2}-\d{2})(?:-p(\d+))?\.md$/;
 
 // ---------- small helpers ----------
 
@@ -208,7 +216,7 @@ function groupOf(file, components) {
   return `otros: ${first}`;
 }
 
-function range(root, opts) {
+function rangeMilestone(root, opts) {
   const n = opts.milestone;
   const date = opts.date || today();
   const roadmapText = readText(root, ROADMAP);
@@ -260,12 +268,32 @@ function range(root, opts) {
   }
   if (problems.length > 0) return { token: "UNVERIFIABLE", detail: `ventanas no verificables para Milestone ${n}`, lines: problems };
 
-  // per-file diff text across the windows that touched it
+  const { fileDiff, chunks } = buildChunks(root, epics.map((e) => ({ label: `Epic ${e.id}`, lock: e.lock, close: e.close, files: e.files })));
+  const id = `milestone-${n}-${date}`;
+  const data = {
+    id,
+    kind: "milestone",
+    milestone: String(n),
+    title: milestone.title,
+    date,
+    head: resolveCommit(root, "HEAD"),
+    configRoot: ".",
+    epics: epics.map((e) => ({ id: e.id, dir: e.dir, lock: e.lock, close: e.close, lockSource: e.lockSource, files: e.files.length, commits: e.commits.length })),
+    chunks: chunks.map((c) => ({ id: c.id, label: c.label, files: c.files, diffChars: c.diffChars })),
+    skipped
+  };
+  writeState(root, data, fileDiff, epics.flatMap((e) => e.commits.map((c) => `Epic ${e.id}\t${c.sha}\t${c.subject}`)));
+  return readyResult(data, `${epics.length} epics`);
+}
+
+// Per-file diff across the windows that touched each file, grouped by architecture component
+// and split into chunks of at most CHUNK_LIMIT characters of diff.
+function buildChunks(root, windows) {
   const fileDiff = new Map();
-  for (const e of epics) {
-    for (const file of e.files) {
-      const d = git(root, ["diff", "--relative", "--no-renames", e.lock, e.close, "--", file]);
-      const chunk = `# Epic ${e.id} · ${e.lock.slice(0, 7)}..${e.close.slice(0, 7)}\n${d.stdout}`;
+  for (const w of windows) {
+    for (const file of w.files) {
+      const d = git(root, ["diff", "--relative", "--no-renames", w.lock, w.close, "--", file]);
+      const chunk = `# ${w.label} · ${w.lock.slice(0, 7)}..${w.close.slice(0, 7)}\n${d.stdout}`;
       fileDiff.set(file, (fileDiff.get(file) || "") + chunk);
     }
   }
@@ -297,38 +325,149 @@ function range(root, opts) {
   chunks.forEach((c, i) => {
     c.id = `chunk-${i + 1}`;
   });
+  return { fileDiff, chunks };
+}
 
-  const head = resolveCommit(root, "HEAD");
-  const id = `milestone-${n}-${date}`;
-  const dir = path.join(root, STATE_DIR, id);
+function writeState(root, data, fileDiff, commitLines) {
+  const dir = path.join(root, STATE_DIR, data.id);
   fs.rmSync(dir, { recursive: true, force: true });
   fs.mkdirSync(dir, { recursive: true });
-  for (const c of chunks) {
+  for (const c of data.chunks) {
     fs.writeFileSync(path.join(dir, `${c.id}.files`), c.files.join("\n") + "\n");
     fs.writeFileSync(path.join(dir, `${c.id}.diff`), c.files.map((f) => fileDiff.get(f)).join("\n"));
   }
-  fs.writeFileSync(
-    path.join(dir, "commits.txt"),
-    epics.flatMap((e) => e.commits.map((c) => `Epic ${e.id}\t${c.sha}\t${c.subject}`)).join("\n") + "\n"
-  );
-  const data = {
-    id,
-    milestone: String(n),
-    title: milestone.title,
-    date,
-    head,
-    epics: epics.map((e) => ({ id: e.id, dir: e.dir, lock: e.lock, close: e.close, lockSource: e.lockSource, files: e.files.length, commits: e.commits.length })),
-    chunks: chunks.map((c) => ({ id: c.id, label: c.label, files: c.files, diffChars: c.diffChars })),
-    skipped
-  };
+  fs.writeFileSync(path.join(dir, "commits.txt"), commitLines.join("\n") + "\n");
   fs.writeFileSync(path.join(dir, "range.json"), JSON.stringify(data, null, 2) + "\n");
-  const fileCount = chunks.reduce((k, c) => k + c.files.length, 0);
+  return dir;
+}
+
+function readyResult(data, what) {
+  const fileCount = data.chunks.reduce((k, c) => k + c.files.length, 0);
   return {
     token: fileCount === 0 ? "EMPTY" : "READY",
-    detail: `${id} · ${epics.length} epics · ${fileCount} archivos · ${chunks.length} bloques`,
-    lines: [...chunks.map((c) => `${c.id} ${c.label} · ${c.files.length} archivos · ${c.diffChars} caracteres de diff`), ...skipped.map((s) => `omitido: ${s}`)],
+    detail: `${data.id} · ${what} · ${fileCount} archivos · ${data.chunks.length} bloques`,
+    lines: [...data.chunks.map((c) => `${c.id} ${c.label} · ${c.files.length} archivos · ${c.diffChars} caracteres de diff`), ...data.skipped.map((s) => `omitido: ${s}`)],
     data
   };
+}
+
+// ---------- range of a pull request or a local branch (v2.5.0) ----------
+
+const RULE_FILES = [".specture/conventions.md", ".specture/rules.yml", ".specture/review-rules.md", ".specture/stack.yml"];
+
+function slug(text) {
+  return String(text).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 60) || "head";
+}
+
+function showAt(root, rev, rel) {
+  const res = git(root, ["show", `${rev}:./${rel}`]);
+  return res.ok ? res.stdout : null;
+}
+
+function writeFile(base, rel, text) {
+  const file = path.join(base, ...rel.split("/"));
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.writeFileSync(file, text);
+}
+
+// The rules that govern a PR are the TARGET branch's: copy the base's Specture config (and the
+// files its review-rules.md includes) into <state>/base/, so the resolvers run there and a PR can
+// never relax the rules that review it. Returns { rulePaths, fromBase }.
+function materializeBaseConfig(root, baseSha, target) {
+  const rel = (p) => p.replace(/\\/g, "/");
+  const listed = git(root, ["ls-tree", "-r", "--name-only", baseSha, "--", ".specture/decisions"]);
+  const decisions = listed.ok ? listed.stdout.split(/\r?\n/).filter((p) => p.endsWith(".md")).map(rel) : [];
+  let fromBase = showAt(root, baseSha, ".specture/stack.yml") !== null;
+  const read = (p) => (fromBase ? showAt(root, baseSha, p) : readText(root, p));
+  const rulePaths = new Set();
+  for (const p of [...RULE_FILES, ...decisions]) {
+    const text = read(p);
+    if (text !== null) {
+      writeFile(target, p, text);
+      rulePaths.add(p);
+    }
+  }
+  const reviewRulesText = read(".specture/review-rules.md");
+  if (reviewRulesText !== null) {
+    const parsed = reviewRules.parseReviewRules(reviewRulesText);
+    for (const ref of [...parsed.includes, ...parsed.flexible.refs]) {
+      const p = ref.path.replace(/^\.\//, "");
+      if (/^[a-z]+:\/\//i.test(p) || path.isAbsolute(p) || p.split("/").includes("..")) continue;
+      const text = read(p);
+      if (text !== null) {
+        writeFile(target, p, text);
+        rulePaths.add(p);
+      }
+    }
+  }
+  return { rulePaths: [...rulePaths], fromBase };
+}
+
+function rangePr(root, opts) {
+  const pr = require("./pr");
+  const date = opts.date || today();
+  if (!git(root, ["rev-parse", "--git-dir"]).ok) return { token: "UNVERIFIABLE", detail: "no es un repositorio git" };
+  let target;
+  try {
+    target = opts.pr ? pr.resolvePr(root, { ref: opts.pr, platform: opts.platform, remote: opts.remote, org: opts.org }) : pr.resolveBranch(root, { branch: opts.branch, base: opts.base });
+  } catch (error) {
+    if (error && error.name === "PrError") return { token: "UNVERIFIABLE", detail: error.message };
+    throw error;
+  }
+  const mb = git(root, ["merge-base", target.baseSha, target.headSha]);
+  if (!mb.ok || !mb.stdout) return { token: "UNVERIFIABLE", detail: `${target.headRef || "la cabeza"} y ${target.baseRef} no tienen historia en común` };
+  const mergeBase = mb.stdout.trim();
+  const files = windowFiles(root, mergeBase, target.headSha);
+  if (!files) return { token: "UNVERIFIABLE", detail: `git diff falló en ${mergeBase.slice(0, 7)}..${target.headSha.slice(0, 7)}` };
+  const kind = opts.pr ? "pr" : "rama";
+  const label = opts.pr ? `PR #${target.number}` : `rama ${target.headRef}`;
+  const id = opts.pr ? `pr-${target.platform === "github" ? "gh" : "az"}-${target.number}-${date}` : `rama-${slug(target.headRef)}-${date}`;
+  const { fileDiff, chunks } = buildChunks(root, [{ label, lock: mergeBase, close: target.headSha, files: files.files }]);
+
+  const stateRel = `${STATE_DIR}/${id}`;
+  const log = git(root, ["log", "--format=%h%x09%s", `${mergeBase}..${target.headSha}`]);
+  const commitLines = log.stdout.split(/\r?\n/).filter(Boolean).map((l) => `${label}\t${l}`);
+  const changed = git(root, ["diff", "--name-only", "--relative", "--no-renames", mergeBase, target.headSha]).stdout.split(/\r?\n/).filter(Boolean);
+  const data = {
+    id,
+    kind,
+    platform: target.platform,
+    number: target.number,
+    url: target.url,
+    title: target.title,
+    date,
+    head: target.headSha,
+    baseRef: target.baseRef,
+    headRef: target.headRef,
+    baseSha: target.baseSha,
+    mergeBase,
+    configRoot: `${stateRel}/base`,
+    filesRoot: `${stateRel}/head`,
+    rulesFromBase: true,
+    rulesChanged: [],
+    chunks: chunks.map((c) => ({ id: c.id, label: c.label, files: c.files, diffChars: c.diffChars })),
+    skipped: files.skipped
+  };
+  const dir = writeState(root, data, fileDiff, commitLines);
+  // The code as the PR leaves it, so the reviewer reads it without a checkout.
+  for (const c of chunks) {
+    for (const file of c.files) {
+      const text = showAt(root, target.headSha, file);
+      if (text !== null) writeFile(path.join(dir, "head"), file, text);
+    }
+  }
+  const config = materializeBaseConfig(root, target.baseSha, path.join(dir, "base"));
+  data.rulesFromBase = config.fromBase;
+  data.rulesChanged = changed.filter((f) => config.rulePaths.includes(f) || f.startsWith(".specture/decisions/"));
+  fs.writeFileSync(path.join(dir, "range.json"), JSON.stringify(data, null, 2) + "\n");
+  const result = readyResult(data, `${label} (${target.baseRef} → ${target.headRef || target.headSha.slice(0, 7)})`);
+  if (data.rulesChanged.length) result.lines.push(`cambia reglas (se revisa con las de ${target.baseRef}): ${data.rulesChanged.join(", ")}`);
+  if (!config.fromBase) result.lines.push(`la rama ${target.baseRef} no tiene .specture/: se usan las reglas del árbol actual`);
+  return result;
+}
+
+function range(root, opts) {
+  return opts.pr || opts.branch ? rangePr(root, opts) : rangeMilestone(root, opts);
 }
 
 // ---------- parts (written by the compliance-reviewer) ----------
@@ -447,7 +586,8 @@ function readRange(root, id) {
 function lint(root, opts) {
   const data = readRange(root, opts.id);
   if (!data) return { token: "UNVERIFIABLE", detail: `no hay range.json para ${opts.id} — corré range primero` };
-  const patterns = forbiddenPatterns(root);
+  // A PR is reviewed with its target branch's rules: the included paths to forbid are those.
+  const patterns = forbiddenPatterns(path.join(root, data.configRoot || "."));
   const out = [];
   for (const c of data.chunks) {
     const text = readText(root, `${STATE_DIR}/${opts.id}/part-${c.id}.md`);
@@ -464,8 +604,9 @@ function lint(root, opts) {
 
 // ---------- report ----------
 
-function reportPath(root, milestone, date) {
-  const base = `cumplimiento-milestone-${milestone}-${date}`;
+// `cumplimiento-<id>.md`: milestone-<N>-<fecha> · pr-gh-<n>-<fecha> · pr-az-<n>-<fecha> · rama-<slug>-<fecha>
+function reportPath(root, id) {
+  const base = `cumplimiento-${id}`;
   let rel = `${REVIEWS_DIR}/${base}.md`;
   for (let k = 2; fs.existsSync(path.join(root, rel)); k++) rel = `${REVIEWS_DIR}/${base}-p${k}.md`;
   return rel;
@@ -482,14 +623,21 @@ function renderReport(meta, body) {
   const count = (s) => findings.filter((f) => f.sev === s).length;
   const status = meta.status || statusOf(findings);
   const triage = meta.triage || (findings.length === 0 || status === "BLOCKED" ? "NO REQUERIDO" : "PENDIENTE");
+  const scopeLines =
+    meta.kind === "pr"
+      ? [`**PR:** ${meta.platform === "github" ? "GitHub" : "Azure DevOps"} #${meta.number}${meta.url ? ` · ${meta.url}` : ""}`, `**Rama:** ${meta.headRef || "—"} → ${meta.baseRef}`]
+      : meta.kind === "rama"
+        ? [`**Rama:** ${meta.headRef} → ${meta.baseRef}`]
+        : [`**Milestone:** ${meta.milestone}`];
   const out = [
     `# Revisión de cumplimiento — ${meta.title}`,
     "",
     `**Fecha:** ${meta.date}`,
     "**Revisor:** compliance-reviewer (agente) · armado por compliance.js",
-    `**Milestone:** ${meta.milestone}`,
+    ...scopeLines,
     `**Rango:** ${meta.id}`,
     `**HEAD:** ${meta.head || "—"}`,
+    ...(meta.kind === "pr" || meta.kind === "rama" ? ["**Publicado:** nada — los comentarios sugeridos son para que los copies tú si quieres"] : []),
     "",
     "## Veredicto",
     "",
@@ -518,6 +666,15 @@ function renderReport(meta, body) {
   });
   out.push("## Comentarios generales sugeridos", "", ...(body.general.length ? body.general.map((g) => `- ${g}`) : ["- (ninguno)"]), "");
   out.push("## Reglas en conflicto", "", ...(body.conflicts.length ? body.conflicts.map((c) => `- ${c}`) : ["- (ninguno)"]), "");
+  if (body.rulesChanged && body.rulesChanged.length) {
+    out.push(
+      "## Cambios a las reglas",
+      "",
+      `Este cambio modifica archivos de reglas; se revisó con las de \`${meta.baseRef}\`, nunca con las que trae el propio cambio:`,
+      ...body.rulesChanged.map((f) => `- \`${f}\``),
+      ""
+    );
+  }
   out.push("## Alcance y nivel flexible", "", ...body.scope.map((s) => `- ${s}`), ...body.notEvaluated.map((s) => `- No evaluado: ${s}`), "");
   out.push("## TRIAGE", "", ...(body.triage && body.triage.length ? body.triage : ["(sin decisiones todavía)"]), "");
   out.push("## DIFERIDOS", "", ...(body.deferred && body.deferred.length ? body.deferred : ["(ninguno)"]), "");
@@ -563,15 +720,26 @@ function assemble(root, opts) {
     });
   body.conflicts = [...new Set(body.conflicts)];
   body.notEvaluated = [...new Set(body.notEvaluated)];
+  const isPr = data.kind === "pr" || data.kind === "rama";
   body.scope = [
-    `Epics: ${data.epics.map((e) => `${e.id} (${e.lock.slice(0, 7)}..${e.close.slice(0, 7)}, ${e.files} archivos)`).join(" · ")}`,
+    isPr
+      ? `Rango: ${data.mergeBase.slice(0, 7)}..${data.head.slice(0, 7)} (desde donde se separó de ${data.baseRef}) · reglas de ${data.baseRef}${data.rulesFromBase ? "" : " (no tenía .specture/: reglas del árbol actual)"}`
+      : `Epics: ${data.epics.map((e) => `${e.id} (${e.lock.slice(0, 7)}..${e.close.slice(0, 7)}, ${e.files} archivos)`).join(" · ")}`,
     `Bloques: ${data.chunks.length ? data.chunks.map((c) => `${c.label} (${c.files.length})`).join(" · ") : "ninguno — el rango no tiene archivos de código"}`,
     ...(data.skipped || []).map((s) => `Omitido: ${s}`)
   ];
-  const rel = reportPath(root, data.milestone, data.date);
+  body.rulesChanged = data.rulesChanged || [];
+  const rel = reportPath(root, data.id);
   fs.mkdirSync(path.join(root, REVIEWS_DIR), { recursive: true });
   const status = statusOf(body.findings);
-  fs.writeFileSync(path.join(root, rel), renderReport({ title: data.title, date: data.date, milestone: data.milestone, id: data.id, head: data.head }, body));
+  const title = data.kind === "pr" ? `PR #${data.number}${data.title ? `: ${data.title}` : ""}` : data.kind === "rama" ? `rama ${data.headRef}` : data.title;
+  fs.writeFileSync(
+    path.join(root, rel),
+    renderReport(
+      { ...data, title, triage: isPr ? "NO REQUERIDO" : undefined },
+      body
+    )
+  );
   return { token: "WRITTEN", detail: `${rel} · STATUS ${status} · ${body.findings.length} hallazgo(s)`, data: { report: rel, status, findings: body.findings.length } };
 }
 
@@ -579,7 +747,7 @@ function stub(root, opts) {
   const date = opts.date || today();
   const roadmapText = readText(root, ROADMAP);
   const milestone = roadmapText ? milestoneEpics(roadmapText, opts.milestone) : null;
-  const rel = reportPath(root, opts.milestone, date);
+  const rel = reportPath(root, `milestone-${opts.milestone}-${date}`);
   fs.mkdirSync(path.join(root, REVIEWS_DIR), { recursive: true });
   const body = { summary: [], strengths: [], findings: [], general: [], conflicts: [], notEvaluated: [], scope: ["No se revisó: la revisión no pudo completarse."] };
   fs.writeFileSync(
@@ -605,9 +773,12 @@ function parseReport(text) {
   const status = (text.match(/\*\*STATUS:\s*(APPROVED|REJECTED_MINOR|REJECTED_MAJOR|BLOCKED)\*\*/) || [])[1] || null;
   const triageLine = (text.match(/^\*\*TRIAGE:\*\*\s*(.+)$/m) || [])[1] || null;
   const milestone = (text.match(/^\*\*Milestone:\*\*\s*(\S+)/m) || [])[1] || null;
+  const prLine = (text.match(/^\*\*PR:\*\*\s*(.+)$/m) || [])[1] || null;
+  const branchLine = (text.match(/^\*\*Rama:\*\*\s*(.+)$/m) || [])[1] || null;
+  const scope = milestone ? "milestone" : prLine ? "pr" : branchLine ? "rama" : null;
   if (!status) errors.push("sin **STATUS: …**");
   if (!triageLine) errors.push("sin **TRIAGE:**");
-  if (!milestone) errors.push("sin **Milestone:**");
+  if (!scope) errors.push("sin **Milestone:**, **PR:** ni **Rama:**");
   const findings = [];
   let current = null;
   for (const line of all) {
@@ -638,7 +809,7 @@ function parseReport(text) {
   const deferred = (sectionLines(all, "DIFERIDOS") || []).filter((l) => /^-\s+F-\d+/.test(l)).length;
   const triageState = triageLine ? (/^PENDIENTE/.test(triageLine) ? "PENDIENTE" : /^HECHO/.test(triageLine) ? "HECHO" : /^NO REQUERIDO/.test(triageLine) ? "NO REQUERIDO" : null) : null;
   if (triageLine && !triageState) errors.push(`TRIAGE "${triageLine}" (PENDIENTE | HECHO <fecha> | NO REQUERIDO)`);
-  return { status, triage: triageState, milestone, findings, decisions: triage, correction, deferred, errors };
+  return { status, triage: triageState, milestone, scope, findings, decisions: triage, correction, deferred, errors };
 }
 
 function parseSet(value) {
@@ -667,6 +838,7 @@ function triage(root, opts) {
   if (text === null) return { token: "UNVERIFIABLE", detail: `no existe ${rel}` };
   const report = parseReport(text);
   if (report.errors.length) return { token: "FAIL", detail: "el reporte no parsea", lines: report.errors };
+  if (report.scope !== "milestone") return { token: "FAIL", detail: "1", lines: ["un reporte de PR o de rama no tiene triage ni corrección: es para leer y, si quieres, copiar sus comentarios"] };
   const items = parseSet(opts.set);
   const problems = [];
   const byId = new Map(report.findings.map((f) => [f.id, f]));
@@ -797,7 +969,7 @@ function record(root, opts) {
 
 const COMMANDS = { range, lint, assemble, stub, triage, correction, status, record };
 const NEEDS = {
-  range: ["milestone"],
+  range: [],
   lint: ["id"],
   assemble: ["id"],
   stub: ["milestone", "reason"],
@@ -817,7 +989,21 @@ function parseArgs(argv) {
   const [command, ...rest] = argv;
   if (!COMMANDS[command]) usage(command ? `unknown command ${command}` : "missing command");
   const opts = { command, project: null, json: false };
-  const valued = { "--project": "project", "--milestone": "milestone", "--date": "date", "--id": "id", "--report": "report", "--set": "set", "--reason": "reason" };
+  const valued = {
+    "--project": "project",
+    "--milestone": "milestone",
+    "--pr": "pr",
+    "--branch": "branch",
+    "--base": "base",
+    "--platform": "platform",
+    "--remote": "remote",
+    "--org": "org",
+    "--date": "date",
+    "--id": "id",
+    "--report": "report",
+    "--set": "set",
+    "--reason": "reason"
+  };
   for (let i = 0; i < rest.length; i++) {
     const a = rest[i];
     if (a === "--json") opts.json = true;
@@ -825,6 +1011,9 @@ function parseArgs(argv) {
     else usage(`unknown argument ${a}`);
   }
   for (const k of NEEDS[command]) if (!opts[k]) usage(`${command} needs --${k}`);
+  if (command === "range" && [opts.milestone, opts.pr, opts.branch].filter(Boolean).length !== 1) usage("range needs exactly one of --milestone, --pr or --branch");
+  if (opts.platform && !["github", "azure"].includes(opts.platform)) usage("--platform is github or azure");
+  if ((opts.base || opts.platform || opts.remote || opts.org) && command === "range" && opts.milestone) usage("--base/--platform/--remote/--org go with --pr or --branch");
   if (opts.date && !/^\d{4}-\d{2}-\d{2}$/.test(opts.date)) usage("--date is YYYY-MM-DD");
   return opts;
 }
