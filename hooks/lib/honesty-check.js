@@ -29,6 +29,9 @@
 //   base-worktree --lock <sha> [--files a,b] --dir <tmp> | --remove <dir>
 //                 (2) `git worktree add --detach <dir> <sha>` plus a copy of the listed files from the
 //                 current tree — the base where rewritten tests must FAIL (retroactive RED).
+//   fix-range     --base <sha> --test-globs a,b --allowed a,b [--head <rev>]
+//                 (8) the compliance correction loop (v2.4.0, no seal): every commit in BASE..HEAD
+//                 touches only the `--allowed` files of the findings chosen for correction, and no test.
 //
 // stdout: first line is the token — `HONESTY <cmd>: PASS <detalle>` | `HONESTY <cmd>: FAIL <n>` |
 // `HONESTY <cmd>: UNVERIFIABLE <motivo>` (base-worktree: `READY <dir>` | `REMOVED <dir>`); then one
@@ -50,9 +53,10 @@ const COMMAND_FLAGS = {
   "red-lines": ["slug", "epic-dir"],
   "spec-delta": ["epic-dir", "base", "slug"],
   protected: ["epic-dir", "slug"],
-  "base-worktree": ["lock", "files", "dir", "remove"]
+  "base-worktree": ["lock", "files", "dir", "remove"],
+  "fix-range": ["base", "head", "test-globs", "allowed"]
 };
-const LIST_FLAGS = ["test-globs", "files"];
+const LIST_FLAGS = ["test-globs", "files", "allowed"];
 const SPECS_DIR = path.join("docs", "05-specs");
 const SUPERSESSION_SECTION = /^##\s+(?:\d+\.\s*)?Supersesiones/i;
 const PLANNING_IGNORED = "SUPERSESIONES|VEREDICTOS|MECH_CHECK|SPEC_SHA|GATE_NOTES|DIFERIDOS|BASELINE_FALLOS";
@@ -69,7 +73,8 @@ function usage() {
     "  red-lines     [--slug <task-slug>]",
     "  spec-delta    --epic-dir <dir> --base <SPEC_SHA> --slug <task-slug>",
     "  protected     --epic-dir <dir> [--slug <task-slug>]",
-    "  base-worktree --lock <sha> [--files a,b] --dir <tmp> | --remove <dir>"
+    "  base-worktree --lock <sha> [--files a,b] --dir <tmp> | --remove <dir>",
+    "  fix-range     --base <sha> --test-globs a,b --allowed a,b [--head <rev>]"
   ].join("\n");
 }
 
@@ -700,7 +705,40 @@ function baseWorktree(opts, root) {
   return { command: cmd, status: "READY", reason: null, detail: dir, findings: [], notes, dir, sha };
 }
 
+// (8) The compliance correction loop (v2.4.0) runs with no epic `[/]`, so there is no seal to
+// deny a write: this is its after-the-fact check. Every commit in BASE..HEAD may touch only the
+// files of the findings chosen for correction (`--allowed`) and never a test (`--test-globs`).
+function fixRange(opts, root) {
+  const cmd = "fix-range";
+  requireFlags(opts, "base");
+  const globs = opts.lists["test-globs"] || [];
+  const allowed = opts.lists.allowed || [];
+  if (globs.length === 0) throw new UsageError("--test-globs is required for fix-range");
+  if (allowed.length === 0) throw new UsageError("--allowed is required for fix-range");
+  const ctx = repoContext(root);
+  if (ctx.error) return unverifiable(cmd, ctx.error);
+  const from = resolveCommit(root, opts.flags.base);
+  if (!from) return unverifiable(cmd, `commit desconocido: ${opts.flags.base}`);
+  const headRev = opts.flags.head || "HEAD";
+  const to = resolveCommit(root, headRev);
+  if (!to) return unverifiable(cmd, `commit desconocido: ${headRev}`);
+  if (!git(root, ["merge-base", "--is-ancestor", from, to]).ok) return unverifiable(cmd, `${short(from)} no es ancestro de ${short(to)}`);
+  const log = git(root, ["log", "-m", "--no-renames", "--name-only", "--format=%x01%H", `${from}..${to}`]);
+  if (!log.ok) return unverifiable(cmd, `git log falló: ${firstLine(log.stderr)}`);
+  const commits = parseLogNameOnly(log.stdout).reverse();
+  const findings = [];
+  for (const c of commits) {
+    const files = c.files.map((f) => toProject(f, ctx.prefix)).filter((f) => f !== null);
+    const tests = files.filter((f) => pathMatchesAnyGlob(f, globs));
+    const outside = files.filter((f) => !tests.includes(f) && !allowed.some((a) => samePath(a, f)));
+    if (tests.length > 0) findings.push(`commit ${short(c.sha)} toca tests: ${tests.join(", ")}`);
+    if (outside.length > 0) findings.push(`commit ${short(c.sha)} toca archivos fuera de los hallazgos elegidos: ${outside.join(", ")}`);
+  }
+  return verdict(cmd, findings, `${commits.length} commit(s) de corrección dentro de ${allowed.length} archivo(s), sin tests (${short(from)}..${short(to)})`, { from, to, commits: commits.length });
+}
+
 const COMMANDS = {
+  "fix-range": fixRange,
   "clean-tree": cleanTree,
   range,
   "red-lines": redLines,

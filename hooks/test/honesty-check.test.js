@@ -538,3 +538,30 @@ test("usage: an unknown option or command → exit 2 with the token", () => {
   assert.equal(r.status, 2, "--epic-dir is required");
   assert.match(r.token, /required/);
 });
+
+// ---- fix-range (compliance correction loop, v2.4.0) ----------------------------------------
+
+test("fix-range: commits inside the chosen files PASS; a test or a file outside them FAILs; missing flags are usage errors", () => {
+  const root = createRepo();
+  write(root, "src/a.js", "a\n");
+  write(root, "src/b.js", "b\n");
+  write(root, "tests/a.test.js", "t\n");
+  const base = commit(root, "base", ".");
+
+  write(root, "src/a.js", "a2\n");
+  commit(root, "refactor(cumplimiento): F-1", "src/a.js");
+  let r = hc(root, "fix-range", "--base", base, "--test-globs", "tests/**", "--allowed", "src/a.js");
+  assert.equal(r.status, 0, r.stdout);
+  assert.match(r.token, /^HONESTY fix-range: PASS 1 commit\(s\) de corrección dentro de 1 archivo\(s\)/);
+
+  write(root, "tests/a.test.js", "t2\n");
+  write(root, "src/b.js", "b2\n");
+  commit(root, "refactor: se pasó", "tests/a.test.js", "src/b.js");
+  r = hc(root, "fix-range", "--base", base, "--test-globs", "tests/**", "--allowed", "src/a.js");
+  assert.equal(r.status, 1);
+  assert.match(r.stdout, /toca tests: tests\/a\.test\.js/);
+  assert.match(r.stdout, /fuera de los hallazgos elegidos: src\/b\.js/);
+
+  assert.equal(hc(root, "fix-range", "--base", base, "--allowed", "src/a.js").status, 2, "--test-globs is required");
+  assert.equal(hc(root, "fix-range", "--base", "deadbeef", "--test-globs", "tests/**", "--allowed", "src/a.js").status, 2);
+});
