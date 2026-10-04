@@ -136,6 +136,15 @@ Types: `feat | fix | refactor | test | docs | chore`.
 
 **One commit per spec is fine; multiple smaller commits are also fine.** No mega-commits, no commits that bundle unrelated changes.
 
+## MODE: CUMPLIMIENTO (compliance correction, since v2.4.0)
+
+Dispatched by the compliance correction loop (`skills/compliance-review/CORRECTION_LOOP.md`), not by an epic: there is no spec, no RED and no seal. You receive **one finding** of a compliance report (location, `path::symbol`, fragment, why, suggested comment), the file(s) to touch, `TEST_COMMAND` and `BASELINE`. It is a `refactor`: the fix must not change what the code does.
+
+- **Step 0** — instead of the manifest above, check you have the finding block, the file list, `TEST_COMMAND` and `BASELINE`; otherwise `NEEDS_CONTEXT`.
+- Re-locate the finding by `path::symbol` and the fragment (the line may have moved). If it is no longer there, report `NO_CORREGIDO ya no existe`.
+- Snapshot each file to scratch before editing. Touch **only** the listed files and **never** a test. Apply the smallest change that resolves the finding while honouring `conventions.md`, `RULES_RESOLVED` and `CUSTOM_RULES` (Specture prevails on a conflict).
+- Run `TEST_COMMAND`: the result must equal `BASELINE`. Equal → commit only those files, message per `conventions.md` W-3 and §8 (`refactor(cumplimiento): F-n <título>`, or `refactor(compliance): …` when commits are in English), and report `CORREGIDO <sha>`. Different, or the fix would need another file or a behaviour change → restore from the snapshot (verify with `git hash-object`), commit nothing, report `NO_CORREGIDO <motivo>`.
+
 ## Status Reporting
 
 Respond in EXACTLY this format:
