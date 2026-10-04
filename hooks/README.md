@@ -31,7 +31,7 @@ Proyectos creados antes de v1.15.0 pueden tener el toggle en `.specture/conventi
 
 | | |
 |---|---|
-| Evento | `PreToolUse` con matcher `Edit\|Write\|NotebookEdit` (Copilot/Antigravity: + `write_to_file\|replace_file_content`) |
+| Evento | `PreToolUse` con matcher `Edit\|Write\|NotebookEdit` (Copilot/Antigravity: + `write_to_file\|replace_file_content\|multi_replace_file_content`) |
 | Disparador | Antes de cualquier edición de archivo |
 | Acción | Si existe `.specture/state/build-locked.json`, clasifica el `file_path` y deniega — en este orden de precedencia — (1) un **test sellado** (`specs[].test_paths`, mensaje "TDD Honesty Gate"), (2) un **spec sellado** (`spec_paths`, "Spec Seal"), (3) **código fuera de la superficie declarada** (`allowed_paths` — solo cuando el sello los lleva, nunca bajo `docs/` ni `.specture/`; "Allowed Paths"). En cualquier otro caso, allow. |
 | Reemplaza | El `git diff RED_SHA..HEAD -- <test-globs>` y el `git diff SPEC_SHA..HEAD -- <specs>` post-mortem del orchestrator: el hook hace que modificar tests o specs durante el epic, o escribir código que ningún spec declara, sea **imposible**, no solo detectable. |

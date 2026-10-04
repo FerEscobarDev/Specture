@@ -69,6 +69,25 @@ test("denies a sealed test file", () => {
   });
 });
 
+test("denies Antigravity's multi_replace_file_content on a sealed test file (TargetFile)", () => {
+  const projectRoot = createProject({
+    state: { epic: "accounts", red_sha: "deadbeef", test_paths: ["tests/**/*.test.js"] }
+  });
+  const result = spawnSync(process.execPath, [hookPath], {
+    cwd: projectRoot,
+    encoding: "utf8",
+    input: JSON.stringify({
+      hook_event_name: "PreToolUse",
+      tool_name: "multi_replace_file_content",
+      tool_input: { TargetFile: path.join(projectRoot, "tests", "account.test.js") }
+    })
+  });
+
+  assert.equal(result.status, 0);
+  assert.equal(JSON.parse(result.stdout).permissionDecision, "deny");
+  assert.match(JSON.parse(result.stdout).permissionDecisionReason, /TDD Honesty Gate: `tests\/account\.test\.js`/);
+});
+
 test("allows a non-test file during a sealed build", () => {
   const projectRoot = createProject({
     state: { test_paths: ["tests/**/*.test.js"] }

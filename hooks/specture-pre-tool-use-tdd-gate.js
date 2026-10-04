@@ -2,7 +2,7 @@
 // Specture build-seal hook for CLI agents (Copilot CLI, Antigravity CLI, etc.).
 //
 // Intercepts Edit / Write / NotebookEdit (and Antigravity's write_to_file /
-// replace_file_content) while a build epic is in flight. Reads
+// replace_file_content / multi_replace_file_content) while a build epic is in flight. Reads
 // `.specture/state/build-locked.json` (schema v3; v2/v1 still accepted — see lib/seal.js)
 // and denies, in precedence order: a sealed TEST path (TDD Honesty Gate), a sealed SPEC path
 // (Spec Seal), and — only when the seal carries `allowed_paths` — production code outside the

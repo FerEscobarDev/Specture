@@ -33,6 +33,15 @@ test("keeps Copilot and Claude manifest metadata synchronized", () => {
   assert.equal(copilotPlugin.hooks, "hooks.json");
 });
 
+test("hooks.json routes every write tool of Claude Code, Copilot and Antigravity to the seal hook", () => {
+  const [entry] = readJson("hooks.json").hooks.PreToolUse;
+  const tools = entry.matcher.split("|");
+  for (const tool of ["Edit", "Write", "NotebookEdit", "write_to_file", "replace_file_content", "multi_replace_file_content"]) {
+    assert.ok(tools.includes(tool), `matcher must cover ${tool}`);
+  }
+  assert.match(entry.bash, /specture-pre-tool-use-tdd-gate\.js/);
+});
+
 test("provides a Copilot profile for every Claude specialist", () => {
   const matrix = readJson("copilot/compatibility-matrix.json");
   const claudeAgents = directoryNames("agents", "AGENT.md");
