@@ -226,6 +226,7 @@ test("inside() compares real paths: a Windows 8.3 short name and its long name a
   if (!child) return;
   assert.equal(rr.inside(path.join(short, child), long), true, `${short}\\${child} is inside ${long}`);
   assert.equal(rr.inside(path.join(long, child), short), true);
+  assert.equal(rr.inside(path.join(short, "no-existe", "x.md"), long), true, "a missing file resolves through its nearest existing ancestor");
 });
 
 test("globs: with a slash they anchor at the project root, without one they match a file name anywhere", () => {

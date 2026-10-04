@@ -263,14 +263,19 @@ function repoBoundary(root) {
 // The native realpath expands Windows 8.3 short names (`C:\Users\RUNNER~1\…`), which the JS one
 // keeps: git answers --show-toplevel with the long name, so comparing a short-named project path
 // with it would put every included file "outside the repository".
+// A path that does not exist (a missing include) is resolved through its nearest existing
+// ancestor, so a short-named temp dir still compares equal to its long name.
 function realPath(p) {
-  try {
-    return fs.realpathSync.native(p);
-  } catch {
+  let current = path.resolve(p);
+  const rest = [];
+  for (;;) {
     try {
-      return fs.realpathSync(p);
+      return path.join(fs.realpathSync.native(current), ...rest);
     } catch {
-      return path.resolve(p);
+      const parent = path.dirname(current);
+      if (parent === current) return path.resolve(p);
+      rest.unshift(path.basename(current));
+      current = parent;
     }
   }
 }
