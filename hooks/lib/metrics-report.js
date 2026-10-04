@@ -38,6 +38,11 @@
 //   per `batch_id` (the first line of the batch that carries each one) — averaged per batch and
 //   totalled in `review_totals`. R1 ("el planner no pregunta") counts open_questions + the
 //   batch's review_questions on a line that carries `batch_id`.
+// Compliance records (v2.4.0, `kind: "compliance"` — one per milestone report, appended by
+//   `compliance.js record` after the triage): { kind, milestone, report, status,
+//   findings: {BLOCKER, IMPORTANT, NIT}, tipo: {refactor, comportamiento, test},
+//   triage: {corregir, diferir, no_aplica}, corrected, not_corrected, plugin, ts }. They carry no
+//   `epic`: they are read into their own list, never counted as epics nor as malformed lines.
 
 const fs = require("fs");
 const path = require("path");
@@ -86,20 +91,22 @@ function parseArgs(argv) {
 
 function readMetrics(projectRoot) {
   const text = readText(projectRoot, METRICS_FILE);
-  if (text === null) return { exists: false, entries: [], skipped: 0 };
+  if (text === null) return { exists: false, entries: [], compliance: [], skipped: 0 };
   const entries = [];
+  const compliance = [];
   let skipped = 0;
   for (const line of lines(text)) {
     if (!line.trim()) continue;
     try {
       const obj = JSON.parse(line);
-      if (obj && typeof obj === "object" && obj.epic) entries.push(obj);
+      if (obj && typeof obj === "object" && obj.kind === "compliance") compliance.push(obj);
+      else if (obj && typeof obj === "object" && obj.epic) entries.push(obj);
       else skipped++;
     } catch {
       skipped++;
     }
   }
-  return { exists: true, entries, skipped };
+  return { exists: true, entries, compliance, skipped };
 }
 
 function mean(values) {
@@ -202,12 +209,33 @@ function reading(gate, baseline) {
   return notes;
 }
 
+// Compliance records summed: how much the reviews found and what the user did with it.
+function complianceSummary(records) {
+  const sum = (pick) => records.reduce((n, r) => n + (isNumber(pick(r)) ? pick(r) : 0), 0);
+  const findings = { BLOCKER: sum((r) => r.findings && r.findings.BLOCKER), IMPORTANT: sum((r) => r.findings && r.findings.IMPORTANT), NIT: sum((r) => r.findings && r.findings.NIT) };
+  const triage = { corregir: sum((r) => r.triage && r.triage.corregir), diferir: sum((r) => r.triage && r.triage.diferir), no_aplica: sum((r) => r.triage && r.triage.no_aplica) };
+  const decided = triage.corregir + triage.diferir + triage.no_aplica;
+  return {
+    count: records.length,
+    findings,
+    triage,
+    corrected: sum((r) => r.corrected),
+    not_corrected: sum((r) => r.not_corrected),
+    no_aplica_share: decided === 0 ? null : Math.round((triage.no_aplica / decided) * 100) / 100
+  };
+}
+
 function summarize(projectRoot, opts) {
-  const { exists, entries, skipped } = readMetrics(projectRoot);
+  const { exists, entries, compliance, skipped } = readMetrics(projectRoot);
   const selected = opts.last ? entries.slice(-opts.last) : entries;
   const gate = aggregate(selected.filter((e) => e.source !== "baseline"));
   const baseline = aggregate(selected.filter((e) => e.source === "baseline"));
-  return { file: METRICS_FILE.replace(/\\/g, "/"), exists, total: entries.length, shown: selected.length, skipped, entries: selected, gate, baseline, reading: exists ? reading(gate, baseline) : [] };
+  const complianceAgg = complianceSummary(compliance || []);
+  const notes = exists ? reading(gate, baseline) : [];
+  if (complianceAgg.no_aplica_share !== null && complianceAgg.no_aplica_share >= 0.5) {
+    notes.push(`La mitad o más de los hallazgos de cumplimiento se marcaron "no aplica" (${Math.round(complianceAgg.no_aplica_share * 100)} %): revisar las reglas que los originan — una regla que casi nunca aplica es ruido para el implementer y el revisor.`);
+  }
+  return { file: METRICS_FILE.replace(/\\/g, "/"), exists, total: entries.length, shown: selected.length, skipped, entries: selected, gate, baseline, compliance: complianceAgg, complianceRecords: compliance || [], reading: notes };
 }
 
 function renderSummary(result) {
@@ -228,6 +256,10 @@ function renderSummary(result) {
     if (agg.batches > 0) {
       out.push(`${label} revisión: ${agg.batches} tanda(s) · preguntas/tanda ${agg.review_questions ?? "-"} (total ${agg.review_totals.review_questions ?? "-"}) · filtradas/tanda ${agg.review_filtered ?? "-"} · contactos/tanda ${agg.review_human_contacts ?? "-"} · late/tanda ${agg.late_questions ?? "-"} · premisas falsas/tanda ${agg.premises_false ?? "-"} · aparcados/epic ${agg.parked ?? "-"}`);
     }
+  }
+  if (result.compliance && result.compliance.count > 0) {
+    const c = result.compliance;
+    out.push(`cumplimiento: ${c.count} revisión(es) de milestone · hallazgos BLOCKER ${c.findings.BLOCKER} · IMPORTANT ${c.findings.IMPORTANT} · NIT ${c.findings.NIT} · triage corregir ${c.triage.corregir} / diferir ${c.triage.diferir} / no aplica ${c.triage.no_aplica} · corregidos ${c.corrected} · no corregidos ${c.not_corrected}`);
   }
   out.push("");
   out.push("Lectura (§6.5):");

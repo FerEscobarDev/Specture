@@ -349,7 +349,12 @@ the Spec Planning Gate was designed to be judged by (`docs/spec-planning-gate-de
    `review_questions` repeated on each of its epics); `parked` / `park_class` are per epic
    (`aparcados/epic`). R1 counts `open_questions + review_questions` on a line with `batch_id`:
    under the review stage the questions are asked in the sitting, not in the epic's gate. Review
-   figures on a line without `batch_id` are not counted and the reading says so.
+   figures on a line without `batch_id` are not counted and the reading says so. Since v2.4.0
+   it also reads the compliance reviews: one `kind: "compliance"` record per milestone report
+   (written by `compliance.js record` after the triage) — never an epic, never a malformed line —
+   summed into a `cumplimiento:` line (findings by severity, the user's triage, corrected and not
+   corrected). When half or more of the decided findings were "no aplica", the reading flags it:
+   the rules behind them are noise for the implementer and the reviewer.
 2. **No file yet** → say so and offer the baseline: *"No hay métricas todavía. ¿Reconstruyo
    el baseline de los epics cerrados antes del gate (`--baseline --write`)?"* On yes:
    ```

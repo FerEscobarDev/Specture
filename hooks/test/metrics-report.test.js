@@ -82,6 +82,30 @@ test("fail-open: no file → exit 0 with 'no metrics yet'; a malformed line is s
   assert.equal(json.total, 1);
 });
 
+test("v2.4 compliance records: read into their own list, summed, never counted as epics nor malformed", () => {
+  const record = (milestone, extra = {}) =>
+    JSON.stringify({ kind: "compliance", milestone, report: `docs/07-reviews/cumplimiento-milestone-${milestone}-2026-02-01.md`, status: "REJECTED_MINOR", findings: { BLOCKER: 0, IMPORTANT: 2, NIT: 1 }, tipo: { refactor: 2, comportamiento: 1, test: 0 }, triage: { corregir: 1, diferir: 1, no_aplica: 1 }, corrected: 1, not_corrected: 0, plugin: "2.4.0", ts: "2026-02-01T10:00:00Z", ...extra });
+  const root = createProject({
+    "docs/.specture-meta/build-metrics.jsonl": [line("epic-1.1"), record("1"), line("epic-1.2"), record("2", { triage: { corregir: 0, diferir: 0, no_aplica: 3 } })].join("\n") + "\n"
+  });
+  const { status, json } = run(root, "--json");
+
+  assert.equal(status, 0);
+  assert.equal(json.total, 2, "only epic lines are epics");
+  assert.equal(json.skipped, 0, "compliance records are not malformed lines");
+  assert.equal(json.compliance.count, 2);
+  assert.deepEqual(json.compliance.findings, { BLOCKER: 0, IMPORTANT: 4, NIT: 2 });
+  assert.deepEqual(json.compliance.triage, { corregir: 1, diferir: 1, no_aplica: 4 });
+  assert.equal(json.compliance.no_aplica_share, 0.67);
+  assert.ok(json.reading.some((n) => /"no aplica" \(67 %\)/.test(n)), "a rule set that mostly does not apply is flagged");
+
+  const text = run(root).stdout;
+  assert.match(text, /^cumplimiento: 2 revisión\(es\) de milestone · hallazgos BLOCKER 0 · IMPORTANT 4 · NIT 2 · triage corregir 1 \/ diferir 1 \/ no aplica 4 · corregidos 2 · no corregidos 0$/m);
+
+  const without = createProject({ "docs/.specture-meta/build-metrics.jsonl": line("epic-1.1") + "\n" });
+  assert.doesNotMatch(run(without).stdout, /cumplimiento:/, "no compliance records → no line");
+});
+
 test("reading rules: planner-does-not-ask (R1) and A6 (spec_defect rising) fire from the aggregates", () => {
   const gate = { count: 10, downstream_defects: 2, zero_question_share: 0.9, reviewer_rejected_major_spec_defect: 0.5, c7_rejections: 0.2, tokens: null };
   const baseline = { count: 10, downstream_defects: 2, reviewer_rejected_major_spec_defect: 0.1, tokens: null };
