@@ -215,3 +215,16 @@ exacto están en `hooks/README.md` § Permisos; `/specture:doctor check` te avis
 No. Todo lo que importa vive en disco: el ROADMAP, el registro de la revisión de la tanda, el
 `_planning.md` de cada epic, el sello y `build-metrics.jsonl`. Después de cualquier epic puedes cerrar la sesión y seguir con
 `/specture:start`; para una tanda larga es lo recomendado.
+
+## Se cerró un milestone y la tanda terminó con una pregunta sobre "cumplimiento". ¿Qué es?
+
+Desde v2.4.0, cuando un milestone se cierra, un revisor recorre todo su código contra **todas**
+las reglas del proyecto —también las que la revisión por spec no veía y los criterios que tu
+equipo enlazó en `.specture/review-rules.md`— y deja un reporte en
+`docs/07-reviews/cumplimiento-milestone-<N>-<fecha>.md`. Eso pasa sin preguntarte, en el medio de
+la tanda. La pregunta llega al final: ves los hallazgos con una propuesta y decides qué se corrige
+(solo lo que no cambia comportamiento, y nunca tests), qué se difiere y qué no aplica. Si cierras
+la sesión antes, el reporte queda `TRIAGE: PENDIENTE` y se te pregunta en el próximo vaciado (o
+con `/specture:compliance-review triage`). No publica nada en GitHub ni en Azure DevOps. Para
+apagarlo: `compliance_review.enabled: false` en `.specture/settings.yml`. Guía completa:
+[`docs/compliance-review-guide.md`](compliance-review-guide.md).

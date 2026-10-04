@@ -106,9 +106,19 @@ node "${CLAUDE_PLUGIN_ROOT}/hooks/lib/honesty-check.js" <comando> [opciones] [--
   spec-delta    --epic-dir <dir> --base <SPEC_SHA> --slug <task-slug>
   protected     --epic-dir <dir> [--slug <task-slug>]
   base-worktree --lock <sha> [--files a,b] --dir <tmp> | --remove <dir>
+  fix-range     --base <sha> --test-globs a,b --allowed a,b [--head <rev>]
 ```
 
-Primera línea de stdout = token `HONESTY <cmd>: PASS … | FAIL <n> | UNVERIFIABLE <motivo>`; exit 0 / 1 / 2. `clean-tree` exige nada sin commitear bajo los globs de test; `range` es la **allowlist** del Step 5.5 (todo commit que toca tests en `red_sha_orig..HEAD` está registrado en `## SUPERSESIONES` con exactamente sus paths — o es el primer RED de un spec hermano — y `supersede_paths` está vacío); `red-lines` verifica que cada línea que agregó el RED original siga en HEAD; `spec-delta` que un spec liberado solo cambió su sección de supersesiones; `protected` que ninguna supersesión toque un test de `verify:` de `rules.yml` o un GUARD de otro epic; `base-worktree` arma el worktree en `LOCK_SHA` para el RED retroactivo. Lo usan `skills/build/EPIC_LOOP.md` (Step 5.2 y 5.5) y el loop de supersesiones de `skills/build/SKILL.md`; el detalle y el riesgo residual están en `docs/tdd-honesty-reference.md`.
+Primera línea de stdout = token `HONESTY <cmd>: PASS … | FAIL <n> | UNVERIFIABLE <motivo>`; exit 0 / 1 / 2. `clean-tree` exige nada sin commitear bajo los globs de test; `range` es la **allowlist** del Step 5.5 (todo commit que toca tests en `red_sha_orig..HEAD` está registrado en `## SUPERSESIONES` con exactamente sus paths — o es el primer RED de un spec hermano — y `supersede_paths` está vacío); `red-lines` verifica que cada línea que agregó el RED original siga en HEAD; `spec-delta` que un spec liberado solo cambió su sección de supersesiones; `protected` que ninguna supersesión toque un test de `verify:` de `rules.yml` o un GUARD de otro epic; `base-worktree` arma el worktree en `LOCK_SHA` para el RED retroactivo; `fix-range` (v2.4.0) es el chequeo posterior del loop de corrección de cumplimiento, que corre sin sello: cada commit de `BASE..HEAD` toca solo los archivos de los hallazgos elegidos y ningún test. Lo usan `skills/build/EPIC_LOOP.md` (Step 5.2 y 5.5), el loop de supersesiones de `skills/build/SKILL.md` y `skills/compliance-review/CORRECTION_LOOP.md`; el detalle y el riesgo residual están en `docs/tdd-honesty-reference.md`.
+
+### Revisión de cumplimiento (v2.4.0) — `lib/review-rules-resolve.js` y `lib/compliance.js`
+
+```
+node "${CLAUDE_PLUGIN_ROOT}/hooks/lib/review-rules-resolve.js" --project . (--spec <file> | --paths a,b | --paths-file <list> | --all) [--json] [--cap N]
+node "${CLAUDE_PLUGIN_ROOT}/hooks/lib/compliance.js" <range|lint|assemble|stub|triage|correction|status|record> [opciones] [--project <root>] [--json]
+```
+
+`review-rules-resolve.js` arma el bloque `CUSTOM_RULES` desde `.specture/review-rules.md` (opcional; parser y lint en `lib/review-rules.js`): las inclusiones y reglas `RV-n` cuyo `cuando:` toca las rutas dadas, con un solo nivel de inclusión y el nivel flexible aplicado. Exit 0 (sin archivo: `CUSTOM_RULES: []`, sin aviso), 1 con errores o sobre el tope de 60 000 caracteres, 2 uso. `compliance.js` es la mitad mecánica de la revisión de cumplimiento: `range --milestone <N>` (ventanas `LOCK..CLOSE` por epic y bloques por componente en `.specture/state/compliance/<id>/`), `lint` (gramática de las partes y comentarios sin vocabulario interno), `assemble` (el reporte en `docs/07-reviews/`), `stub` (reporte `BLOCKED`), `triage` y `correction` (decisiones y resultados por hallazgo), `status` y `record` (la línea `kind: "compliance"` de `build-metrics.jsonl`). Token `COMPLIANCE <cmd>: …`; exit 0 / 1 (FAIL) / 2 (UNVERIFIABLE o uso). Gramáticas: `templates/COMPLIANCE_REPORT_TEMPLATE.md`.
 
 ### Permisos (Claude Code, v2.2.1)
 
@@ -177,7 +187,7 @@ Si querés agregar tu propio hook siguiendo el patrón:
 `lib/settings.js` exporta:
 
 - `readSettings(projectRoot)` → `{ source, path, schemaVersion, values, raw }`. Lee `.specture/settings.yml`; si no existe, cae al bloque §10 de `conventions.md`; expande el perfil (`lean`/`full`/`custom`) y aplica defaults.
-- `readToggle(projectRoot, key)` → valor efectivo de un toggle.
+- `readToggle(projectRoot, key)` → valor efectivo de un toggle. `PROFILE_INDEPENDENT_KEYS` (`docs_index.max_entries_per_dispatch`, `compliance_review.enabled`) se respetan bajo cualquier perfil cuando el archivo los declara; los perfiles `lean`/`full` deciden solo los cuatro toggles booleanos.
 - `parseSettingsYaml(text)` / `serializeSettings(values, { schemaVersion })` — el subset plano de YAML que usa `settings.yml`.
 
 ---

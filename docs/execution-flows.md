@@ -183,7 +183,7 @@ flowchart TD
     G -->|"BLOCKED: debug"| DBG[["Ofrecer /specture:debug al usuario<br/>(la cola se detiene: debug pide Plan mode)"]]
     G -->|"BLOCKED: entorno / otro · REJECTED_MAJOR"| ESC(["Escalar al usuario · sin auto-retry"])
     H --> L
-    L -->|No| FIN(["Cola drenada · listar los aparcados con su decisión pendiente<br/>· registro ESTADO: EJECUTADA si todos están [x] o aparcados<br/>· sugerir merge/PR (W-4) · Specture nunca mergea solo"])
+    L -->|No| FIN(["Cola drenada · listar los aparcados con su decisión pendiente<br/>· registro ESTADO: EJECUTADA si todos están [x] o aparcados<br/>· diferidos sin dueño · triage de cumplimiento (v2.4.0, sin epic [/])<br/>· Step 8.5 · sugerir merge/PR (W-4) al final · Specture nunca mergea solo"])
 ```
 
 ### 3.2 El loop por epic — `spec → validate → RED → GREEN → review → verify`
@@ -249,7 +249,7 @@ flowchart TD
     S7 -->|"verde"| S8["Step 8 · epic → [x] · commit<br/>· seal-cli release · reporte con METRICS + SUPERSESSIONS"]
     end
     S8 --> S85["Step 8.5 · Capturar aprendizajes (coordinador)<br/>(opt-in default No → knowledge)"]
-    S85 --> S87["Step 8.7 · Reconciliación de milestone<br/>(si cierra: _current/ + lápidas en ROADMAP)"]
+    S85 --> S87["Step 8.7 · Reconciliación de milestone<br/>(si cierra: _current/ + revisión de cumplimiento (v2.4.0, sin preguntar)<br/>+ lápidas en ROADMAP)"]
     S87 --> S9(["Step 9 · Reset de contexto (automático)<br/>el epic-agent se descarta → siguiente epic"])
 ```
 
@@ -736,6 +736,33 @@ flowchart TD
     P4 --> P5["Phase 5 · Escribir .specture/docs-index.yml<br/>(confidence: ai_categorized)"]
     P5 --> P6["Phase 6 · Actualizar conventions.md §11"]
     P6 --> P7{"Phase 7 + Verificación antes de salir (5 checks)"}
+```
+
+### 5.8 Compliance-review — un milestone contra todas las reglas (v2.4.0)
+
+Dos modos: `milestone <N>` (desatendido; lo llama `build` en Step 8.7) y `triage` (contigo, al
+vaciarse la cola). Nunca publica fuera del repositorio. Guía: `docs/compliance-review-guide.md`.
+
+```mermaid
+flowchart TD
+    M0{"milestone N · compliance_review.enabled?"} -->|"false (llamado por build)"| OFF(["una línea · no corre"])
+    M0 -->|"sí / a pedido"| R["compliance.js range<br/>ventanas LOCK..CLOSE por epic · bloques por componente"]
+    R -->|UNVERIFIABLE| STUB["compliance.js stub → reporte BLOCKED"]
+    R -->|READY| C["por bloque: RULES_RESOLVED --all + CUSTOM_RULES (--paths-file)<br/>→ compliance-reviewer MODE: REVIEW → una parte<br/>· git status sin cambios en archivos con seguimiento"]
+    C --> LINT{"compliance.js lint<br/>(gramática · comentarios sin vocabulario interno)"}
+    LINT -->|"FAIL (2ª vez)"| STUB
+    LINT -->|"FAIL (1ª)"| C
+    LINT -->|PASS| AS["compliance.js assemble → docs/07-reviews/cumplimiento-milestone-N-fecha.md<br/>· commit docs(cumplimiento)"]
+    AS -->|"desde build"| BACK(["una línea informativa · la cola sigue"])
+    AS -->|"a pedido"| T
+    T{"triage · ¿algún epic [/]?"} -->|sí| PEND(["queda PENDIENTE para el próximo vaciado"])
+    T -->|no| Q["tabla de hallazgos + propuesta<br/>· UNA pregunta cerrada: propuesta · uno por uno · diferir todo · no aplica"]
+    Q --> TS["compliance.js triage --set<br/>(corregir solo si Tipo: refactor)"]
+    TS -->|"hay 'corregir'"| FIX["agente de corrección (CORRECTION_LOOP.md)<br/>clean-tree · baseline · implementer MODE: CUMPLIMIENTO por hallazgo<br/>· fix-range · suite = baseline · compliance-reviewer MODE: VERIFY"]
+    FIX --> CO["compliance.js correction --set"]
+    TS --> DEF["diferidos (dueño: sin epic) → ofrecidos una vez como new-feature"]
+    CO --> REC["compliance.js record → línea kind: compliance en build-metrics.jsonl"]
+    DEF --> REC
 ```
 
 ---

@@ -4,13 +4,13 @@
 > (revisión: C-1…C-9, M1-M7, G1-G12), `psikora-scale-review.md` (N1-N10) y
 > `doctor-and-migrations-design.md` (doctor, catálogo de migraciones, principios). Cada
 > ítem cita su fuente; las definiciones son las de origen, no reinterpretaciones. Estado:
-> **M0 hecho (v1.14.1) · M1 hecho (v1.15.0) · M2 hecho (v1.16.0) · M3 hecho (v1.17.0) · M4 hecho (v1.18.0) · M5 hecho (v1.19.0) · M7 hecho (v2.0.0; cierre v2.1.0) · M8 en curso (v2.2.0 y v2.3.0 hechos; v2.4.0 condicional)**; M6 espera medición. Última actualización: 2026-09-30 (v2.3.0, etapa de revisión). M7 y M8 suman
+> **M0 hecho (v1.14.1) · M1 hecho (v1.15.0) · M2 hecho (v1.16.0) · M3 hecho (v1.17.0) · M4 hecho (v1.18.0) · M5 hecho (v1.19.0) · M7 hecho (v2.0.0; cierre v2.1.0) · M8 en curso (v2.2.0 y v2.3.0 hechos; ítem 72 condicional, versión por definir) · M9 en curso (v2.4.0 implementado en master; v2.5.0 por hacer)**; M6 espera medición. Última actualización: 2026-10-04 (revisión de cumplimiento). M7 y M8 suman
 > las fuentes `frontend-design-track-design.md`, `spec-gate-convergence-design.md` y
 > `milestone-planning-stage-analysis.md` (Apéndice C). Las **decisiones** que
 > condicionan el orden están en el Apéndice A (A1-A7 cerradas). **Solo contiene ajustes del framework**: las acciones sobre el proyecto
 > Psikora viven en su propio repo (`C:\Proyectos\Psikora\PLAN-SANEAMIENTO-SPECTURE-2026-08-28.md`).
 
-# Roadmap del framework Specture — v1.14.1 → v2.4
+# Roadmap del framework Specture — v1.14.1 → v2.5
 
 ## Principio de orden
 
@@ -664,7 +664,7 @@ de verdad pueda ocurrir.
 
 ---
 
-## Milestone 8 — Gate convergente y etapa de revisión (v2.2.0 · v2.3.0 · v2.4.0 condicional)
+## Milestone 8 — Gate convergente y etapa de revisión (v2.2.0 · v2.3.0 · ítem 72 condicional)
 
 *Objetivo:* que cada propiedad la decida quien puede verla —el negocio el humano, una vez y en un
 presupuesto único; la coherencia con ADR, contrato y reglas el validador; lo mecánico un script;
@@ -681,7 +681,7 @@ que después de una revisión concentrada antes de ejecutar la ejecución fluya 
 > experimento "ronda 2" (revisión de dos rondas + mini-revisión anunciada antes de cada epic
 > regulatorio), y la verificación de premisas contra el código que ataca las dos premisas falsas
 > de las mediciones de v2.2 (AC-13 de HC-IHCE.5, EC-4 de HC-IHCE.6). Fixture de sondas
-> `--stage 5`. **v2.4.0** (ítem 72) solo si los datos lo piden. Análisis de la etapa de revisión:
+> `--stage 5`. **El ítem 72** (antes "v2.4.0 condicional") solo si los datos lo piden; su versión queda por definir porque v2.4.0 la tomó la revisión de cumplimiento (Milestone 9). Análisis de la etapa de revisión:
 > `docs/milestone-planning-stage-analysis.md` y `docs/milestone-decision-stage-simulation.md`;
 > guía para el usuario: `docs/review-stage-guide.md`.
 
@@ -747,7 +747,7 @@ que después de una revisión concentrada antes de ejecutar la ejecución fluya 
 - [x] **71. Epic aparcado (PARKED)** · hecho 2026-09-30, v2.3.0 (`4a15516`, `4e282f7`, `06d4edc`) — una decisión **nueva** de dinero, legal, datos, contrato o modelo que aparece al refrescar un epic ya revisado lo aparca: vuelve de `[/]` a `[ ]` con la línea `**Aparcado:** <ISO> — <clase> — <motivo> — tanda <id>` en el ROADMAP (no es un cuarto estado de checkbox; `ROADMAP_TEMPLATE.md` la documenta y `parseEpicBlock` la lee) y una línea en `## APARCADOS` del registro, y la cola sigue con los epics independientes; al drenar la cola se listan con su decisión pendiente, y la siguiente sentada decide y borra la línea. Doctor: `epic-parked` (INFO) y `parked-orphan`. Honesto: en una cadena casi lineal de dependencias, aparcar suele equivaler a parar
   `Fuente: milestone-planning-stage-analysis §5, §6, §9 (decisión 5)` · `Esfuerzo: medio` · `Depende de: 68`
 
-- [ ] **72. Coordinador por epic en subagente (v2.4.0, condicional)** — `skills/build/EPIC_COORDINATOR.md`: un subagente por epic que hace refresco, sello, epic-agent, loop de supersesiones y métricas; **nunca pregunta** y devuelve `EPIC_REPORT: DONE | PARKED | STOPPED | VISUAL_PENDING | NESTING_UNAVAILABLE`. Anidamiento de exactamente 3 niveles (principal → coordinador de epic → epic-agent → workers), con smoke test previo; si falla, el coordinador de epic corre `EPIC_LOOP` en línea. Solo Claude Code: Copilot y Antigravity se quedan con el coordinador principal. **Condición:** tras v2.3.0, ≥2 tandas N≥3 que obligaron a reiniciar la sesión, o un contexto del coordinador >~400k tokens antes del epic 3
+- [ ] **72. Coordinador por epic en subagente (condicional, versión por definir)** — `skills/build/EPIC_COORDINATOR.md`: un subagente por epic que hace refresco, sello, epic-agent, loop de supersesiones y métricas; **nunca pregunta** y devuelve `EPIC_REPORT: DONE | PARKED | STOPPED | VISUAL_PENDING | NESTING_UNAVAILABLE`. Anidamiento de exactamente 3 niveles (principal → coordinador de epic → epic-agent → workers), con smoke test previo; si falla, el coordinador de epic corre `EPIC_LOOP` en línea. Solo Claude Code: Copilot y Antigravity se quedan con el coordinador principal. **Condición:** tras v2.3.0, ≥2 tandas N≥3 que obligaron a reiniciar la sesión, o un contexto del coordinador >~400k tokens antes del epic 3
   `Fuente: milestone-planning-stage-analysis §5, §9 (decisión 6)` · `Esfuerzo: alto` · `Depende de: 68-71`
 
 - [x] **73. Verificación de premisas contra el código** · hecho 2026-09-30, v2.3.0 (`4a15516`, `06d4edc`) — el validador en `MODE: REVIEW` (el único modo en que lee código, con `Read`/`Glob`) verifica cada afirmación sobre el sistema **actual** de los borradores, el bloque del epic o sus RN ("como hoy", "ya existe", "hoy X rechaza…") y la reporta `PR-n — VERIFICADA | FALSA | NO VERIFICABLE` con `path:línea`, en `## PREMISAS` del registro. Una premisa falsa nunca se corrige en silencio: si las fuentes deciden qué debe pasar, es una `VIOLATION` para el planner; si no, una pregunta con `Dato verificado:`. El planner (`MODE: DRAFT`) escribe cada afirmación sobre el sistema actual como algo verificable y con fuente, nunca un "como hoy" suelto; una sonda de ≤20 líneas puede verificar una premisa, nunca decidir una respuesta. Métrica `premises_false` por tanda; la fixture `--stage 5` (`bd14657`) planta una premisa falsa verificable en el código
@@ -756,7 +756,7 @@ que después de una revisión concentrada antes de ejecutar la ejecución fluya 
 
 ### Lo que v2.3.0 deliberadamente NO envió
 
-- **El coordinador por epic en subagente** (ítem 72, v2.4.0 condicional): refresco, sello, epic-agent, loop de supersesiones y métricas siguen en el coordinador principal hasta que se cumpla su condición.
+- **El coordinador por epic en subagente** (ítem 72, condicional; versión por definir): refresco, sello, epic-agent, loop de supersesiones y métricas siguen en el coordinador principal hasta que se cumpla su condición.
 - **Plan mode como puerta de lanzamiento** de la ejecución (`milestone-planning-stage-analysis` §4, §9 decisión 4): el cierre de la revisión es una pregunta en el chat ("¿Ejecutamos ya la tanda o más tarde?") y el loop sigue sin Plan mode (D3).
 
 ### Lo que v2.2.0 deliberadamente NO envió
@@ -765,6 +765,32 @@ que después de una revisión concentrada antes de ejecutar la ejecución fluya 
 - **C7m, C-ids y C-freeze** (F1-07: citas resueltas contra una gramática de fuentes, IDs existentes, congelamiento de alcance con `SCOPE_FREEZE`); el `SCOPE <sha12>` de la revisión (ítem 68) cubre parte del congelamiento.
 - **La delegación ofrecida al armar la tanda y las notificaciones** (F1-14 (1)-(2)); de F1-14 solo se envió el Step 8.5 agrupado al drenar la cola. La delegación explícita de siempre sigue igual.
 - **El modo ADAPT del test-writer** (F2-01), el despacho `SPEC_GATE` único con checklist J1-J9 y el cierre de A6 (F2-02 — A6 sigue en su forma de v1.18.0), C5 en bytes (F2-04), el carril de refactors de esquema (F2-07), `impact-hint` (F3-01) y el registro de supersesiones generado (F3-02). El diseño los ubicaba en "Fase 2 — v2.3.0"; el plan aprobado reasignó v2.3.0 a la etapa de revisión y estos quedan sin versión.
+
+---
+
+## Milestone 9 — Revisión de cumplimiento (v2.4.0 · v2.5.0)
+
+*Objetivo:* que el código de un milestone se revise contra **todas** las reglas del proyecto —las
+que la revisión por spec no ve y los criterios que el equipo ya mantiene— y que el usuario decida
+qué se aborda, con comentarios que cualquiera entienda sin los documentos internos.
+
+> Pedido del usuario (2026-10-04): una revisión que valide todas las reglas y convenciones, que
+> reciba reglas personalizadas enlazadas desde un archivo con un solo nivel de inclusión, que corra
+> al cerrar cada milestone y sobre un PR de GitHub o Azure DevOps, que **nunca publique** y que
+> sugiera comentarios en lenguaje claro sin citar documentos de Specture. Motivación: equipos en
+> modo Adopt que ya revisaban con su propio agente y cuyos resultados quedaban aislados, sin las
+> reglas de Specture. Guía: `docs/compliance-review-guide.md`; sondas: `docs/compliance-review-baseline.md`.
+
+- [/] **74. Revisión de cumplimiento al cerrar un milestone** · implementado 2026-10-04 en `master` (v2.4.0, sin publicar) — agente `compliance-reviewer` (todas las `R-*`, cada sección de `conventions.md`, `W-*` sobre los commits, ADRs, criterios del equipo y consistencia entre epics; clasifica cada hallazgo refactor · comportamiento · test); skill `compliance-review` (`milestone <N>` | `triage`); `hooks/lib/compliance.js` (rango por ventanas `LOCK..CLOSE` de cada epic, bloques por componente, `lint` de los comentarios, `assemble`, `stub`); `build` Step 8.7 paso 3.5, desatendido; `compliance_review.enabled` (por defecto `true`, respetada en cualquier perfil: `PROFILE_INDEPENDENT_KEYS`)
+  `Fuente: pedido del usuario 2026-10-04` · `Esfuerzo: alto` · `Depende de: 39`
+- [/] **75. Reglas personalizadas `.specture/review-rules.md`** · implementado 2026-10-04 en `master` (v2.4.0) — inclusión por archivo o sección (`§`/`#`), un solo nivel, `cuando:` por rutas (globs anclados si llevan `/`), severidades del equipo, nivel flexible para código legado, reglas `RV-n`; `hooks/lib/review-rules.js` + `review-rules-resolve.js` (bloque `CUSTOM_RULES`, cercado como datos de criterio, tope de 60 000 caracteres); chequeos del doctor; plantilla opcional; `setup` paso 8.6 propone los archivos de revisión que el equipo ya tiene
+  `Fuente: pedido del usuario 2026-10-04` · `Esfuerzo: medio` · `Depende de: —`
+- [/] **76. El implementer recibe `CUSTOM_RULES`** · implementado 2026-10-04 en `master` (v2.4.0) — "Custom Rules Resolution" en `EPIC_LOOP` con la superficie `Crea:`/`Modifica:` del spec; Specture prevalece y la contradicción vuelve como `DONE_WITH_CONCERNS`
+  `Fuente: pedido del usuario 2026-10-04` · `Esfuerzo: bajo` · `Depende de: 75`
+- [/] **77. Triage y loop de corrección** · implementado 2026-10-04 en `master` (v2.4.0) — al vaciarse la cola y sin epic `[/]`, una pregunta cerrada; solo los `refactor` se corrigen, por un agente de corrección (`CORRECTION_LOOP.md`, implementer `MODE: CUMPLIMIENTO`, `honesty-check fix-range`, suite igual al baseline, `VERIFY`); diferidos con `dueño: sin epic`; registro `kind: "compliance"` en `build-metrics.jsonl`
+  `Fuente: pedido del usuario 2026-10-04` · `Esfuerzo: medio` · `Depende de: 74`
+- [ ] **78. Revisión de PR (GitHub, Azure DevOps) y de rama local, solo lectura (v2.5.0)** — `hooks/lib/pr.js` lee el PR (`gh pr view` · `az repos pr show`), las reglas salen de la punta de la rama destino (un PR no afloja las reglas que lo revisan), sin corrección ni publicación; reportes `cumplimiento-pr-gh-<n>` / `-az-<id>` / `cumplimiento-rama-<slug>`
+  `Fuente: pedido del usuario 2026-10-04` · `Esfuerzo: medio` · `Depende de: 74, 75`
 
 ---
 

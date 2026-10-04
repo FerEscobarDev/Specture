@@ -163,7 +163,7 @@ $SPECTURE_ROOT/
 ├── scripts/bump-version.js            # Sincroniza la versión en los 4 manifiestos; --check · --title · --notes
 ├── scripts/doctor.js                  # CLI del doctor: check · migrate · sync (también usable desde la CI de un proyecto)
 ├── scripts/schema-manifest.js         # Hash de los archivos que definen el esquema del proyecto (gate de release)
-├── scripts/baseline-fixture.js        # Regenera el scratch "Archivador" de los baselines del gate (--stage 1|2|3|4|5, --git; la 4 lleva los defectos plantados de los probes de release del gate, la 5 la tanda de las sondas de la etapa de revisión); árbol en scripts/baseline-fixture/
+├── scripts/baseline-fixture.js        # Regenera el scratch "Archivador" de los baselines del gate (--stage 1|2|3|4|5|6, --git; la 4 lleva los defectos plantados de los probes de release del gate, la 5 la tanda de las sondas de la etapa de revisión, la 6 el milestone cerrado de las sondas de cumplimiento); árbol en scripts/baseline-fixture/
 ├── scripts/copilot-mirrors.js         # Genera copilot/agents/*.agent.md desde agents/*/AGENT.md (mirrors:sync · --check en los tests)
 ├── migrations/                        # Catálogo de migraciones <since>-<slug>.js + schema-manifest.json + tests
 ├── hooks/
@@ -175,15 +175,18 @@ $SPECTURE_ROOT/
 │   ├── lib/settings.js                # Lector de .specture/settings.yml (fallback a conventions §10, perfiles)
 │   ├── lib/rules.js                   # Parser/lint de .specture/rules.yml (invariantes R-*, una línea por regla) + lectura del §12 legacy
 │   ├── lib/rules-resolve.js           # Rules Resolution: --tags a,b | --all → bloque RULES_RESOLVED por dispatch (v1.19.0)
+│   ├── lib/review-rules.js            # Parser/lint de .specture/review-rules.md (reglas del equipo: inclusión por sección, un nivel, nivel flexible) (v2.4.0)
+│   ├── lib/review-rules-resolve.js    # Custom Rules Resolution: --spec | --paths | --paths-file | --all → bloque CUSTOM_RULES (v2.4.0)
+│   ├── lib/compliance.js              # Revisión de cumplimiento: range · lint · assemble · stub · triage · correction · status · record (v2.4.0)
 │   ├── lib/current-state.js           # Componentes de architecture.md y specs [x] por componente — knowledge reconcile (v1.19.0)
 │   ├── lib/seal.js                    # Sello del build (schema v3: spec_sha/spec_paths/allowed_paths + specs[]; v2/v1 legacy; clasificación de denies)
 │   ├── lib/seal-cli.js                # Único escritor del sello: write · merge-spec · unseal-spec · lift-spec · supersede · release · show
-│   ├── lib/honesty-check.js           # Salvaguardas del loop de supersesiones y del Step 5.5: clean-tree · range · red-lines · spec-delta · protected · base-worktree (v2.2.0)
+│   ├── lib/honesty-check.js           # Salvaguardas del loop de supersesiones y del Step 5.5: clean-tree · range · red-lines · spec-delta · protected · base-worktree (v2.2.0) · fix-range (v2.4.0)
 │   ├── lib/planning.js                # Parser de _planning.md (COVERAGE_TABLE + hash), del bloque de epic y de los specs
 │   ├── lib/spec-set-check.js          # Gate 4a: C1/C2/C4/C5/C6 (+ C-path/C-gap/C-sup) sobre el set de specs → MECH_CHECK token (--draft --batch: borradores de la revisión)
 │   ├── lib/review.js                  # Registro de la revisión por tanda (docs/05-specs/_reviews/): status · scope-hash · scope-check (v2.3.0)
 │   ├── lib/metrics-report.js          # Lector de docs/.specture-meta/build-metrics.jsonl (+ --baseline) — knowledge stats
-│   ├── lib/doctor/                    # Chequeos del doctor: corpus · requirements · rules · estado · drift · migrate
+│   ├── lib/doctor/                    # Chequeos del doctor: corpus · requirements · rules · estado · revisión · cumplimiento · drift · migrate
 │   └── test/                          # Tests de contrato del plugin, hooks, settings y doctor
 ├── copilot/
 │   ├── agents/*.agent.md              # Espejos de los agentes para Copilot CLI — GENERADOS desde agents/*/AGENT.md, no editar
@@ -204,6 +207,8 @@ $SPECTURE_ROOT/
 │   ├── new-feature/SKILL.md
 │   ├── verify/SKILL.md
 │   ├── write-skill/SKILL.md
+│   ├── compliance-review/SKILL.md     # Revisión de cumplimiento al cerrar un milestone + triage (v2.4.0)
+│   ├── compliance-review/CORRECTION_LOOP.md  # Procedimiento del agente de corrección (solo refactors elegidos, sin tests)
 │   ├── knowledge/SKILL.md             # Higiene de conocimiento — modos capture (ex-learn) + audit (ex-audit-knowledge) + stats (métricas del build)
 │   ├── learn/SKILL.md                 # Alias → knowledge (capture), backward-compat
 │   ├── audit-knowledge/SKILL.md       # Alias → knowledge (audit), backward-compat
@@ -216,13 +221,15 @@ $SPECTURE_ROOT/
 │   ├── tdd-test-writer/AGENT.md         # Escribe tests desde el spec (sin ver código)
 │   ├── implementer/AGENT.md             # Implementa para pasar tests (backend/lógica)
 │   ├── ux-implementer/AGENT.md          # Implementa UI: tokens, a11y, cliente tipado
-│   └── code-reviewer/AGENT.md           # Review unificado (spec + arch + quality + front)
+│   ├── code-reviewer/AGENT.md           # Review unificado (spec + arch + quality + front)
+│   └── compliance-reviewer/AGENT.md     # Revisión de cumplimiento de un milestone contra todas las reglas (v2.4.0)
 ├── templates/
 │   ├── project-config/                # Plantillas de .specture/ del proyecto destino
 │   │   ├── stack.template.yml
 │   │   ├── settings.template.yml      # schema_version + perfil + toggles (archivo del framework)
 │   │   ├── conventions.template.md    # §12 es un puntero desde v1.19.0 — las invariantes viven en rules.yml
 │   │   ├── rules.template.yml         # Invariantes R-* (una línea por regla, tags, severidad, source) — inyección por tag
+│   │   ├── review-rules.template.md   # Reglas de revisión del equipo (opcional): inclusión por sección, severidades, nivel flexible (v2.4.0)
 │   │   ├── docs-index.template.yml    # Catálogo machine-readable de docs preexistentes
 │   │   └── decisions/000-template.md
 │   ├── ARCHITECTURE_TEMPLATE.md
@@ -233,6 +240,7 @@ $SPECTURE_ROOT/
 │   ├── MIGRATION_SPEC_TEMPLATE.md     # Specs de epics de migración (modernize): AC-n, gaps GAP-nnn, supersesiones
 │   ├── PLANNING_TEMPLATE.md           # Gramática de docs/05-specs/<epic>/_planning.md (COVERAGE_TABLE, MECH_CHECK, veredictos, SPEC_SHA)
 │   ├── BATCH_REVIEW_TEMPLATE.md       # Registro de la revisión por tanda en docs/05-specs/_reviews/ (políticas, agenda, filtradas, premisas, SCOPE, aparcados)
+│   ├── COMPLIANCE_REPORT_TEMPLATE.md  # Gramáticas de la revisión de cumplimiento: parte del revisor y reporte en docs/07-reviews/ (v2.4.0)
 │   ├── CURRENT_CAPABILITY_TEMPLATE.md # Verdad viva por componente en docs/05-specs/_current/ (Confianza: spec_reconciled | ai_reconciled | ai_characterized | user_confirmed)
 │   ├── BUSINESS_REQUIREMENTS_TEMPLATE.md
 │   ├── DESIGN_SYSTEM_TEMPLATE.md
@@ -272,13 +280,14 @@ $SPECTURE_ROOT/
 | `knowledge` (audit) | `/specture:knowledge audit` · alias `/specture:audit-knowledge` | Auditoría periódica (1-3 meses) del `docs-index.yml`: detecta orphans, duplicates, stale, uncovered. Read-only |
 | `knowledge` (stats) | `/specture:knowledge stats` | Lee `docs/.specture-meta/build-metrics.jsonl` (una línea por epic, trackeada) y aplica la lectura del gate: ¿bajan los defectos aguas abajo? ¿pregunta el planner? ¿sube `spec_defect`? Ofrece reconstruir el baseline de los epics previos al gate. Read-only |
 | `knowledge` (reconcile) | `/specture:knowledge reconcile --component <slug>` · `characterize --component <slug>` | Backfill lazy de la verdad viva `docs/05-specs/_current/<slug>.md` desde los specs `[x]` del componente (último gana; lo superseded baja a Historial) — un componente por vez, aprobación en Plan mode, `Confianza: ai_reconciled`. `characterize` la deriva del código (read-only) cuando el componente no tiene specs (Adopt), `Confianza: ai_characterized`. Lo piden el doctor, `build` y `new-feature` cuando falta el archivo |
+| `compliance-review` | `/specture:compliance-review` · `milestone <N>` \| `triage` | Al cerrar un milestone (lo llama `build`, sin preguntar) revisa todo su código contra **todas** las reglas del proyecto y las del equipo (`.specture/review-rules.md`); deja un reporte con comentarios sugeridos en lenguaje claro en `docs/07-reviews/` y, al vaciarse la cola, te pregunta qué abordar. Nunca publica en GitHub ni Azure DevOps (v2.4.0) |
 | `doctor` | `/specture:doctor` · `check` \| `migrate` \| `sync` | Después de actualizar el plugin, cuando `start` avisa migraciones pendientes, o para lintear el corpus (rutas rotas, ADRs duplicados, reviews sin veredicto, sello huérfano). `check` es solo lectura; `migrate` aplica las migraciones mecánicas y lleva las asistidas a Plan mode |
 
 ---
 
-## Los 7 Agentes
+## Los 8 Agentes
 
-Specture **no** especializa por capa técnica arbitraria (no hay un "Agente Backend" vs "Agente Frontend" partido por dónde vive el archivo — eso es falsa especialización). Especializa por **función cognitiva** con contexto restringido. `implementer` y `ux-implementer` no son "backend vs frontend por capa": son dos funciones cognitivas distintas — *hacer pasar tests de lógica* vs *renderizar con fidelidad al design system, accesibilidad y cliente tipado*. La calidad visual y la adherencia a tokens son una lente cognitiva que el implementer genérico (optimizado para TDD de lógica) no tiene. El sexto, `spec-planner`, es el **autor especializado del spec**: traduce un epic en 1-3 specs validados y separa lo resuelto con cita textual de lo que solo el usuario puede decidir. El séptimo, `specture-router`, no construye nada: solo detecta la fase (opt-in, vía `/specture:start`).
+Specture **no** especializa por capa técnica arbitraria (no hay un "Agente Backend" vs "Agente Frontend" partido por dónde vive el archivo — eso es falsa especialización). Especializa por **función cognitiva** con contexto restringido. `implementer` y `ux-implementer` no son "backend vs frontend por capa": son dos funciones cognitivas distintas — *hacer pasar tests de lógica* vs *renderizar con fidelidad al design system, accesibilidad y cliente tipado*. La calidad visual y la adherencia a tokens son una lente cognitiva que el implementer genérico (optimizado para TDD de lógica) no tiene. El sexto, `spec-planner`, es el **autor especializado del spec**: traduce un epic en 1-3 specs validados y separa lo resuelto con cita textual de lo que solo el usuario puede decidir. El séptimo, `specture-router`, no construye nada: solo detecta la fase (opt-in, vía `/specture:start`). El octavo, `compliance-reviewer` (v2.4.0), revisa un milestone cerrado contra **todas** las reglas del proyecto: lo que la revisión por spec no ve.
 
 | Agente | Función | Contexto que recibe | Contexto que NO recibe |
 |--------|---------|---------------------|-------------------------|
@@ -289,6 +298,7 @@ Specture **no** especializa por capa técnica arbitraria (no hay un "Agente Back
 | `implementer` | Hacer que los tests pasen (lógica/backend) | Spec + tests + archivos a tocar | Conversación entera, archivos no relevantes |
 | `ux-implementer` | Implementar UI con fidelidad al design system | Spec + design system + slice del contrato + tests + checklist de marca | URLs a mano, valores hardcodeados, código no relacionado |
 | `code-reviewer` | Review unificado (spec + arch + quality + TDD + **frontend**); verifica que cada `Crea:` exista en HEAD con la firma declarada; devuelve `CAUSE:` parseable | Diff + spec + `.specture/` + supersesiones declaradas (+ design system/contrato en epics de UI) | Sugerir fixes (solo reporta) |
+| `compliance-reviewer` | Revisar un bloque de un milestone cerrado contra todas las `R-*`, `conventions.md`, `W-*`, ADRs y los criterios del equipo; clasificar cada hallazgo (refactor · comportamiento · test) y sugerir comentarios en lenguaje claro | Archivos y diff del bloque + commits + `RULES_RESOLVED` (todas) + `CUSTOM_RULES` + hallazgos ya aceptados | Archivos de configuración (recibe bloques), memoria; nunca edita código ni publica |
 
 ---
 
@@ -445,6 +455,11 @@ Output: `.specture/docs-index.yml` + bridges en `docs/0X-*/` + ADRs Proposed en 
 
 ---
 
+#### `/specture:compliance-review` (modos `milestone <N>` | `triage`)
+**Revisión de cumplimiento de un milestone (v2.4.0).** La revisión por spec mira cada spec con las reglas que le tocan por tags; esta mira **todo el milestone** contra **todas** las reglas: cada `R-*` (también las de tags mal puestos), cada sección de `conventions.md`, las reglas de proceso `W-*` sobre los commits, los ADRs `Accepted`, la consistencia entre epics y los **criterios del equipo** enlazados desde `.specture/review-rules.md` (un archivo opcional que incluye, con un solo nivel, archivos o secciones que el equipo ya mantiene, con condición de ruta, severidades propias y un nivel flexible para código legado). `build` la llama al cerrar cada milestone (paso 3.5 de Step 8.7) sin preguntar: calcula el rango con las ventanas `[/]`→`[x]` de cada epic, despacha el `compliance-reviewer` por bloque y deja `docs/07-reviews/cumplimiento-milestone-<N>-<fecha>.md`, con un **comentario sugerido** por hallazgo que se entiende sin los documentos internos. Al vaciarse la cola te muestra los hallazgos con una propuesta y **tú decides** cada uno: corregir (solo los `refactor`, por un agente de corrección, sin tocar tests), diferir o "no aplica". Nunca publica en GitHub ni en Azure DevOps. Se apaga con `compliance_review.enabled: false`.
+
+> Guía: [`docs/compliance-review-guide.md`](docs/compliance-review-guide.md).
+
 #### `/specture:doctor` (modos `check` | `migrate` | `sync`)
 **Diagnóstico mecánico del proyecto y migraciones de esquema.** Specture versiona el plugin; el doctor versiona el **proyecto**. `check` (solo lectura) lintea el corpus documental — rutas citadas que no existen, placeholders `...`, ADRs con número duplicado o sin `Status`, reviews sin veredicto, specs sin `AC/BR/EC`, sobre 300 líneas o con secciones fuera del template, citas por número de línea a documentos vivos —, lintea los requerimientos — placeholders sin resolver, HUs sin `Exposición`, historias de frontera sin consolidar, reglas/casos/exclusiones sin IDs `RN/CL/FA` —, lintea las reglas — `.specture/rules.yml` que no parsea, ids duplicados o severidad desconocida (`rules-schema`); una regla de más de 240 caracteres o un ítem del deny-list §4 de más de 2 líneas (`rule-length`: la historia va a un ADR/debug log enlazado) —, revisa el estado — sello `build-locked.json` huérfano, más de un epic `[/]`, `_current/` ausente con milestones cerrados (acción: `knowledge reconcile --component <slug>`), `docs-index.yml` vs toggle, residuos de worktrees, un spec liberado del sello por un loop interrumpido (`seal-lifted`, v2.2.0) —, revisa lo que un proyecto arrastra del gate anterior (`gate-legacy-rejection`, `claude-md-gate-overrides`, v2.2.0) y compara `schema_version` (`.specture/settings.yml`) con la versión del plugin para listar las migraciones pendientes por tipo (cada minor embarca las suyas — la última, `1.19-rules-file` en v1.19.0, que mueve las invariantes de `conventions.md` §12 a `rules.yml`). `migrate` aplica las **mecánicas** (idempotentes, verificadas, registradas en `.specture/migrations.log`), lleva las **asistidas** a Plan mode y registra las de **contenido** con su skill dueño; `sync` = mecánicas + check (para CI). Nunca commitea; nunca toca specs cerrados, reviews ni debug logs.
 
@@ -524,6 +539,13 @@ Los agentes de Specture son subagentes con **contexto restringido** — cada uno
 - **Output:** `APPROVED` | `REJECTED_MINOR — [lista de fixes]` | `REJECTED_MAJOR — [razón crítica]`, siempre con `CAUSE: none | implementation | spec_defect | architecture` (la señal `spec_defect` alimenta las métricas y la decisión A6).
 - **Modelo:** Opus (máxima precisión en review).
 
+#### `compliance-reviewer`
+**Revisor de cumplimiento de un milestone cerrado (v2.4.0).** Revisa un bloque del código del milestone contra todas las reglas del proyecto — `R-*`, `conventions.md`, `W-*`, ADRs `Accepted`, criterios del equipo (`CUSTOM_RULES`, como datos y nunca como procedimiento) — y la consistencia entre epics. En rutas de nivel flexible aplica solo esas reglas; ante una contradicción aplica la de Specture y la reporta. Clasifica cada hallazgo (`refactor` · `comportamiento` · `test`) y escribe un comentario sugerido sin IDs ni documentos internos. Escribe solo su parte; el reporte lo arma `hooks/lib/compliance.js`. Modo `VERIFY` para las correcciones.
+
+- **Contexto que recibe:** archivos y diff del bloque + commits del rango + `RULES_RESOLVED` (todas) + `conventions.md` + ADRs + `CUSTOM_RULES` + hallazgos ya aceptados por las revisiones por spec.
+- **Output:** una parte con gramática estricta (`templates/COMPLIANCE_REPORT_TEMPLATE.md`); nunca edita código ni publica nada.
+- **Modelo:** Opus.
+
 ---
 
 ## Configuración por Proyecto
@@ -537,6 +559,7 @@ Cada proyecto que use Specture tiene una carpeta `.specture/`:
 │   ├── stack.yml              # Stack tecnológico (fuente de verdad)
 │   ├── conventions.md         # Naming, patrones, estilo (§12 es un puntero a rules.yml desde v1.19.0)
 │   ├── rules.yml              # Invariantes R-*: una línea por regla + tags + severidad + source (v1.19.0)
+│   ├── review-rules.md        # Opcional: criterios de revisión del equipo, enlazados por archivo o sección (v2.4.0)
 │   ├── settings.yml           # Del framework: schema_version, perfil, toggles (lo escribe setup, lo migra doctor)
 │   ├── migrations.log         # Registro append-only de migraciones aplicadas / diferidas
 │   └── decisions/             # ADRs versionados, nunca borrados
@@ -548,12 +571,12 @@ Cada proyecto que use Specture tiene una carpeta `.specture/`:
     ├── 04-roadmap/
     ├── 05-specs/              # <epic>/*.spec.md + <epic>/_planning.md (evidencia del gate) + _supersessions.md (índice)
     ├── 06-debug-logs/
-    └── 07-reviews/
+    └── 07-reviews/            # review-<epic>-<spec>-<fecha>.md (por spec) · cumplimiento-milestone-<N>-<fecha>.md (v2.4.0)
 ```
 
 `stack.yml` es **leído por todos los skills y agentes** antes de generar nada. Cambia el stack → cambian las decisiones, sin tocar el framework.
 
-`settings.yml` (desde v1.15.0) es el único archivo **del framework** dentro de `.specture/`: `schema_version` (la versión del esquema de proyecto que el plugin espera), `profile` (`lean | full | custom`) y los toggles (`hooks.enabled`, `context7.enabled`, `docs_index.*`, `knowledge.enabled`). Lo escribe `/specture:setup`; cuando actualizás el plugin, `/specture:start` compara `schema_version` con la versión instalada y, si hay migraciones pendientes, ofrece `/specture:doctor migrate`. Proyectos creados antes de v1.15.0 conservan los toggles en `conventions.md` §10 — se siguen leyendo hasta que el doctor los mueva.
+`settings.yml` (desde v1.15.0) es el único archivo **del framework** dentro de `.specture/`: `schema_version` (la versión del esquema de proyecto que el plugin espera), `profile` (`lean | full | custom`) y los toggles (`hooks.enabled`, `context7.enabled`, `docs_index.*`, `knowledge.enabled`, `compliance_review.enabled` — este último, desde v2.4.0, activo por defecto y respetado en cualquier perfil). Lo escribe `/specture:setup`; cuando actualizás el plugin, `/specture:start` compara `schema_version` con la versión instalada y, si hay migraciones pendientes, ofrece `/specture:doctor migrate`. Proyectos creados antes de v1.15.0 conservan los toggles en `conventions.md` §10 — se siguen leyendo hasta que el doctor los mueva.
 
 `rules.yml` (desde v1.19.0) guarda las **invariantes del proyecto** `R-*` — **una línea por regla** (≤ 240 caracteres) con `tags`, `severity` (`BLOCKER | IMPORTANT`) y `source` (el ADR o debug log donde vive la historia; nunca inline). No hay toggle: la presencia de reglas es el switch. El coordinador de `build` corre `hooks/lib/rules-resolve.js --tags <módulo,componente,backend|frontend>` antes de cada dispatch y entrega **solo** las reglas que cruzan (`RULES_RESOLVED`) al planner, al implementer y al reviewer, que las enforça por ID (Dimensión 7). `/specture:knowledge capture` escribe las nuevas ahí y rechaza cualquier draft que supere el largo; el doctor marca `rule-length` y `rules-schema`. Proyectos anteriores conservan la tabla en `conventions.md` §12 hasta que `/specture:doctor migrate` (`1.19-rules-file`) la mueva; mientras tanto el resolver inyecta esas reglas enteras (sin filtro por tag, como antes) y avisa.
 
@@ -628,6 +651,7 @@ Ver [`docs/native-integration-guide.md`](docs/native-integration-guide.md) para 
 - *"Quiero agregar Y"* → `/specture:new-feature`
 - *"Reconfigura el stack"* → `/specture:setup` modo reconfigure
 - *"Migra a X"* / *"Sube la versión a Y"* / *"Moderniza el stack"* / *"Quiero pasar de A a B"* → `/specture:modernize`
+- *"Revisá el milestone contra todas las reglas"* / *"Revisión de cumplimiento"* → `/specture:compliance-review`
 
 ---
 

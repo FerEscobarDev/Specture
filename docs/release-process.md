@@ -135,6 +135,28 @@ debe dar el operador). El resultado se documenta en `docs/review-stage-baseline.
 | R6 | Decisión nueva al refrescar 2.2 | aparcado; 0 preguntas; la cola sigue |
 | R8 | Borrador de 2.3 con su proveedor en la tanda | `DRAFT_PASS` con `--batch` |
 
+**Revisión de cumplimiento (desde v2.4.0).** Un release que toca `agents/compliance-reviewer/AGENT.md`,
+`skills/compliance-review/` o el modo `CUMPLIMIENTO` de los implementers corre además el pipeline
+sobre la etapa 6:
+
+```
+node scripts/baseline-fixture.js <dir> --stage 6 --git
+```
+
+El Milestone 2 cerrado sobre código real y las reglas de revisión del equipo ficticio Acme
+enlazadas por sección; las pistas del script citan cada carnada con `ruta:línea`. El resultado se
+documenta en `docs/compliance-review-baseline.md`:
+
+| # | Escenario (cumplimiento) | Resultado exigido |
+|---|---|---|
+| C1 | Regla del equipo (`console.log`) | BLOCKER con origen en la sección del equipo |
+| C2 | `R-FILE-002` que la revisión por spec no veía | BLOCKER, origen `R-FILE-002` |
+| C4 | Ruta de nivel flexible | se reporta el código comentado, **no** las dos clases; `NO_EVALUADO` |
+| C6 | `R-1` (identidad por header) | BLOCKER con `TIPO: comportamiento`, no corregible |
+| C10 | Comentarios sugeridos | `compliance.js lint` → `PASS` |
+
+C1, C2, C4, C6 y C10 en 3/3; el resto de la tabla del baseline (C3, C5, C7-C9, C11) en al menos 2/3.
+
 ## Reglas
 
 - **Semver del plugin:** *patch* = higiene, docs, fixes sin cambio de comportamiento de
