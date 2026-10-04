@@ -23,6 +23,7 @@
   "agents": [
     "architecture-validator",
     "code-reviewer",
+    "compliance-reviewer",
     "implementer",
     "spec-planner",
     "specture-router",
@@ -48,13 +49,15 @@
     "independent-review",
     "fresh-verification",
     "human-approval",
-    "schema-drift"
+    "schema-drift",
+    "compliance-review"
   ],
   "platformAdaptations": {
     "agentFiles": "copilot/agents/*.agent.md — generated from agents/<name>/AGENT.md by scripts/copilot-mirrors.js (npm run mirrors:sync); never edited by hand",
     "agentTools": {
       "architecture-validator": ["read", "search"],
       "code-reviewer": ["read", "search", "edit", "execute"],
+      "compliance-reviewer": ["read", "search", "edit"],
       "implementer": ["read", "search", "edit", "execute"],
       "spec-planner": ["read", "search", "edit"],
       "specture-router": ["read", "search"],
