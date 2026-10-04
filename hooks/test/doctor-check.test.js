@@ -668,6 +668,57 @@ test("rules lint: schema errors and over-long rules in rules.yml, over-long deny
   assert.deepEqual(runDoctor(clean).json.findings.filter((f) => f.group === "rules"), []);
 });
 
+test("review-rules: the template is clean; grammar, includes, nesting, size and whole-agent includes are reported", () => {
+  const template = fs.readFileSync(path.join(__dirname, "..", "..", "templates", "project-config", "review-rules.template.md"), "utf8");
+  const clean = createProject({ ...CLEAN, ".specture/review-rules.md": template });
+  assert.deepEqual(runDoctor(clean).json.findings, [], "the template as setup installs it");
+
+  const projectRoot = createProject({
+    ...CLEAN,
+    ".claude/agents/acme-reviewer.md": "---\nname: acme-reviewer\ndescription: x\n---\n\n## Bloqueantes\n\n- sin secretos\n",
+    "docs/estandares/anidado.md": "## Incluye\n- otra.md\n",
+    "docs/estandares/grande.md": "## Grande\n\n" + "x".repeat(61000) + "\n",
+    ".specture/review-rules.md": [
+      "## Incluye",
+      "- .claude/agents/acme-reviewer.md",
+      "- docs/estandares/no-existe.md",
+      "- docs/estandares/anidado.md",
+      "- docs/estandares/grande.md § Grande",
+      "## Reglas",
+      "- **RV-1** [CRITICO] algo",
+      ""
+    ].join("\n")
+  });
+  const { status, json } = runDoctor(projectRoot);
+  const found = json.findings.filter((f) => f.group === "compliance");
+  const by = (check) => found.filter((f) => f.check === check);
+
+  assert.equal(status, 1);
+  assert.ok(found.every((f) => f.file === ".specture/review-rules.md"));
+  assert.equal(by("review-rules-agent-include")[0].severity, "WARNING");
+  assert.ok(by("review-rules-include").some((f) => /no-existe\.md` no existe \(línea 3\)/.test(f.detail)));
+  assert.ok(by("review-rules-include").some((f) => /anidado\.md` declara su propio "## Incluye"/.test(f.detail)));
+  assert.ok(by("review-rules-size").some((f) => f.severity === "ERROR" && /grande\.md/.test(f.detail)));
+  assert.ok(by("review-rules-schema").some((f) => /severidad desconocida "CRITICO" en RV-1 \(línea 7\)/.test(f.detail)));
+  assert.ok(found.every((f) => f.action));
+});
+
+test("review-rules-glob: a cuando: or flexible glob that matches no tracked file is a WARNING (git only)", () => {
+  const projectRoot = createProject({
+    ...CLEAN,
+    "api/Orders.cs": "class Orders {}\n",
+    "docs/estandares/guia.md": "## Backend\n\n- sin try/catch\n",
+    ".specture/review-rules.md": "## Incluye\n- docs/estandares/guia.md § Backend — cuando: *.cs, web/src/**\n\n## Nivel flexible\n- rutas: legacy/**\n"
+  });
+  assert.deepEqual(runDoctor(projectRoot).json.findings.filter((f) => f.group === "compliance"), [], "no git → glob check skipped");
+
+  spawnSync("git", ["init", "-q"], { cwd: projectRoot });
+  spawnSync("git", ["add", "."], { cwd: projectRoot });
+  const globs = runDoctor(projectRoot).json.findings.filter((f) => f.check === "review-rules-glob");
+  assert.deepEqual(globs.map((f) => f.detail.split("`")[1]).sort(), ["legacy/**", "web/src/**"]);
+  assert.ok(globs.every((f) => f.severity === "WARNING"));
+});
+
 test("flags off-template spec sections with a suggested destination; template sections pass", () => {
   const projectRoot = createProject({
     ...CLEAN,
