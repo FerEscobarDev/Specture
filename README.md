@@ -177,7 +177,8 @@ $SPECTURE_ROOT/
 │   ├── lib/rules-resolve.js           # Rules Resolution: --tags a,b | --all → bloque RULES_RESOLVED por dispatch (v1.19.0)
 │   ├── lib/review-rules.js            # Parser/lint de .specture/review-rules.md (reglas del equipo: inclusión por sección, un nivel, nivel flexible) (v2.4.0)
 │   ├── lib/review-rules-resolve.js    # Custom Rules Resolution: --spec | --paths | --paths-file | --all → bloque CUSTOM_RULES (v2.4.0)
-│   ├── lib/compliance.js              # Revisión de cumplimiento: range · lint · assemble · stub · triage · correction · status · record (v2.4.0)
+│   ├── lib/compliance.js              # Revisión de cumplimiento: range (--milestone · --pr · --branch) · lint · assemble · stub · triage · correction · status · record (v2.4.0)
+│   ├── lib/pr.js                      # Lectura de PRs de GitHub (gh pr view) y Azure DevOps (az repos pr show) y de ramas locales — solo lectura (v2.5.0)
 │   ├── lib/current-state.js           # Componentes de architecture.md y specs [x] por componente — knowledge reconcile (v1.19.0)
 │   ├── lib/seal.js                    # Sello del build (schema v3: spec_sha/spec_paths/allowed_paths + specs[]; v2/v1 legacy; clasificación de denies)
 │   ├── lib/seal-cli.js                # Único escritor del sello: write · merge-spec · unseal-spec · lift-spec · supersede · release · show
@@ -280,7 +281,7 @@ $SPECTURE_ROOT/
 | `knowledge` (audit) | `/specture:knowledge audit` · alias `/specture:audit-knowledge` | Auditoría periódica (1-3 meses) del `docs-index.yml`: detecta orphans, duplicates, stale, uncovered. Read-only |
 | `knowledge` (stats) | `/specture:knowledge stats` | Lee `docs/.specture-meta/build-metrics.jsonl` (una línea por epic, trackeada) y aplica la lectura del gate: ¿bajan los defectos aguas abajo? ¿pregunta el planner? ¿sube `spec_defect`? Ofrece reconstruir el baseline de los epics previos al gate. Read-only |
 | `knowledge` (reconcile) | `/specture:knowledge reconcile --component <slug>` · `characterize --component <slug>` | Backfill lazy de la verdad viva `docs/05-specs/_current/<slug>.md` desde los specs `[x]` del componente (último gana; lo superseded baja a Historial) — un componente por vez, aprobación en Plan mode, `Confianza: ai_reconciled`. `characterize` la deriva del código (read-only) cuando el componente no tiene specs (Adopt), `Confianza: ai_characterized`. Lo piden el doctor, `build` y `new-feature` cuando falta el archivo |
-| `compliance-review` | `/specture:compliance-review` · `milestone <N>` \| `triage` | Al cerrar un milestone (lo llama `build`, sin preguntar) revisa todo su código contra **todas** las reglas del proyecto y las del equipo (`.specture/review-rules.md`); deja un reporte con comentarios sugeridos en lenguaje claro en `docs/07-reviews/` y, al vaciarse la cola, te pregunta qué abordar. Nunca publica en GitHub ni Azure DevOps (v2.4.0) |
+| `compliance-review` | `/specture:compliance-review` · `milestone <N>` \| `triage` \| `pr <número\|url>` \| `rama <rama>` | Sobre un PR de GitHub o Azure DevOps o una rama local, a pedido y solo lectura (v2.5.0). Al cerrar un milestone (lo llama `build`, sin preguntar) revisa todo su código contra **todas** las reglas del proyecto y las del equipo (`.specture/review-rules.md`); deja un reporte con comentarios sugeridos en lenguaje claro en `docs/07-reviews/` y, al vaciarse la cola, te pregunta qué abordar. Nunca publica en GitHub ni Azure DevOps (v2.4.0) |
 | `doctor` | `/specture:doctor` · `check` \| `migrate` \| `sync` | Después de actualizar el plugin, cuando `start` avisa migraciones pendientes, o para lintear el corpus (rutas rotas, ADRs duplicados, reviews sin veredicto, sello huérfano). `check` es solo lectura; `migrate` aplica las migraciones mecánicas y lleva las asistidas a Plan mode |
 
 ---
@@ -455,8 +456,10 @@ Output: `.specture/docs-index.yml` + bridges en `docs/0X-*/` + ADRs Proposed en 
 
 ---
 
-#### `/specture:compliance-review` (modos `milestone <N>` | `triage`)
+#### `/specture:compliance-review` (modos `milestone <N>` | `triage` | `pr <número|url>` | `rama <rama>`)
 **Revisión de cumplimiento de un milestone (v2.4.0).** La revisión por spec mira cada spec con las reglas que le tocan por tags; esta mira **todo el milestone** contra **todas** las reglas: cada `R-*` (también las de tags mal puestos), cada sección de `conventions.md`, las reglas de proceso `W-*` sobre los commits, los ADRs `Accepted`, la consistencia entre epics y los **criterios del equipo** enlazados desde `.specture/review-rules.md` (un archivo opcional que incluye, con un solo nivel, archivos o secciones que el equipo ya mantiene, con condición de ruta, severidades propias y un nivel flexible para código legado). `build` la llama al cerrar cada milestone (paso 3.5 de Step 8.7) sin preguntar: calcula el rango con las ventanas `[/]`→`[x]` de cada epic, despacha el `compliance-reviewer` por bloque y deja `docs/07-reviews/cumplimiento-milestone-<N>-<fecha>.md`, con un **comentario sugerido** por hallazgo que se entiende sin los documentos internos. Al vaciarse la cola te muestra los hallazgos con una propuesta y **tú decides** cada uno: corregir (solo los `refactor`, por un agente de corrección, sin tocar tests), diferir o "no aplica". Nunca publica en GitHub ni en Azure DevOps. Se apaga con `compliance_review.enabled: false`.
+
+**Revisión de un PR o una rama (v2.5.0).** `pr <número|url>` revisa un pull request de GitHub o de Azure DevOps y `rama <rama> [--base <rama>]` una rama local, con las mismas reglas y **las de la rama destino** —un PR nunca afloja las reglas que lo revisan; si las modifica, el reporte lo dice—. Solo lee (`gh pr view`, `az repos pr show`), no cambia tu rama y deja un reporte sin commitear, sin triage ni corrección: los comentarios sugeridos son para que los copies tú. Nunca publica nada en el PR.
 
 > Guía: [`docs/compliance-review-guide.md`](docs/compliance-review-guide.md).
 

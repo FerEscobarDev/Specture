@@ -87,3 +87,23 @@ quedó igual (21/21) y el `VERIFY` del revisor dio los 4 resueltos y ningún hal
 y no `refactor(cumplimiento): F-n …`; cumplen W-3 pero no citan el hallazgo. Al renombrar
 `DownloadFile.js` a kebab-case, el archivo de Acme quedó citando el nombre viejo — lo esperado
 cuando gana Specture: el conflicto queda listado para que el equipo corrija la fuente.
+
+## Resultados — PR y rama (v2.5.0)
+
+**Modo `rama` con el agente real** (etapa 6, árbol de trabajo en el commit base: los archivos
+nuevos no existen ahí): `compliance.js range --branch master --base <base>` → 7 archivos, 4
+bloques. Las cuatro partes se escribieron leyendo los archivos desde `FILES_ROOT` (la copia de la
+cabeza) y con las reglas copiadas de la rama destino; `git status` vacío después de los despachos;
+`lint` → `PASS`. C1-C8, C10 y C11 ✓ (C9 ✓: `git status` vacío antes del armado; después solo
+aparece el reporte, que en este modo no se commitea). El reporte salió con `**Rama:**`,
+`**TRIAGE:** NO REQUERIDO` y `**Publicado:** nada`. Extras legítimos propios de un PR: dos hallazgos
+de §7 (la descarga no tiene tests — un código que no pasó por el TDD del build) y la validación de
+entrada de Acme.
+
+**`pr.js` contra GitHub real** (solo lectura, un repositorio público clonado en un directorio de
+pruebas): plataforma detectada por el remoto, `gh pr view` devolvió base y cabeza, `git fetch` trajo
+`refs/pull/<n>/head` a `refs/specture/pr/<n>/head` con la misma cabeza que informó GitHub, y el
+checkout no cambió de rama. **Azure DevOps** no se pudo verificar contra un PR real (sin `az` en el
+equipo del release): queda cubierto por los tests con una CLI falsa (argumentos exactos, organización
+tomada de la URL, extensión faltante, falta de sesión); la verificación real queda como checklist
+para el primer uso.

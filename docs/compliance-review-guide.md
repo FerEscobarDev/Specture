@@ -1,4 +1,4 @@
-# Cómo funciona la revisión de cumplimiento (v2.4.0)
+# Cómo funciona la revisión de cumplimiento (v2.4.0 · PR y rama desde v2.5.0)
 
 > Guía para quien usa `/specture:build` o adopta Specture en un repositorio que ya tiene sus
 > propios criterios de revisión. El procedimiento está en `skills/compliance-review/SKILL.md`
@@ -31,6 +31,8 @@ tags. Hay cosas que nunca ve:
   trabaja, el reporte se guarda y la cola sigue. Lo ves al final de la tanda.
 - **A pedido**, cuando quieras: `/specture:compliance-review milestone <N>` (revisa y te pregunta
   enseguida) o `/specture:compliance-review triage` (decide lo que quedó pendiente).
+- **Sobre un PR o una rama** (v2.5.0): `/specture:compliance-review pr <número|url>` o
+  `rama <rama>` — ver "Revisar un PR o una rama".
 - Está **activa por defecto** en cualquier perfil. Para apagar la llamada automática:
   `compliance_review.enabled: false` en `.specture/settings.yml`. Pedirla a mano siempre funciona.
 
@@ -150,6 +152,45 @@ reportes quedaban en otra carpeta y no tenían en cuenta las reglas de Specture.
    encabezado, el doctor avisa.
 3. Desde ahí el implementer recibe esos criterios en cada spec, y la revisión de cumplimiento los
    aplica junto con todas las reglas de Specture, con un solo reporte en `docs/07-reviews/`.
+
+## Revisar un PR o una rama (v2.5.0)
+
+La misma revisión sirve para código que no pasó por el build: el PR de alguien del equipo o tu
+rama antes de abrir el PR.
+
+```
+/specture:compliance-review pr 123
+/specture:compliance-review pr https://github.com/acme/app/pull/123
+/specture:compliance-review pr https://dev.azure.com/acme/Ventas/_git/app/pullrequest/45
+/specture:compliance-review rama feature/pedidos --base develop
+```
+
+- **Solo lee.** De GitHub usa `gh pr view` y de Azure DevOps `az repos pr show`; nunca comenta,
+  aprueba ni cambia nada en la plataforma, y nunca lee la descripción del PR. Trae la rama del PR a
+  referencias locales (`refs/specture/pr/<n>/`) **sin cambiar tu rama**.
+- **Reglas de la rama destino.** El PR se revisa con las reglas de la rama a la que apunta, nunca
+  con las que trae el propio PR. Si el PR modifica archivos de reglas (`conventions.md`,
+  `rules.yml`, `review-rules.md` o un archivo que este incluye), el reporte lo dice en
+  "Cambios a las reglas".
+- **Rama y destino.** Además de las reglas de siempre, revisa el nombre de la rama y su rama
+  destino contra las reglas de proceso (W-1, W-2, W-4) y los criterios del equipo sobre ramas.
+- **El reporte** queda en `docs/07-reviews/cumplimiento-pr-gh-<n>-<fecha>.md`,
+  `cumplimiento-pr-az-<n>-<fecha>.md` o `cumplimiento-rama-<rama>-<fecha>.md`, **sin commitear**,
+  sin triage y sin corrección: es para que lo leas y copies los comentarios sugeridos que quieras.
+- **La base de una rama** es la que indiques; si no, la que declara W-4 para ese tipo de rama; si
+  no, la rama por defecto del remoto. Solo cuenta lo commiteado.
+
+**Qué necesitas instalado (solo lectura):**
+
+| Plataforma | Herramienta | Una sola vez |
+|---|---|---|
+| GitHub | [GitHub CLI](https://cli.github.com) (`gh`) | `gh auth login` |
+| Azure DevOps | [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli) (`az`) | `az extension add --name azure-devops` y `az login` (o `AZURE_DEVOPS_EXT_PAT` con un token de lectura de código) |
+| Rama local | nada | — |
+
+Si falta algo, la revisión no empieza y te dice exactamente qué correr. La plataforma se detecta
+por la URL del PR o por el remoto (`origin`); con un número suelto y un remoto que no es de
+GitHub ni de Azure DevOps, indica `--platform github|azure`.
 
 ## Qué revisa el doctor
 

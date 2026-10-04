@@ -157,6 +157,14 @@ documenta en `docs/compliance-review-baseline.md`:
 
 C1, C2, C4, C6 y C10 en 3/3; el resto de la tabla del baseline (C3, C5, C7-C9, C11) en al menos 2/3.
 
+**PR y rama (desde v2.5.0).** Un release que toca `hooks/lib/pr.js`, los modos `pr`/`rama` del
+skill o el `CONTEXT`/`FILES_ROOT` del revisor corre además las mismas carnadas en modo `rama`: la
+etapa 6 con el árbol de trabajo en el commit base (`git checkout <base>`) y
+`compliance.js range --branch master --base <base>`. Se exige lo mismo que en C1-C11, más que cada
+parte se haya escrito leyendo los archivos desde `FILES_ROOT` (en el árbol de trabajo no existen)
+y con las reglas de `<estado>/base/`. Antes del tag se verifica `pr.js` contra un PR real de
+GitHub (de solo lectura: un repositorio público alcanza) y, cuando se pueda, uno de Azure DevOps.
+
 ## Reglas
 
 - **Semver del plugin:** *patch* = higiene, docs, fixes sin cambio de comportamiento de
