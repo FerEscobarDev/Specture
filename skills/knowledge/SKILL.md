@@ -354,7 +354,10 @@ the Spec Planning Gate was designed to be judged by (`docs/spec-planning-gate-de
    (written by `compliance.js record` after the triage) — never an epic, never a malformed line —
    summed into a `cumplimiento:` line (findings by severity, the user's triage, corrected and not
    corrected). When half or more of the decided findings were "no aplica", the reading flags it:
-   the rules behind them are noise for the implementer and the reviewer.
+   the rules behind them are noise for the implementer and the reviewer. Since v2.7.0 each epic
+   line carries `coordinator_mode` (`subagent` | `inline`; a line without it is unknown, not
+   inline — the table's `mode` column, a `gate modo del coordinador:` line with the count per
+   mode) and `epic_coordinator_dispatches` (averaged per epic), and `parked` is always written (0|1).
 2. **No file yet** → say so and offer the baseline: *"No hay métricas todavía. ¿Reconstruyo
    el baseline de los epics cerrados antes del gate (`--baseline --write`)?"* On yes:
    ```

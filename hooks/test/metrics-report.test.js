@@ -52,7 +52,7 @@ test("summary: per-epic table, aggregates split by source, --last, --json", () =
   const text = run(root);
   assert.equal(text.status, 0, text.stderr);
   assert.match(text.stdout, /3 epic\(s\)/);
-  assert.match(text.stdout, /^epic-1\.1-a \| gate \| 2 \| 1 \| - \| 6/m);
+  assert.match(text.stdout, /^epic-1\.1-a \| gate \| 2 \| 1 \| - \| - \| 6/m);
   assert.match(text.stdout, /^gate: 2 epic\(s\)/m);
   assert.match(text.stdout, /^baseline: 1 epic\(s\)/m);
   assert.match(text.stdout, /Bajan needs_context\/iteration_cap\/blocked por epic \(2 → 0\)/);
@@ -149,15 +149,60 @@ test("v2.2 fields: averaged like the other numeric fields; `effort` as an object
   for (const key of V22_FIELDS) assert.equal(onlyOld.json.gate[key], null, key);
 });
 
-test("summary: the table gains the `rev`, `rnd` and `sup-loop` columns; old lines print `-`", () => {
+test("summary: the table gains the `rev`, `mode`, `rnd` and `sup-loop` columns; old lines print `-`", () => {
   const root = createProject({
-    "docs/.specture-meta/build-metrics.jsonl": [line("epic-0.9-old"), line("epic-1.1-a", { gate_rounds: 3, supersede_loops: 2, batch_id: "2026-09-29-cobros", review_questions: 5 })].join("\n") + "\n"
+    "docs/.specture-meta/build-metrics.jsonl": [
+      line("epic-0.9-old"),
+      line("epic-1.1-a", { gate_rounds: 3, supersede_loops: 2, batch_id: "2026-09-29-cobros", review_questions: 5, coordinator_mode: "subagent", epic_coordinator_dispatches: 1 }),
+      line("epic-1.2-b", { coordinator_mode: "inline", epic_coordinator_dispatches: 0 }),
+      line("epic-1.3-c", { coordinator_mode: "remote" })
+    ].join("\n") + "\n"
   });
   const { status, stdout } = run(root);
   assert.equal(status, 0);
-  assert.match(stdout, /^epic \| source \| specs \| Q \| rev \| R \| c7 \| mech \| val \| rnd \| nctx \| cap \| blk \| spec_def \| rej m\/M \| sup \| sup-loop \| outcome$/m);
-  assert.match(stdout, /^epic-1\.1-a \| gate \| 2 \| 1 \| 5 \| 6 \| 0 \| 1 \| 3 \| 3 \| 0 \| 0 \| 0 \| 0 \| 1\/0 \| 0 \| 2 \| DONE$/m);
-  assert.match(stdout, /^epic-0\.9-old \| gate \| 2 \| 1 \| - \| 6 \| 0 \| 1 \| 3 \| - \| 0 \| 0 \| 0 \| 0 \| 1\/0 \| 0 \| - \| DONE$/m);
+  assert.match(stdout, /^epic \| source \| specs \| Q \| rev \| mode \| R \| c7 \| mech \| val \| rnd \| nctx \| cap \| blk \| spec_def \| rej m\/M \| sup \| sup-loop \| outcome$/m);
+  assert.match(stdout, /^epic-1\.1-a \| gate \| 2 \| 1 \| 5 \| sub \| 6 \| 0 \| 1 \| 3 \| 3 \| 0 \| 0 \| 0 \| 0 \| 1\/0 \| 0 \| 2 \| DONE$/m);
+  assert.match(stdout, /^epic-1\.2-b \| gate \| 2 \| 1 \| - \| inl \| 6 \| /m);
+  assert.match(stdout, /^epic-1\.3-c \| gate \| 2 \| 1 \| - \| - \| 6 \| /m, "an unknown mode prints `-`");
+  assert.match(stdout, /^epic-0\.9-old \| gate \| 2 \| 1 \| - \| - \| 6 \| 0 \| 1 \| 3 \| - \| 0 \| 0 \| 0 \| 0 \| 1\/0 \| 0 \| - \| DONE$/m);
+});
+
+// The v2.7.0 per-epic coordinator fields: `coordinator_mode` (string, carried like park_class)
+// and `epic_coordinator_dispatches` (numeric, averaged like the other per-epic numerics).
+test("v2.7 coordinator fields: counted by mode, dispatches averaged per epic; a line without coordinator_mode is unknown, not inline", () => {
+  const root = createProject({
+    "docs/.specture-meta/build-metrics.jsonl": [
+      line("epic-0.9-old"),
+      line("epic-2.1-a", { coordinator_mode: "subagent", epic_coordinator_dispatches: 1, parked: 0 }),
+      line("epic-2.2-b", { coordinator_mode: "subagent", epic_coordinator_dispatches: 2, parked: 1, park_class: "datos" }),
+      line("epic-2.3-c", { coordinator_mode: "inline", epic_coordinator_dispatches: 0, parked: 0 }),
+      line("epic-2.4-d", { coordinator_mode: "remote" })
+    ].join("\n") + "\n"
+  });
+  const { status, json, stderr } = run(root, "--json");
+  assert.equal(status, 0, stderr);
+  assert.equal(json.skipped, 0);
+  assert.equal(json.gate.count, 5);
+  assert.deepEqual(json.gate.modes, { subagent: 2, inline: 1, desconocido: 2 }, "absent and unrecognised modes are unknown");
+  assert.equal(json.gate.epic_coordinator_dispatches, 1, "mean over the lines that carry it (1, 2, 0)");
+  assert.equal(json.gate.parked, 0.33, "parked keeps its per-epic numeric meaning");
+  assert.equal(json.entries[1].coordinator_mode, "subagent", "carried, never averaged");
+  assert.ok(!("coordinator_mode" in json.gate), "coordinator_mode is not numeric: it is not averaged");
+  assert.deepEqual(json.baseline.modes, { subagent: 0, inline: 0, desconocido: 0 });
+
+  const text = run(root).stdout;
+  assert.match(text, /^gate modo del coordinador: subagente 2 · en línea 1 · sin dato 2 · despachos del coordinador del epic\/epic 1$/m);
+  assert.doesNotMatch(text, /^baseline modo del coordinador:/m);
+
+  // Lines written before v2.7.0: they read as before, the mode is unknown, no reading line.
+  const onlyOld = createProject({ "docs/.specture-meta/build-metrics.jsonl": [line("epic-0.9-old"), line("epic-1.1-a", { parked: 0 })].join("\n") + "\n" });
+  const old = run(onlyOld, "--json");
+  assert.equal(old.status, 0);
+  assert.equal(old.json.skipped, 0);
+  assert.deepEqual(old.json.gate.modes, { subagent: 0, inline: 0, desconocido: 2 });
+  assert.equal(old.json.gate.epic_coordinator_dispatches, null);
+  assert.equal(old.json.gate.parked, 0);
+  assert.doesNotMatch(run(onlyOld).stdout, /modo del coordinador/);
 });
 
 // The v2.3.0 review-stage fields. The six of the register's `## MÉTRICAS` line are per batch
@@ -374,6 +419,10 @@ test("--baseline reconstructs a closed epic from reviews, _planning.md and git; 
   assert.equal(e.outcome, "DONE");
   assert.equal(e.tokens, null);
   assert.equal(e.planner_dispatches, null);
+  // v2.7.0 coordinator fields: the epic ran before the epic coordinator existed — null, like v2.3's review fields.
+  assert.equal(e.coordinator_mode, null);
+  assert.equal(e.epic_coordinator_dispatches, null);
+  assert.equal(e.parked, null);
   assert.equal(json.wouldWrite, 1);
 
   const first = run(root, "--baseline", "--write");
@@ -387,4 +436,5 @@ test("--baseline reconstructs a closed epic from reviews, _planning.md and git; 
   const summary = run(root, "--json");
   assert.equal(summary.json.baseline.count, 1);
   assert.equal(summary.json.gate.count, 0);
+  assert.deepEqual(summary.json.baseline.modes, { subagent: 0, inline: 0, desconocido: 1 }, "a baseline line's null mode is unknown");
 });

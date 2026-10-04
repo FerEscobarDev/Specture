@@ -38,6 +38,11 @@
 //   per `batch_id` (the first line of the batch that carries each one) — averaged per batch and
 //   totalled in `review_totals`. R1 ("el planner no pregunta") counts open_questions + the
 //   batch's review_questions on a line that carries `batch_id`.
+// Additive fields (v2.7.0, per epic — skills/build/EPIC_COORDINATOR.md): `coordinator_mode`
+//   ("subagent" | "inline"; string, carried — counted by mode in `modes`; absent or any other
+//   value is unknown, never "inline") and `epic_coordinator_dispatches` (numeric, averaged over
+//   the lines that carry it; 0 or absent in inline mode). `parked` keeps its v2.3.0 meaning; from
+//   v2.7.0 on the coordinator always writes it (0|1).
 // Compliance records (v2.4.0, `kind: "compliance"` — one per milestone report, appended by
 //   `compliance.js record` after the triage): { kind, milestone, report, status,
 //   findings: {BLOCKER, IMPORTANT, NIT}, tipo: {refactor, comportamiento, test, proceso},
@@ -63,7 +68,9 @@ const NUMERIC = [
   "validator_dispatches_loop", "planner_dispatches_loop", "supersede_loops", "supersede_tests", "j9_regressions",
   "exec_blocked_compile", "exec_blocked_runtime", "baseline_failures", "late_findings",
   // v2.3.0 — per epic
-  "parked"
+  "parked",
+  // v2.7.0 — per epic
+  "epic_coordinator_dispatches"
 ];
 // v2.3.0 — per batch (one review register), read once per `batch_id`.
 const BATCH_FIELDS = ["review_rounds", "review_questions", "review_filtered", "review_human_contacts", "late_questions", "premises_false"];
@@ -122,6 +129,16 @@ function batchIdOf(entry) {
   return typeof entry.batch_id === "string" && entry.batch_id.trim() !== "" ? entry.batch_id.trim() : null;
 }
 
+// v2.7.0 — who ran the epic: "subagent" | "inline", or null (absent, or a value the reader does
+// not know) — unknown, never read as "inline".
+const COORDINATOR_MODES = ["subagent", "inline"];
+const MODE_COLUMN = { subagent: "sub", inline: "inl" };
+
+function coordinatorModeOf(entry) {
+  const mode = typeof entry.coordinator_mode === "string" ? entry.coordinator_mode.trim().toLowerCase() : null;
+  return COORDINATOR_MODES.includes(mode) ? mode : null;
+}
+
 // batch_id → {field: value} with the first value each BATCH_FIELDS field takes in the batch.
 function batchFigures(entries) {
   const batches = new Map();
@@ -160,6 +177,8 @@ function aggregate(entries) {
   out.review_unbatched = entries.filter((e) => batchIdOf(e) === null && BATCH_FIELDS.some((k) => isNumber(e[k]))).length;
   const asked = entries.map((e) => askedQuestions(e, batches)).filter((q) => q !== null);
   out.zero_question_share = asked.length === 0 ? null : Math.round((asked.filter((q) => q === 0).length / asked.length) * 100) / 100;
+  out.modes = { subagent: 0, inline: 0, desconocido: 0 };
+  for (const e of entries) out.modes[coordinatorModeOf(e) || "desconocido"]++;
   out.downstream_defects = mean(entries.map((e) => sumOrNull([e.needs_context_spec, e.iteration_cap_spec, e.blocked_spec])));
   out.tokens = mean(entries.map((e) => (e.tokens && typeof e.tokens === "object" ? (e.tokens.input || 0) + (e.tokens.output || 0) : null)));
   out.outcomes = entries.reduce((acc, e) => ({ ...acc, [e.outcome || "unknown"]: (acc[e.outcome || "unknown"] || 0) + 1 }), {});
@@ -244,17 +263,21 @@ function renderSummary(result) {
   out.push(`metrics-report: ${result.file} — ${result.total} epic(s)${result.shown !== result.total ? `, showing last ${result.shown}` : ""}${result.skipped ? `, ${result.skipped} malformed line(s) skipped` : ""}`);
   out.push("");
   // `rev` = the line's review_questions (its batch's figure; the aggregate counts it once per batch).
-  out.push("epic | source | specs | Q | rev | R | c7 | mech | val | rnd | nctx | cap | blk | spec_def | rej m/M | sup | sup-loop | outcome");
+  // `mode` = coordinator_mode: `sub` (epic coordinator in a subagent) | `inl` (inline) | `-` (unknown).
+  out.push("epic | source | specs | Q | rev | mode | R | c7 | mech | val | rnd | nctx | cap | blk | spec_def | rej m/M | sup | sup-loop | outcome");
   for (const e of result.entries) {
     const v = (x) => (x === null || x === undefined ? "-" : x);
     const rr = e.review_rejections || {};
-    out.push(`${e.epic} | ${e.source || "gate"} | ${v(e.specs)} | ${v(e.open_questions)} | ${v(e.review_questions)} | ${v(e.resolved_alone)} | ${v(e.c7_rejections)} | ${v(e.mech_check_failures)} | ${v(e.validator_dispatches)} | ${v(e.gate_rounds)} | ${v(e.needs_context_spec)} | ${v(e.iteration_cap_spec)} | ${v(e.blocked_spec)} | ${v(e.reviewer_rejected_major_spec_defect)} | ${v(rr.minor)}/${v(rr.major)} | ${v(e.supersessions)} | ${v(e.supersede_loops)} | ${v(e.outcome)}`);
+    out.push(`${e.epic} | ${e.source || "gate"} | ${v(e.specs)} | ${v(e.open_questions)} | ${v(e.review_questions)} | ${v(MODE_COLUMN[coordinatorModeOf(e)])} | ${v(e.resolved_alone)} | ${v(e.c7_rejections)} | ${v(e.mech_check_failures)} | ${v(e.validator_dispatches)} | ${v(e.gate_rounds)} | ${v(e.needs_context_spec)} | ${v(e.iteration_cap_spec)} | ${v(e.blocked_spec)} | ${v(e.reviewer_rejected_major_spec_defect)} | ${v(rr.minor)}/${v(rr.major)} | ${v(e.supersessions)} | ${v(e.supersede_loops)} | ${v(e.outcome)}`);
   }
   out.push("");
   for (const [label, agg] of [["gate", result.gate], ["baseline", result.baseline]]) {
     out.push(`${label}: ${agg.count} epic(s) · defectos aguas abajo/epic ${agg.downstream_defects ?? "-"} · spec_defect/epic ${agg.reviewer_rejected_major_spec_defect ?? "-"} · open_questions=0 en ${agg.zero_question_share === null ? "-" : Math.round(agg.zero_question_share * 100) + " %"} · c7/epic ${agg.c7_rejections ?? "-"} · tokens/epic ${agg.tokens ?? "-"}`);
     if (agg.batches > 0) {
       out.push(`${label} revisión: ${agg.batches} tanda(s) · preguntas/tanda ${agg.review_questions ?? "-"} (total ${agg.review_totals.review_questions ?? "-"}) · filtradas/tanda ${agg.review_filtered ?? "-"} · contactos/tanda ${agg.review_human_contacts ?? "-"} · late/tanda ${agg.late_questions ?? "-"} · premisas falsas/tanda ${agg.premises_false ?? "-"} · aparcados/epic ${agg.parked ?? "-"}`);
+    }
+    if (agg.modes.subagent + agg.modes.inline > 0) {
+      out.push(`${label} modo del coordinador: subagente ${agg.modes.subagent} · en línea ${agg.modes.inline} · sin dato ${agg.modes.desconocido} · despachos del coordinador del epic/epic ${agg.epic_coordinator_dispatches ?? "-"}`);
     }
   }
   if (result.compliance && result.compliance.count > 0) {
@@ -403,6 +426,9 @@ function reconstructEpic(projectRoot, epicSlug, epicState, commits, gitOk, plugi
     parked: null,
     park_class: null,
     premises_false: null,
+    // v2.7.0 coordinator fields: the epic ran before the epic coordinator existed.
+    coordinator_mode: null,
+    epic_coordinator_dispatches: null,
     outcome: epicState === "done" ? "DONE" : epicState === "in-progress" ? "ESCALATED" : "unknown",
     tokens: null
   };
