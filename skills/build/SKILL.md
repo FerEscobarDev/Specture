@@ -8,11 +8,10 @@ description: 'Use when `docs/04-roadmap/ROADMAP.md` exists and contains epics ma
 You are the **Coordinator** of the build phase. You do NOT write code, tests, reviews, or specs directly. Your job is to:
 
 1. Build the queue of ready epics and, since v2.3.0, **review the batch with the user in one sitting** (`build/REVIEW_STAGE.md`) before executing it; then lock one epic at a time.
-2. Run the **Spec Planning Gate** per epic: dispatch the `spec-planner`, resolve its open questions with the user (one budget of two rounds), validate by rounds, commit the specs + `_planning.md`.
-3. Dispatch one fresh **epic-agent** per epic, whose complete procedure is `build/EPIC_LOOP.md` (TDD → review → verification over the validated specs).
-4. Process each epic-agent's report before starting the next — including the **supersession loop**, which fixes old tests broken by design without asking the user.
-5. Mark progress in `ROADMAP.md` and release the seal.
-6. Run the post-epic steps (8.5 learnings, 8.7 reconciliation).
+2. Run the **Spec Planning Gate** per epic for an epic the review did not cover: dispatch the `spec-planner`, resolve its open questions with the user (one budget of two rounds), validate by rounds, commit the specs + `_planning.md`.
+3. Dispatch one fresh **epic coordinator** per epic (`build/EPIC_COORDINATOR.md`, since v2.7.0): it refreshes and seals the specs, dispatches the **epic-agent** (`build/EPIC_LOOP.md`: TDD → review → verification), runs every loop its reports need — the **supersession loop** included, which fixes old tests broken by design without asking the user — releases the seal and writes the metrics, and hands you back a short `EPIC_REPORT`. It never asks: what needs the user comes back to you.
+4. Process each `EPIC_REPORT` before starting the next epic.
+5. Run the post-epic steps (8.5 learnings, 8.7 reconciliation).
 
 This skill **fuses** what was previously split into "planificación", "ejecución", and "auditoría". The split was artificial — for AI, those are one tight loop per epic. The file split is coordinator (`SKILL.md`, this file) vs epic loop (`EPIC_LOOP.md`): the epic-agent receives **only** the second, so it never sees queue mechanics it must not run.
 
@@ -30,6 +29,7 @@ This skill **fuses** what was previously split into "planificación", "ejecució
 - `templates/SPEC_TEMPLATE.md` / `templates/MIGRATION_SPEC_TEMPLATE.md` — handed to the `spec-planner` per the epic's `Template:` field.
 - `templates/PLANNING_TEMPLATE.md` — the grammar of `docs/05-specs/<epic>/_planning.md` (`COVERAGE_TABLE`, `MECH_CHECK`, verdicts, `SPEC_SHA`); handed to the `spec-planner` and parsed by `hooks/lib/spec-set-check.js`.
 - `templates/BATCH_REVIEW_TEMPLATE.md` + `build/REVIEW_STAGE.md` — the batch review register (`docs/05-specs/_reviews/<id>.md`, read by `hooks/lib/review.js`) and the procedure of the review stage (queue step 4.5, since v2.3.0).
+- `build/EPIC_COORDINATOR.md` — the procedure of one epic from lock to `[x]` (since v2.7.0): you dispatch it as a subagent, or run it inline when nested subagents are unavailable.
 
 ## Preconditions (what degrades when an artifact is missing)
 
@@ -59,7 +59,7 @@ Before proceeding, you must ensure specialized agents are registered in your env
 
 ## Execution Model — Sequential Queue
 
-There is **one** execution model. This chat is **coordinator only**: it authors specs exclusively through the `spec-planner` dispatch of the Spec Planning Gate (never by hand), and does NOT dispatch the epic-agent's workers or run tests. It builds a queue of epics and dispatches **one fresh epic-agent at a time** (concurrency = 1), processing each report before starting the next. Tests, implementation and reviews live inside each epic-agent and are discarded when it finishes; the gate's dispatches, questions and reports do accumulate here. **Declared checkpoint:** everything that matters lives on disk (`ROADMAP.md`, `_planning.md`, the seal, `.specture/state/gate/`, `build-metrics.jsonl`), so after any epic the user can close the session and continue with `/specture:start` — for a long batch, starting a fresh session when this chat gets heavy is the intended use, not a failure.
+There is **one** execution model. This chat is **coordinator only**: it authors specs exclusively through the `spec-planner` dispatch of the Spec Planning Gate (never by hand), and does NOT dispatch the epic-agent's workers or run tests. It builds a queue of epics, holds the review sitting, and dispatches **one fresh epic coordinator at a time** (concurrency = 1) — which dispatches the epic-agent, which dispatches the workers: three levels of nested subagents, Claude Code's default limit — processing each `EPIC_REPORT` before starting the next. Refresh, seal, loops, tests, implementation and reviews live inside the epic coordinator and are discarded when it finishes; here accumulate only the sitting, the per-epic gates of unreviewed epics and the reports (in a real batch of three epics, running them here took this chat from 570k to 961k tokens before the third one). **Declared checkpoint:** everything that matters lives on disk (`ROADMAP.md`, `_planning.md`, the seal, `.specture/state/gate/`, `build-metrics.jsonl`), so after any epic the user can close the session and continue with `/specture:start` — for a long batch, starting a fresh session when this chat gets heavy is the intended use, not a failure.
 
 ### How many epics to run (batch size N)
 
@@ -323,14 +323,14 @@ files**: you hand it a table `SYMBOL | PATH | SIGNATURE` of the component's exis
 8. **`TaskCreate` one task per spec** (subject `<epic-slug> / <task-slug>`, start
    `pending`) — user-visible progress for the epic-agent's Steps 4-8; `ROADMAP.md`
    remains the source of truth.
-9. **Dispatch the epic-agent** (below) with the validated specs, the `SPEC_SHA` and the
-   verbatim verdict.
+9. **Dispatch the epic coordinator** (below) with `ENTRY: sealed`, the `SPEC_SHA` and your gate
+   counters as `GATE_METRICS` — it dispatches the epic-agent with the verbatim verdict.
 
 **When the planner reports `BLOCKED`** — `sizing` (>3 specs): escalate the suggested
 split to the user (it touches `ROADMAP.md`); `contrato`: the epic needs a contract change
 → `architecture`/ADR, never a spec; `contradicción`: escalate for an ADR.
 
-**Human contacts.** With a review stage (v2.3.0) the user's contacts are the batch sitting (rounds 1-2), the announced mini-review of each regulatory epic, the compliance triage at the queue drain (v2.4.0, only when a milestone closed in the batch), and the exceptions listed below; a decision nobody foresaw **parks** the epic instead of asking. Without one, inside the gate there is **one budget**: at most 2 question rounds
+**Human contacts.** With a review stage (v2.3.0) the user's contacts are the batch sitting (rounds 1-2), the announced mini-review of each regulatory epic (an `EPIC_REPORT: MINI_REVIEW` since v2.7.0 — you ask, the epic coordinator never does), the compliance triage at the queue drain (v2.4.0, only when a milestone closed in the batch), and the exceptions listed below; a decision nobody foresaw **parks** the epic instead of asking. Without one, inside the gate there is **one budget**: at most 2 question rounds
 (step 3) plus the single closed question of the cap (step 5). After the seal the epic runs
 without asking, except for: **`DONE: pendiente de aprobación visual`** (the design-system
 foundation epic — you run the gate; routine on any project with a frontend) · `BLOCKED:
@@ -349,8 +349,8 @@ broken by design is not a human contact** — it goes through the supersession l
 5. **Process the queue one epic at a time** (never concurrently). For each epic, in order:
    1. Mark the epic `[/]` in `ROADMAP.md`; commit. Only ONE epic is `[/]` at any moment. That commit is the epic's **`LOCK_SHA`**: record it as `- LOCK_SHA: <sha> — <ISO-8601>` under `## SPEC_SHA` of `_planning.md` as soon as the file exists.
    2. Set that epic's task `in_progress`.
-   3. If the epic is in a `CLOSED` review register → **Refresh & seal** (below) — no questions; otherwise run the **Spec Planning Gate** (above). When it completes (specs committed, `SPEC_SHA` recorded), assemble the epic-agent's base context (`.specture/stack.yml`, `.specture/conventions.md`, all ADRs, `docs/01-requirements/business_requirements.md`, `docs/02-architecture/architecture.md`, the validated specs, and the full text of `build/EPIC_LOOP.md` — **never** this coordinator file) and dispatch one fresh **epic-agent** (below). Wait for its report.
-   4. Process the report (below) before starting the next epic.
+   3. If the epic is in a `CLOSED` review register → dispatch the **epic coordinator** (below) with `ENTRY: refresh` — it refreshes, seals and executes without questions; otherwise run the **Spec Planning Gate** (above) and, when it completes (specs committed, `SPEC_SHA` recorded), dispatch it with `ENTRY: sealed`. Its `BASE_CONTEXT` is the paths of `.specture/stack.yml`, `.specture/conventions.md`, the ADRs, `docs/01-requirements/business_requirements.md` and `docs/02-architecture/architecture.md` — it reads them and assembles the epic-agent's context itself. Wait for its `EPIC_REPORT` (never poll).
+   4. Process the `EPIC_REPORT` (below) before starting the next epic.
 6. **Stop when the queue drains** (N epics processed) or a report escalates. Do not pull epics beyond N. Then, **in this order** (each one once, for the whole batch — never between epics):
    1. List the **parked** epics with their pending decision and mark `ESTADO: EJECUTADA` in the review register when every epic is `[x]` or parked.
    2. The `## DIFERIDOS` lines with `dueño: sin epic` (each one a possible `new-feature`).
@@ -358,147 +358,107 @@ broken by design is not a human contact** — it goes through the supersession l
    4. Step 8.5 (knowledge capture), when N > 1.
    5. If a session branch was created (§13), announce it **last** — so it includes the compliance corrections — and suggest the merge/PR per `W-4`. Specture does not merge for you.
 
-### Refresh & seal (per epic, after a closed review — no questions)
+### Epic execution — the epic coordinator (v2.7.0)
 
-The decisions were taken in the batch sitting; at the epic's turn the coordinator only turns the
-drafts into sealed specs against the code as it is **now** (earlier epics of the batch changed
-it). In order:
+Everything that happens to one epic between its lock and its `[x]` — Refresh & seal, the
+announced mini-review, parking, the epic-agent and every report it sends back (the supersession
+loop, the spec-correction loop, the red-fix), the seal release and the metrics line — is
+`build/EPIC_COORDINATOR.md`. You do not run it in this chat: you dispatch it.
 
-1. Lock `[/]` + `LOCK_SHA` (queue step 5.1).
-2. `review.js scope-check --batch <id> --epic <X.Y>` — `CHANGED` means the epic block or one of
-   its RN moved since the sitting: that epic goes back to a short review of its own (R1-R5 of
-   `build/REVIEW_STAGE.md` for this one epic) — the only case where a non-regulatory epic asks.
-3. Code Surface Resolution → fresh `spec-planner` in `MODE: REFRESH` with the drafts, the
-   register and `CODE_SURFACE`.
-4. Gate step 4a (**real**, not `--draft`) → validator per the gate's step 5, in `MODE: DELTA`
-   against the review's verdicts (an epic reviewed as a draft is revalidated only on what the
-   refresh changed). A finding that an answer of the register already settles is a
-   `VIOLATION` citing that `A-n`, never a question.
-5. **Regulatory epic** (`REGULATORIOS` of the register) → the announced **mini-review** of
-   `build/REVIEW_STAGE.md` over the written specs: no new decision → go on; new decisions — its
-   own, or a `CONCERNS: decisión-nueva` of steps 3-4 of this epic — → the one announced sitting.
-6. Commit (`docs(specs): plan <epic-slug> — refresco de revisión <id>`), `SPEC_SHA`, seal
-   (gate step 7), mark `EJECUCIÓN: <X.Y>: en curso` in the register, dispatch the epic-agent.
-
-**Parked epics.** A **new** decision of money, legal, personal data, contract or model that
-appears here — the planner's `CONCERNS: decisión-nueva`, or a validator `HUMAN_DECISION` the
-register does not cover — **parks** a non-regulatory epic instead of asking (a regulatory one
-takes it to its announced mini-review, step 5; what that sitting leaves open parks it too):
-set it back from `[/]` to `[ ]`,
-add `- **Aparcado:** <ISO-8601> — <clase> — <motivo> — tanda <id>` to its ROADMAP block and a line
-to `## APARCADOS` of the register, commit, and continue the queue with the epics that do not
-depend on it. Parked epics are listed when the queue drains, with their pending decision, for
-the next sitting. Honest limit: in an almost linear chain of dependencies, parking one epic
-usually stops the rest.
-
-### Dispatch the epic-agent
-
-Dispatch a general-purpose agent **with `model: sonnet`** (the epic-agent is procedural now that spec authorship lives in the planner — gate-review M7; measured per epic in `docs/.specture-meta/build-metrics.jsonl`, read with `knowledge stats`) and a self-contained prompt — **do NOT inherit this chat's history**:
+**Dispatch** (Claude Code) a general-purpose agent — the session's model — with this prompt and
+nothing of this chat's history:
 
 ~~~
-You are the epic-agent for ONE epic of a Specture project.
-
-Execute Steps 4 through 8 of build/EPIC_LOOP.md (Write Tests → ... → Mark
-Epic Complete) for this single epic. That file is your complete procedure;
-the epic is already locked [/] by the coordinator.
-Steps 2/2.5/3 — los specs ya fueron planificados por spec-planner y
-validados por architecture-validator; NO los regeneres ni edites. Si un
-spec resulta inejecutable, reporta BLOCKED: spec con el ID de AC/BR/EC
-afectado.
-Honor every gate: Dispatch Manifest, RED commit, TDD Honesty Gate
-(Step 5.5), code-reviewer, verification.
-
-## Evidence (mandatory — missing either one → respond NEEDS_CONTEXT)
-SPEC_SHA: [sha of the docs(specs) plan commit]
-LOCK_SHA: [sha of the commit that marked the epic [/]]
-VALIDATOR VERDICT (verbatim):
-[paste the APPROVED verdict block]
-SEAL: written (spec_sha=<SPEC_SHA>; allowed_paths: <N> | none) — merge your specs[]
-entries with seal-cli.js merge-spec; the hook denies sealed tests, sealed specs and
-writes outside the declared surface.
-
-## Gate notes (for implementer, ux-implementer and code-reviewer — never the test-writer)
-GATE_NOTES: [the epic's ## GATE_NOTES lines, or (ninguna)]
-
-## Resume (only when re-dispatched after a loop — omit otherwise)
-RESUME_AT: supersede <task-slug> | regresiones <task-slug> | <task-slug>
-SUPERSEDE: [<path>::<test> — <rule> — capa, one per line — tests J9 = SÍ]
-REGRESIONES: [<path>::<test> — J9 NO/INDETERMINABLE — back to the implementer as regressions]
-RED_FIX: [<ID or path::test> — defect or changed rule, one per line — only for RESUME_AT: red-fix]
-BASELINE_FALLOS: [the epic's ## BASELINE_FALLOS lines]
-
-## Epic
-[paste the full epic block from ROADMAP.md]
-
-## Base context
-[paste the assembled base context]
-
-## Required final report
-Report exactly one of: DONE | BLOCKED | REJECTED_MAJOR
-(BLOCKED: spec <AC-n/BR-n/EC-n> when a sealed spec is unexecutable.
- BLOCKED: supersesiones (compilación|runtime) <task-slug> — old tests of closed epics
-   that a rule of the spec makes false; include the FAILURES: block verbatim.
- BLOCKED: entorno — the suite cannot run for environment reasons; include the log.
- BLOCKED: debug <task-slug> — the Iteration Cap was hit; never invoke skills/debug.
- BLOCKED: red-fix <task-slug> — a test of this spec's RED is mechanically defective (does not
-   compile/load, or its setup contradicts a premise the spec states); list test, defect and spec
-   line. Never edit a sealed RED test outside EPIC_LOOP Step 5.3 (RESUME_AT: red-fix).
- DONE: pendiente de aprobación visual — design-system foundation epic only; include the dev
- command and the showcase route so the coordinator can run the gate.)
-Plus: which specs were executed, which tests pass, what remains.
-BASELINE_FALLOS: <none | the lines of Step 3.9>
-METRICS (mandatory — the coordinator appends them to build-metrics.jsonl):
-  needs_context_spec: N · iteration_cap_spec: N · blocked_spec: N ·
-  review_rejections: minor N / major N (spec_defect N — from the reviewer's CAUSE:) ·
-  supersessions: N · supersede_tests: N · exec_blocked_compile: N ·
-  exec_blocked_runtime: N · baseline_failures: N · firma re-read: N verified / M corrected
-SUPERSESSIONS: <none | one line per declared test: <path>::<test> → <SUPERSEDE_SHA>>
-If DONE: update ROADMAP.md to [x] for this epic and commit BEFORE reporting.
-If DONE: pendiente de aprobación visual: do NOT touch the checkbox — leave the epic [/].
-The coordinator flips it after the user approves the showcase.
+You are the epic coordinator for ONE epic of a Specture project. Your complete procedure is
+build/EPIC_COORDINATOR.md (read it whole). You never ask the user anything: every human decision
+goes back to me as an EPIC_REPORT of at most 40 lines.
+ENTRY: refresh | sealed | resume | mini-review-answers | visual-adjust
+EPIC: <full epic block>
+LOCK_SHA: <sha> · REVIEW_REGISTER: <path | none> · REGULATORIO: <sí | no>
+SPEC_SHA / GATE_METRICS (ENTRY: sealed) · ANSWERS (mini-review-answers) · VISUAL_FEEDBACK (visual-adjust)
+HUMAN_CONTACTS: <n> · BASE_CONTEXT: <paths>
 ~~~
 
-### Coordinator processes the report
+The dispatch is asynchronous: **wait for its notification — never poll**. One epic coordinator
+at a time, and nothing else writes while it runs.
 
-- **First, for any status — the spec-seal check (mirror of gate 5.5, hooks or not):**
-  ```
-  git diff <SPEC_SHA>..HEAD -- 'docs/05-specs/<epic-slug>/*.spec.md'
-  ```
-  (`_planning.md` is excluded — it legitimately grows.) Non-empty → a validated spec was
-  edited during the epic: treat the report as **`REJECTED_MAJOR`**, show the diff verbatim
-  and escalate to the user. No automatic action — a `[x]` commit that already landed is
-  reverted only on the user's decision. Empty → process the status below.
-- **`DONE: pendiente de aprobación visual`** (design-system foundation epic) → **you run the Visual Approval Gate.** The epic-agent is non-interactive, so it built the showcase, left the epic `[/]` on purpose and handed the gate to you. In order:
+**Inline mode.** On Copilot and Antigravity (no nested subagents), or when the epic coordinator
+answers `NESTING_UNAVAILABLE`, run `build/EPIC_COORDINATOR.md` yourself, here, exactly as written
+(skip its Step 0; `coordinator_mode: inline`). It is the v2.6 behaviour with the procedure in its
+own file: one source of truth, two possible runners. Say it once per batch: *"sin subagentes
+anidados — el coordinador de cada epic corre en este chat"*.
+
+### Processing the EPIC_REPORT
+
+The report is short on purpose; the evidence is on disk. Do not re-read the epic's verdicts or
+diffs unless the status below asks for it.
+
+- **`DONE`** → confirm the `[x]` with `git log -1 -- docs/04-roadmap/ROADMAP.md` and that
+  `.specture/state/build-locked.json` is gone; mark the epic's task `completed`; relay the
+  `SUMMARY` in two or three lines; run Step 8.7 if the epic closed its milestone; next epic.
+- **`PARKED`** → relay the pending decision in one line; continue the queue with the epics that do
+  not depend on it (the honest limit: in an almost linear chain, parking one epic usually stops
+  the rest). The parked epics are listed again when the queue drains.
+- **`MINI_REVIEW`** → the announced mini-review of a regulatory epic found new decisions. Ask the
+  questions **verbatim** with the rules of round 2 of `build/REVIEW_STAGE.md` (by theme, ≤4 per
+  `AskUserQuestion` call, the recommended option never by default); record them under
+  `### Mini-revisión <X.Y>` of the register, persist rule/ADR/contract answers in place, commit
+  the sources, and dispatch the epic coordinator again with `ENTRY: mini-review-answers`, the
+  `ANSWERS` and `HUMAN_CONTACTS` + 1.
+- **`VISUAL_PENDING`** (design-system foundation epic) → **you run the Visual Approval Gate.**
   1. **Show it.** If the Playwright MCP is available in this session, start the app with the dev command the report names, navigate to the showcase route and capture screenshots so the user reviews without leaving the chat. If it is not available, give the user the command and the route and ask them to open it.
   2. **Ask, verbatim:** *"¿Apruebas el design system para construir las páginas sobre esta base, o quieres ajustes?"* Ask this **before** surfacing any advisory finding (screenshot critique, lint warnings). A list of defects presented alongside the question turns advice into a veto — advisory output goes after an approval, as the next epic's to-do list.
-  3. **Adjustments** → re-dispatch a **fresh epic-agent** for the same epic with the user's feedback verbatim as the change request (you never dispatch `ux-implementer` yourself — see "Execution Model"). Repeat from 1, counting the rounds.
-  4. **On approval** → append `VISUAL_APPROVAL: <fecha> <sha>` to the epic's `_planning.md` (the one-line-per-run mould of `MECH_CHECK`; `<sha>` is HEAD at approval), flip the epic to `[x]` in `ROADMAP.md`, and commit both in one commit. Then release the seal and mark the task `completed` exactly as in the **DONE** branch below. In the metrics line record `outcome: DONE` plus `visual_approval_rounds: N`.
+  3. **Adjustments** → dispatch the epic coordinator again with `ENTRY: visual-adjust` and the user's feedback verbatim as `VISUAL_FEEDBACK` (it dispatches a fresh epic-agent; you never dispatch `ux-implementer` yourself). Repeat from 1, counting the rounds.
+  4. **On approval** → append `VISUAL_APPROVAL: <fecha> <sha>` to the epic's `_planning.md` (`<sha>` is HEAD at approval), flip the epic to `[x]` in `ROADMAP.md`, commit both in one commit, release the seal (`seal-cli.js release`) and mark the task `completed`. Then write the epic's metrics line yourself from the counters the last `EPIC_REPORT` carried (the epic coordinator does not write it for a visual-pending epic), with `outcome: DONE` plus `visual_approval_rounds: N`.
   5. **Outright rejection** (the user wants a different direction, not adjustments) → that is a Phase 03 decision, not an epic defect: leave the epic `[/]`, stop the queue and escalate to `ux-design`.
-- **DONE** → verify the epic is `[x]` in `ROADMAP.md` and the commit landed (don't trust the report — `git log`/read the checkbox). **Release the seal yourself**: `node "${CLAUDE_PLUGIN_ROOT}/hooks/lib/seal-cli.js" release` and confirm `.specture/state/build-locked.json` is gone — do not rely on the epic-agent's Step 8 (a leftover seal blocks the next epic's tests; the hook only fails open on it once no epic is `[/]`). Mark that epic's task `completed`. **Supersessions** (roadmap item 35): if the report lists any, fill the `commit:` of each line of `## SUPERSESIONES` in `_planning.md` with its `SUPERSEDE_SHA` and append one line to `docs/05-specs/_supersessions.md` (create it lazily; it is an index, one line per epic, never a narrative): `- <epic-slug> (<fecha>) — N tests supersedidos — ver docs/05-specs/<epic-slug>/_planning.md § SUPERSESIONES`. Continue with the next queued epic.
-- **BLOCKED: supersesiones (<capa>) <task-slug>** → run the **supersession loop** — no `git revert`, no `unseal-spec`, no question to the user. At most **one loop per spec and per layer**; a second report for the same spec and layer is escalated. A rewrite the code-reviewer asks for (a loop rewrite weaker than its rule) is **not** a new loop: the epic-agent sends it back to the test-writer itself (EPIC_LOOP Step 6).
-  1. **Judge first, with data.** Dispatch a fresh `architecture-validator` in `MODE: J9` with the spec, the epic block, `RULES_RESOLVED`, the last `MECH_CHECK:` line of `_planning.md` (a required input of every validator dispatch on a planner spec) and the report's `FAILURES:` lines verbatim (old assertion + first failure line per test). The `SÍ` tests go on; the `NO`/`INDETERMINABLE` ones become **regressions** for the implementer (step 8). Without this, the one deciding "regression or design" would be the implementer itself.
-  2. `seal-cli.js lift-spec --slug <task-slug>` — releases only that spec file from the seal (sibling specs and every `specs[]` entry stay sealed).
-  3. Dispatch a **fresh** `spec-planner` in `MODE: SUPERSESSIONS` with `SPECS_DIR`, `ALCANCE: [<task-slug>]` and only the `SÍ` tests with the rule J9 named.
-  4. `honesty-check.js spec-delta --epic-dir docs/05-specs/<epic-slug> --base <SPEC_SHA> --slug <task-slug>` — only the spec's Supersesiones section, its `sup:` rows and the register may have changed. `FAIL` → abandon this loop and run the full spec-correction loop below.
-  5. `honesty-check.js protected --epic-dir docs/05-specs/<epic-slug> --slug <task-slug>` — `FAIL` (a `verify:` test of `rules.yml` or a GUARD of another epic) → escalate: amending a project invariant is the user's decision, never the loop's.
-  6. Gate step 4a (`spec-set-check.js`) must `PASS`.
-  7. Commit `docs(specs): supersesiones <epic-slug>/<task-slug> — loop <capa>` → the new `SPEC_SHA`; append `- SPEC_SHA: <sha> — <ISO> — loop <capa> de <task-slug>` and the J9 verdict (`### <task-slug> — dispatch N — ronda R — … — loop — J9`) to `_planning.md`, then `seal-cli.js write` with the new `--spec-sha` and the same `--lock-sha` (it keeps every `specs[]` entry and clears the lift).
-  8. Dispatch a fresh epic-agent with `RESUME_AT: supersede <task-slug>`, the `SUPERSEDE:` and `REGRESIONES:` blocks, the new `SPEC_SHA` and `BASELINE_FALLOS`. All-`NO` → no spec change: skip 2-7 and resume with `RESUME_AT: regresiones <task-slug>`.
-- **BLOCKED: entorno** → escalate with the log; the suite cannot run and no agent can fix that. **BLOCKED: debug <task-slug>** → escalate and offer `/specture:debug` for that spec; the queue stops (debug needs Plan mode, which only the user can approve).
-- **BLOCKED: spec <AC-n/BR-n/EC-n>** (also the Iteration Cap's spec-problem exit, and a supersession loop whose `spec-delta` failed) → run the **spec-correction loop**, in this order (v2.2.2: punctual — no `unseal-spec`, no revert):
-  1. `seal-cli.js lift-spec --slug <task-slug>` — releases only that spec file; its `specs[]` entry and its RED stay sealed.
-  2. Re-dispatch a **fresh** `spec-planner` with `ALCANCE: [<task-slug>]` and `VIOLATIONS` naming the affected ID (minimal edit; the `CHANGELOG` lists every changed `AC/BR/EC` and is contrasted against `git diff` as in the gate).
-  3. Run the mechanical set check (gate step 4a) and, on `PASS`, re-validate in `MODE: DELTA`: the `SPEC_SET` dispatch (5a) again only if the `CHANGELOG` touched `COVERAGE_TABLE`, `RESOLVED_ALONE`, a "Fuera de Scope" or a Superficie; then the per-spec dispatch (5b) of the corrected spec, with the new `MECH_CHECK:` line.
-  4. Commit the corrected spec, append the **new `SPEC_SHA`** + verdict to `_planning.md`, and re-seal: `seal-cli.js write` with the new `--spec-sha`, the same `--lock-sha` and the recomputed `--allowed-paths` — it keeps every `specs[]` entry and clears the lift.
-  5. Re-dispatch the epic-agent with `RESUME_AT: red-fix <task-slug>` and a `RED_FIX:` block naming the changed IDs (from the `CHANGELOG`) — the test-writer rewrites or adds **only** their tests on HEAD, and nothing is reverted: the retroactive RED at the spec's pre-RED commit (EPIC_LOOP Step 5.3) proves the new tests discriminate, without tearing down production that already works.
-- **BLOCKED: red-fix <task-slug>** (a test of this spec's own RED is objectively defective while the spec is right) → re-dispatch the epic-agent with `RESUME_AT: red-fix <task-slug>` and the defect list as the `RED_FIX:` block — no planner, no revert, no question to the user. Admit it only for **mechanical** defects the report proves: the test does not compile or load (the log shows it), or its setup contradicts a premise the spec states (a fixture, a seed, the route or role the spec names; cite the spec line). A disagreement about *what* the test asserts is not a red-fix: it is `BLOCKED: spec`.
-- **BLOCKED** (other) / **REJECTED_MAJOR** → escalate to the user with the report summary before continuing. Do not auto-retry.
-- **BLOCKED: insufficient context** → the epic is too large for one agent. Escalate to the user to consider splitting it before re-dispatching.
-- **Metrics — after processing any report that ends the epic's run** (DONE, an escalation, `REJECTED_MAJOR`; roadmap item 34, gate design §6.5; never blocks). A `BLOCKED: supersesiones` report is intermediate — the epic continues — so it writes no line: its counters (`supersede_loops`, the `*_loop` dispatches, `j9_regressions`, `exec_blocked_*`) accumulate into the epic's single final line. Append **one JSON line** to `docs/.specture-meta/build-metrics.jsonl` (create the directory if absent; fail-open, like `index-usage.jsonl`) with your own gate counters — `planner_dispatches`, `open_questions` (asked), `resolved_alone` (rows), `c7_rejections`, `mech_check_failures`, `validator_dispatches`, `validator_verdict` (`APPROVED` | `ESCALATED`), `gate_rounds`, `gate_human_contacts`, `exec_human_contacts`, `planner_redispatch_after_approved` (must stay 0: gate re-dispatches caused by a WARNING or NOTE of an APPROVED verdict — an execution-born correction, red-fix or supersession loop counts in `planner_dispatches_loop`, never here), `validator_dispatches_loop`, `planner_dispatches_loop`, `supersede_loops`, `j9_regressions`, `late_findings`, `effort` (`{planner, validator}` as declared, or `null`) — plus the report's `METRICS` values (`needs_context_spec`, `iteration_cap_spec`, `blocked_spec`, `reviewer_rejected_major_spec_defect`, `review_rejections`, `supersessions`, `supersede_tests`, `exec_blocked_compile`, `exec_blocked_runtime`, `baseline_failures`), `specs`, `outcome` (`DONE` | `BLOCKED` | `REJECTED_MAJOR` | `ESCALATED`), `source: "gate"`, `plugin`, `ts` (ISO-8601 **with time**), and `tokens: null` unless the user handed you a figure (`{input, output, source}`). Line schema and reader: `hooks/lib/metrics-report.js` (`/specture:knowledge stats`). The file is **tracked** (decision A7): `git add docs/.specture-meta/build-metrics.jsonl` and commit `docs(metrics): <epic-slug> — <outcome>` — the same commit carries the epic's `_planning.md` appends (verdicts, `SPEC_SHA`, supersession SHAs).
+- **`STOPPED — <motivo>`** → escalate to the user with the report's evidence and its closed
+  options when it brings them; **stop the queue** until they decide:
+  - `scope-changed` → run R1-R5 of `build/REVIEW_STAGE.md` for this one epic (the only case where
+    a non-regulatory epic asks), then dispatch again with `ENTRY: refresh`;
+  - `gate` (the refresh's cap) → the single closed question of gate step 5 with the options the
+    report pre-built;
+  - `seal-diff` → show the diff summary; a `[x]` that landed is reverted only on the user's word;
+  - `protected` → amending a project invariant is the user's decision;
+  - `entorno` → the log; no agent can fix it · `debug <slug>` → offer `/specture:debug` for that
+    spec (it needs Plan mode) · `insufficient context` → offer to split the epic ·
+    `REJECTED_MAJOR` / other → the summary;
+  - `decisión` (a correction loop of a regulatory epic needs a human answer) → ask it with the
+    rules of round 2 and dispatch again with `ENTRY: resume`;
+  - `reanudación` → the evidence it found; ask which way to continue.
+  After the decision, dispatch the epic coordinator again with `ENTRY: resume` (or `refresh`),
+  never by running its steps yourself.
+- **`NESTING_UNAVAILABLE`** → switch the rest of the batch to inline mode (above) and run this
+  epic's `build/EPIC_COORDINATOR.md` from its Step 1 with the same `ENTRY`.
+- **A notification that is not an `EPIC_REPORT`** (a late message from a nested dispatch) → it is
+  the epic coordinator's business, not yours: note it and keep waiting for the report.
+
+### Metrics
+
+Written by the epic coordinator (`build/EPIC_COORDINATOR.md` Step 6) after the report that ends
+an epic's run — never by you, except after a visual approval (above) (roadmap item 34, gate
+design §6.5; never blocks). One **JSON line** in `docs/.specture-meta/build-metrics.jsonl`
+(create the directory if absent; fail-open) with the gate counters — `planner_dispatches`,
+`open_questions` (asked), `resolved_alone` (rows), `c7_rejections`, `mech_check_failures`,
+`validator_dispatches`, `validator_verdict` (`APPROVED` | `ESCALATED`), `gate_rounds`,
+`gate_human_contacts`, `exec_human_contacts`, `planner_redispatch_after_approved` (must stay 0:
+gate re-dispatches caused by a WARNING or NOTE of an APPROVED verdict — an execution-born
+correction, red-fix or supersession loop counts in `planner_dispatches_loop`, never here),
+`validator_dispatches_loop`, `planner_dispatches_loop`, `supersede_loops`, `j9_regressions`,
+`late_findings`, `effort` (`{planner, validator}` as declared, or `null`) — plus the epic-agent
+report's `METRICS` values (`needs_context_spec`, `iteration_cap_spec`, `blocked_spec`,
+`reviewer_rejected_major_spec_defect`, `review_rejections`, `supersessions`, `supersede_tests`,
+`exec_blocked_compile`, `exec_blocked_runtime`, `baseline_failures`), `specs`, `outcome`
+(`DONE` | `BLOCKED` | `REJECTED_MAJOR` | `ESCALATED` | `PARKED`),
+`source: "gate"`, `plugin`, `batch_id` (an epic of a review register), `parked` (`0`|`1`),
+`coordinator_mode` (`subagent` | `inline`), `epic_coordinator_dispatches`, `ts` (ISO-8601 **with
+time**), and `tokens: null` unless the user handed you a figure (`{input, output, source}`). For
+an epic that went through the per-epic gate above, you pass your gate counters to the epic
+coordinator as `GATE_METRICS`. Line schema and reader: `hooks/lib/metrics-report.js`
+(`/specture:knowledge stats`). The file is **tracked** (decision A7).
 
 ### Why this model
 
-Tests, implementation and reviews stay inside each epic-agent and are discarded when it finishes; one epic runs at a time in fresh isolated context, so execution quality never degrades from accumulation. The gate does accumulate in this chat — which is why its state is written to disk as it goes and a session can end after any epic (the declared checkpoint above). The bounded batch size N lets the user run a defined set ("ejecuta 3") without committing to the whole ROADMAP.
+Refresh, seal, loops, tests, implementation and reviews stay inside each epic coordinator and its epic-agent and are discarded when they finish; one epic runs at a time in fresh isolated context, so execution quality never degrades from accumulation. What accumulates in this chat is the review sitting, the per-epic gates of unreviewed epics and one short `EPIC_REPORT` per epic — and everything is written to disk as it goes, so a session can end after any epic (the declared checkpoint above). The bounded batch size N lets the user run a defined set ("ejecuta 3") without committing to the whole ROADMAP.
 
 
 ## Frontend Epics — Design-System-First + Visual Approval Gate
@@ -538,8 +498,9 @@ Proportional to the real damage: a new endpoint nobody renders must not stop the
 > and the `ux-implementer` dispatch — lives in `build/EPIC_LOOP.md` § "Frontend Epics —
 > execution"; the epic-agent receives it as part of its procedure. **The Visual Approval Gate
 > itself does not live there**: it needs a channel to the user, which a subagent does not have.
-> The epic-agent stops at it and reports `DONE: pendiente de aprobación visual`; you run the
-> gate in § "Coordinator processes the report".
+> The epic-agent stops at it and reports `DONE: pendiente de aprobación visual`; the epic
+> coordinator hands it to you as `EPIC_REPORT: VISUAL_PENDING` and you run the gate in
+> § "Processing the EPIC_REPORT".
 
 ## Step 1 — Pick & Lock the Epic
 
@@ -550,25 +511,23 @@ Done by the **coordinator** in the queue loop (5.1): when an epic-agent starts, 
 The queue only takes `[ ]` epics, so an orphaned `[/]` from a dead session is resumed
 here, by evidence, before building the queue:
 
-- **Exactly one `[/]`, AND `docs/05-specs/<epic-slug>/_planning.md` records, as the
-  last verdict of each target, `APPROVED` for the set (5a) and for every spec (5b) — the
-  legacy `### … — dispatch N — <fecha>` headers and the `— ronda R —` headers both count —
-  AND a `MECH_CHECK: PASS` whose sha equals `spec-set-check.js <epic-dir> --hash-only`, AND
-  the specs are committed** → skip planning: dispatch the epic-agent (Steps 4-8) with the
-  recorded `SPEC_SHA` + verbatim verdict. A stale or missing `MECH_CHECK` → run gate step 4a
-  first (and re-validate only if it fails). If `.specture/state/build-locked.json` is missing
-  (gitignored — a fresh clone never has it), rewrite it with `seal-cli.js write` from the
-  recorded `SPEC_SHA` and `LOCK_SHA` before dispatching.
-- **A review register `OPEN`** (`review.js status`) → the batch sitting was cut: resume `build/REVIEW_STAGE.md` at its state, asking only the pending items. **`CLOSED` with epics left** → continue the queue with Refresh & seal.
-- **A seal with `lifted_spec_paths`** → a supersession loop was interrupted: resume it from
-  its step 4 (`spec-delta`) if the planner's edit is on disk, else from step 3.
+- **A review register `OPEN`** (`review.js status`) → the batch sitting was cut: resume
+  `build/REVIEW_STAGE.md` at its state, asking only the pending items.
+- **Exactly one `[/]` that belongs to a `CLOSED` review register, or whose specs are sealed**
+  (`_planning.md` records `APPROVED` as the last verdict of the set and of every spec, a
+  `MECH_CHECK: PASS` and a `SPEC_SHA`), **or a seal with `lifted_spec_paths`** (a loop was
+  interrupted) → dispatch the epic coordinator with `ENTRY: resume`: it decides by the evidence
+  on disk where to re-enter (its Step R) — a usage limit or a closed session costs one
+  dispatch, never a re-plan. Never resume its loops or its epic-agent yourself. Then continue
+  the queue.
 - **A last verdict `REJECTED` on supersession grounds recorded before v2.2.0** (`doctor`
   flags it as `gate-legacy-rejection`) → re-validate that target in `MODE: DELTA`: its
   supersession findings are `RETIRADO` now.
-- **One `[/]` with specs only in staging / the working tree** (planning was interrupted
-  before the commit) → they are not validated. **Ask the user**: discard and re-plan, or
-  resume from the validation step with what is there. Never discard files without asking.
-- **One `[/]` with no specs** → run the Spec Planning Gate from step 1.
+- **One `[/]` outside a review register with specs only in staging / the working tree**
+  (planning was interrupted before the commit) → they are not validated. **Ask the user**:
+  discard and re-plan, or resume from the validation step with what is there. Never discard
+  files without asking.
+- **One `[/]` outside a review register with no specs** → run the Spec Planning Gate from step 1.
 - **Several `[/]`** → ask the user which one to continue (rule above).
 
 ## Step 8.5 — Capture Learnings (opt-in)
@@ -618,16 +577,19 @@ Run by the **coordinator** (not the epic-agent), only when the epic just marked 
 
 ## Step 9 — Context Reset Between Epics
 
-Execution resets by construction: each epic runs in a fresh epic-agent whose context is discarded when it finishes. The coordinator's own context does grow with every gate (dispatches, questions, reports), so for a long batch the reset is the declared checkpoint of the Execution Model: after an epic closes, the user may end the session and continue with `/specture:start` — the queue, the gate state and the seal are all on disk.
+Execution resets by construction: each epic runs in a fresh epic coordinator (and its epic-agent) whose context is discarded when it finishes. This chat grows with the review sitting, the per-epic gates and one `EPIC_REPORT` per epic; in inline mode (Copilot, Antigravity, `NESTING_UNAVAILABLE`) it grows with every epic's whole run, so for a long batch the reset is the declared checkpoint of the Execution Model: after an epic closes, the user may end the session and continue with `/specture:start` — the queue, the review register, the gate state and the seal are all on disk.
 
 ## Anti-Patterns
 
-The full Anti-Patterns table travels with the epic-agent in `build/EPIC_LOOP.md`. Two rows
-bind **this coordinator** specifically: never hand-edit `.specture/state/build-locked.json`
-(`seal-cli.js` is the only writer — `write` / `merge-spec` / `lift-spec` / `unseal-spec` /
-`supersede` / `release`); never skip the `git diff <SPEC_SHA>..HEAD` spec-seal check when
-processing a report — after a supersession loop, the range starts at the loop's new
-`SPEC_SHA`. The review stage adds three: never apply a recommended option the user did not choose; never ask during the refresh of a non-regulatory epic (a new decision parks it); never drop a filtered question silently. The compliance review adds two: never fix a compliance finding by dispatching the implementer yourself (its correction agent does, after the user's triage), and never let it ask or stop the queue before the drain. The gate adds three: never resume the planner with `SendMessage` (always a fresh
+The full Anti-Patterns table travels with the epic-agent in `build/EPIC_LOOP.md`, and the epic
+coordinator's in `build/EPIC_COORDINATOR.md`. Rows that bind **this coordinator**: never
+hand-edit `.specture/state/build-locked.json` (`seal-cli.js` is the only writer — `write` /
+`merge-spec` / `lift-spec` / `unseal-spec` / `supersede` / `release`). The epic coordinator
+(v2.7.0) adds four: never run its steps here while nested subagents work — refresh, loops and
+report processing belong to it (inline only on Copilot, Antigravity or `NESTING_UNAVAILABLE`);
+never resume one of its loops yourself after a cut (dispatch it with `ENTRY: resume`); never
+poll a dispatch ("sigo esperando") — wait for its notification; never let it ask the user (what
+needs the user comes back as an `EPIC_REPORT`). The review stage adds three: never apply a recommended option the user did not choose; never ask during the refresh of a non-regulatory epic (a new decision parks it); never drop a filtered question silently. The compliance review adds two: never fix a compliance finding by dispatching the implementer yourself (its correction agent does, after the user's triage), and never let it ask or stop the queue before the drain. The gate adds three: never resume the planner with `SendMessage` (always a fresh
 dispatch per pass); never ask the user or re-plan because of a WARNING or a NOTE of an
 APPROVED verdict (route it with the table of step 5); never invoke `skills/debug` from the
 queue (it needs Plan mode — report `BLOCKED: debug` and let the user choose). The

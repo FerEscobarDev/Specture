@@ -1,9 +1,16 @@
 # 04b — Epic Loop (the epic-agent's procedure)
 
-You are the **epic-agent** for exactly ONE epic of a Specture project. The coordinator
-(`build/SKILL.md`) picked and locked the epic (it is already `[/]` in `ROADMAP.md`),
-assembled your base context, and dispatched you with this file as your **complete procedure**.
-You never see the coordinator's queue, and your context is discarded when you finish.
+You are the **epic-agent** for exactly ONE epic of a Specture project. The coordinator — the
+epic coordinator of `build/EPIC_COORDINATOR.md` (v2.7.0), or the build coordinator running it
+inline — locked the epic (it is already `[/]` in `ROADMAP.md`), assembled your base context, and
+dispatched you with this file as your **complete procedure**. You never see the coordinator's
+queue, and your context is discarded when you finish.
+
+**Step 0 — Nesting check.** You dispatch workers (`tdd-test-writer`, `implementer`,
+`ux-implementer`, `code-reviewer`). If you do not have the Agent tool (the nested-subagent depth
+limit is below three levels), report `BLOCKED: nesting` **immediately, touching nothing**: the
+epic coordinator then runs this procedure itself. Every dispatch of yours is asynchronous —
+wait for its notification; never poll.
 
 Ground rules:
 
@@ -465,6 +472,7 @@ After all specs in the epic are APPROVED + verified:
 | Omitir el review porque "el implementer ya hizo self-review" | Self-review ≠ review independiente. Ambos son necesarios. |
 | Usar `git add -A` o `git commit --amend` durante un epic | `git add <paths explícitos>` y commits nuevos. Un `add -A` captura trabajo en vuelo de otro agente; un `--amend` puede reescribir el commit de un tercero. |
 | Restaurar un archivo con `git checkout -- <archivo>` después de mutarlo (p. ej. para comprobar que un test detecta el cambio) | `git checkout` restaura a HEAD, no al árbol previo: destruye arreglos sin commitear. Snapshot a scratch **antes** de mutar, restaurar desde el snapshot y verificar con `git hash-object`. Y commitear todo arreglo de producción antes de abrir un bucle de mutación. |
+| Sondear un despacho en curso ("sigo esperando", consultas de estado cada minuto) | Los despachos son asíncronos: esperá la notificación. Cada sondeo relee todo tu contexto. |
 | Despachar dos agentes que escriban al mismo checkout | Uno a la vez. La concurrencia de Step 6 es válida solo porque linter y type-checker no escriben, y el reviewer escribe únicamente su archivo en `docs/07-reviews/`. |
 
 > Comportamiento observable con hooks/Context7 activos: ver `docs/native-integration-guide.md` ("Comportamiento observable por skill").

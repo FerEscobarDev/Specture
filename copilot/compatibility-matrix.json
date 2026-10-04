@@ -43,6 +43,7 @@
     "delta-revalidation",
     "review-stage",
     "parked-epic",
+    "epic-coordinator",
     "build-metrics",
     "roadmap-validation",
     "red-commit",

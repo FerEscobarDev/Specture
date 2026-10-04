@@ -33,8 +33,8 @@ simulation.
     or an ADR is persisted and committed (a cut session may have lost the write); persist what
     is missing first. Announce what is left: "quedan X de Y decisiones".
   - `REVIEW: CLOSED <id> …` → the batch is reviewed: go back to the queue (refresh & seal).
-- Never open a review while an epic is `[/]`: finish it, or park it (build/SKILL.md "Parked
-  epics") first.
+- Never open a review while an epic is `[/]`: finish it, or park it (build/EPIC_COORDINATOR.md "Parking")
+  first.
 
 ## R1 — Unattended preparation (no questions to the user)
 
@@ -140,6 +140,12 @@ execute without asking. New ones (and any `CONCERNS: decisión-nueva` of this ep
 register); then persist and commit the answers, a fresh planner in `MODE: REFRESH` with them as
 `ANSWERS`, the real 4a and the validator in `MODE: DELTA`, and seal. A decision still open after
 that sitting parks the epic. It is the only planned contact during execution.
+
+Who does what (v2.7.0): the **epic coordinator** (`build/EPIC_COORDINATOR.md` Step 3) runs the
+validator and, with new decisions, the planner in `MODE: QUESTIONS`, commits the refresh unsealed
+and returns `EPIC_REPORT: MINI_REVIEW` with the questions verbatim — it never asks. The **build
+coordinator** holds the sitting with the rules of R2, persists the answers and dispatches the
+epic coordinator again with `ENTRY: mini-review-answers`.
 
 ## What never happens
 

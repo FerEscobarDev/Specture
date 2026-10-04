@@ -31,8 +31,8 @@ Invoke immediately on any of these triggers:
 - You catch yourself thinking "let me try changing X and see".
 
 **Exceptions (build, since v2.2.0).** Inside `/specture:build` two cases do **not** trigger this skill:
-- An implementer's `BLOCKED: supersesiones (compilación|runtime)` — old tests of closed epics that a rule of the spec makes false. They are already classified and go through the supersession loop of `build/SKILL.md`; its classification takes precedence over "the same test failed twice" and "the implementer reported BLOCKED".
-- Anything inside an epic-agent: it never invokes this skill (Plan mode would stop the queue with nobody to approve it). It reports `BLOCKED: debug <task-slug>` and the coordinator offers this skill to the user.
+- An implementer's `BLOCKED: supersesiones (compilación|runtime)` — old tests of closed epics that a rule of the spec makes false. They are already classified and go through the supersession loop of `build/EPIC_COORDINATOR.md` (`build/SKILL.md` before v2.7.0); its classification takes precedence over "the same test failed twice" and "the implementer reported BLOCKED".
+- Anything inside an epic-agent or an epic coordinator: neither invokes this skill (Plan mode would stop the queue with nobody to approve it). It reports `BLOCKED: debug <task-slug>` and the coordinator offers this skill to the user.
 
 ## The Four Phases (mandatory order)
 
