@@ -55,6 +55,7 @@ The user's project also contains a `.specture/` directory with the project-speci
 | "Continuemos con el roadmap", "Sigamos construyendo" | `./skills/start/SKILL.md` (lo enrutará por estado) |
 | "Hay un bug", "El test falla" | `./skills/debug/SKILL.md` |
 | "Quiero agregar una funcionalidad nueva" | `./skills/new-feature/SKILL.md` |
+| "Revisá el milestone contra todas las reglas", "revisión de cumplimiento" | `./skills/compliance-review/SKILL.md` |
 
 ## Instruction priority
 

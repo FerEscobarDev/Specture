@@ -80,7 +80,7 @@ Read **only the epic checkbox lines** of `docs/04-roadmap/ROADMAP.md` (grep the 
 | State | Action |
 |-------|--------|
 | Any epic marked `[ ]` (pending) or `[/]` (in progress) | Invoke `./skills/build/SKILL.md` — since v2.3.0 it opens (or resumes, if `review.js status` says `OPEN`) the batch review first: one sitting of decisions, then execution without questions |
-| All epics marked `[x]` (complete) | Ask the user: "El ROADMAP está 100% completo. ¿Quieres (a) auditar el código completo, (b) agregar una nueva funcionalidad, o (c) finalizar?" Then route to the chosen path. |
+| All epics marked `[x]` (complete) | Ask the user: "El ROADMAP está 100% completo. ¿Quieres (a) auditar el código completo, (b) agregar una nueva funcionalidad, o (c) finalizar?" — and, when `hooks/lib/compliance.js status` answers `PENDING`, add "(d) decidir los hallazgos de cumplimiento pendientes" (→ `compliance-review` `triage`). Then route to the chosen path. |
 
 ## Transversal Skills
 
@@ -94,6 +94,7 @@ These are NOT routed by state — they are activated by symptoms during any phas
 | User wants to create or modify a Specture skill | `./skills/write-skill/SKILL.md` |
 | Frontend & backend are out of sync (wrong URLs, shapes the backend doesn't return) in an existing project | `./skills/contract-sync-audit/SKILL.md` |
 | User wants to capture session learnings, or audit the docs-index (opt-in / periodic) | `./skills/knowledge/SKILL.md` — modes `capture` / `audit` (aliases `/specture:learn`, `/specture:audit-knowledge`) |
+| User wants a milestone's code checked against ALL the project rules ("revisión de cumplimiento"), or a compliance report waits for triage (`hooks/lib/compliance.js status` → `PENDING`) | `./skills/compliance-review/SKILL.md` — modes `milestone <N>` / `triage` |
 
 ## Red Flags — STOP
 

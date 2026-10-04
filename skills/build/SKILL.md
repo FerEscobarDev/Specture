@@ -53,7 +53,7 @@ This skill **fuses** what was previously split into "planificación", "ejecució
 ## Cross-Platform Subagent Initialization (Mandatory)
 
 Before proceeding, you must ensure specialized agents are registered in your environment. Check your available tools:
-- **If you have the `define_subagent` tool (Antigravity CLI):** You MUST dynamically register the subagents before doing anything else. Read the `name`, `description`, and content (`system_prompt`) of the `AGENT.md` files located in the `agents/` directory (for `spec-planner`, `architecture-validator`, `tdd-test-writer`, `implementer`, `ux-implementer`, and `code-reviewer`), and call `define_subagent` for each one to make them available to this session.
+- **If you have the `define_subagent` tool (Antigravity CLI):** You MUST dynamically register the subagents before doing anything else. Read the `name`, `description`, and content (`system_prompt`) of the `AGENT.md` files located in the `agents/` directory (for `spec-planner`, `architecture-validator`, `tdd-test-writer`, `implementer`, `ux-implementer`, `code-reviewer`, and `compliance-reviewer`), and call `define_subagent` for each one to make them available to this session.
 - **If you do NOT have the `define_subagent` tool (Claude Code):** The agents are already statically registered by the system. You may proceed directly.
 - **Script paths:** every `node "${CLAUDE_PLUGIN_ROOT}/…"` in this file and in `build/EPIC_LOOP.md` (`hooks/lib/spec-set-check.js`, `hooks/lib/seal-cli.js`, `hooks/lib/metrics-report.js`, `scripts/doctor.js`) is `${PLUGIN_ROOT}` on Copilot / Antigravity and `$SPECTURE_ROOT` in manual `@import` setups — the same rule as `start` Step 0.
 
@@ -330,7 +330,7 @@ files**: you hand it a table `SYMBOL | PATH | SIGNATURE` of the component's exis
 split to the user (it touches `ROADMAP.md`); `contrato`: the epic needs a contract change
 → `architecture`/ADR, never a spec; `contradicción`: escalate for an ADR.
 
-**Human contacts.** With a review stage (v2.3.0) the user's contacts are the batch sitting (rounds 1-2), the announced mini-review of each regulatory epic, and the exceptions listed below; a decision nobody foresaw **parks** the epic instead of asking. Without one, inside the gate there is **one budget**: at most 2 question rounds
+**Human contacts.** With a review stage (v2.3.0) the user's contacts are the batch sitting (rounds 1-2), the announced mini-review of each regulatory epic, the compliance triage at the queue drain (v2.4.0, only when a milestone closed in the batch), and the exceptions listed below; a decision nobody foresaw **parks** the epic instead of asking. Without one, inside the gate there is **one budget**: at most 2 question rounds
 (step 3) plus the single closed question of the cap (step 5). After the seal the epic runs
 without asking, except for: **`DONE: pendiente de aprobación visual`** (the design-system
 foundation epic — you run the gate; routine on any project with a frontend) · `BLOCKED:
@@ -351,7 +351,12 @@ broken by design is not a human contact** — it goes through the supersession l
    2. Set that epic's task `in_progress`.
    3. If the epic is in a `CLOSED` review register → **Refresh & seal** (below) — no questions; otherwise run the **Spec Planning Gate** (above). When it completes (specs committed, `SPEC_SHA` recorded), assemble the epic-agent's base context (`.specture/stack.yml`, `.specture/conventions.md`, all ADRs, `docs/01-requirements/business_requirements.md`, `docs/02-architecture/architecture.md`, the validated specs, and the full text of `build/EPIC_LOOP.md` — **never** this coordinator file) and dispatch one fresh **epic-agent** (below). Wait for its report.
    4. Process the report (below) before starting the next epic.
-6. **Stop when the queue drains** (N epics processed) or a report escalates. Do not pull epics beyond N. With N > 1, Step 8.5 is offered **once**, here, for all the epics of the batch — never between epics; so are the `## DIFERIDOS` lines with `dueño: sin epic` (each one a possible `new-feature`). List the **parked** epics with their pending decision and mark `ESTADO: EJECUTADA` in the review register when every epic is `[x]` or parked. If a session branch was created (§13), announce it now and suggest the merge/PR per `W-4` — Specture does not merge for you.
+6. **Stop when the queue drains** (N epics processed) or a report escalates. Do not pull epics beyond N. Then, **in this order** (each one once, for the whole batch — never between epics):
+   1. List the **parked** epics with their pending decision and mark `ESTADO: EJECUTADA` in the review register when every epic is `[x]` or parked.
+   2. The `## DIFERIDOS` lines with `dueño: sin epic` (each one a possible `new-feature`).
+   3. **Compliance triage (v2.4.0)** — `node "${CLAUDE_PLUGIN_ROOT}/hooks/lib/compliance.js" status`; `PENDING` and no epic `[/]` → run `skills/compliance-review/SKILL.md` in `triage` mode (the user decides each finding; the chosen refactors are corrected by its correction agent — never by you). An epic `[/]` (an escalation stopped the queue) leaves it `PENDIENTE` for the next drain.
+   4. Step 8.5 (knowledge capture), when N > 1.
+   5. If a session branch was created (§13), announce it **last** — so it includes the compliance corrections — and suggest the merge/PR per `W-4`. Specture does not merge for you.
 
 ### Refresh & seal (per epic, after a closed review — no questions)
 
@@ -604,6 +609,7 @@ Run by the **coordinator** (not the epic-agent), only when the epic just marked 
    - Merge: add the new BR/AC/EC + contract behavior; move any behavior this milestone supersedes (same `operationId` or same rule subject) down to "Historial / supersesiones"; refresh "Specs de origen" and "Última reconciliación"; set the header `Confianza: spec_reconciled` (a file `knowledge` wrote earlier as `ai_reconciled` / `ai_characterized` is upgraded here — the milestone's validated specs are now its source; `user_confirmed` is left alone).
    - If a supersession overlap is ambiguous, do a **full rebuild** of that component (re-read every spec listed in "Specs de origen" + the new ones).
    - Create `docs/05-specs/_current/` lazily if absent. It is **tracked truth — never gitignored**. If other milestones were already closed **before** `_current/` existed, reconcile only this milestone's components and print once: *⚠ Specture: `_current/` no cubre los milestones cerrados antes — corré `/specture:knowledge reconcile --component <slug>` por cada componente que `/specture:doctor check` liste* (the backfill is a content migration owned by `knowledge reconcile`, one component at a time with Plan-mode approval; never consolidate every past spec here).
+3.5. **Compliance review (v2.4.0)** — before the collapse below (a tombstone drops the epic blocks the range is computed from): unless `compliance_review.enabled` is `false` in `.specture/settings.yml` (honoured under every profile), invoke `skills/compliance-review/SKILL.md` in `milestone <N>` mode and **wait for it** (it dispatches the `compliance-reviewer` per chunk — never in parallel with an epic-agent: one writing agent at a time). It commits its report under `docs/07-reviews/` and returns one informational line; it never asks and never blocks the queue — the triage waits for the drain (queue step 6).
 4. **Deferred ROADMAP collapse**: collapse to a tombstone any **closed** milestone that is no longer among the **~2 most-recent closed** milestones (fixed threshold, no toggle). Tombstone format + archived-dependency resolution: see `templates/ROADMAP_TEMPLATE.md`.
 5. **Commit**: `docs: reconcile <component(s)> + archive milestone <N>`.
 
@@ -621,7 +627,7 @@ bind **this coordinator** specifically: never hand-edit `.specture/state/build-l
 (`seal-cli.js` is the only writer — `write` / `merge-spec` / `lift-spec` / `unseal-spec` /
 `supersede` / `release`); never skip the `git diff <SPEC_SHA>..HEAD` spec-seal check when
 processing a report — after a supersession loop, the range starts at the loop's new
-`SPEC_SHA`. The review stage adds three: never apply a recommended option the user did not choose; never ask during the refresh of a non-regulatory epic (a new decision parks it); never drop a filtered question silently. The gate adds three: never resume the planner with `SendMessage` (always a fresh
+`SPEC_SHA`. The review stage adds three: never apply a recommended option the user did not choose; never ask during the refresh of a non-regulatory epic (a new decision parks it); never drop a filtered question silently. The compliance review adds two: never fix a compliance finding by dispatching the implementer yourself (its correction agent does, after the user's triage), and never let it ask or stop the queue before the drain. The gate adds three: never resume the planner with `SendMessage` (always a fresh
 dispatch per pass); never ask the user or re-plan because of a WARNING or a NOTE of an
 APPROVED verdict (route it with the table of step 5); never invoke `skills/debug` from the
 queue (it needs Plan mode — report `BLOCKED: debug` and let the user choose). The
