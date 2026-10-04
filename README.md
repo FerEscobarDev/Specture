@@ -684,6 +684,20 @@ Specture está en desarrollo activo. Para decisiones arquitectónicas internas, 
 
 ## Changelog
 
+### v2.6.0 — El doctor ofrece enlazar los criterios de revisión que el equipo ya tiene
+
+**Motivación:** v2.4.0 permite enlazar en `.specture/review-rules.md` los criterios de revisión que el equipo ya mantiene, y `setup` lo ofrece en un proyecto nuevo (Adopt, paso 8.6). Pero un proyecto que ya usaba Specture no vuelve a pasar por `setup`: al actualizar el plugin, `start` lo manda al doctor, y el doctor solo validaba el archivo si existía. Quien ya tenía un agente de revisión en su repositorio —el caso que motivó la revisión de cumplimiento— tenía que saber que la opción existía y pedirla a `setup` en modo reconfigurar.
+
+**Cambios:**
+- **Migración `2.6-review-rules-adopt`** (asistida). Aparece en `/specture:doctor migrate` solo con evidencia fuerte —un agente, skill, comando o instrucciones de revisión del equipo en `.claude/agents`, `.claude/skills`, `.claude/commands`, `.github/agents`, `.github/instructions` o `.github/prompts`— y sin `review-rules.md`. Propone en Plan mode el archivo con las secciones que el usuario elija como criterios (sus encabezados, fuera de bloques de código, vienen en el plan), con las mismas reglas que `setup` 8.6: el procedimiento afuera, `cuando:` solo con evidencia, nivel flexible solo si la fuente lo declara, reglas de ubicación al mapa de §2 y los archivos del equipo intactos. `verify` exige el archivo sin errores. Un `CONTRIBUTING.md` se ofrece como fuente opcional, pero por sí solo no la dispara.
+- **Migraciones opcionales: `doctor migrate --decline <id>`.** La primera migración que se puede rechazar: el "no" queda en `.specture/migrations.log`, la migración pasa a hecha, deja de frenar `schema_version` y no se vuelve a ofrecer. El doctor las marca `(opcional …)` en la lista de asistidas; una asistida obligatoria no se puede rechazar.
+- **Docs:** `skills/doctor/SKILL.md` (catálogo y cómo tratar una migración opcional), guía de la revisión de cumplimiento ("Si tu proyecto ya usaba Specture: te lo ofrece el doctor").
+- Tests: 342 (341 → 342: la migración —cuándo aplica, qué propone, verify, rechazo y que una obligatoria no se rechaza—).
+
+**Migración para proyectos existentes:** `2.6-review-rules-adopt`, solo si el repositorio tiene un agente o skill de revisión del equipo y no tiene `review-rules.md`; es opcional y se acepta o se rechaza en `/specture:doctor migrate`. Los demás proyectos no ven nada nuevo; `migrate` registra el `schema_version`.
+
+**Backward-compat:** sin cambios de esquema. Un proyecto sin archivos de revisión del equipo, o con `review-rules.md`, ve la migración como no aplicable o hecha. Un proyecto recién creado sigue sin migraciones pendientes.
+
 ### v2.5.0 — Revisar un PR o una rama contra todas las reglas, sin publicar nada
 
 **Motivación:** v2.4.0 revisa cada milestone del build contra todas las reglas del proyecto. Pero buena parte del código que llega a la rama principal no pasa por el build: el PR de alguien del equipo, una corrección hecha a mano, una rama antes de abrir su PR. Los equipos que adoptan Specture ya revisaban esos PRs con sus propios agentes, aislados de las reglas de Specture. Esta versión lleva la misma revisión a un pull request de GitHub o de Azure DevOps y a una rama local, con dos condiciones: **nunca publicar nada** en la plataforma y **revisar con las reglas de la rama destino**, para que un PR no pueda aflojar las reglas que lo revisan. Guía: [`docs/compliance-review-guide.md`](docs/compliance-review-guide.md) § "Revisar un PR o una rama".

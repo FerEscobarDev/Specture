@@ -4,7 +4,7 @@
 > (revisión: C-1…C-9, M1-M7, G1-G12), `psikora-scale-review.md` (N1-N10) y
 > `doctor-and-migrations-design.md` (doctor, catálogo de migraciones, principios). Cada
 > ítem cita su fuente; las definiciones son las de origen, no reinterpretaciones. Estado:
-> **M0 hecho (v1.14.1) · M1 hecho (v1.15.0) · M2 hecho (v1.16.0) · M3 hecho (v1.17.0) · M4 hecho (v1.18.0) · M5 hecho (v1.19.0) · M7 hecho (v2.0.0; cierre v2.1.0) · M8 en curso (v2.2.0 y v2.3.0 hechos; ítem 72 condicional, versión por definir) · M9 hecho (v2.4.0 · v2.5.0)**; M6 espera medición. Última actualización: 2026-10-06 (v2.5.0, revisión de PR y de rama). M7 y M8 suman
+> **M0 hecho (v1.14.1) · M1 hecho (v1.15.0) · M2 hecho (v1.16.0) · M3 hecho (v1.17.0) · M4 hecho (v1.18.0) · M5 hecho (v1.19.0) · M7 hecho (v2.0.0; cierre v2.1.0) · M8 en curso (v2.2.0 y v2.3.0 hechos; ítem 72 condicional, versión por definir) · M9 hecho (v2.4.0 · v2.5.0 · v2.6.0)**; M6 espera medición. Última actualización: 2026-10-06 (v2.6.0, el doctor ofrece las reglas de revisión del equipo). M7 y M8 suman
 > las fuentes `frontend-design-track-design.md`, `spec-gate-convergence-design.md` y
 > `milestone-planning-stage-analysis.md` (Apéndice C). Las **decisiones** que
 > condicionan el orden están en el Apéndice A (A1-A7 cerradas). **Solo contiene ajustes del framework**: las acciones sobre el proyecto
@@ -768,7 +768,7 @@ que después de una revisión concentrada antes de ejecutar la ejecución fluya 
 
 ---
 
-## Milestone 9 — Revisión de cumplimiento (v2.4.0 · v2.5.0)
+## Milestone 9 — Revisión de cumplimiento (v2.4.0 · v2.5.0 · v2.6.0)
 
 *Objetivo:* que el código de un milestone se revise contra **todas** las reglas del proyecto —las
 que la revisión por spec no ve y los criterios que el equipo ya mantiene— y que el usuario decida
@@ -791,6 +791,8 @@ qué se aborda, con comentarios que cualquiera entienda sin los documentos inter
   `Fuente: pedido del usuario 2026-10-04` · `Esfuerzo: medio` · `Depende de: 74`
 - [x] **78. Revisión de PR (GitHub, Azure DevOps) y de rama local, solo lectura** · hecho 2026-10-06, v2.5.0 (`78ac802`, `3a4d5f8`, `5270751`) — `hooks/lib/pr.js` lee el PR (`gh pr view` · `az repos pr show`, nunca la descripción) y trae cabeza y destino a `refs/specture/pr/<n>/` sin tocar el checkout; `compliance.js range --pr | --branch` copia los archivos de la cabeza y la configuración de la rama **destino** (las reglas salen de ahí: un PR no afloja las reglas que lo revisan; en lugar del `--rev` previsto en los resolvers, una copia materializada donde corren sin cambios), sin corrección ni publicación; reportes `cumplimiento-pr-gh-<n>` / `-pr-az-<n>` / `cumplimiento-rama-<slug>`, `TRIAGE: NO REQUERIDO`, sección "Cambios a las reglas"; el revisor revisa además nombre de rama (W-1/W-2) y destino (W-4)
   `Fuente: pedido del usuario 2026-10-04` · `Esfuerzo: medio` · `Depende de: 74, 75`
+- [x] **79. El doctor ofrece enlazar los criterios de revisión del equipo** · hecho 2026-10-06, v2.6.0 (`55239ac`) — migración asistida `2.6-review-rules-adopt` para proyectos que ya usaban Specture (no vuelven a pasar por `setup`): aparece solo si hay un agente o skill de revisión del equipo y no hay `review-rules.md`, propone el archivo en Plan mode y es la primera **rechazable** (`doctor migrate --decline`, registrada en `migrations.log`, deja de frenar `schema_version`)
+  `Fuente: pedido del usuario 2026-10-04 ("¿no debería el doctor permitir la configuración?")` · `Esfuerzo: bajo` · `Depende de: 75`
 
 ---
 
