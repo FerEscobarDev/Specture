@@ -61,6 +61,7 @@ Cada hallazgo trae un **tipo**:
 | `refactor` | arreglarlo no cambia lo que hace el código (nombres, ubicación, duplicación, estilo) | corregir · diferir · no aplica |
 | `comportamiento` | arreglarlo cambia lo que hace (una validación que falta, otro código de estado) | diferir (pasa por un spec) · no aplica |
 | `test` | el hallazgo está en un archivo de test | diferir (lo cambia quien escribe tests) · no aplica |
+| `proceso` | una regla de proceso: el formato de un mensaje de commit, el nombre de una rama | diferir · no aplica (no se arregla con código) |
 
 La razón: en Specture todo cambio de comportamiento pasa por un spec y los tests los escribe el
 test-writer. "No aplica" es tu criterio y queda registrado con su motivo.

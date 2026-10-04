@@ -48,7 +48,7 @@ const STATE_DIR = ".specture/state/compliance";
 const METRICS_FILE = "docs/.specture-meta/build-metrics.jsonl";
 const CHUNK_LIMIT = 120000;
 const SEVERITIES = ["BLOCKER", "IMPORTANT", "NIT"];
-const TIPOS = ["refactor", "comportamiento", "test"];
+const TIPOS = ["refactor", "comportamiento", "test", "proceso"];
 const LOCKFILES = /(^|\/)(package-lock\.json|npm-shrinkwrap\.json|yarn\.lock|pnpm-lock\.yaml|composer\.lock|Gemfile\.lock|poetry\.lock|Cargo\.lock|packages\.lock\.json|go\.sum)$/i;
 const REPORT_NAME = /^cumplimiento-milestone-([A-Za-z0-9.]+)-(\d{4}-\d{2}-\d{2})(?:-p(\d+))?\.md$/;
 
@@ -354,7 +354,7 @@ function parsePart(text) {
       }
       for (const k of FINDING_KEYS) if (!current[k]) part.errors.push(`hallazgo de la línea ${current.line}: falta ${k}`);
       if (current.SEV && !SEVERITIES.includes(current.SEV.toUpperCase())) part.errors.push(`hallazgo de la línea ${current.line}: SEV "${current.SEV}" (BLOCKER | IMPORTANT | NIT)`);
-      if (current.TIPO && !TIPOS.includes(current.TIPO.toLowerCase())) part.errors.push(`hallazgo de la línea ${current.line}: TIPO "${current.TIPO}" (refactor | comportamiento | test)`);
+      if (current.TIPO && !TIPOS.includes(current.TIPO.toLowerCase())) part.errors.push(`hallazgo de la línea ${current.line}: TIPO "${current.TIPO}" (refactor | comportamiento | test | proceso)`);
       if (current.UBICACION && !/^[^\s:]+:\d+$/.test(current.UBICACION)) part.errors.push(`hallazgo de la línea ${current.line}: UBICACION "${current.UBICACION}" (esperado <ruta>:<línea>)`);
       part.findings.push({
         sev: String(current.SEV || "").toUpperCase(),
@@ -687,7 +687,7 @@ function triage(root, opts) {
       continue;
     }
     if (v === "corregir" && f.tipo !== "refactor") {
-      problems.push(`${item.id} es de tipo ${f.tipo}: solo se corrige un refactor (un cambio de comportamiento va a un spec; un test lo cambia el test-writer) — diferilo o marcalo no aplica`);
+      problems.push(`${item.id} es de tipo ${f.tipo}: solo se corrige un refactor (un cambio de comportamiento va a un spec; un test lo cambia el test-writer; un hallazgo de proceso, como un mensaje de commit, no se corrige con código) — diferilo o marcalo no aplica`);
       continue;
     }
     decisions[item.id] = { decision: v, reason: item.reason };
@@ -776,7 +776,7 @@ function record(root, opts) {
     report: rel,
     status: report.status,
     findings: { BLOCKER: count((f) => f.sev === "BLOCKER"), IMPORTANT: count((f) => f.sev === "IMPORTANT"), NIT: count((f) => f.sev === "NIT") },
-    tipo: { refactor: count((f) => f.tipo === "refactor"), comportamiento: count((f) => f.tipo === "comportamiento"), test: count((f) => f.tipo === "test") },
+    tipo: { refactor: count((f) => f.tipo === "refactor"), comportamiento: count((f) => f.tipo === "comportamiento"), test: count((f) => f.tipo === "test"), proceso: count((f) => f.tipo === "proceso") },
     triage: {
       corregir: decisions.filter((d) => d.decision === "corregir").length,
       diferir: decisions.filter((d) => d.decision === "diferir").length,

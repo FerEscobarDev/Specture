@@ -210,9 +210,10 @@ test("range works for a project nested inside a larger repository", () => {
 });
 
 test("parts: grammar errors and Specture vocabulary in suggested comments fail lint", () => {
-  const ok = compliance.parsePart(PART("chunk-1", [FINDING({})]));
+  const ok = compliance.parsePart(PART("chunk-1", [FINDING({}), FINDING({ tipo: "proceso", loc: "api/orders/create.js:1", origin: "W-3", comment: "El mensaje del commit no sigue el formato tipo(ámbito): descripción que usa el resto del repositorio." })]));
   assert.deepEqual(ok.errors, []);
   assert.equal(ok.findings[0].symbol, "api/orders/create.js::create");
+  assert.equal(ok.findings[1].tipo, "proceso", "a process finding (W-*) has its own type");
 
   const broken = compliance.parsePart("PARTE: chunk-1\nHALLAZGO\nSEV: GRAVE\nTIPO: estilo\nFIN\nOTRA: x\n");
   assert.ok(broken.errors.some((e) => /SEV "GRAVE"/.test(e)));
@@ -263,9 +264,10 @@ test("assemble → triage → correction → status → record, end to end on th
   assert.match(report, /No evaluado: R-FILE-001 en legacy/);
   assert.match(run(root, "status").stdout, /PENDING 1[\s\S]*TRIAGE PENDIENTE \(3 hallazgo/);
 
-  const refused = run(root, "triage", "--report", rel, "--set", "F-1=corregir;F-2=corregir;F-3=no-aplica:criterio del equipo");
+  const refused = run(root, "triage", "--report", rel, "--set", "F-1=corregir;F-2=corregir;F-3=corregir");
   assert.equal(refused.status, 1);
   assert.match(refused.stdout, /F-1 es de tipo comportamiento: solo se corrige un refactor/);
+  assert.match(refused.stdout, /F-3 es de tipo test: solo se corrige un refactor/);
   assert.match(run(root, "triage", "--report", rel, "--set", "F-2=corregir").stdout, /sin decisión: F-1, F-3/);
 
   const recorded = run(root, "triage", "--report", rel, "--set", "F-1=diferir:requiere spec;F-2=corregir;F-3=no-aplica:criterio del equipo", "--date", "2026-02-02");

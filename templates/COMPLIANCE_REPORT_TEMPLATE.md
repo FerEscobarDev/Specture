@@ -16,7 +16,7 @@ RESUMEN: <1-2 frases sobre lo que hace el código de este bloque>
 BIEN: <algo concreto que está bien>                    (0..n)
 HALLAZGO
 SEV: BLOCKER | IMPORTANT | NIT
-TIPO: refactor | comportamiento | test
+TIPO: refactor | comportamiento | test | proceso
 TITULO: <título corto>
 UBICACION: <ruta>:<línea>
 SIMBOLO: <ruta>::<símbolo>                             (o "-")
@@ -27,11 +27,14 @@ COMENTARIO: <comentario sugerido para quien escribió el código>
 FIN
 GENERAL: <comentario general sugerido, no atado a una línea>      (0..n)
 CONFLICTO: <regla del equipo> ⟂ <regla de Specture> — <cuál se aplicó>   (0..n)
-NO_EVALUADO: <regla o grupo> — <motivo, p. ej. nivel flexible en legacy/**>  (0..n)
+NO_EVALUADO: <ruta flexible> — nivel flexible: <familias de reglas omitidas>   (0..n)
 ```
 
 - `TIPO` decide qué se puede corregir en el triage: solo `refactor` (no cambia el
-  comportamiento). `comportamiento` necesita un spec; `test` lo cambia quien escribe los tests.
+  comportamiento). `comportamiento` necesita un spec; `test` lo cambia quien escribe los tests;
+  `proceso` (un `W-*`: mensaje de commit, nombre de rama) no se corrige con código.
+- `NO_EVALUADO` es solo para lo que el nivel flexible hizo omitir — no para una regla que no
+  aplica al bloque ni para las reglas de proceso, que se reportan una vez en `chunk-1`.
 - `COMENTARIO` y `GENERAL` se entienden **sin documentos internos**: nunca un ID de regla, un
   ADR, un archivo de configuración del framework, `§` ni la ruta de un archivo incluido.
   `compliance.js lint` los rechaza. Se permiten términos de código.

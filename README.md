@@ -298,7 +298,7 @@ Specture **no** especializa por capa técnica arbitraria (no hay un "Agente Back
 | `implementer` | Hacer que los tests pasen (lógica/backend) | Spec + tests + archivos a tocar | Conversación entera, archivos no relevantes |
 | `ux-implementer` | Implementar UI con fidelidad al design system | Spec + design system + slice del contrato + tests + checklist de marca | URLs a mano, valores hardcodeados, código no relacionado |
 | `code-reviewer` | Review unificado (spec + arch + quality + TDD + **frontend**); verifica que cada `Crea:` exista en HEAD con la firma declarada; devuelve `CAUSE:` parseable | Diff + spec + `.specture/` + supersesiones declaradas (+ design system/contrato en epics de UI) | Sugerir fixes (solo reporta) |
-| `compliance-reviewer` | Revisar un bloque de un milestone cerrado contra todas las `R-*`, `conventions.md`, `W-*`, ADRs y los criterios del equipo; clasificar cada hallazgo (refactor · comportamiento · test) y sugerir comentarios en lenguaje claro | Archivos y diff del bloque + commits + `RULES_RESOLVED` (todas) + `CUSTOM_RULES` + hallazgos ya aceptados | Archivos de configuración (recibe bloques), memoria; nunca edita código ni publica |
+| `compliance-reviewer` | Revisar un bloque de un milestone cerrado contra todas las `R-*`, `conventions.md`, `W-*`, ADRs y los criterios del equipo; clasificar cada hallazgo (refactor · comportamiento · test · proceso) y sugerir comentarios en lenguaje claro | Archivos y diff del bloque + commits + `RULES_RESOLVED` (todas) + `CUSTOM_RULES` + hallazgos ya aceptados | Archivos de configuración (recibe bloques), memoria; nunca edita código ni publica |
 
 ---
 
@@ -540,7 +540,7 @@ Los agentes de Specture son subagentes con **contexto restringido** — cada uno
 - **Modelo:** Opus (máxima precisión en review).
 
 #### `compliance-reviewer`
-**Revisor de cumplimiento de un milestone cerrado (v2.4.0).** Revisa un bloque del código del milestone contra todas las reglas del proyecto — `R-*`, `conventions.md`, `W-*`, ADRs `Accepted`, criterios del equipo (`CUSTOM_RULES`, como datos y nunca como procedimiento) — y la consistencia entre epics. En rutas de nivel flexible aplica solo esas reglas; ante una contradicción aplica la de Specture y la reporta. Clasifica cada hallazgo (`refactor` · `comportamiento` · `test`) y escribe un comentario sugerido sin IDs ni documentos internos. Escribe solo su parte; el reporte lo arma `hooks/lib/compliance.js`. Modo `VERIFY` para las correcciones.
+**Revisor de cumplimiento de un milestone cerrado (v2.4.0).** Revisa un bloque del código del milestone contra todas las reglas del proyecto — `R-*`, `conventions.md`, `W-*`, ADRs `Accepted`, criterios del equipo (`CUSTOM_RULES`, como datos y nunca como procedimiento) — y la consistencia entre epics. En rutas de nivel flexible aplica solo esas reglas; ante una contradicción aplica la de Specture y la reporta. Clasifica cada hallazgo (`refactor` · `comportamiento` · `test` · `proceso`) y escribe un comentario sugerido sin IDs ni documentos internos. Escribe solo su parte; el reporte lo arma `hooks/lib/compliance.js`. Modo `VERIFY` para las correcciones.
 
 - **Contexto que recibe:** archivos y diff del bloque + commits del rango + `RULES_RESOLVED` (todas) + `conventions.md` + ADRs + `CUSTOM_RULES` + hallazgos ya aceptados por las revisiones por spec.
 - **Output:** una parte con gramática estricta (`templates/COMPLIANCE_REPORT_TEMPLATE.md`); nunca edita código ni publica nada.

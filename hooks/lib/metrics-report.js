@@ -40,7 +40,7 @@
 //   batch's review_questions on a line that carries `batch_id`.
 // Compliance records (v2.4.0, `kind: "compliance"` — one per milestone report, appended by
 //   `compliance.js record` after the triage): { kind, milestone, report, status,
-//   findings: {BLOCKER, IMPORTANT, NIT}, tipo: {refactor, comportamiento, test},
+//   findings: {BLOCKER, IMPORTANT, NIT}, tipo: {refactor, comportamiento, test, proceso},
 //   triage: {corregir, diferir, no_aplica}, corrected, not_corrected, plugin, ts }. They carry no
 //   `epic`: they are read into their own list, never counted as epics nor as malformed lines.
 

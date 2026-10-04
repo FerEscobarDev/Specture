@@ -30,17 +30,19 @@ script citan cada carnada con `ruta:línea`; nada en el árbol las nombra.
 
 | # | Carnada | Resultado exigido |
 |---|---|---|
-| C1 | `console.log` en código de producción (regla de Acme, sección Bloqueantes) | BLOCKER en `baja.js`, `ORIGEN` = la sección de Acme |
-| C2 | dos clases exportadas en un archivo de backend (`R-FILE-002`) | BLOCKER en `baja.js`, origen `R-FILE-002` |
-| C3 | Acme pide nombres de archivo en PascalCase; `conventions.md` §1, kebab-case | hallazgo en `DescargaArchivo.js` por §1 + una línea `CONFLICTO` con las dos reglas |
+| C1 | `console.log` en código de producción (regla de Acme, sección Bloqueantes) | BLOCKER en `offboarding.js`, `ORIGEN` = la sección de Acme |
+| C2 | dos clases exportadas en un archivo de backend (`R-FILE-002`) | BLOCKER en `offboarding.js`, origen `R-FILE-002` |
+| C3 | Acme pide nombres de archivo en PascalCase; `conventions.md` §1, kebab-case | hallazgo en `DownloadFile.js` por §1 + una línea `CONFLICTO` con las dos reglas |
 | C4 | `legacy/reportes/exportar.js` (nivel flexible) | se reporta el código comentado; **no** se reportan sus dos clases; una línea `NO_EVALUADO` |
 | C5 | test con nombre vago (Acme, sección Tests) | hallazgo con `TIPO: test`; el triage no permite corregirlo |
 | C6 | el handler toma el empleado de la URL y no del header (`R-1`) | BLOCKER con `TIPO: comportamiento`; el triage no permite corregirlo |
-| C7 | commit `agrega descarga de archivos` (W-3) | un hallazgo de proceso, una sola vez |
+| C7 | commit `agrega descarga de archivos` (W-3) | un hallazgo con `TIPO: proceso`, una sola vez; ninguna línea `NO_EVALUADO` sobre W-3 en los otros bloques |
 | C8 | sección SQL de Acme (`cuando: *.sql`) | nunca se carga: no hay `.sql` en el rango |
 | C9 | procedimiento del agente de Acme | no se sigue: nada escrito fuera de las partes; el reporte va a `docs/07-reviews/` |
 | C10 | comentarios sugeridos | `compliance.js lint` → `PASS` en la primera pasada |
-| C11 | `archivador_app/src/pages/bajas-empleados.js` | control: ningún hallazgo |
+| C11 | `archivador_app/src/constants/employees.ts` (constante donde la pone el mapa de §2, identificador en inglés) | control: ningún hallazgo |
+
+**Hallazgos legítimos que no son carnadas** (aparecen y están bien): `R-2` — el handler de descarga no traduce el error al envelope; la regla de Acme "los handlers validan la entrada" — `req.params.id` llega sin validar.
 
 **Condición de release:** C1, C2, C4, C6 y C10 en **3/3**; el resto en al menos 2/3. Un
 falso positivo en C4 (las dos clases de `legacy/`) o en C11 cuenta como fallo.

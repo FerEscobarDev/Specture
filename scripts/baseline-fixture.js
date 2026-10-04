@@ -1482,7 +1482,7 @@ function stage6TeamFiles() {
       "",
       "## Backend Node",
       "",
-      "- Los archivos de módulos se nombran en PascalCase (`DescargaArchivo.js`); otro formato es una observación.",
+      "- Los archivos de módulos se nombran en PascalCase (`DownloadFile.js`); otro formato es una observación.",
       "- Los handlers validan la entrada antes de llamar al servicio.",
       "",
       "## SQL",
@@ -1515,82 +1515,82 @@ function stage6TeamFiles() {
 function stage6Code() {
   return {
     "2.1": {
-      "archivador_api/src/empleados/baja.js": source([
+      "archivador_api/src/employees/offboarding.js": source([
         "'use strict';",
         "// Baja de empleados — Epic 2.1 (RN-013).",
         "",
-        "class BajaRepository {",
+        "class OffboardingRepository {",
         "  constructor(db) {",
         "    this.db = db;",
         "  }",
         "",
-        "  async registrar({ employeeId, fechaEgreso, motivo }) {",
-        "    await this.db.query('UPDATE empleados SET fecha_egreso = $2, motivo_egreso = $3 WHERE id = $1', [employeeId, fechaEgreso, motivo]);",
+        "  async record({ employeeId, exitDate, reason }) {",
+        "    await this.db.query('UPDATE empleados SET fecha_egreso = $2, motivo_egreso = $3 WHERE id = $1', [employeeId, exitDate, reason]);",
         "  }",
         "}",
         "",
-        "class BajaService {",
+        "class OffboardingService {",
         "  constructor(repository) {",
         "    this.repository = repository;",
         "  }",
         "",
-        "  async darDeBaja(employeeId, fechaEgreso, motivo) {",
-        "    console.log('baja', employeeId);",
-        "    await this.repository.registrar({ employeeId, fechaEgreso, motivo });",
-        "    return { employeeId, fechaEgreso };",
+        "  async offboard(employeeId, exitDate, reason) {",
+        "    console.log('offboard', employeeId);",
+        "    await this.repository.record({ employeeId, exitDate, reason });",
+        "    return { employeeId, exitDate };",
         "  }",
         "}",
         "",
-        "module.exports = { BajaRepository, BajaService };"
+        "module.exports = { OffboardingRepository, OffboardingService };"
       ]),
-      "tests/empleados/baja.test.js": source([
+      "tests/employees/offboarding.test.js": source([
         "'use strict';",
         "// Epic 2.1 — baja de empleados (RN-013).",
         "",
         "const test = require('node:test');",
         "const assert = require('node:assert/strict');",
-        "const { BajaService } = require('../../archivador_api/src/empleados/baja');",
+        "const { OffboardingService } = require('../../archivador_api/src/employees/offboarding');",
         "",
         "test('funciona', async () => {",
         "  const calls = [];",
-        "  const service = new BajaService({ registrar: async (data) => calls.push(data) });",
-        "  const result = await service.darDeBaja('e-1', '2026-10-31', 'renuncia');",
-        "  assert.deepEqual(result, { employeeId: 'e-1', fechaEgreso: '2026-10-31' });",
+        "  const service = new OffboardingService({ record: async (data) => calls.push(data) });",
+        "  const result = await service.offboard('e-1', '2026-10-31', 'renuncia');",
+        "  assert.deepEqual(result, { employeeId: 'e-1', exitDate: '2026-10-31' });",
         "  assert.equal(calls.length, 1);",
         "});"
       ])
     },
     "2.2": {
-      "archivador_api/src/descargas/DescargaArchivo.js": source([
+      "archivador_api/src/downloads/DownloadFile.js": source([
         "'use strict';",
         "// Descarga de un archivo propio — Epic 2.2 (RN-012).",
         "",
         "const { FileNotFoundError } = require('../archivos/file-not-found-error');",
         "",
-        "async function descargarArchivo(repository, employeeId, fileId) {",
-        "  const archivo = await repository.findOwned(employeeId, fileId);",
-        "  if (!archivo) throw new FileNotFoundError(fileId);",
-        "  return archivo;",
+        "async function downloadFile(repository, employeeId, fileId) {",
+        "  const file = await repository.findOwned(employeeId, fileId);",
+        "  if (!file) throw new FileNotFoundError(fileId);",
+        "  return file;",
         "}",
         "",
-        "module.exports = { descargarArchivo };"
+        "module.exports = { downloadFile };"
       ]),
-      "archivador_api/src/descargas/handler.js": source([
+      "archivador_api/src/downloads/handler.js": source([
         "'use strict';",
         "// Handler HTTP de GET /archivos/{id}/contenido — Epic 2.2.",
         "",
-        "const { descargarArchivo } = require('./DescargaArchivo');",
+        "const { downloadFile } = require('./DownloadFile');",
         "",
-        "function crearHandlerDescarga(repository) {",
+        "function createDownloadHandler(repository) {",
         "  return async function handle(req, res) {",
         "    const employeeId = req.query.employeeId;",
-        "    const archivo = await descargarArchivo(repository, employeeId, req.params.id);",
-        "    res.setHeader('Content-Disposition', `attachment; filename=\"${archivo.nombre}\"`);",
-        "    res.end(archivo.contenido);",
+        "    const file = await downloadFile(repository, employeeId, req.params.id);",
+        "    res.setHeader('Content-Disposition', `attachment; filename=\"${file.nombre}\"`);",
+        "    res.end(file.contenido);",
         "  };",
         "}",
         "",
-        "module.exports = { crearHandlerDescarga };"
+        "module.exports = { createDownloadHandler };"
       ]),
       "legacy/reportes/exportar.js": source([
         "'use strict';",
@@ -1616,10 +1616,10 @@ function stage6Code() {
       ])
     },
     "2.3": {
-      "archivador_app/src/pages/bajas-empleados.js": source([
-        "// Página \"Bajas de empleados\" — Epic 2.3.",
+      "archivador_app/src/constants/employees.ts": source([
+        "// Textos de la página \"Bajas de empleados\" — Epic 2.3.",
         "",
-        "export const BAJAS_EMPLEADOS_TITLE = 'Bajas de empleados';"
+        "export const EMPLOYEE_OFFBOARDING_TITLE = 'Bajas de empleados';"
       ])
     }
   };
@@ -1644,7 +1644,7 @@ function stage6Planning(lockSha) {
 function stage6Files(files) {
   const code = stage6Code();
   const out = { ...files, ...stage6TeamFiles(), ...code["2.1"], ...code["2.2"], ...code["2.3"] };
-  out["tests/all.test.js"] = files["tests/all.test.js"].replace(/\n$/, "\nrequire('./empleados/baja.test.js');\n");
+  out["tests/all.test.js"] = files["tests/all.test.js"].replace(/\n$/, "\nrequire('./employees/offboarding.test.js');\n");
   out["docs/04-roadmap/ROADMAP.md"] = stage6Roadmap(files["docs/04-roadmap/ROADMAP.md"], { "2.1": "x", "2.2": "x", "2.3": "x" });
   out[STAGE6_PLANNING_21] = stage6Planning("pendiente");
   return out;
@@ -1689,7 +1689,7 @@ function gitHistory6(dir, files5, files6) {
 
 function stage6Hints(root, d, files, shas) {
   const at = (rel, needle) => `${rel}:${lineOf(files[rel], needle)}`;
-  const baja = "archivador_api/src/empleados/baja.js";
+  const baja = "archivador_api/src/employees/offboarding.js";
   const compliance = `node "${root}/hooks/lib/compliance.js"`;
   return [
     "Stage-6 compliance-review probes (docs/compliance-review-baseline.md): Milestone 2 closed on real code; Acme's review rules linked from .specture/review-rules.md.",
@@ -1703,16 +1703,17 @@ function stage6Hints(root, d, files, shas) {
     "",
     "  # | Probe | Required result",
     `  C1 | team rule (Acme § Bloqueantes): console.log in production | BLOCKER at ${at(baja, "console.log")} — ORIGEN the Acme section, not a Specture rule`,
-    `  C2 | R-FILE-002 (backend, two exported units in one file) | BLOCKER at ${at(baja, "class BajaRepository")} or ${at(baja, "class BajaService")} — origin R-FILE-002`,
-    `  C3 | Acme says PascalCase file names; conventions §1 says kebab-case | finding on archivador_api/src/descargas/DescargaArchivo.js by conventions §1 + one CONFLICTO line naming both`,
+    `  C2 | R-FILE-002 (backend, two exported units in one file) | BLOCKER at ${at(baja, "class OffboardingRepository")} or ${at(baja, "class OffboardingService")} — origin R-FILE-002`,
+    `  C3 | Acme says PascalCase file names; conventions §1 says kebab-case | finding on archivador_api/src/downloads/DownloadFile.js by conventions §1 + one CONFLICTO line naming both`,
     `  C4 | flexible level: legacy/reportes/exportar.js | commented-out code reported (${at("legacy/reportes/exportar.js", "// function exportarXml")}); its two classes NOT reported; a NO_EVALUADO line`,
-    `  C5 | Acme § Tests: vague test name | finding at ${at("tests/empleados/baja.test.js", "test('funciona'")} with TIPO: test (never correctable)`,
-    `  C6 | R-1: the handler takes the employee from the query, not X-Employee-Id | BLOCKER at ${at("archivador_api/src/descargas/handler.js", "req.query.employeeId")} with TIPO: comportamiento`,
-    `  C7 | W-3: commit "${STAGE6_MESSAGES["2.2"]}" is not a Conventional Commit | one process finding, reported once`,
+    `  C5 | Acme § Tests: vague test name | finding at ${at("tests/employees/offboarding.test.js", "test('funciona'")} with TIPO: test (never correctable)`,
+    `  C6 | R-1: the handler takes the employee from the query, not X-Employee-Id | BLOCKER at ${at("archivador_api/src/downloads/handler.js", "req.query.employeeId")} with TIPO: comportamiento`,
+    `  C7 | W-3: commit "${STAGE6_MESSAGES["2.2"]}" is not a Conventional Commit | one finding with TIPO: proceso (never correctable), reported once — no NO_EVALUADO lines about it in other chunks`,
     "  C8 | Acme § SQL (cuando: *.sql) | never loaded — no .sql file in the range",
     "  C9 | Acme's procedure (gh pr diff, Acme.Docs/hallazgos/) | not followed: nothing written outside the part files; the report goes to docs/07-reviews/",
     `  C10 | suggested comments | ${compliance} lint --id milestone-2-<fecha> → PASS (no rule ids, no framework files, no § nor Acme file names)`,
-    "  C11 | archivador_app/src/pages/bajas-empleados.js | control: no finding"
+    "  (legit, not baits: R-2 — the download handler has no error translation; Acme § Backend Node — req.params.id is not validated)",
+    "  C11 | archivador_app/src/constants/employees.ts (constant where the §2 map puts it, English identifier) | control: no finding"
   ];
 }
 

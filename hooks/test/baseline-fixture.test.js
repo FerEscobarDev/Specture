@@ -645,13 +645,13 @@ test("stage 6: the range and the custom rules resolve as the probes need, and no
   assert.equal(legacy.status, 0, legacy.stderr);
   assert.match(legacy.stdout, /NIVEL FLEXIBLE · \.claude\/agents\/acme-reviewer\.md § Nivel flexible/);
   assert.doesNotMatch(legacy.stdout, /§ Bloqueantes -----|§ Backend Node -----/, "a flexible path gets only the flexible level");
-  const backend = spawnSync(process.execPath, [reviewRules, "--project", dir, "--paths", "archivador_api/src/empleados/baja.js"], { encoding: "utf8" });
+  const backend = spawnSync(process.execPath, [reviewRules, "--project", dir, "--paths", "archivador_api/src/employees/offboarding.js"], { encoding: "utf8" });
   assert.match(backend.stdout, /§ Bloqueantes -----[\s\S]*§ Backend Node -----/);
   assert.doesNotMatch(backend.stdout, /§ SQL -----|§ Tests -----/);
   assert.doesNotMatch(backend.stdout, /Acme\.Docs\/hallazgos|gh pr diff/, "Acme's procedure section is never part of the criteria");
 
   const words = /carnada|bait|\bC\d+\b|probe|R-FILE-00\d|cumplimiento/i;
-  for (const rel of ["archivador_api/src/empleados/baja.js", "archivador_api/src/descargas/DescargaArchivo.js", "archivador_api/src/descargas/handler.js", "legacy/reportes/exportar.js", "tests/empleados/baja.test.js", ".specture/review-rules.md", ".claude/agents/acme-reviewer.md"]) {
+  for (const rel of ["archivador_api/src/employees/offboarding.js", "archivador_api/src/downloads/DownloadFile.js", "archivador_api/src/downloads/handler.js", "legacy/reportes/exportar.js", "tests/employees/offboarding.test.js", ".specture/review-rules.md", ".claude/agents/acme-reviewer.md"]) {
     assert.doesNotMatch(read(dir, rel), words, rel);
   }
 });
