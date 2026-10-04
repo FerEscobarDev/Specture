@@ -5,6 +5,7 @@
 //   2. README.md has a changelog entry for that version.
 //   3. Every hook command registered for any platform points to a script that exists.
 //   4. `bump-version.js --check` agrees.
+//   5. release.yml marks "Latest" only for the highest version tag.
 
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
@@ -79,4 +80,12 @@ test("bump-version --check passes on the current tree", () => {
   );
 
   assert.equal(result.status, 0, result.stderr || result.stdout);
+});
+
+test("release.yml marks Latest only for the highest version tag", () => {
+  const workflow = readText(".github/workflows/release.yml");
+
+  assert.match(workflow, /git tag --list 'v\*' --sort=-v:refname/, "highest tag by version order, not lexical");
+  assert.match(workflow, /gh release create [^\n]*--latest="\$LATEST"/, "create must pass --latest explicitly");
+  assert.match(workflow, /gh release edit [^\n]*--latest="\$LATEST"/, "edit must pass --latest explicitly");
 });

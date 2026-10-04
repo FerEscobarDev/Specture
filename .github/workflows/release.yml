@@ -44,13 +44,19 @@ jobs:
           node scripts/bump-version.js --notes "$VERSION" > notes.md
           echo "Title: $(cat title.txt)"
 
+      # Only the highest version tag is marked "Latest". Without an explicit flag GitHub marks
+      # whichever release was published last, so publishing an older tag (e.g. a backfill)
+      # would steal "Latest" from the newest version.
       - name: Create or update the GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           TITLE="$(cat title.txt)"
+          HIGHEST="$(git tag --list 'v*' --sort=-v:refname | head -n 1)"
+          if [ "$GITHUB_REF_NAME" = "$HIGHEST" ]; then LATEST=true; else LATEST=false; fi
+          echo "Latest: $LATEST (highest tag: $HIGHEST)"
           if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
-            gh release edit "$GITHUB_REF_NAME" --title "$TITLE" --notes-file notes.md
+            gh release edit "$GITHUB_REF_NAME" --title "$TITLE" --notes-file notes.md --latest="$LATEST"
           else
-            gh release create "$GITHUB_REF_NAME" --title "$TITLE" --notes-file notes.md --verify-tag
+            gh release create "$GITHUB_REF_NAME" --title "$TITLE" --notes-file notes.md --verify-tag --latest="$LATEST"
           fi

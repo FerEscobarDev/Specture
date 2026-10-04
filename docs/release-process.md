@@ -39,10 +39,16 @@
 5. `npm run check:release` — falla si los manifiestos no coinciden o falta la entrada.
 6. Commit `chore(release): vX.Y.Z` (junto con los docs de la versión), `git push origin
    master` y **esperar la CI verde** (`gh run watch`). No cortar el tag sobre CI roja.
-7. `git tag -a vX.Y.Z -m "vX.Y.Z — <título>"` y `git push origin vX.Y.Z`.
+7. `git tag -a vX.Y.Z -m "vX.Y.Z — <título>"` y `git push origin vX.Y.Z`. **Un tag por
+   push:** GitHub no dispara workflows cuando un mismo push lleva más de tres tags, así que
+   esos tags quedan sin Release y sin CI, y no hay ningún error. Si quedaron tags locales
+   sin subir, subilos de a uno y en orden de versión
+   (`for t in v2.2.0 v2.2.1; do git push origin "$t"; done`), nunca con `git push --tags`.
 8. `release.yml` corre tests + contrato y **crea (o actualiza) el GitHub Release** con
-   título = encabezado del changelog y notas = su cuerpo. Verificar con
-   `gh release view vX.Y.Z`.
+   título = encabezado del changelog y notas = su cuerpo. Lo marca como **Latest** solo si
+   el tag es la versión más alta del repo (`git tag --sort=-v:refname`), así que un tag
+   atrasado se publica sin quitarle Latest a la última versión. Verificar con
+   `gh release view vX.Y.Z` y `gh release list` (la columna Latest).
 
 ## Qué verifica la CI
 
@@ -50,10 +56,12 @@
   `ubuntu-latest` y `windows-latest` × Node 22 y 24. En tags, además el job
   `release-contract`: `bump-version --check` y `tag == plugin.json.version`.
 - **`release.yml`** — solo en tags `v*`: repite tests y contrato (un tag inválido nunca
-  publica) y crea/actualiza el Release con `gh`.
+  publica) y crea/actualiza el Release con `gh`, con `--latest=true` solo para el tag de
+  versión más alta y `--latest=false` para los demás.
 - **`hooks/test/release-contract.test.js`** (corre en ambos): manifiestos iguales, entrada
   de changelog presente, cada comando de hook en `settings.json`/`hooks.json` apunta a un
-  script existente, `--check` en 0.
+  script existente, `--check` en 0, y `release.yml` pasa `--latest` explícito al crear y al
+  editar.
 - **`migrations/test/*.test.js`**: catálogo (pending → apply → done, idempotente), invariante
   setup ↔ migraciones, manifest de esquema sincronizado.
 - **`hooks/test/copilot-plugin-contract.test.js`**: cada `copilot/agents/*.agent.md` es la
@@ -156,4 +164,5 @@ node scripts/bump-version.js --title 1.14.1   # "v1.14.1 — <título>"
 node scripts/bump-version.js --notes 1.14.1   # cuerpo de la entrada del changelog
 gh run watch                               # seguir el run de CI del último push
 gh release view v1.14.1                    # verificar el Release publicado
+gh release edit vX.Y.Z --latest            # devolverle Latest a mano a la última versión
 ```
