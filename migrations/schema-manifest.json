@@ -17,11 +17,11 @@
     "templates/MIGRATION_SPEC_TEMPLATE.md": "a4cf0fe20cfa1e4b4a3c59df498ae00c651f9993b92ec2a263f611a21f54b5a3",
     "templates/NAVIGATION_MAP_TEMPLATE.md": "3944e4af7201f8a9bd0af87b422cc9bdf52fbef9034f612c4e60ea4cf150337f",
     "templates/PLANNING_TEMPLATE.md": "0f990cec63711af4385c74b10575581bee1576237ac3ddac9e84df50f0aeaa9e",
-    "templates/project-config/conventions.template.md": "410c9c26f913c1b6aa66b42ceb66b950e32324decadb8fba05d4498b726c2bc0",
+    "templates/project-config/conventions.template.md": "48eb0316b6b5d6f5ae5bdb4cb3f6345947744f5ec5c8ec3032bbf49ef86e11bd",
     "templates/project-config/decisions/000-template.md": "1a39576f4a0e7b4f69ba3bbe9ac4aa4b438ab6091c26a53dac58d4b425f11972",
     "templates/project-config/docs-index.template.yml": "a7dcdefb59a1589cb6a3b0d400952039a9fbebcce41b637b256bca7cacd25419",
     "templates/project-config/rules.template.yml": "68592f1052b23837613075599af575797139e53c1c8339278656101dcfe5a114",
-    "templates/project-config/settings.template.yml": "c1b0765e237d6a5f775dac44cd9ec3ea7a0a7f5eaca57ec2e8bd4a25fca3560a",
+    "templates/project-config/settings.template.yml": "639d305bb9d7e202e35b58137e36f92f9c8460a03ecd650107d27fa50d6c1f99",
     "templates/project-config/stack.template.yml": "9cdffd6e7fbf40c822725c0c5d736ba0d1a4a18bded457422b7f8005df743370",
     "templates/ROADMAP_TEMPLATE.md": "51b0fbc8e0ddeaa104b2b07b0b2a7e9a59d30c6c4961df67e4f2dab616271112",
     "templates/SPEC_TEMPLATE.md": "f05512fd658becd472f38270775e682d508e774fbaf5313a39e0469052bebb2f"

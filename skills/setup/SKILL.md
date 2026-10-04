@@ -194,7 +194,7 @@ The user already has `.specture/`. They want to update something.
    - **Invariantes (`.specture/rules.yml`):** añadir o endurecer reglas, sí. Las cuatro `framework-core` (`R-FILE-001/002/003`, `R-SOLID-001`) **no se quitan ni se les baja la severidad**: el doctor lo reporta como ERROR y `/specture:doctor migrate` las repone. Si el usuario pide quitarlas, decíselo así de claro y ofrecé lo que sí se puede: precisar el texto para su stack, o acotar los tags.
    - Estructura de carpetas raíz (`structure` en `stack.yml`): cambiar `root_layout`, añadir/quitar apps en `structure.apps`. Si el `stack.yml` existente no tiene el bloque `structure` (proyecto previo a esta convención), ofrécelo: deriva `project.slug` y agrega `structure` con las apps que el usuario confirme.
    - Recording a new architectural decision (ADR)?
-   - Perfil o toggles de Specture (`.specture/settings.yml`: `profile`, `hooks.enabled`, `context7.enabled`, `docs_index.*`, `knowledge.enabled`)? Si el proyecto aún tiene los toggles en `conventions.md` §10 (creado antes de v1.15.0), no los edites ahí: corré `/specture:doctor migrate`, que los mueve a `settings.yml`.
+   - Perfil o toggles de Specture (`.specture/settings.yml`: `profile`, `hooks.enabled`, `context7.enabled`, `docs_index.*`, `knowledge.enabled`, `compliance_review.enabled`)? Si el proyecto aún tiene los toggles en `conventions.md` §10 (creado antes de v1.15.0), no los edites ahí: corré `/specture:doctor migrate`, que los mueve a `settings.yml`.
 
 3. **Critical rule — never silently break ADRs**: if the change supersedes an existing ADR, you MUST:
    - Create a new ADR file `NNN-...md` with `Status: Supersedes ADR-NNN`.

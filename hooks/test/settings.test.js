@@ -71,6 +71,20 @@ test("lean and full profiles override the individual toggles", () => {
   assert.equal(fullValues["context7.enabled"], true);
 });
 
+test("compliance_review.enabled defaults to true and an explicit value wins under every profile", () => {
+  const unset = createProject({ settingsYaml: "profile: custom\n" });
+  assert.equal(settings.readSettings(unset).values["compliance_review.enabled"], true);
+  assert.equal(settings.readSettings(createProject({})).values["compliance_review.enabled"], true, "no settings at all");
+
+  for (const profile of ["lean", "full", "custom"]) {
+    const off = createProject({ settingsYaml: `profile: ${profile}\ncompliance_review.enabled: false\n` });
+    assert.equal(settings.readSettings(off).values["compliance_review.enabled"], false, profile);
+  }
+
+  const garbage = createProject({ settingsYaml: "profile: custom\ncompliance_review.enabled: maybe\n" });
+  assert.equal(settings.readSettings(garbage).values["compliance_review.enabled"], true, "a non-boolean falls back to the default");
+});
+
 test("falls back to conventions.md §10 (bold and plain forms, legacy aliases) when settings.yml is absent", () => {
   const root = createProject({
     conventions:
@@ -126,4 +140,8 @@ test("serializeSettings round-trips through parseSettingsYaml", () => {
   assert.equal(parsed["hooks.enabled"], true);
   assert.equal(parsed["docs_index.max_entries_per_dispatch"], 2);
   assert.equal(parsed["knowledge.enabled"], false);
+  assert.equal(parsed["compliance_review.enabled"], true);
+
+  const off = settings.parseSettingsYaml(settings.serializeSettings({ "compliance_review.enabled": false }));
+  assert.equal(off["compliance_review.enabled"], false);
 });

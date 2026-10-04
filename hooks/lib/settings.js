@@ -19,7 +19,8 @@ const TOGGLE_KEYS = [
   "context7.enabled",
   "docs_index.enabled",
   "docs_index.max_entries_per_dispatch",
-  "knowledge.enabled"
+  "knowledge.enabled",
+  "compliance_review.enabled"
 ];
 
 const KEYS = ["schema_version", "profile", ...TOGGLE_KEYS];
@@ -31,7 +32,8 @@ const DEFAULTS = Object.freeze({
   "context7.enabled": false,
   "docs_index.enabled": true,
   "docs_index.max_entries_per_dispatch": 3,
-  "knowledge.enabled": false
+  "knowledge.enabled": false,
+  "compliance_review.enabled": true
 });
 
 // `lean` / `full` override the four boolean toggles; `custom` reads them individually.
@@ -39,6 +41,14 @@ const PROFILES = Object.freeze({
   lean: { "hooks.enabled": true, "context7.enabled": false, "docs_index.enabled": false, "knowledge.enabled": false },
   full: { "hooks.enabled": true, "context7.enabled": true, "docs_index.enabled": true, "knowledge.enabled": true }
 });
+
+// Keys honoured under EVERY profile when the file declares them: `lean`/`full` decide only the
+// four toggles above. A key that is not here and not in `PROFILES` would be unreachable under
+// `lean`/`full` (see migrations/2.0-design-channel.js).
+const PROFILE_INDEPENDENT_KEYS = Object.freeze([
+  "docs_index.max_entries_per_dispatch",
+  "compliance_review.enabled"
+]);
 
 // Key names used by older conventions.md §10 blocks.
 const LEGACY_ALIASES = Object.freeze({
@@ -122,8 +132,8 @@ function effectiveValues(raw) {
   values.profile = PROFILES[profile] ? profile : "custom";
   if (PROFILES[profile]) {
     Object.assign(values, PROFILES[profile]);
-    if (raw["docs_index.max_entries_per_dispatch"] !== undefined) {
-      values["docs_index.max_entries_per_dispatch"] = raw["docs_index.max_entries_per_dispatch"];
+    for (const key of PROFILE_INDEPENDENT_KEYS) {
+      if (raw[key] !== undefined) values[key] = raw[key];
     }
   } else {
     for (const key of TOGGLE_KEYS) {
@@ -132,6 +142,9 @@ function effectiveValues(raw) {
   }
   if (typeof values["docs_index.max_entries_per_dispatch"] !== "number") {
     values["docs_index.max_entries_per_dispatch"] = DEFAULTS["docs_index.max_entries_per_dispatch"];
+  }
+  if (typeof values["compliance_review.enabled"] !== "boolean") {
+    values["compliance_review.enabled"] = DEFAULTS["compliance_review.enabled"];
   }
   return values;
 }
@@ -185,6 +198,7 @@ function serializeSettings(values, options = {}) {
     `docs_index.enabled: ${v["docs_index.enabled"]}                 # Docs Index Resolution when .specture/docs-index.yml exists`,
     `docs_index.max_entries_per_dispatch: ${v["docs_index.max_entries_per_dispatch"]}    # hard cap of indexed docs per agent dispatch`,
     `knowledge.enabled: ${v["knowledge.enabled"]}                  # opt-in knowledge-capture prompts (build 8.5, debug 4.5)`,
+    `compliance_review.enabled: ${v["compliance_review.enabled"]}           # compliance review at milestone close (any profile)`,
     ""
   ].join("\n");
 }
@@ -195,6 +209,7 @@ module.exports = {
   TOGGLE_KEYS,
   DEFAULTS,
   PROFILES,
+  PROFILE_INDEPENDENT_KEYS,
   LEGACY_ALIASES,
   settingsPath,
   parseSettingsYaml,

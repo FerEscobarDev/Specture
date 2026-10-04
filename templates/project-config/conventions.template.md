@@ -114,7 +114,7 @@
 
 ## 10. Specture / Claude Code Integration
 
-> **Desde v1.15.0 la configuración del framework vive en `.specture/settings.yml`** (perfil `lean | full | custom`, toggles `hooks.enabled`, `context7.enabled`, `docs_index.enabled`, `docs_index.max_entries_per_dispatch`, `knowledge.enabled`, y `schema_version`). Es un archivo del framework: lo escribe `/specture:setup` y lo migra `/specture:doctor`. Esta sección es solo un **puntero** — no declares toggles aquí.
+> **Desde v1.15.0 la configuración del framework vive en `.specture/settings.yml`** (perfil `lean | full | custom`, toggles `hooks.enabled`, `context7.enabled`, `docs_index.enabled`, `docs_index.max_entries_per_dispatch`, `knowledge.enabled`, `compliance_review.enabled` (revisión de cumplimiento al cerrar un milestone, activa por defecto y respetada en cualquier perfil), y `schema_version`). Es un archivo del framework: lo escribe `/specture:setup` y lo migra `/specture:doctor`. Esta sección es solo un **puntero** — no declares toggles aquí.
 >
 > Proyectos creados antes de v1.15.0 pueden conservar aquí el bloque viejo de toggles (`- **hooks.enabled**: true`, …); el framework lo sigue leyendo hasta que `/specture:doctor migrate` lo mueva a `settings.yml`.
 
