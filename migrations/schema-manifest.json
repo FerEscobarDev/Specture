@@ -20,6 +20,7 @@
     "templates/project-config/conventions.template.md": "48eb0316b6b5d6f5ae5bdb4cb3f6345947744f5ec5c8ec3032bbf49ef86e11bd",
     "templates/project-config/decisions/000-template.md": "1a39576f4a0e7b4f69ba3bbe9ac4aa4b438ab6091c26a53dac58d4b425f11972",
     "templates/project-config/docs-index.template.yml": "a7dcdefb59a1589cb6a3b0d400952039a9fbebcce41b637b256bca7cacd25419",
+    "templates/project-config/review-rules.template.md": "d2ee7952de5bbd0e3356b60ecebc8fb0560e9a36db3361a4211550ab44f282e7",
     "templates/project-config/rules.template.yml": "68592f1052b23837613075599af575797139e53c1c8339278656101dcfe5a114",
     "templates/project-config/settings.template.yml": "639d305bb9d7e202e35b58137e36f92f9c8460a03ecd650107d27fa50d6c1f99",
     "templates/project-config/stack.template.yml": "9cdffd6e7fbf40c822725c0c5d736ba0d1a4a18bded457422b7f8005df743370",

@@ -32,9 +32,11 @@ const STATE_FILE = path.join(".specture", "state", "build-locked.json");
 const ROADMAP_FILE = path.join("docs", "04-roadmap", "ROADMAP.md");
 const FRAMEWORK_PREFIXES = ["docs/", ".specture/"]; // never governed by allowed_paths
 
-function globToRegExp(glob) {
+function globToRegExp(glob, options = {}) {
   // Minimal glob translator covering the patterns used in conventions.md
   // (e.g. `**/*.test.ts`, `tests/**/*.py`, `*.spec.js`) and plain file paths.
+  // By default a glob matches from any path segment (`src/**` also matches `x/src/a`);
+  // `{ anchored: true }` matches from the start of the path only (review-rules `cuando:`).
   let re = "";
   for (let i = 0; i < glob.length; i++) {
     const c = glob[i];
@@ -54,7 +56,7 @@ function globToRegExp(glob) {
       re += c;
     }
   }
-  return new RegExp("(^|/)" + re + "$", "i");
+  return new RegExp((options.anchored ? "^" : "(^|/)") + re + "$", "i");
 }
 
 function pathMatchesAnyGlob(filePath, globs) {
