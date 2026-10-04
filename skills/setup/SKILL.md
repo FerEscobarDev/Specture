@@ -43,7 +43,8 @@ The user is starting from scratch. You will create the configuration through an 
    - **Mapa de ubicaciones (`conventions.md` §2) — obligatorio preguntarlo:** dónde vive cada cosa: componentes · types e interfaces · constantes · hooks/composables · servicios/casos de uso · tests. Cada slot admite un patrón de ruta (`src/components/<Nombre>/<Nombre>.tsx`), `co-localizado`, `no aplica` o `sin definir`. **`sin definir` es una respuesta legítima y visible**: deja constancia de que la decisión está pendiente. Nunca lo rellenes vos — la regla `R-FILE-003` lee esta tabla, y una ubicación inventada por la IA se vuelve una convención que nadie eligió y nadie recuerda haber elegido. Bastan dos o tres preguntas: no hace falta cerrar los seis slots en el arranque.
    - **Invariantes (`.specture/rules.yml`, opcional — desde v1.19.0):** reglas que nunca cambian (ej. "DTOs inmutables", naming de métodos), **una línea cada una** (`rule` ≤ 240 caracteres) con `tags` (módulo / componente / `backend`·`frontend`·`mobile` — el coordinador de `build` inyecta solo las que cruzan con el spec), `severity` y `source` (ADR o debug log con la historia). **Workflow (§13 de `conventions.md`, opcional):** de dónde nace cada rama por tipo de trabajo, formato de commit. Si el usuario no tiene reglas propias, el archivo se queda **solo con el núcleo** (los ejemplos del template van comentados) y §13 con sus filas de ejemplo — sin reglas de rama, `build` no crea ramas. `conventions.md` §12 es solo un puntero.
    - **Núcleo obligatorio (`framework-core`) — no se pregunta, se informa:** `rules.template.yml` ships con `R-FILE-001` (un componente por archivo), `R-FILE-002` (una clase o servicio exportado por archivo), `R-FILE-003` (types, interfaces, constantes y hooks fuera del archivo del componente o de la clase, donde diga el mapa de §2) y `R-SOLID-001` (SOLID en frontend y backend). Son obligatorias en todo proyecto Specture. El usuario **puede endurecerlas** (subir una severidad, añadir tags, precisar el texto) y añadir las suyas; **no puede quitarlas ni bajarles la severidad** — el doctor lo reporta como ERROR (`rules-core-missing`, `rules-core-weakened`). Decíselo en una línea al presentar las convenciones; no lo escondas.
-   - **Perfil de capacidades (`.specture/settings.yml` → `profile`):** `lean` (huella mínima — hooks on, docs-index/knowledge/context7 off), `full` (todo on), o `custom` + toggles individuales. Si el usuario no opina, `custom` con los defaults del template (comportamiento conservador).
+   - **Perfil de capacidades (`.specture/settings.yml` → `profile`):** `lean` (huella mínima — hooks on, docs-index/knowledge/context7 off), `full` (todo on), o `custom` + toggles individuales. Si el usuario no opina, `custom` con los defaults del template (comportamiento conservador). La **revisión de cumplimiento** al cerrar cada milestone (`compliance_review.enabled`, desde v2.4.0) viene activa en cualquier perfil; decíselo en una línea y apagala solo si lo pide.
+   - **Reglas de revisión del equipo (`.specture/review-rules.md`, opcional — desde v2.4.0):** ¿el equipo ya tiene criterios de revisión escritos (una guía, un checklist, un agente de review)? Si sí, el archivo los **enlaza** por ruta y sección en vez de copiarlos — el implementer recibe los que aplican a cada spec y la revisión de cumplimiento los verifica al cerrar cada milestone. Si no, no se crea: su ausencia es el estado normal. Las reglas de **ubicación** de archivos no van ahí sino en el mapa de §2, que también ve quien planifica.
 
 3. **Validate coherence** before writing files. Examples of incoherence to flag:
    - Stack móvil (Flutter) + ORM relacional como EF Core.
@@ -56,6 +57,7 @@ The user is starting from scratch. You will create the configuration through an 
    - `templates/project-config/rules.template.yml` → `.specture/rules.yml` — copiá el template **entero, con sus cuatro reglas `framework-core` intactas**, y anexá después las invariantes `R-*` del usuario (una por línea, con `tags`/`severity`/`source`). Si no declaró ninguna, el archivo queda con el núcleo y nada más — nunca con `rules: []`. Nunca escribas reglas en `conventions.md` §12 (puntero desde v1.19.0).
    - `templates/project-config/decisions/000-template.md` → `.specture/decisions/001-initial-stack.md` (registra la decisión inicial del stack)
    - `templates/project-config/settings.template.yml` → `.specture/settings.yml` — el archivo **del framework**: `schema_version` = la versión del plugin instalado (leé `version` de `${CLAUDE_PLUGIN_ROOT}/plugin.json`, o de `$SPECTURE_ROOT/plugin.json` en setup manual; nunca dejes el placeholder `[X.Y.Z]`), `profile` y toggles según lo que respondió el usuario. Los toggles **no** van en `conventions.md` §10 (esa sección es solo un puntero desde v1.15.0).
+   - `templates/project-config/review-rules.template.md` → `.specture/review-rules.md` — **solo si el usuario lo pidió** en el paso 2: copiá el template y completá sus secciones con lo que el usuario indicó (rutas y encabezados reales, nunca inventados). Validalo antes de seguir: `node "${CLAUDE_PLUGIN_ROOT}/hooks/lib/review-rules-resolve.js" --project . --all` debe salir con 0.
 
    **Al poblar `stack.yml`:**
    - **Deriva `project.slug`** desde `project.name`: minúsculas, espacios y guiones → `_`, elimina cualquier carácter fuera de `[a-z0-9_]`, colapsa `_` repetidos y recorta `_` de los extremos. Ej. "Mi Proyecto-X" → `mi_proyecto_x`. **Muéstraselo al usuario para confirmar** antes de escribir.
@@ -171,6 +173,24 @@ Announce the finding and offer to bridge:
 
 If no candidate folder reaches ≥10 .md files, skip 8.5 entirely and continue to Step 9.
 
+8.6. **Existing review criteria (opt-in, since v2.4.0)**. Teams often already keep their review criteria somewhere — an agent or skill used to review pull requests, a review checklist, a contributing guide. Specture can **link** them from `.specture/review-rules.md` instead of copying them, so the implementer follows them and the compliance review checks them.
+
+Look for candidates (read-only): `.claude/agents/*review*`, `.claude/agents/*revis*`, `.claude/skills/*review*/SKILL.md`, `.github/*review*`, `.github/copilot-instructions.md`, `CONTRIBUTING.md`, and `*review*` / `*revision*` / `*estandar*` files under the documentation folder of 8.5. None found → skip this step silently.
+
+For each candidate, list its `##`/`###` headings and ask:
+
+> "Encontré criterios de revisión que el equipo ya usa: `<archivo>` (secciones: …). ¿Querés que Specture los tenga en cuenta? Elegí qué secciones incluir — conviene dejar afuera las de procedimiento (cómo obtener el diff, dónde guardar el resultado) y quedarse con las de criterios."
+
+- **Sí** → write `.specture/review-rules.md` from `templates/project-config/review-rules.template.md` with only what the user chose:
+  - one `## Incluye` line per chosen section (`<ruta> § <encabezado>`, the heading copied exactly);
+  - `— cuando: <globs>` only with evidence — a section named after a technology maps to the paths `stack.yml.structure` (or the code) shows for it; when unsure, no condition;
+  - `## Severidades` only with the words the source uses (e.g. "bloqueante", "observación");
+  - `## Nivel flexible` only if the source declares legacy paths with reduced criteria — never inferred;
+  - when a chosen section is about **where files live**, propose moving that rule to the §2 location map instead (the planner sees §2; the implementer cannot move files a sealed spec placed).
+
+  Validate with `node "${CLAUDE_PLUGIN_ROOT}/hooks/lib/review-rules-resolve.js" --project . --all` (exit 0) and show the user the `CUSTOM_RULES:` header line. Never include a file the user did not choose; never edit the team's files.
+- **No** → continue with Step 9. Nothing is written.
+
 9. **Suggest next step**:
    - If the project already has features: offer to either (a) continue building with Specture for new features (`new-feature`), or (b) audit the existing code (full code review against the inferred conventions).
    - If the project has **both a frontend and a backend**, also offer (c) `contract-sync-audit` to reconcile their API interface — strongly recommend it if the user has mentioned frontend/backend mismatches.
@@ -192,6 +212,7 @@ The user already has `.specture/`. They want to update something.
    - Conventions (e.g. tightening test coverage, banning a pattern)?
    - **Mapa de ubicaciones (`conventions.md` §2):** dónde viven componentes, types, constantes, hooks, servicios y tests. Es cambiable como cualquier convención, y un slot en `sin definir` es una pregunta abierta que conviene cerrar — `R-FILE-003` lee esta tabla.
    - **Invariantes (`.specture/rules.yml`):** añadir o endurecer reglas, sí. Las cuatro `framework-core` (`R-FILE-001/002/003`, `R-SOLID-001`) **no se quitan ni se les baja la severidad**: el doctor lo reporta como ERROR y `/specture:doctor migrate` las repone. Si el usuario pide quitarlas, decíselo así de claro y ofrecé lo que sí se puede: precisar el texto para su stack, o acotar los tags.
+   - **Reglas de revisión del equipo (`.specture/review-rules.md`, desde v2.4.0):** crear el archivo, enlazar otra sección o archivo del equipo, ajustar un `cuando:`, las severidades o el nivel flexible. Mismas reglas que Adopt paso 8.6: rutas y encabezados reales, un solo nivel de inclusión, y validar con `review-rules-resolve.js --all` (o `/specture:doctor check`).
    - Estructura de carpetas raíz (`structure` en `stack.yml`): cambiar `root_layout`, añadir/quitar apps en `structure.apps`. Si el `stack.yml` existente no tiene el bloque `structure` (proyecto previo a esta convención), ofrécelo: deriva `project.slug` y agrega `structure` con las apps que el usuario confirme.
    - Recording a new architectural decision (ADR)?
    - Perfil o toggles de Specture (`.specture/settings.yml`: `profile`, `hooks.enabled`, `context7.enabled`, `docs_index.*`, `knowledge.enabled`, `compliance_review.enabled`)? Si el proyecto aún tiene los toggles en `conventions.md` §10 (creado antes de v1.15.0), no los edites ahí: corré `/specture:doctor migrate`, que los mueve a `settings.yml`.
@@ -217,6 +238,7 @@ Before reporting setup complete, confirm:
 - [ ] `.specture/conventions.md` exists and has all sections filled (no remaining `[placeholder]` text).
 - [ ] `.specture/settings.yml` exists, `schema_version` equals the installed plugin version (no `[X.Y.Z]` placeholder), and no toggles were written to `conventions.md` §10.
 - [ ] At least one ADR exists in `.specture/decisions/`.
+- [ ] If `.specture/review-rules.md` was written, `review-rules-resolve.js --all` exits 0 (no ERROR from `/specture:doctor check` in the `compliance` group).
 - [ ] User project's root `CLAUDE.md` exists and references `$SPECTURE_ROOT/CLAUDE.md` (or user has Specture plugin installed).
 - [ ] `$SPECTURE_ROOT` is set in the user's environment (or user confirmed using the plugin).
 

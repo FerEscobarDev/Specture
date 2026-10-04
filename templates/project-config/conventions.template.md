@@ -108,6 +108,8 @@
 ## 9. Reglas Específicas del Equipo / Cliente
 
 > Espacio libre para cualquier regla que no encaje en las anteriores.
+>
+> **Criterios de revisión que el equipo ya mantiene en otro archivo** (una guía, un checklist, un agente de review): no los copies aquí — enlazalos desde `.specture/review-rules.md` (opcional, desde v2.4.0), por archivo o por sección y con condición de ruta. El implementer recibe los que aplican a cada spec y la revisión de cumplimiento los verifica al cerrar cada milestone. Lo que debe valer como invariante de una línea va en `.specture/rules.yml`; dónde vive cada archivo, en el mapa de §2.
 
 - [Regla 1]
 - [Regla 2]
