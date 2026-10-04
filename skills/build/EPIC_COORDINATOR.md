@@ -50,9 +50,15 @@ HUMAN_CONTACTS: <n>                    (contacts the build coordinator already h
 BASE_CONTEXT: <paths the epic-agent needs: stack.yml, conventions.md, ADRs, business_requirements.md, architecture.md>
 ```
 
-A missing `LOCK_SHA` or `EPIC` → `EPIC_REPORT: STOPPED — falta <input>` and touch nothing.
+A missing `LOCK_SHA` or `EPIC` → `EPIC_REPORT: STOPPED — falta <input>` and touch nothing (Step 0
+goes first). `REGULATORIO` comes from the register's `REGULATORIOS`; `HUMAN_CONTACTS` is `0` on
+the first dispatch of a reviewed epic (the sitting is counted once, in the register's metrics).
 
 ## Step 1 — Entry
+
+First, if `_planning.md` exists and has no `- LOCK_SHA:` line, add
+`- LOCK_SHA: <sha> — <ISO-8601>` under its `## SPEC_SHA` — it rides with your first commit (the
+build coordinator's lock commit touches only `ROADMAP.md`).
 
 - `refresh` → Step 2.
 - `sealed` → Step 4 with `SPEC_SHA` (the per-epic gate already ran in the build coordinator).
@@ -100,7 +106,10 @@ continues the queue with the epics that do not depend on it.
 
 1. After the refresh wrote the specs in detail and before sealing, dispatch the validator in
    `MODE: REVIEW` over the **written** specs, reading code (`build/REVIEW_STAGE.md` § "The
-   announced mini-review"). No new `HUMAN_DECISIONS` → Step 2 item 6: seal and execute. New
+   announced mini-review") and record its verdict under `## VEREDICTOS` (`### set — … —
+   mini-revisión`). A `HUMAN_DECISION` an answer of the register already settles is not new: it
+   is a `VIOLATION` citing that `A-n` for the planner (as in the DELTA of Step 2). No new
+   `HUMAN_DECISIONS` → Step 2 item 6: seal and execute. New
    ones — or a `CONCERNS: decisión-nueva` of the refresh — → a fresh `spec-planner` in
    `MODE: QUESTIONS` turns them into closed questions; commit the refreshed specs **unsealed**
    (`docs(specs): refresco <epic-slug> — pendiente de mini-revisión <id>`) and answer
@@ -216,8 +225,12 @@ Step 5 with your own result as the report. Record `coordinator_mode: subagent` a
   1. **Judge first, with data.** A fresh `architecture-validator` in `MODE: J9` with the spec,
      the epic block, `RULES_RESOLVED`, the last `MECH_CHECK:` line of `_planning.md` and the
      report's `FAILURES:` lines verbatim. The `SÍ` tests go on; `NO`/`INDETERMINABLE` become
-     **regressions** for the implementer (step 8).
-  2. `seal-cli.js lift-spec --slug <task-slug>` — releases only that spec file.
+     **regressions** for the implementer (step 8). **Write the J9 verdict to `## VEREDICTOS`
+     (`### <task-slug> — dispatch N — ronda R — … — loop — J9`) and the report's `FAILURES:`
+     lines under it as soon as it arrives** — a cut after this point loses nothing (Step R).
+  2. Append `- LOOP: supersesiones <capa> <task-slug> — <ISO-8601>` under `## SPEC_SHA` of
+     `_planning.md` (it tells a resume which loop the lifted spec belongs to), then
+     `seal-cli.js lift-spec --slug <task-slug>` — releases only that spec file.
   3. A **fresh** `spec-planner` in `MODE: SUPERSESSIONS` with `SPECS_DIR`, `ALCANCE:
      [<task-slug>]` and only the `SÍ` tests with the rule J9 named.
   4. `honesty-check.js spec-delta --epic-dir docs/05-specs/<epic-slug> --base <SPEC_SHA> --slug
@@ -225,18 +238,20 @@ Step 5 with your own result as the report. Record `coordinator_mode: subagent` a
   5. `honesty-check.js protected --epic-dir docs/05-specs/<epic-slug> --slug <task-slug>` —
      `FAIL` (a `verify:` test of `rules.yml` or a GUARD of another epic) → `EPIC_REPORT: STOPPED
      — protected`: amending a project invariant is the user's decision.
-  6. Gate step 4a must `PASS`.
-  7. Commit `docs(specs): supersesiones <epic-slug>/<task-slug> — loop <capa>` → the new
-     `SPEC_SHA`; append `- SPEC_SHA: <sha> — <ISO> — loop <capa> de <task-slug>` and the J9
-     verdict (`### <task-slug> — dispatch N — ronda R — … — loop — J9`) to `_planning.md`, then
-     `seal-cli.js write` with the new `--spec-sha` and the same `--lock-sha`.
+  6. Gate step 4a must `PASS` (a `FAIL` → the planner again with the lines as `VIOLATIONS`, as in
+     gate step 4).
+  7. Commit `docs(specs): supersesiones <epic-slug>/<task-slug> — loop <capa>` (the spec and
+     `_planning.md`) → the new `SPEC_SHA`; append `- SPEC_SHA: <sha> — <ISO> — loop <capa> de
+     <task-slug>` to `_planning.md`, then `seal-cli.js write` with the new `--spec-sha`, the same
+     `--lock-sha` and the same `--allowed-paths`.
   8. A fresh epic-agent with `RESUME_AT: supersede <task-slug>`, the `SUPERSEDE:` and
      `REGRESIONES:` blocks, the new `SPEC_SHA` and `BASELINE_FALLOS`. All-`NO` → no spec change:
      skip 2-7 and resume with `RESUME_AT: regresiones <task-slug>`.
 - **BLOCKED: spec <AC-n/BR-n/EC-n>** (also the Iteration Cap's spec-problem exit, and a
   supersession loop whose `spec-delta` failed) → the **spec-correction loop** (punctual — no
   `unseal-spec`, no revert):
-  1. `seal-cli.js lift-spec --slug <task-slug>`.
+  1. Append `- LOOP: corrección <task-slug> — <ISO-8601>` under `## SPEC_SHA` of `_planning.md`,
+     then `seal-cli.js lift-spec --slug <task-slug>`.
   2. A **fresh** `spec-planner` with `ALCANCE: [<task-slug>]` and `VIOLATIONS` naming the
      affected ID (minimal edit; its `CHANGELOG` is contrasted against `git diff`).
   3. Gate step 4a and, on `PASS`, `MODE: DELTA` re-validation: the `SPEC_SET` dispatch again only
@@ -258,13 +273,18 @@ Step 5 with your own result as the report. Record `coordinator_mode: subagent` a
   about *what* the test asserts is `BLOCKED: spec`.
 - **BLOCKED: entorno · BLOCKED: debug <task-slug> · BLOCKED: insufficient context · BLOCKED**
   (other) **· REJECTED_MAJOR** → Step 6 with `outcome: ESCALATED`, then `EPIC_REPORT: STOPPED —
-  <reason>` with the evidence (the log, the cap, the reviewer's summary). Never retry them
-  yourself; never invoke `skills/debug` (it needs Plan mode, which only the user approves).
+  <reason>` with the evidence (at most 10 lines of the log, the cap, the reviewer's summary). Never
+  retry them yourself; never invoke `skills/debug` (it needs Plan mode, which only the user
+  approves). The seal stays and the epic stays `[/]`: the build coordinator resumes it with
+  `ENTRY: resume` after the user decides.
 
 ## Step 6 — Metrics
 
-After the report that ends the epic's run (DONE, PARKED, an escalation) — never after an
-intermediate `BLOCKED: supersesiones`, and never for `VISUAL_PENDING` (Step 5) — append **one JSON line** to
+After the report that ends the epic's run (DONE, PARKED, and the escalations `STOPPED —
+seal-diff | protected | loop repetido | entorno | debug | insufficient context | REJECTED_MAJOR`)
+— never after an intermediate `BLOCKED: supersesiones`, never for `VISUAL_PENDING` (Step 5),
+`NESTING_UNAVAILABLE` or a `STOPPED` that only waits for an answer (`scope-changed`, `gate`,
+`decisión`, `reanudación`: the run continues after it) — append **one JSON line** to
 `docs/.specture-meta/build-metrics.jsonl` with the fields of `build/SKILL.md` § "Metrics" (gate
 counters: yours for a refresh, the dispatch's `GATE_METRICS` for `ENTRY: sealed`;
 `gate_human_contacts` = the dispatch's `HUMAN_CONTACTS`; the report's `METRICS` values) plus
@@ -278,8 +298,11 @@ commit `docs(metrics): <epic-slug> — <outcome>` together with the epic's `_pla
 
 A session or a usage limit cut the run. Decide by evidence, never by inference:
 
-- **A seal with `lifted_spec_paths`** → a loop was interrupted: resume it from its step 4
-  (`spec-delta`) if the planner's edit is on disk, else from its step 3.
+- **A seal with `lifted_spec_paths`** → a loop was interrupted; the last `- LOOP:` line of
+  `_planning.md` says which. Supersessions: the J9 verdict and the `FAILURES:` are under
+  `## VEREDICTOS` — resume from step 4 (`spec-delta`) if the planner's edit is on disk, else from
+  step 3. Correction: resume from step 3 (4a + delta validation) if the planner's edit is on
+  disk, else from step 2.
 - **Specs sealed** (`MECH_CHECK: PASS` equal to `spec-set-check.js <epic-dir> --hash-only`, last
   verdicts `APPROVED`, committed) → Step 4 with the recorded `SPEC_SHA`; the epic-agent resumes at
   the first spec not `APPROVED` + verified (`RESUME_AT: <task-slug>`). If

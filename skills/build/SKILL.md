@@ -31,6 +31,8 @@ This skill **fuses** what was previously split into "planificación", "ejecució
 - `templates/BATCH_REVIEW_TEMPLATE.md` + `build/REVIEW_STAGE.md` — the batch review register (`docs/05-specs/_reviews/<id>.md`, read by `hooks/lib/review.js`) and the procedure of the review stage (queue step 4.5, since v2.3.0).
 - `build/EPIC_COORDINATOR.md` — the procedure of one epic from lock to `[x]` (since v2.7.0): you dispatch it as a subagent, or run it inline when nested subagents are unavailable.
 
+**Read lazily (v2.7.0).** With nested subagents this chat only needs what it runs: the queue reads checkbox + `Dependencias` lines; the review stage and the per-epic gate read the sources they name when they run; an epic of a `CLOSED` register needs none of them here — the epic coordinator reads its own. Read `build/EPIC_COORDINATOR.md` only to run it inline.
+
 ## Preconditions (what degrades when an artifact is missing)
 
 | Artifact | If missing |
@@ -347,7 +349,7 @@ broken by design is not a human contact** — it goes through the supersession l
 4. `TaskCreate` **one task per queued epic** (subject `<epic-slug>`, `activeForm` "queued"). This is the visible queue; each epic-agent's internal step tracking is discarded with its context.
 4.5. **Review stage for the batch (v2.3.0)** — `node "${CLAUDE_PLUGIN_ROOT}/hooks/lib/review.js" status`. Unless a `CLOSED` register already covers every queued epic, run `build/REVIEW_STAGE.md` for the queue **before** executing anything: one sitting (two rounds at most) where the user takes every decision the machine can foresee; then the queue runs without questions. An epic the review did not cover (a register from before v2.3.0, or the user declined the review for it) goes through the per-epic Spec Planning Gate above, unchanged.
 5. **Process the queue one epic at a time** (never concurrently). For each epic, in order:
-   1. Mark the epic `[/]` in `ROADMAP.md`; commit. Only ONE epic is `[/]` at any moment. That commit is the epic's **`LOCK_SHA`**: record it as `- LOCK_SHA: <sha> — <ISO-8601>` under `## SPEC_SHA` of `_planning.md` as soon as the file exists.
+   1. Mark the epic `[/]` in `ROADMAP.md`; commit (`docs(roadmap): <epic-slug> en curso [/]`, only `ROADMAP.md`). Only ONE epic is `[/]` at any moment. That commit is the epic's **`LOCK_SHA`**: it is recorded as `- LOCK_SHA: <sha> — <ISO-8601>` under `## SPEC_SHA` of `_planning.md` — by you as soon as the file exists in the per-epic gate, by the epic coordinator otherwise.
    2. Set that epic's task `in_progress`.
    3. If the epic is in a `CLOSED` review register → dispatch the **epic coordinator** (below) with `ENTRY: refresh` — it refreshes, seals and executes without questions; otherwise run the **Spec Planning Gate** (above) and, when it completes (specs committed, `SPEC_SHA` recorded), dispatch it with `ENTRY: sealed`. Its `BASE_CONTEXT` is the paths of `.specture/stack.yml`, `.specture/conventions.md`, the ADRs, `docs/01-requirements/business_requirements.md` and `docs/02-architecture/architecture.md` — it reads them and assembles the epic-agent's context itself. Wait for its `EPIC_REPORT` (never poll).
    4. Process the `EPIC_REPORT` (below) before starting the next epic.
@@ -370,7 +372,7 @@ nothing of this chat's history:
 
 ~~~
 You are the epic coordinator for ONE epic of a Specture project. Your complete procedure is
-build/EPIC_COORDINATOR.md (read it whole). You never ask the user anything: every human decision
+${CLAUDE_PLUGIN_ROOT}/skills/build/EPIC_COORDINATOR.md (read it whole). You never ask the user anything: every human decision
 goes back to me as an EPIC_REPORT of at most 40 lines.
 ENTRY: refresh | sealed | resume | mini-review-answers | visual-adjust
 EPIC: <full epic block>
@@ -379,8 +381,7 @@ SPEC_SHA / GATE_METRICS (ENTRY: sealed) · ANSWERS (mini-review-answers) · VISU
 HUMAN_CONTACTS: <n> · BASE_CONTEXT: <paths>
 ~~~
 
-The dispatch is asynchronous: **wait for its notification — never poll**. One epic coordinator
-at a time, and nothing else writes while it runs.
+Launch it in the background — it is asynchronous anyway: **wait for its notification, never poll**. One epic coordinator at a time, and nothing else writes while it runs. If the user writes meanwhile, answer them (a read-only look at `git log` is fine). A dispatch that never comes back — the user says it stalled, or the session was cut — is resumed with `ENTRY: resume`, never by running its steps here.
 
 **Inline mode.** On Copilot and Antigravity (no nested subagents), or when the epic coordinator
 answers `NESTING_UNAVAILABLE`, run `build/EPIC_COORDINATOR.md` yourself, here, exactly as written
@@ -402,8 +403,11 @@ diffs unless the status below asks for it.
 - **`MINI_REVIEW`** → the announced mini-review of a regulatory epic found new decisions. Ask the
   questions **verbatim** with the rules of round 2 of `build/REVIEW_STAGE.md` (by theme, ≤4 per
   `AskUserQuestion` call, the recommended option never by default); record them under
-  `### Mini-revisión <X.Y>` of the register, persist rule/ADR/contract answers in place, commit
-  the sources, and dispatch the epic coordinator again with `ENTRY: mini-review-answers`, the
+  `### Mini-revisión <X.Y>` of the register (the `A-n` numbering continues the register's), add
+  them to `## DECISIONES PERSISTIDAS`, persist rule/ADR/contract answers in place with
+  `(aclarado en revisión <id>, <fecha>)`, commit the sources and the register
+  (`docs(requirements): decisiones de la mini-revisión <X.Y> — revisión <id>`), and dispatch the
+  epic coordinator again with `ENTRY: mini-review-answers`, the
   `ANSWERS` and `HUMAN_CONTACTS` + 1.
 - **`VISUAL_PENDING`** (design-system foundation epic) → **you run the Visual Approval Gate.**
   1. **Show it.** If the Playwright MCP is available in this session, start the app with the dev command the report names, navigate to the showcase route and capture screenshots so the user reviews without leaving the chat. If it is not available, give the user the command and the route and ask them to open it.
@@ -518,8 +522,9 @@ here, by evidence, before building the queue:
   `MECH_CHECK: PASS` and a `SPEC_SHA`), **or a seal with `lifted_spec_paths`** (a loop was
   interrupted) → dispatch the epic coordinator with `ENTRY: resume`: it decides by the evidence
   on disk where to re-enter (its Step R) — a usage limit or a closed session costs one
-  dispatch, never a re-plan. Never resume its loops or its epic-agent yourself. Then continue
-  the queue.
+  dispatch, never a re-plan. Never resume its loops or its epic-agent yourself. A resumed epic
+  is finished **before** the queue is built and does not count toward N; with a `CLOSED` register,
+  its remaining `EPICS` are the batch.
 - **A last verdict `REJECTED` on supersession grounds recorded before v2.2.0** (`doctor`
   flags it as `gate-legacy-rejection`) → re-validate that target in `MODE: DELTA`: its
   supersession findings are `RETIRADO` now.
