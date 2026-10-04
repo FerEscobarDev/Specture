@@ -105,6 +105,13 @@ function extractSection(text, heading) {
   return { status: "ok", text: lines.slice(start.index, end).join("\n").replace(/\s+$/, "") };
 }
 
+// `## …` / `### …` headings of a file (outside code fences), for proposing `§ <heading>` includes.
+function listHeadings(text, maxLevel = 3) {
+  return headings(stripFrontMatter(text).split("\n"))
+    .filter((h) => h.level >= 2 && h.level <= maxLevel)
+    .map((h) => ({ level: h.level, text: h.text }));
+}
+
 function declaresIncludes(text) {
   return headings(stripFrontMatter(text).split("\n")).some((h) => h.level === 2 && foldHeading(h.text) === "incluye");
 }
@@ -470,6 +477,7 @@ module.exports = {
   normalizeText,
   stripFrontMatter,
   extractSection,
+  listHeadings,
   declaresIncludes,
   parseReference,
   parseReviewRules,

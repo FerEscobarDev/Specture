@@ -153,6 +153,24 @@ reportes quedaban en otra carpeta y no tenían en cuenta las reglas de Specture.
 3. Desde ahí el implementer recibe esos criterios en cada spec, y la revisión de cumplimiento los
    aplica junto con todas las reglas de Specture, con un solo reporte en `docs/07-reviews/`.
 
+### Si tu proyecto ya usaba Specture: te lo ofrece el doctor (v2.6.0)
+
+Un proyecto configurado antes de v2.4.0 no vuelve a pasar por `setup`. Por eso, al actualizar el
+plugin, `/specture:doctor migrate` busca si el repositorio tiene un agente o skill de revisión del
+equipo (`.claude/agents/*review*`, `.claude/skills/*review*`, `.claude/commands`, o archivos de
+revisión en `.github/agents`, `.github/instructions` o `.github/prompts`) y, si no hay
+`review-rules.md`, te ofrece la migración `2.6-review-rules-adopt`:
+
+- Te muestra cada archivo con sus secciones y eliges cuáles son criterios. El procedimiento queda
+  afuera; las reglas de ubicación se proponen para el mapa de §2.
+- Lo aprueba en Plan mode y nunca toca los archivos del equipo.
+- **Es opcional.** Si no la quieres, el doctor la marca como rechazada en `.specture/migrations.log`
+  (`migrate --decline 2.6-review-rules-adopt`) y no vuelve a preguntarte.
+- Un repositorio sin esos archivos nunca la ve. Un `CONTRIBUTING.md` solo se ofrece como fuente
+  opcional si la migración ya aparece; por sí solo no la dispara.
+
+También puedes hacerlo en cualquier momento con `/specture:setup` en modo reconfigurar.
+
 ## Revisar un PR o una rama (v2.5.0)
 
 La misma revisión sirve para código que no pasó por el build: el PR de alguien del equipo o tu

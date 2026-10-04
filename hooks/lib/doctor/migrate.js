@@ -88,7 +88,7 @@ function runMigrate(projectRoot, options = {}) {
       } catch (error) {
         planInputs = { error: error.message };
       }
-      result.assisted.push({ id: migration.id, title: migration.title, planInputs });
+      result.assisted.push({ id: migration.id, title: migration.title, declinable: Boolean(migration.declinable), planInputs });
     } else {
       result.deferred.push({ id: migration.id, title: migration.title, ownerSkill: migration.ownerSkill || null });
       if (apply && !alreadyLogged(projectRoot, migration.id, "deferred")) {
@@ -126,6 +126,20 @@ function verifyMigration(projectRoot, options = {}) {
   return { ok, id, logged, reason: ok ? null : "verify() returned false — the migration is not complete" };
 }
 
+// Records the user's "no" to a DECLINABLE assisted migration (one that offers something optional,
+// like linking the team's review criteria). The migration's own detect() reads the log and answers
+// "done", so it stops holding schema_version back and is never offered again. A migration that is
+// not declinable cannot be skipped this way: its delta is needed for the project to keep working.
+function declineMigration(projectRoot, options = {}) {
+  const { catalog = [], id, by = "skill" } = options;
+  const migration = catalog.find((m) => m.id === id);
+  if (!migration) return { ok: false, reason: `unknown migration ${id}` };
+  if (migration.kind !== "assisted" || !migration.declinable) return { ok: false, reason: `${id} no se puede rechazar: no es una migración asistida opcional` };
+  let logged = null;
+  if (!alreadyLogged(projectRoot, id, "declined")) logged = appendLog(projectRoot, id, migration.kind, "declined", by);
+  return { ok: true, id, logged, reason: null };
+}
+
 function planFor(projectRoot, options = {}) {
   const { pluginVersion, catalog = [], id } = options;
   const migration = catalog.find((m) => m.id === id);
@@ -136,10 +150,11 @@ function planFor(projectRoot, options = {}) {
     id: migration.id,
     kind: migration.kind,
     title: migration.title,
+    declinable: Boolean(migration.declinable),
     status: migration.detect(ctx),
     ownerSkill: migration.ownerSkill || null,
     planInputs: migration.planInputs ? migration.planInputs(ctx) : null
   };
 }
 
-module.exports = { runMigrate, verifyMigration, planFor, readLog, appendLog, LOG_FILE };
+module.exports = { runMigrate, verifyMigration, declineMigration, planFor, readLog, appendLog, LOG_FILE };

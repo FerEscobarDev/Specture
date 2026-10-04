@@ -5,6 +5,7 @@
 //   node scripts/doctor.js migrate [--project <root>] [--json] [--apply] [--by <name>]
 //   node scripts/doctor.js migrate --plan <id>   [--json]      plan inputs of one migration
 //   node scripts/doctor.js migrate --verify <id> [--by <name>] confirm an assisted/manual migration
+//   node scripts/doctor.js migrate --decline <id> [--by <name>] record the user's "no" to a declinable assisted migration
 //   node scripts/doctor.js sync    [--project <root>] [--json]  = migrate --apply (mechanical only) + check
 //
 // `check` and `migrate` without `--apply` are read-only. Exit 0 = no ERROR,
@@ -17,7 +18,7 @@ const fs = require("fs");
 const path = require("path");
 const { findProjectRoot } = require("../hooks/lib/specture-guard");
 const { runCheck } = require("../hooks/lib/doctor");
-const { runMigrate, verifyMigration, planFor } = require("../hooks/lib/doctor/migrate");
+const { runMigrate, verifyMigration, declineMigration, planFor } = require("../hooks/lib/doctor/migrate");
 const { formatBrief, formatTable } = require("../hooks/lib/doctor/report");
 
 const PLUGIN_ROOT = path.resolve(__dirname, "..");
@@ -25,13 +26,13 @@ const PLUGIN_ROOT = path.resolve(__dirname, "..");
 function usage(message) {
   if (message) process.stderr.write(`doctor: ${message}\n`);
   process.stderr.write(
-    "usage: node scripts/doctor.js check|migrate|sync [--project <root>] [--json] [--brief] [--apply] [--plan <id>] [--verify <id>] [--by <name>]\n"
+    "usage: node scripts/doctor.js check|migrate|sync [--project <root>] [--json] [--brief] [--apply] [--plan <id>] [--verify <id>] [--decline <id>] [--by <name>]\n"
   );
   process.exit(2);
 }
 
 function parseArgs(argv) {
-  const args = { mode: null, project: null, json: false, brief: false, apply: false, plan: null, verify: null, by: null, pluginVersion: null };
+  const args = { mode: null, project: null, json: false, brief: false, apply: false, plan: null, verify: null, decline: null, by: null, pluginVersion: null };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === "--project") args.project = argv[++i];
@@ -40,6 +41,7 @@ function parseArgs(argv) {
     else if (a === "--apply") args.apply = true;
     else if (a === "--plan") args.plan = argv[++i];
     else if (a === "--verify") args.verify = argv[++i];
+    else if (a === "--decline") args.decline = argv[++i];
     else if (a === "--by") args.by = argv[++i];
     else if (a === "--plugin-version") args.pluginVersion = argv[++i];
     else if (a.startsWith("--")) usage(`unknown option ${a}`);
@@ -81,7 +83,7 @@ function printMigrate(result, apply) {
   };
   section("Applied (mechanical):", result.applied, (m) => `${m.id} — ${m.title}${m.notes.length ? "\n    " + m.notes.join("\n    ") : ""}`);
   section("Would apply (mechanical):", result.wouldApply, (m) => `${m.id} — ${m.title}`);
-  section("Assisted — draft in Plan mode, then `migrate --verify <id>`:", result.assisted, (m) => `${m.id} — ${m.title}`);
+  section("Assisted — draft in Plan mode, then `migrate --verify <id>`:", result.assisted, (m) => `${m.id} — ${m.title}${m.declinable ? ` (opcional: si no la quieres, \`migrate --decline ${m.id}\`)` : ""}`);
   section("Deferred (content — owned by a skill, never automatic):", result.deferred, (m) => `${m.id} — ${m.title} → ${m.ownerSkill}`);
   section("FAILED:", result.failed, (m) => `${m.id}: ${m.reason}`);
   if (result.log.length > 0) out.push("", `Logged to .specture/migrations.log (${result.log.length} line(s)).`);
@@ -109,6 +111,12 @@ if (args.mode === "migrate" && args.plan) {
 if (args.mode === "migrate" && args.verify) {
   const result = verifyMigration(root, { pluginVersion, catalog, id: args.verify, by: args.by || "skill" });
   emit(result, result.ok ? `doctor: ${result.id} verified${result.logged ? " and logged" : " (already logged)"}` : `doctor: ${result.reason}`);
+  process.exit(result.ok ? 0 : 1);
+}
+
+if (args.mode === "migrate" && args.decline) {
+  const result = declineMigration(root, { catalog, id: args.decline, by: args.by || "skill" });
+  emit(result, result.ok ? `doctor: ${result.id} rechazada${result.logged ? " y registrada en migrations.log" : " (ya estaba registrada)"} — no se vuelve a ofrecer` : `doctor: ${result.reason}`);
   process.exit(result.ok ? 0 : 1);
 }
 

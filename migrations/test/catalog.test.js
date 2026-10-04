@@ -356,3 +356,47 @@ test("1.16-requirements-merge detects drafts and Adenda sections and exposes the
   assert.equal(m.verify(contextFor(clean)), true);
   assert.equal(m.detect(contextFor(makeProject({ ".specture/stack.yml": STACK }))), "n/a", "no requirements dir → n/a");
 });
+
+test("2.6-review-rules-adopt: pending only with a team review agent or skill; done with the file or once declined; never for a fresh project", () => {
+  const m = catalog.find((x) => x.id === "2.6-review-rules-adopt");
+  const { declineMigration, runMigrate } = require("../../hooks/lib/doctor/migrate");
+  const STACK = "schema: 1\n";
+  const AGENT = "---\nname: acme-reviewer\ndescription: Revisor\n---\n\n## Cómo ejecutar\n\n1. gh pr diff\n\n## Bloqueantes\n\n- Sin console.log\n\n```bash\n## no es un encabezado\n```\n\n### Backend\n\n- Sin try/catch\n";
+
+  assert.equal(m.kind, "assisted");
+  assert.equal(m.declinable, true);
+  assert.equal(m.detect(contextFor(makeProject({ ".specture/stack.yml": STACK }))), "n/a", "no team review files");
+  assert.equal(m.detect(contextFor(makeProject({ ".specture/stack.yml": STACK, "CONTRIBUTING.md": "# Contribuir\n" }))), "n/a", "a CONTRIBUTING alone is not enough evidence");
+
+  const root = makeProject({ ".specture/stack.yml": STACK, ".claude/agents/acme-reviewer.md": AGENT, ".claude/agents/planner.md": "# otro\n", "CONTRIBUTING.md": "# Contribuir\n\n## Estilo\n" });
+  const ctx = contextFor(root);
+  assert.equal(m.detect(ctx), "pending");
+  const plan = m.planInputs(ctx);
+  assert.deepEqual(plan.candidates.map((c) => c.file), [".claude/agents/acme-reviewer.md"], "only review-named agents");
+  assert.deepEqual(plan.candidates[0].headings, ["## Cómo ejecutar", "## Bloqueantes", "### Backend"], "headings outside code fences");
+  assert.equal(plan.candidates[0].agentFrontMatter, true);
+  assert.deepEqual(plan.optional.map((c) => c.file), ["CONTRIBUTING.md"]);
+  assert.match(plan.guidance, /leave out procedure/);
+  assert.match(plan.guidance, /migrate --decline 2\.6-review-rules-adopt/);
+  assert.equal(m.verify(ctx), false, "nothing written yet");
+
+  for (const [rel, text] of Object.entries({ ".specture/review-rules.md": "## Incluye\n- .claude/agents/acme-reviewer.md § Bloqueantes\n" })) {
+    fs.writeFileSync(path.join(root, ...rel.split("/")), text);
+  }
+  assert.equal(m.detect(contextFor(root)), "done");
+  assert.equal(m.verify(contextFor(root)), true);
+  fs.writeFileSync(path.join(root, ".specture/review-rules.md"), "## Incluye\n- .claude/agents/no-existe.md\n");
+  assert.equal(m.verify(contextFor(root)), false, "a review-rules.md with errors does not verify");
+
+  const declinedRoot = makeProject({ ".specture/stack.yml": STACK, ".claude/skills/code-review/SKILL.md": "# Review\n\n## Reglas\n" });
+  assert.equal(m.detect(contextFor(declinedRoot)), "pending", "a review skill counts");
+  const declined = declineMigration(declinedRoot, { catalog, id: m.id, by: "test" });
+  assert.equal(declined.ok, true);
+  assert.match(declined.logged, /2\.6-review-rules-adopt assisted declined test$/);
+  assert.equal(declineMigration(declinedRoot, { catalog, id: m.id }).logged, null, "logged once");
+  assert.equal(m.detect(contextFor(declinedRoot)), "done", "declined → never offered again");
+  const migrated = runMigrate(declinedRoot, { pluginVersion: "2.6.0", catalog, apply: false });
+  assert.ok(!migrated.assisted.some((a) => a.id === m.id));
+
+  assert.equal(declineMigration(declinedRoot, { catalog, id: "2.0-file-org-conventions" }).ok, false, "a required assisted migration cannot be declined");
+});
