@@ -96,6 +96,7 @@ Before Step 4 (tdd-test-writer) and Step 5 (implementer), the orchestrator MUST 
 - [ ] Spec's "Superficie de Código Existente" section carries the **exact signatures** of every existing symbol the implementation will call — for symbols marked `(planeada — re-anclar)`, verified by the **signature re-read** below
 - [ ] `stack.yml` + `conventions.md` + all ADRs
 - [ ] The `RULES_RESOLVED` block (see "Rules Resolution" below — `RULES_RESOLVED: []` is valid and explicit)
+- [ ] The `CUSTOM_RULES` block (see "Custom Rules Resolution" below — `CUSTOM_RULES: []` is valid and explicit)
 - [ ] Relevant docs from `docs-index.yml` resolved (see "Docs Index Resolution" below)
 
 **For ux-implementer** (frontend epics — it replaces `implementer`, so everything above applies, plus):
@@ -224,6 +225,16 @@ Since v1.19.0 the project's invariants `R-*` live in `.specture/rules.yml` (one 
 4. **No `.specture/rules.yml`**: the block is `RULES_RESOLVED: []` — unless `conventions.md` §12 still declares rules (project not yet migrated): then the resolver injects **all** of them, unfiltered (they carry no tags), so the project keeps the enforcement it had, and warns. Print once per session: *⚠ Specture: `.specture/rules.yml` no inicializado — las reglas de §12 se inyectan enteras hasta migrar; corré `/specture:doctor migrate`* (migration `1.19-rules-file`) and continue.
 5. **Pass the block verbatim** in the dispatch. Empty is valid and explicit: Dimension 7 of the reviewer is a no-op when the block is empty — the presence of rules is the switch, there is no toggle.
 
+## Custom Rules Resolution (pre-flight, reusable)
+
+Since v2.4.0 a project may link the review criteria its team already maintains in `.specture/review-rules.md` (opt-in: included files or sections, the team's severity words, a flexible level for legacy paths, its own `RV-n` rules). The implementer and the ux-implementer receive the subset that applies to the spec's declared surface, so the compliance review at milestone close confirms rather than discovers. The tdd-test-writer does not receive it (tests come from the spec), nor does the code-reviewer (its dimensions stay as they are; the compliance review checks these criteria over the whole milestone).
+
+```
+node "${CLAUDE_PLUGIN_ROOT}/hooks/lib/review-rules-resolve.js" --project . --spec docs/05-specs/<epic-slug>/<task-slug>.spec.md
+```
+
+It prints the block — `CUSTOM_RULES: …` + severities, flexible paths, precedence and the fenced team criteria — or exactly `CUSTOM_RULES: []` (no file, or nothing applies). Exit 1 = the file has errors or the selection exceeds its cap: **stop and report it** (`/specture:doctor check` names the line) — never dispatch with a silently empty block. Pass the block verbatim. Agents never open `review-rules.md` nor the files it includes.
+
 ## Step 3.9 — Failure baseline (once per epic, before the first RED)
 
 Run the **full** test suite once, before any RED commit of the epic. Re-run each failing
@@ -291,6 +302,7 @@ Dispatch the `implementer` agent (`agents/implementer/AGENT.md`).
 - The `RED_SHA` value, with an explicit instruction: *"The tests committed at `<RED_SHA>` are the sealed contract. You must NOT modify, delete, skip, rename, or move any of those test files. The TDD Honesty Gate will run `git diff <RED_SHA>..HEAD -- <test-globs>` after your work and any change will abort the spec."*
 - `.specture/stack.yml`, `.specture/conventions.md`, all ADRs.
 - **The `RULES_RESOLVED` block** from "Rules Resolution" (the project invariants whose tags match this spec, with their declared severity — the implementer honors them; the reviewer's Dimension 7 enforces them by ID). Pass `RULES_RESOLVED: []` when nothing matches.
+- **The `CUSTOM_RULES` block** from "Custom Rules Resolution" (the team criteria that apply to this spec's surface — criteria only, never procedure; Specture's rules prevail on a conflict). Pass `CUSTOM_RULES: []` when nothing applies.
 - The **exact signatures** of existing symbols the implementation will call — already captured in the spec's "Superficie de Código Existente" section (do not make the implementer rediscover an API by reading files) — PLUS the minimum set of source files to actually modify (NOT the whole codebase).
 - The explicit instruction: *"Write only to the paths the spec declares under `Crea:` / `Modifica:` (and the tests you were given). With hooks on, a write anywhere else is denied by the Allowed Paths gate — a denied write means the spec is incomplete: stop and report `BLOCKED: spec <ID>` naming the file, never work around it."*
 

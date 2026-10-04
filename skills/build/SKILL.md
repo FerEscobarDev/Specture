@@ -21,6 +21,7 @@ This skill **fuses** what was previously split into "planificación", "ejecució
 - `.specture/stack.yml` — for routing decisions and to know testing framework, language, etc.
 - `.specture/conventions.md` — for context to pass to agents.
 - `.specture/rules.yml` — the project invariants `R-*` (since v1.19.0); never passed whole — resolved per dispatch by "Rules Resolution" (`build/EPIC_LOOP.md`) into a `RULES_RESOLVED` block. Absent = `RULES_RESOLVED: []`.
+- `.specture/review-rules.md` — the team's custom review criteria (since v2.4.0, opt-in); never passed whole — resolved per dispatch by "Custom Rules Resolution" (`build/EPIC_LOOP.md`) into a `CUSTOM_RULES` block. Absent = `CUSTOM_RULES: []`.
 - `.specture/decisions/` — all ADRs.
 - `docs/01-requirements/business_requirements.md` — ground truth for business rules.
 - `docs/02-architecture/architecture.md` — boundaries.
@@ -37,6 +38,7 @@ This skill **fuses** what was previously split into "planificación", "ejecució
 | `docs/05-specs/_current/` (once ≥ 1 milestone is closed) | Current-State Resolution passes `[]` — validator and reviewer never see the component's current behaviour; Step 8.7 has nothing to merge into. Backfill: `/specture:knowledge reconcile --component <slug>` (lazy, one component at a time; `characterize` for a component without specs) — `hooks/lib/current-state.js components` names the components that have `[x]` specs and no file. |
 | `.specture/docs-index.yml` with `docs_index.enabled` | Docs Index Resolution passes `[]`. |
 | `.specture/rules.yml` (v1.19.0+) | Rules Resolution passes `RULES_RESOLVED: []` — implementer and reviewer see no project invariants (Dimension 7 no-op). A project whose `conventions.md` §12 still holds the old table is not migrated: the resolver injects those rules whole (unfiltered, as before v1.19.0) and warns; `/specture:doctor migrate` (`1.19-rules-file`) moves them and turns the tag filter on. |
+| `.specture/review-rules.md` (v2.4.0+, opt-in) | Custom Rules Resolution passes `CUSTOM_RULES: []` and the compliance review checks Specture's rules only. Opt-in, so its absence prints **no** warning. A file with errors stops the dispatch (resolver exit 1) — `/specture:doctor check` names the line. |
 | The contract file (`stack.yml.api.contract_file`) + its readable companion `docs/02-architecture/api-contract.md` | Validator Dimension 6 cannot run; frontend epics cannot slice the contract. |
 | `.specture/settings.yml` | Toggles are read from the legacy `conventions.md` §10; if absent there too, defaults apply (hooks off, knowledge off). |
 | Node ≥ 22 on `PATH` | Gate step 4a falls back to the three `grep` checks (`MECH_CHECK: MANUAL`); the seal cannot be written (`seal-cli.js`) — and the hooks, node scripts themselves, are inert anyway — so the epic runs without mechanical denies: the `git diff <RED_SHA>..HEAD` of Step 5.5, the `git diff <SPEC_SHA>..HEAD` of report processing and reviewer Dimension 1 remain the defenses; `metrics-report.js` cannot run (the metrics line is still appended by hand). Say it once: *"Node ≥ 22 no disponible — sin sello ni chequeo mecánico; quedan los git diff"*. |
