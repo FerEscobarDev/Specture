@@ -40,7 +40,7 @@ The user's project also contains a `.specture/` directory with the project-speci
 | "Quiero migrar a X", "Sube la versión a Y", "Moderniza el stack" | `./skills/modernize/SKILL.md` |
 | "Diseñemos la UI", "el diseño ya está en Claude Design", "empecemos el frontend" | `./skills/ux-design/SKILL.md` |
 | "El frontend y el backend están desincronizados", "el front espera cosas que el back no devuelve" | `./skills/contract-sync-audit/SKILL.md` |
-| "Revisá el milestone contra todas las reglas", "revisión de cumplimiento", "qué reglas incumple lo construido" | `./skills/compliance-review/SKILL.md` |
+| "Revisá el milestone contra todas las reglas", "revisión de cumplimiento", "qué reglas incumple lo construido", "revisá el PR 123", "revisá mi rama contra develop" | `./skills/compliance-review/SKILL.md` |
 
 ## Instruction priority
 

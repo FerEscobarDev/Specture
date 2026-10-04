@@ -42,7 +42,11 @@ NO_EVALUADO: <ruta flexible> — nivel flexible: <familias de reglas omitidas>  
 
 ## 2. Reporte — lo arma `compliance.js assemble`
 
-Ruta: `docs/07-reviews/cumplimiento-milestone-<N>-<YYYY-MM-DD>[-pK].md`.
+Ruta: `docs/07-reviews/cumplimiento-<id>[-pK].md`, con `<id>` = `milestone-<N>-<YYYY-MM-DD>`,
+`pr-gh-<n>-<fecha>` (GitHub), `pr-az-<n>-<fecha>` (Azure DevOps) o `rama-<slug>-<fecha>` (v2.5.0).
+Un reporte de PR o de rama lleva `**PR:**` o `**Rama:**` en lugar de `**Milestone:**`,
+`**TRIAGE:** NO REQUERIDO`, una línea `**Publicado:** nada` y, si el cambio toca archivos de
+reglas, una sección `## Cambios a las reglas` (se revisó con las de la rama destino).
 
 ```
 # Revisión de cumplimiento — <título del milestone>

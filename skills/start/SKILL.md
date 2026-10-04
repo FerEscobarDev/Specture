@@ -95,6 +95,7 @@ These are NOT routed by state — they are activated by symptoms during any phas
 | Frontend & backend are out of sync (wrong URLs, shapes the backend doesn't return) in an existing project | `./skills/contract-sync-audit/SKILL.md` |
 | User wants to capture session learnings, or audit the docs-index (opt-in / periodic) | `./skills/knowledge/SKILL.md` — modes `capture` / `audit` (aliases `/specture:learn`, `/specture:audit-knowledge`) |
 | User wants a milestone's code checked against ALL the project rules ("revisión de cumplimiento"), or a compliance report waits for triage (`hooks/lib/compliance.js status` → `PENDING`) | `./skills/compliance-review/SKILL.md` — modes `milestone <N>` / `triage` |
+| User wants a pull request (GitHub, Azure DevOps) or a branch reviewed against the project rules ("revisá el PR 123", "revisá mi rama contra develop") — never posts | `./skills/compliance-review/SKILL.md` — modes `pr <número\|url>` / `rama <rama>` |
 
 ## Red Flags — STOP
 

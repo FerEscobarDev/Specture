@@ -1,6 +1,6 @@
 ---
 name: compliance-review
-description: 'Use when a milestone closes in the build (Step 8.7 calls it), when the build queue drains with a compliance report waiting for triage, or when the user asks to check code against ALL the project rules — "revisión de cumplimiento", "revisá el milestone N contra las reglas", "qué reglas incumple lo que construimos", "/specture:compliance-review milestone <N> | triage". Reviews the milestone''s code against every R-* invariant, conventions.md, W-* process rules, Accepted ADRs and the team''s custom criteria (.specture/review-rules.md), writes a report with plain-language suggested comments to docs/07-reviews/, and asks the user which findings to address. Never posts anything to GitHub or Azure DevOps.'
+description: 'Use when a milestone closes in the build (Step 8.7 calls it), when the build queue drains with a compliance report waiting for triage, when the user asks to check code against ALL the project rules — "revisión de cumplimiento", "revisá el milestone N contra las reglas", "qué reglas incumple lo que construimos" —, or to review a pull request or a branch — "revisá el PR 123", "revisá este PR de Azure", "revisá mi rama contra develop", "/specture:compliance-review milestone <N> | triage | pr <número|url> | rama <rama>". Reviews the code against every R-* invariant, conventions.md, W-* process rules, Accepted ADRs and the team''s custom criteria (.specture/review-rules.md), writes a report with plain-language suggested comments to docs/07-reviews/, and (milestones only) asks the user which findings to address. Never posts anything to GitHub or Azure DevOps.'
 ---
 
 # Compliance Review (revisión de cumplimiento)
@@ -13,6 +13,7 @@ Two modes:
 |---|---|---|
 | `milestone <N>` | `build` Step 8.7 when a milestone closes (unattended), or on demand to re-run | nobody when called from `build`; on demand it continues straight into `triage` |
 | `triage [<report>]` | `build` queue step 6 when the queue drains, `start` when a report is pending, or on demand | this skill — the only point where the user decides |
+| `pr <número\|url>` · `rama <rama> [--base <rama>]` | on demand (v2.5.0): a GitHub or Azure DevOps pull request, or a local branch against its base | nobody — it leaves a report to read; no triage, no correction, nothing committed, nothing posted |
 
 The mechanical half lives in `hooks/lib/compliance.js` (range, lint, assemble, triage, correction, status, record); the grammars of the part and the report are in `templates/COMPLIANCE_REPORT_TEMPLATE.md`. You never write the report by hand.
 
@@ -35,6 +36,7 @@ The mechanical half lives in `hooks/lib/compliance.js` (range, lint, assemble, t
 - `docs/04-roadmap/ROADMAP.md`, `docs/05-specs/<epic>/_planning.md` (`LOCK_SHA`), `docs/02-architecture/architecture.md` ("Carpeta raíz") — read by `compliance.js range`, not by you.
 - `docs/07-reviews/review-<epic-slug>-*.md` of the milestone's epics — the `IMPORTANT`/`NIT` findings their `APPROVED` reviews accepted (`ACCEPTED_FINDINGS`).
 - `templates/COMPLIANCE_REPORT_TEMPLATE.md` — the grammars.
+- `pr` / `rama` (v2.5.0): `hooks/lib/pr.js`, read through `compliance.js range` — the GitHub CLI (`gh`, signed in with `gh auth login`) or the Azure CLI (`az` with the `azure-devops` extension, `az login`), used **read-only**; `conventions.md` §13 `W-4` for the default base of `rama`.
 
 ## Cross-Platform Subagent Initialization
 
@@ -89,6 +91,20 @@ If the session exposes `define_subagent` (Antigravity CLI), register `compliance
 7. **Deferred.** Each `diferir` is a `dueño: sin epic` line under `## DIFERIDOS`: offer them once, together, as possible `/specture:new-feature` items (behaviour) or a follow-up refactor — never create anything without the user's yes.
 8. **Metrics.** `compliance.js record --report <report>` appends the `kind: "compliance"` line to `docs/.specture-meta/build-metrics.jsonl`; commit it with the report: `docs(cumplimiento): corrección milestone <N>` (or with the triage commit when nothing was corrected).
 
+## Modes `pr` and `rama` — a pull request or a branch (v2.5.0)
+
+The same review over code that may never have gone through the build: a teammate's pull request on GitHub or Azure DevOps, or a local branch before opening one. **Read-only on the platform, nothing committed, no triage, no correction** — the report is for the user to read and, if they want, copy the suggested comments.
+
+1. **Range.**
+   ```
+   node "${CLAUDE_PLUGIN_ROOT}/hooks/lib/compliance.js" range --pr <número|url> [--platform github|azure]
+   node "${CLAUDE_PLUGIN_ROOT}/hooks/lib/compliance.js" range --branch <rama> --base <rama>
+   ```
+   For `rama`, the base is the one the user names, else the target `W-4` of `conventions.md` §13 declares for that kind of branch, else omit `--base` (the script takes the remote's default branch). `UNVERIFIABLE <motivo>` → tell the user verbatim (it carries the fix: `gh auth login`, `az login`, `az extension add --name azure-devops`, a PR that changed while being read) and stop — there is nothing to stub or commit. `READY` prints the chunks and, when the change touches rule files, a `cambia reglas` line: tell the user the review uses the **target branch's** rules.
+2. **Review, one chunk at a time**, exactly as in `milestone` step 3, with these differences: the resolvers run on the target branch's copy — `rules-resolve.js --project <state>/base --all` and `review-rules-resolve.js --project <state>/base --paths-file <state>/<chunk>.files`; `conventions.md` and the ADRs come from `<state>/base/.specture/`; the dispatch adds `CONTEXT: pr | rama`, `FILES_ROOT: <state>/head`, `BRANCH` and `BASE_BRANCH` (from `range.json`), with `ACCEPTED_FINDINGS: (ninguno)`. `<state>` is `.specture/state/compliance/<id>/`. The `git status` guard applies.
+3. **Lint and assemble** as in `milestone` step 4 (the report is `cumplimiento-pr-gh-<n>-…`, `cumplimiento-pr-az-<n>-…` or `cumplimiento-rama-<slug>-…`, with `TRIAGE: NO REQUERIDO`).
+4. **Hand back — do not commit.** Give the user the report path, the counts by severity, the `## Comentarios sugeridos`-style comment of each finding with its `archivo:línea`, and the rule changes if any. Say plainly that nothing was posted to the PR. Never run `triage` or the correction loop on these reports, and never `gh pr review`, `gh pr comment`, `az repos pr` writes or any other platform write.
+
 ## Red Flags — STOP
 
 | Thought | Reality |
@@ -100,7 +116,11 @@ If the session exposes `define_subagent` (Antigravity CLI), register `compliance
 | "El agente cambió un archivo, lo restauro con git checkout" | Stop and escalate. `git checkout` destroys work that is not yours. |
 | "El usuario no contestó, aplico la propuesta" | Silence is not a decision. The triage stays `PENDIENTE`. |
 
+| "Ya que estoy, dejo el comentario en el PR" | Never. `pr` mode reads the PR and writes a local report; the user decides what to post. |
+| "El PR cambia rules.yml, lo reviso con esas reglas" | A change never relaxes the rules that review it: always the target branch's copy in `<state>/base/`. |
+
 ## Exit criteria
 
 - `milestone`: a committed report under `docs/07-reviews/cumplimiento-milestone-<N>-<fecha>[-pK].md` with a parseable `STATUS` and `TRIAGE` — or a committed `BLOCKED` stub that says what could not be verified.
 - `triage`: every finding has a decision; every `corregir` has a result under `## CORRECCIÓN`; the metrics line is appended; deferred items were offered once.
+- `pr` / `rama`: an uncommitted report under `docs/07-reviews/cumplimiento-pr-<gh|az>-<n>-<fecha>.md` or `cumplimiento-rama-<slug>-<fecha>.md`, reviewed with the target branch's rules, handed to the user with its suggested comments — and nothing written to the platform.
