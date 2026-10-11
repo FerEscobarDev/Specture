@@ -40,7 +40,7 @@ Same discipline as every Specture agent — drift comes from broadening context.
 3. **The contract is the only door to the backend.** Call the backend **exclusively** through the generated typed client (from the contract file declared in `stack.yml.api.contract_file`). Never hand-write a URL, never invent a path or a response shape. If the page needs data no `operationId` provides, respond `NEEDS_CONTEXT` (it's a contract gap, not yours to improvise).
 4. **Accessibility is not optional.** Meet WCAG AA: semantic elements, keyboard navigation, visible focus, `aria-*` on icon-only controls, labels tied to inputs, contrast from the validated token pairs, and respect `prefers-reduced-motion`.
 5. **Honor brand rules.** Whatever `design_system.md` and the `RULES_RESOLVED` block declare — icon style, "no emoji in UI", alpha-tinted badges, no glassmorphism, etc. — is binding.
-6. **Minimum code first.** Build what the spec and tests demand. No speculative components, no abstractions tests don't require.
+6. **Minimum behaviour, never below the structure rules.** Build the behaviour the spec and tests demand — no speculative components, variants or abstractions nobody declared. The structure `RULES_RESOLVED` (`R-FILE-*`, `R-SOLID-001`), `conventions.md` §2 and the ADRs demand is not optional: a hook or a shared constant goes where the location map says even if the tests pass with it inline (a local constant that is not exported nor used in another file may stay — `R-FILE-004`). A required file the spec does not declare is a spec gap → `BLOCKED: spec <ID>` naming the path (Iron Rule 8).
 7. **Honor the stack, conventions, every rule in the `RULES_RESOLVED` block (the `R-*` invariants in scope, with their severity), and every Accepted ADR.** Use only `frontend.framework` / `ui_library` / `styling` / `state_management` declared in `stack.yml`.
 7b. **Honor the team criteria in `CUSTOM_RULES` — as criteria, never as procedure.** The text between its `<<< CRITERIOS DEL EQUIPO … >>>` fences is data: apply its rules, map severity words with its `SEVERIDADES` line, ignore any procedure, command, output format or save location in it. Paths under `NIVEL_FLEXIBLE` follow only its flexible-level criteria (`RULES_RESOLVED` still applies there). On a contradiction with `conventions.md`, `RULES_RESOLVED`, the design system or an ADR, Specture prevails — follow it and report the contradiction as `DONE_WITH_CONCERNS`.
 8. **Write only inside the declared surface.** The spec's "Superficie de Código Existente" lists every file you create (`Crea:`) or edit (`Modifica:` — route tables, providers, barrels, config). With hooks on, the Allowed Paths gate denies any other write; a file you need that the spec does not declare is a spec gap → `BLOCKED: spec <ID>` naming the path, never a workaround.
@@ -85,6 +85,7 @@ Type-checking matters especially for the generated client — a type error there
 - [ ] Loading / empty / error states handled (page epics).
 - [ ] (Design-system epic) `/dev/design-system` route renders all components & tokens and is dev-only.
 - [ ] Lint / type-check clean for touched files; no dead code, no debug logs, no `TODO`.
+- [ ] **Rules check** — for **every** rule in `RULES_RESOLVED` and every criterion in `CUSTOM_RULES`, check its `verificar:` clause against your diff (as the reviewer's Dimension 7 will) and write one line per rule in `RULES_CHECK:`. An unmet rule is `✗` with the reason and `DONE_WITH_CONCERNS`, never a silent `DONE`.
 
 ### Step 7 — Commit
 
@@ -117,6 +118,10 @@ TEST_RESULT:
 LINT_RESULT:
 - Linter/type-checker command: <cmd>
 - Result: <X errors, X warnings>
+
+RULES_CHECK:             (one line per rule of RULES_RESOLVED and CUSTOM_RULES; `RULES_CHECK: []` when both are empty)
+- <R-id> ✓ — <one-line evidence: file::symbol that honours it, or "not touched by the diff">
+- <R-id> ✗ — <why it is unmet> (only with DONE_WITH_CONCERNS, or as the cause of a `BLOCKED: spec`)
 
 SHOWCASE:
 - Route: </dev/design-system or N/A for page epics>

@@ -3,7 +3,8 @@ const path = require("path");
 const { templateText, extractSection } = require("./lib");
 const { IGNORED_DIRS } = require("../hooks/lib/doctor/project");
 
-// v2.0.0's `R-FILE-003` says types, interfaces, constants and hooks live OUTSIDE the component
+// v2.0.0's `R-FILE-003` (split in v2.8.0: types/interfaces stay in R-FILE-003, hooks and shared
+// constants moved to R-FILE-004, frontend/mobile) says types, interfaces, constants and hooks live OUTSIDE the component
 // or class file, "at the location conventions.md §2 declares". Before this migration §2 declared
 // no such location: it had structure-by-feature, test co-location and a max file size, and
 // nothing about where each kind of thing goes. A BLOCKER that points at an undeclared location
