@@ -18,8 +18,14 @@ rules:
     source: "framework-core · conventions.md §2"
   - id: R-FILE-003
     tags: [all]
-    rule: "Interfaces, types, constantes y hooks/composables viven fuera del archivo del componente o de la clase, en la ubicación que declara conventions.md §2."
-    verify: "el archivo de un componente o clase no exporta types, interfaces, constantes ni hooks; están en la ruta del mapa de §2"
+    rule: "Interfaces y types viven fuera del archivo del componente o de la clase, en la ubicación que declara conventions.md §2."
+    verify: "el archivo de un componente o clase no exporta types ni interfaces; están en la ruta del mapa de §2"
+    severity: BLOCKER
+    source: "framework-core · conventions.md §2"
+  - id: R-FILE-004
+    tags: [frontend, mobile]
+    rule: "Hooks/composables viven fuera del archivo del componente; una constante puede quedarse en él solo si no se exporta ni se usa en otro archivo; si no, vive donde declara conventions.md §2."
+    verify: "el archivo de un componente no define hooks; toda constante exportada o usada en otro archivo está en la ruta del mapa de §2 (las locales no exportadas se permiten)"
     severity: BLOCKER
     source: "framework-core · conventions.md §2"
   - id: R-SOLID-001

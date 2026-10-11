@@ -36,7 +36,8 @@ const catalog = [
   require("./2.0-design-channel"),
   require("./2.0-design-spine"),
   require("./2.0-design-metrics-tracked"),
-  require("./2.6-review-rules-adopt")
+  require("./2.6-review-rules-adopt"),
+  require("./2.8-rules-core-scope")
 ];
 
 // Stable sort by `since` only: entries that share a version keep their declared
