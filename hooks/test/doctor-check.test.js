@@ -664,8 +664,25 @@ test("rules lint: schema errors and over-long rules in rules.yml, over-long deny
   assert.ok(parse, "unparseable file is reported");
   assert.match(parse.detail, /does not parse: multi-line values are not supported.*\(line 4\)/);
 
-  const clean = createProject({ ...CLEAN, ".specture/rules.yml": TEMPLATE_RULES + '  - id: R-1\n    tags: [dto]\n    rule: "Los DTOs son inmutables"\n    severity: BLOCKER\n' });
+  const clean = createProject({ ...CLEAN, ".specture/rules.yml": TEMPLATE_RULES + '  - id: R-1\n    tags: [backend]\n    rule: "Los DTOs son inmutables"\n    severity: BLOCKER\n' });
   assert.deepEqual(runDoctor(clean).json.findings.filter((f) => f.group === "rules"), []);
+});
+
+test("doctor check: rules-tag-unreachable warns only for tags no spec can produce", () => {
+  const rule = (id, tags) => `  - id: ${id}\n    tags: [${tags}]\n    rule: "Regla ${id}"\n    severity: IMPORTANT\n`;
+  const projectRoot = createProject({
+    ...CLEAN,
+    "docs/02-architecture/architecture.md": "# Arquitectura\n\n## Componentes\n\n### Archivos\n- **Carpeta raíz:** `demo_api/`\n",
+    "docs/05-specs/epic-1.1-notas/crear-nota.spec.md": "# Spec\n\n**Módulo:** Facturación\n",
+    ".specture/rules.yml": TEMPLATE_RULES + rule("R-1", "dto") + rule("R-2", "naming, seguridad") + rule("R-3", "all") + rule("R-4", "backend") + rule("R-5", "archivos") + rule("R-6", "dto, frontend") + rule("R-7", "facturacion")
+  });
+  const { status, json } = runDoctor(projectRoot);
+  const warned = json.findings.filter((f) => f.check === "rules-tag-unreachable");
+  assert.deepEqual(warned.map((f) => f.detail.split(":")[0]).sort(), ["R-1", "R-2"], JSON.stringify(warned));
+  assert.ok(warned.every((f) => f.severity === "WARNING" && f.group === "rules"));
+  assert.ok(warned.every((f) => /\(line \d+\)/.test(f.detail)), "the line travels to the finding");
+  assert.match(warned[0].action, /component slug/);
+  assert.notEqual(status, 1, "a warning never fails the check");
 });
 
 test("review-rules: the template is clean; grammar, includes, nesting, size and whole-agent includes are reported", () => {
