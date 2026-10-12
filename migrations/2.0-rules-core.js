@@ -1,9 +1,11 @@
 const { templateText, insertRuleItems, eolOf } = require("./lib");
 const { parseRulesYaml, serializeRulesList, lintCore, CORE_RULES, CORE_SOURCE } = require("../hooks/lib/rules");
 
-// v2.0.0 makes four invariants mandatory in every Specture project (`framework-core`):
-// one component per file, one exported class/service per file, types/interfaces/constants/hooks
-// outside the component or class file, and SOLID front and back. `rules.template.yml` ships
+// v2.0.0 makes the `framework-core` invariants mandatory in every Specture project: one component
+// per file, one exported class/service per file, types/interfaces outside the component or class
+// file, hooks and shared constants outside the component file (frontend/mobile — split from
+// R-FILE-003 into R-FILE-004 in v2.8.0, which this migration restores like any other core id),
+// and SOLID front and back. `rules.template.yml` ships
 // them, so a project created from v2.0.0 is already conformant and so is one that runs
 // `1.19-rules-file` (it builds the file from that template) — this migration exists for the
 // projects that ALREADY have a `.specture/rules.yml` written before the core existed.
@@ -46,7 +48,7 @@ module.exports = {
   id: "2.0-rules-core",
   since: "2.0.0",
   kind: "mechanical",
-  title: "`.specture/rules.yml`: restore the mandatory `framework-core` invariants (R-FILE-001/002/003, R-SOLID-001)",
+  title: "`.specture/rules.yml`: restore the mandatory `framework-core` invariants (every id of `CORE_RULES`: R-FILE-001/002/003/004, R-SOLID-001)",
   detect(ctx) {
     if (ctx.read(STACK) === null) return "n/a";
     const text = ctx.read(RULES);
@@ -102,7 +104,7 @@ module.exports = {
     const notes = [];
     if (missing.length > 0) notes.push(`${missing.length} \`${CORE_SOURCE}\` rule(s) restored in ${RULES}: ${missing.map((r) => r.id).join(", ")}. They are mandatory in every Specture project; the project's own rules were not touched.`);
     if (raised.length > 0) notes.push(`${raised.length} \`${CORE_SOURCE}\` rule(s) raised back to their floor: ${raised.join(", ")} — the core can be tightened, never weakened.`);
-    notes.push("`conventions.md` §2 must declare WHERE types, constants and hooks live (R-FILE-003); `2.0-file-org-conventions` asks for it.");
+    notes.push("`conventions.md` §2 must declare WHERE types (R-FILE-003) and, in frontend, hooks and shared constants (R-FILE-004) live; `2.0-file-org-conventions` asks for it.");
     return { notes };
   },
   verify(ctx) {

@@ -23,6 +23,17 @@
 # TIGHTEN them (raise a severity, add tags, sharpen the wording) and may add rules of its own.
 # Removing an id or lowering a severity is an ERROR of the doctor (`rules-core-missing`,
 # `rules-core-weakened`) and `/specture:doctor migrate` restores it.
+#
+# TAGS THAT RESOLVE. A rule reaches the implementer and the reviewer only when one of its tags
+# matches what the coordinator derives from the spec. Only these do:
+#   all                        → every dispatch (style, structure, naming that apply everywhere)
+#   backend | frontend | mobile → every spec of that layer
+#   <component-slug>           → the slug of a component in architecture.md (`current-state.js
+#                                components` prints them) — domain rules of that component
+#   <module>                   → a module name the specs declare in their `Módulo` header
+# A conceptual tag (`dto`, `naming`, `seguridad`) matches nothing: the rule is never injected
+# per spec and only the milestone compliance review (which reads every rule) ever sees it. The
+# doctor warns with `rules-tag-unreachable`.
 
 schema: 1
 rules:
@@ -40,8 +51,14 @@ rules:
     source: "framework-core · conventions.md §2"
   - id: R-FILE-003
     tags: [all]
-    rule: "Interfaces, types, constantes y hooks/composables viven fuera del archivo del componente o de la clase, en la ubicación que declara conventions.md §2."
-    verify: "el archivo de un componente o clase no exporta types, interfaces, constantes ni hooks; están en la ruta del mapa de §2"
+    rule: "Interfaces y types viven fuera del archivo del componente o de la clase, en la ubicación que declara conventions.md §2."
+    verify: "el archivo de un componente o clase no exporta types ni interfaces; están en la ruta del mapa de §2"
+    severity: BLOCKER
+    source: "framework-core · conventions.md §2"
+  - id: R-FILE-004
+    tags: [frontend, mobile]
+    rule: "Hooks/composables viven fuera del archivo del componente; una constante puede quedarse en él solo si no se exporta ni se usa en otro archivo; si no, vive donde declara conventions.md §2."
+    verify: "el archivo de un componente no define hooks; toda constante exportada o usada en otro archivo está en la ruta del mapa de §2 (las locales no exportadas se permiten)"
     severity: BLOCKER
     source: "framework-core · conventions.md §2"
   - id: R-SOLID-001
@@ -54,13 +71,13 @@ rules:
 # Examples of PROJECT rules — append them to `rules:` above (the core stays):
 # rules:
 #   - id: R-1
-#     tags: [dto, domain]
+#     tags: [backend]                       # a layer: `dto` alone would match no spec
 #     rule: "Los DTOs son inmutables: sin setters, campos readonly/final"
 #     verify: "sin setters públicos ni mutación post-construcción"
 #     severity: BLOCKER
 #     source: "ADR-004 §DTOs"
 #   - id: R-2
-#     tags: [naming, all]
+#     tags: [all]                           # naming applies everywhere
 #     rule: "Métodos de consulta = sustantivo; comandos = verbo imperativo"
 #     verify: "nombres de métodos nuevos"
 #     severity: IMPORTANT

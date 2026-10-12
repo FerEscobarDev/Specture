@@ -168,7 +168,9 @@ function lintRules(parsed) {
 // framework-core — the invariants every Specture project carries (v2.0.0)
 // ---------------------------------------------------------------------------
 //
-// The framework owns the schema of `rules.yml` and, since v2.0.0, these four ids. A project may
+// The framework owns the schema of `rules.yml` and, since v2.0.0, these ids (five since v2.8.0,
+// when R-FILE-003 was split: interfaces/types stay [all]; hooks and shared constants moved to
+// R-FILE-004, frontend/mobile only). A project may
 // TIGHTEN them — raise the severity, add tags, sharpen the wording — and may add rules of its own.
 // Removing an id or lowering a severity is an ERROR of the doctor, restored by `doctor migrate`.
 //
@@ -198,8 +200,16 @@ const CORE_RULES = [
   {
     id: "R-FILE-003",
     tags: ["all"],
-    rule: "Interfaces, types, constantes y hooks/composables viven fuera del archivo del componente o de la clase, en la ubicación que declara conventions.md §2.",
-    verify: "el archivo de un componente o clase no exporta types, interfaces, constantes ni hooks; están en la ruta del mapa de §2",
+    rule: "Interfaces y types viven fuera del archivo del componente o de la clase, en la ubicación que declara conventions.md §2.",
+    verify: "el archivo de un componente o clase no exporta types ni interfaces; están en la ruta del mapa de §2",
+    severity: "BLOCKER",
+    source: `${CORE_SOURCE} · conventions.md §2`
+  },
+  {
+    id: "R-FILE-004",
+    tags: ["frontend", "mobile"],
+    rule: "Hooks/composables viven fuera del archivo del componente; una constante puede quedarse en él solo si no se exporta ni se usa en otro archivo; si no, vive donde declara conventions.md §2.",
+    verify: "el archivo de un componente no define hooks; toda constante exportada o usada en otro archivo está en la ruta del mapa de §2 (las locales no exportadas se permiten)",
     severity: "BLOCKER",
     source: `${CORE_SOURCE} · conventions.md §2`
   },

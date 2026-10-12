@@ -271,7 +271,14 @@ test("lintCore: la severidad se compara sin importar mayúsculas ni espacios", (
 test("resolveRules inyecta el núcleo por tag — frontend y backend reciben lo suyo", () => {
   const parsed = parseRulesYaml(CORE_YAML).rules;
   const front = resolveRules(parsed, ["frontend"]).map((r) => r.id);
-  assert.deepEqual(front, ["R-FILE-001", "R-FILE-003", "R-SOLID-001"]);
+  assert.deepEqual(front, ["R-FILE-001", "R-FILE-003", "R-FILE-004", "R-SOLID-001"]);
   const back = resolveRules(parsed, ["backend"]).map((r) => r.id);
-  assert.deepEqual(back, ["R-FILE-002", "R-FILE-003", "R-SOLID-001"]);
+  assert.deepEqual(back, ["R-FILE-002", "R-FILE-003", "R-SOLID-001"], "backend no recibe hooks ni constantes (R-FILE-004)");
+});
+
+test("el núcleo cabe en una línea por regla — R-FILE-004 incluida", () => {
+  assert.deepEqual(lintRules(parseRulesYaml(CORE_YAML)).filter((f) => f.check === "rule-length"), []);
+  const r4 = CORE_RULES.find((r) => r.id === "R-FILE-004");
+  assert.deepEqual(r4.tags, ["frontend", "mobile"]);
+  assert.equal(r4.severity, "BLOCKER");
 });

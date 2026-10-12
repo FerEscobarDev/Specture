@@ -10,6 +10,7 @@ const { parseRulesYaml, lintCore, CORE_RULES } = require("../../hooks/lib/rules"
 const byId = Object.fromEntries(catalog.map((m) => [m.id, m]));
 const core = byId["2.0-rules-core"];
 const fileOrg = byId["2.0-file-org-conventions"];
+const scope = byId["2.8-rules-core-scope"];
 
 const STACK = 'project:\n  name: "Demo"\n  slug: "demo"\n';
 const RULES = ".specture/rules.yml";
@@ -52,7 +53,7 @@ test("2.0-rules-core restores what is missing and leaves the project's own file 
   assert.ok(text.includes("# Un comentario que el equipo escribió a mano."), "comments survive");
   assert.ok(text.includes("# Y un comentario al final."), "including the trailing one");
   assert.ok(text.includes('rule: "Toda operación HTTP identifica al empleado por el header X-Employee-Id"'), "R-1 untouched");
-  assert.ok(result.notes.some((n) => /4 `framework-core` rule\(s\) restored/.test(n)));
+  assert.ok(result.notes.some((n) => /5 `framework-core` rule\(s\) restored/.test(n)));
 
   assert.equal(core.verify(contextFor(root)), true);
   assert.equal(core.detect(contextFor(root)), "done");
@@ -165,4 +166,67 @@ test("2.0-file-org-conventions proposes from the folders it finds and never deci
   assert.match(inputs.guidance, /never an answer/);
   assert.match(inputs.guidance, /sin definir/);
   assert.equal(fileOrg.verify(contextFor(root)), false, "planInputs writes nothing");
+});
+
+// --- 2.8-rules-core-scope ---------------------------------------------------------------
+
+const LEGACY_003 = [
+  "  - id: R-FILE-003",
+  "    tags: [all]",
+  '    rule: "Interfaces, types, constantes y hooks/composables viven fuera del archivo del componente o de la clase, en la ubicación que declara conventions.md §2."',
+  '    verify: "el archivo de un componente o clase no exporta types, interfaces, constantes ni hooks; están en la ruta del mapa de §2"',
+  "    severity: BLOCKER",
+  '    source: "framework-core · conventions.md §2"'
+].join("\n") + "\n";
+const WITH_LEGACY = OWN.replace("rules:\n", "rules:\n" + LEGACY_003);
+const current003 = CORE_RULES.find((r) => r.id === "R-FILE-003");
+
+test("2.8-rules-core-scope narrows an untouched v2.0 R-FILE-003 and leaves everything else byte-for-byte", () => {
+  const root = makeProject({ ".specture/stack.yml": STACK, [RULES]: WITH_LEGACY, [CONVENTIONS]: CONV_MIN });
+  assert.equal(scope.detect(contextFor(root)), "pending");
+  const result = scope.apply(contextFor(root));
+  const text = readRules(root);
+  const rule = parseRulesYaml(text).rules.find((r) => r.id === "R-FILE-003");
+  assert.equal(rule.rule, current003.rule);
+  assert.equal(rule.verify, current003.verify);
+  assert.deepEqual(rule.tags, ["all"], "tags untouched");
+  assert.equal(rule.severity, "BLOCKER", "severity untouched");
+  assert.equal(text, WITH_LEGACY.replace(/rule: "Interfaces, types, constantes[^"]*"/, `rule: ${JSON.stringify(current003.rule)}`).replace(/verify: "el archivo de un componente o clase no exporta types, interfaces[^"]*"/, `verify: ${JSON.stringify(current003.verify)}`), "only the two values changed");
+  assert.ok(result.notes.some((n) => /R-FILE-004/.test(n)));
+  assert.equal(scope.verify(contextFor(root)), true);
+  assert.equal(scope.detect(contextFor(root)), "done");
+  const before = snapshot(root);
+  scope.apply(contextFor(root));
+  assert.deepEqual(snapshot(root), before, "idempotent");
+});
+
+test("2.8-rules-core-scope never rewrites a R-FILE-003 the team adapted — it leaves a note", () => {
+  const adapted = WITH_LEGACY.replace(/rule: "Interfaces, types, constantes[^"]*"/, 'rule: "Types, interfaces y constantes en su archivo, siempre"');
+  const root = makeProject({ ".specture/stack.yml": STACK, [RULES]: adapted, [CONVENTIONS]: CONV_MIN });
+  assert.equal(scope.detect(contextFor(root)), "done");
+  const before = snapshot(root);
+  const result = scope.apply(contextFor(root));
+  assert.deepEqual(snapshot(root), before, "nothing written");
+  assert.ok(result.notes.some((n) => /adapted by the team/.test(n)));
+});
+
+test("2.8-rules-core-scope keeps CRLF and runs after 2.0-rules-core, which adds R-FILE-004", () => {
+  const root = makeProject({ ".specture/stack.yml": STACK, [RULES]: WITH_LEGACY.replace(/\n/g, "\r\n"), [CONVENTIONS]: CONV_MIN });
+  const order = catalog.map((m) => m.id);
+  assert.ok(order.indexOf("2.0-rules-core") < order.indexOf("2.8-rules-core-scope"));
+  assert.equal(core.detect(contextFor(root)), "pending", "R-FILE-004 is a missing core id");
+  core.apply(contextFor(root));
+  scope.apply(contextFor(root));
+  const text = readRules(root);
+  assert.ok(!/[^\r]\n/.test(text), "no bare LF slipped in");
+  const rules = parseRulesYaml(text).rules;
+  assert.deepEqual(lintCore(rules), []);
+  assert.equal(rules.find((r) => r.id === "R-FILE-003").rule, current003.rule);
+  assert.deepEqual(rules.find((r) => r.id === "R-FILE-004").tags, ["frontend", "mobile"]);
+});
+
+test("2.8-rules-core-scope is n/a without a file, without the id, or on a broken file", () => {
+  assert.equal(scope.detect(contextFor(makeProject({ ".specture/stack.yml": STACK, [CONVENTIONS]: CONV_MIN }))), "n/a");
+  assert.equal(scope.detect(contextFor(makeProject({ ".specture/stack.yml": STACK, [RULES]: OWN }))), "n/a", "2.0-rules-core restores the id with the new text");
+  assert.equal(scope.detect(contextFor(makeProject({ ".specture/stack.yml": STACK, [RULES]: "schema: 1\nrules:\n  - id: R-1\n    rule: |\n      multi\n" }))), "n/a");
 });
