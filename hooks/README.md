@@ -107,7 +107,22 @@ node "${CLAUDE_PLUGIN_ROOT}/hooks/lib/honesty-check.js" <comando> [opciones] [--
   protected     --epic-dir <dir> [--slug <task-slug>]
   base-worktree --lock <sha> [--files a,b] --dir <tmp> | --remove <dir>
   fix-range     --base <sha> --test-globs a,b --allowed a,b [--head <rev>]
+  red-fix-kind  --slug <task-slug> [--head <rev>]
 ```
+
+`red-fix-kind` (v2.8.0) responde `PASS ADDITIVE` (el red-fix solo agregó tests) o `PASS REWRITE` (borró o cambió líneas del RED): el RED retroactivo del Step 5.3 solo corre en el segundo caso.
+
+### `lib/red-check.js` — verificación mecánica del RED antes del sello (v2.8.0)
+
+```
+node "${CLAUDE_PLUGIN_ROOT}/hooks/lib/red-check.js" <comando> [opciones] [--project <root>] [--json]
+  files     --red-sha <sha> --slug <task-slug> --epic-dir <dir> [--test-globs a,b]
+  coverage  --red-sha <sha> --slug <task-slug> --epic-dir <dir> --map <archivo COVERAGE_MAP>
+  commands  --red-sha <sha>
+  all       (los tres, en orden; se detiene en el primer FAIL)
+```
+
+Un token por check: `RED-CHECK <cmd>: PASS … | FAIL <n> | SKIPPED <motivo> | UNVERIFIABLE <motivo>`; exit 0 / 1 / 2. `files`: todo archivo del commit RED es un test (los `test_globs` del sello) o una ruta que el spec declara (`Crea:` / `Fixtures disponibles:`) — lo demás es un hueco del spec (`BLOCKED: spec`). `coverage`: cada `AC/BR/EC` del spec aparece una vez en el `COVERAGE_MAP` que el test-writer escribe en `docs/.specture-meta/coverage/<slug>.map`, y cada nombre de test citado existe en el RED. `commands`: corre `type_check` / `lint` / `format_check` de `stack.yml` → `quality.commands` con `{files}` = los archivos del RED; un slot `sin definir` o `none` es `SKIPPED`. El epic-agent lo corre en el Step 4 (post-check 2b) **antes** de `merge-spec`: un FAIL re-despacha al writer una vez; nunca se sella sobre UNVERIFIABLE.
 
 Primera línea de stdout = token `HONESTY <cmd>: PASS … | FAIL <n> | UNVERIFIABLE <motivo>`; exit 0 / 1 / 2. `clean-tree` exige nada sin commitear bajo los globs de test; `range` es la **allowlist** del Step 5.5 (todo commit que toca tests en `red_sha_orig..HEAD` está registrado en `## SUPERSESIONES` con exactamente sus paths — o es el primer RED de un spec hermano — y `supersede_paths` está vacío); `red-lines` verifica que cada línea que agregó el RED original siga en HEAD; `spec-delta` que un spec liberado solo cambió su sección de supersesiones; `protected` que ninguna supersesión toque un test de `verify:` de `rules.yml` o un GUARD de otro epic; `base-worktree` arma el worktree en `LOCK_SHA` para el RED retroactivo; `fix-range` (v2.4.0) es el chequeo posterior del loop de corrección de cumplimiento, que corre sin sello: cada commit de `BASE..HEAD` toca solo los archivos declarados para los hallazgos elegidos (el del hallazgo, los nuevos que crea un arreglo estructural y los que lo usan, nunca un test). Lo usan `skills/build/EPIC_LOOP.md` (Step 5.2 y 5.5), el loop de supersesiones de `skills/build/SKILL.md` y `skills/compliance-review/CORRECTION_LOOP.md`; el detalle y el riesgo residual están en `docs/tdd-honesty-reference.md`.
 

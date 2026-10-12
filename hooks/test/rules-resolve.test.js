@@ -68,6 +68,30 @@ test("prints the RULES_RESOLVED block for the tags that intersect, plus `all` ru
   assert.match(all.stdout, /^RULES_RESOLVED: 3 of 3 \(all rules\)/);
 });
 
+test("--spec derives the tags from the spec: Módulo, the epic's components and the layer; --tags adds; diacritics never split a tag", () => {
+  const ROADMAP = "# ROADMAP\n\n### Milestone 1\n\n- [/] **Epic 1.1:** Facturación básica\n  - **Componentes de arquitectura involucrados:** Facturación, Gestión de Pacientes\n  - **Dependencias:** Ninguna\n";
+  const SPEC = "# Spec\n\n**Epic:** 1.1   **Módulo:** Facturación\n\n## Operaciones del Contrato de API\n\n- **Implementa** (spec de backend): `operationId` — `[crearFactura]`\n\n- **AC-1:** x\n";
+  const RULES_ACCENTS = RULES + '  - id: R-4\n    tags: [facturacion]\n    rule: "Toda factura tiene CUFE"\n    severity: BLOCKER\n  - id: R-5\n    tags: [gestion-de-pacientes]\n    rule: "Paciente con documento"\n    severity: IMPORTANT\n  - id: R-6\n    tags: [backend]\n    rule: "Sin SQL concatenado"\n    severity: BLOCKER\n';
+  const dir = project({ ".specture/stack.yml": STACK, ".specture/rules.yml": RULES_ACCENTS, "docs/04-roadmap/ROADMAP.md": ROADMAP, "docs/05-specs/epic-1.1-facturacion/crear-factura.spec.md": SPEC });
+  const result = run(dir, "--spec", "docs/05-specs/epic-1.1-facturacion/crear-factura.spec.md", "--json");
+  assert.equal(result.status, 0, result.stderr);
+  const parsed = JSON.parse(result.stdout);
+  assert.deepEqual(parsed.tags, ["facturacion", "gestion-de-pacientes", "backend"]);
+  assert.deepEqual(parsed.resolved.map((r) => r.id), ["R-2", "R-4", "R-5", "R-6"]);
+  assert.deepEqual(parsed.spec, { path: "docs/05-specs/epic-1.1-facturacion/crear-factura.spec.md", epic: "1.1", module: "Facturación", components: ["Facturación", "Gestión de Pacientes"], layer: "backend" });
+
+  const extra = JSON.parse(run(dir, "--spec", "docs/05-specs/epic-1.1-facturacion/crear-factura.spec.md", "--tags", "A11y,backend", "--json").stdout);
+  assert.deepEqual(extra.tags, ["facturacion", "gestion-de-pacientes", "backend", "a11y"], "--tags merges, normalized, without duplicates");
+  assert.ok(extra.resolved.some((r) => r.id === "R-3"), "a11y reaches R-3");
+
+  const missing = run(dir, "--spec", "docs/05-specs/epic-1.1-facturacion/nope.spec.md");
+  assert.equal(missing.status, 2);
+  assert.match(missing.stderr, /no existe/);
+  const outside = run(dir, "--spec", ".specture/stack.yml");
+  assert.equal(outside.status, 2);
+  assert.match(outside.stderr, /no está bajo docs\/05-specs/);
+});
+
 test("no rules.yml → the legacy §12 rules are injected whole with a migration warning; nothing declared → RULES_RESOLVED: []", () => {
   const legacy = project({ ".specture/stack.yml": STACK, ".specture/conventions.md": "## 12. Invariantes\n- **R-1:** algo\n- **R-2:** otra cosa\n" });
   const result = run(legacy, "--tags", "dto");

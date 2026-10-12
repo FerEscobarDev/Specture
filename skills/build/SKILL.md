@@ -367,8 +367,10 @@ announced mini-review, parking, the epic-agent and every report it sends back (t
 loop, the spec-correction loop, the red-fix), the seal release and the metrics line — is
 `build/EPIC_COORDINATOR.md`. You do not run it in this chat: you dispatch it.
 
-**Dispatch** (Claude Code) a general-purpose agent — the session's model — with this prompt and
-nothing of this chat's history:
+**Dispatch** (Claude Code) a general-purpose agent with **`model: opus`, `effort: medium`** (v2.8.0:
+it orchestrates — dozens of tool calls per epic, each paying the effort; the judgement lives in the
+workers it dispatches, which carry their own `effort`) and this prompt, nothing of this chat's
+history:
 
 ~~~
 You are the epic coordinator for ONE epic of a Specture project. Your complete procedure is
@@ -449,10 +451,12 @@ design §6.5; never blocks). One **JSON line** in `docs/.specture-meta/build-met
 gate re-dispatches caused by a WARNING or NOTE of an APPROVED verdict — an execution-born
 correction, red-fix or supersession loop counts in `planner_dispatches_loop`, never here),
 `validator_dispatches_loop`, `planner_dispatches_loop`, `supersede_loops`, `j9_regressions`,
-`late_findings`, `effort` (`{planner, validator}` as declared, or `null`) — plus the epic-agent
-report's `METRICS` values (`needs_context_spec`, `iteration_cap_spec`, `blocked_spec`,
+`late_findings`, `effort` (`{planner, validator, coordinator, test_writer, implementer, reviewer}` —
+the levels **actually dispatched**: the agent's frontmatter unless the dispatch overrode it, e.g.
+`medium` for `MODE: DELTA`, `RED-FIX`, `RE-REVIEW`; `null` only when unknown — v2.8.0) — plus the
+epic-agent report's `METRICS` values (`needs_context_spec`, `iteration_cap_spec`, `blocked_spec`,
 `reviewer_rejected_major_spec_defect`, `review_rejections`, `supersessions`, `supersede_tests`,
-`exec_blocked_compile`, `exec_blocked_runtime`, `baseline_failures`), `specs`, `outcome`
+`exec_blocked_compile`, `exec_blocked_runtime`, `baseline_failures`, `red_check_failures`), `specs`, `outcome`
 (`DONE` | `BLOCKED` | `REJECTED_MAJOR` | `ESCALATED` | `PARKED`),
 `source: "gate"`, `plugin`, `batch_id` (an epic of a review register), `parked` (`0`|`1`),
 `coordinator_mode` (`subagent` | `inline`), `epic_coordinator_dispatches`, `ts` (ISO-8601 **with

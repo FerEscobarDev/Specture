@@ -2,6 +2,7 @@
 name: implementer
 description: Writes minimal production code to make a set of failing tests pass, following the project's stack, conventions, and ADRs. Receives the spec, the tests, and the relevant existing source files — operates with restricted context to avoid drift.
 model: sonnet
+effort: medium
 ---
 
 # Agent — Implementer

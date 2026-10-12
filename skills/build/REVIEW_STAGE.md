@@ -100,7 +100,7 @@ For each epic of `EPICS`, in order:
 
 1. Fresh planner per epic (`MODE: DRAFT`, minimal edit) with the answers as `ANSWERS` and the
    register as the source of decisions (`fuente: revisión <id> A-n`).
-2. `spec-set-check --draft --batch` → validator in `MODE: DELTA` over the diff, **plus `MODE:
+2. `spec-set-check --draft --batch` → validator in `MODE: DELTA` (`model: sonnet`, `effort: medium`, v2.8.0) over the diff, **plus `MODE:
    REVIEW` for what the answers opened**: only questions **born of the answers** (derived) or
    **LATE** (an answer that contradicts an Accepted ADR, a BLOCKER rule or the contract) pass.
    The validator may read code again to verify the premises the answers created. An answer

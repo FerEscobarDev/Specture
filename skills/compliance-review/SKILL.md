@@ -55,7 +55,8 @@ If the session exposes `define_subagent` (Antigravity CLI), register `compliance
 3. **Review, one chunk at a time.** For each chunk of `range.json`:
    - `rules-resolve.js --project . --all` → `RULES_RESOLVED`.
    - `review-rules-resolve.js --project . --paths-file .specture/state/compliance/<id>/<chunk>.files` → `CUSTOM_RULES` (exit 1 → stub with the resolver's message).
-   - Dispatch **`compliance-reviewer`** with `MODE: REVIEW`, `ID`, `CHUNK` + label, `HEAD`, `FILES`, `DIFF_FILE` (`<chunk>.diff`), `COMMITS_FILE` (`commits.txt`), `RULES_RESOLVED`, the content of `conventions.md`, the relevant Accepted ADRs, `CUSTOM_RULES`, `ACCEPTED_FINDINGS` and `PART_FILE` = `.specture/state/compliance/<id>/part-<chunk>.md`.
+   - **`LINT_REPORT`** (v2.8.0): run `stack.yml` → `quality.commands` `lint` and `format_check` with `{files}` = the chunk's files (in `pr` / `rama`, from `FILES_ROOT`), in background while you prepare the dispatch; their combined output (tail, ≤ 120 lines each) is the block. A slot `sin definir` / `none` → `LINT_REPORT: (none — <slot> sin definir)`. Never fix what they report: this review only suggests comments.
+   - Dispatch **`compliance-reviewer`** with `MODE: REVIEW`, `ID`, `CHUNK` + label, `HEAD`, `FILES`, `DIFF_FILE` (`<chunk>.diff`), `COMMITS_FILE` (`commits.txt`), `RULES_RESOLVED`, the content of `conventions.md`, the relevant Accepted ADRs, `CUSTOM_RULES`, `ACCEPTED_FINDINGS`, `LINT_REPORT` and `PART_FILE` = `.specture/state/compliance/<id>/part-<chunk>.md`.
    - After it returns: `git status --porcelain` — any tracked change → stop and escalate (Iron Rule 5).
 4. **Lint, then assemble.**
    ```

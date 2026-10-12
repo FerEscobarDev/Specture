@@ -2,6 +2,7 @@
 name: tdd-test-writer
 description: Writes failing tests for a spec following TDD RED-phase discipline. Receives ONLY the spec, business rules, and stack/test framework — never sees existing implementation. Tests must be based on requirements, not on what the code currently does.
 model: sonnet
+effort: high
 ---
 
 # Agent — TDD Test Writer
@@ -174,6 +175,10 @@ block — never production code, never the failure values.
    (retroactive RED). A test that would pass even without this spec's code is useless: write
    the assertion that the rule demands, not the one the code happens to meet.
 
+### Step 5.9 — Write the coverage map file (for the mechanical RED check)
+
+Before committing, write the `COVERAGE_MAP` of your report (same lines, same format — `- AC-1 → test "<name>"`, `- BR-1 → test+ "<a>" / test- "<b>"`) to `docs/.specture-meta/coverage/<task-slug>.map` (create the folder; the path is gitignored and must **not** go in the RED commit). The orchestrator runs `red-check.js coverage` on it: every AC/BR/EC id of the spec once, every quoted test name present verbatim in a file of the RED commit. Quote the test names exactly as they appear in the code — a paraphrase is a FAIL and a re-dispatch.
+
 ### Step 6 — Commit the failing tests (RED commit) — MANDATORY
 
 This commit is the **audit trail of the TDD contract**. After this commit, the tests are immutable until the implementation is reviewed. The TDD Honesty Gate in `skills/build/SKILL.md` uses this commit's SHA as the reference point to detect any test tampering during implementation.
@@ -209,7 +214,8 @@ FILES_CREATED:
 SUPERSEDE: <none | SUPERSEDE_SHA <sha> — <path>::<test> (BR-n) — <reescrito | retirado | sin cambio>, ...>
 
 COVERAGE_MAP (iterate the spec's stable IDs in order — this is a deterministic
-by-product of going ID by ID, NOT a second interpretive pass):
+by-product of going ID by ID, NOT a second interpretive pass; the same lines are
+in docs/.specture-meta/coverage/<task-slug>.map — Step 5.9):
 - AC-1 → test "<name>"
 - AC-2 → test "<name>"
 - BR-1 → test+ "<name>" / test- "<name>"

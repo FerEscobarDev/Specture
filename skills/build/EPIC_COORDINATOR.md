@@ -82,7 +82,7 @@ against the code as it is **now** (earlier epics of the batch changed it). In or
 2. Code Surface Resolution (`build/SKILL.md` gate pre-flight) → fresh `spec-planner` in
    `MODE: REFRESH` with the drafts, the register and `CODE_SURFACE`. Stage and fingerprint after
    every pass (gate step 2).
-3. Gate step 4a (**real**, not `--draft`) → validator per gate step 5, in `MODE: DELTA` against
+3. Gate step 4a (**real**, not `--draft`) → validator per gate step 5, in `MODE: DELTA` (`model: sonnet`, `effort: medium`, v2.8.0) against
    the review's verdicts (an epic reviewed as a draft is revalidated only on what the refresh
    changed). A finding that an answer of the register already settles is a `VIOLATION` citing
    that `A-n`, never a question. Route every WARNING/NOTE with the closed table of gate step 5.
@@ -188,7 +188,9 @@ METRICS (mandatory — the coordinator appends them to build-metrics.jsonl):
   needs_context_spec: N · iteration_cap_spec: N · blocked_spec: N ·
   review_rejections: minor N / major N (spec_defect N — from the reviewer's CAUSE:) ·
   supersessions: N · supersede_tests: N · exec_blocked_compile: N ·
-  exec_blocked_runtime: N · baseline_failures: N · firma re-read: N verified / M corrected
+  exec_blocked_runtime: N · baseline_failures: N · firma re-read: N verified / M corrected ·
+  red_check_failures: N (RED-CHECK FAILs that re-dispatched the writer, v2.8.0) ·
+  effort: test_writer <level> / implementer <level> / reviewer <level> (as dispatched)
 SUPERSESSIONS: <none | one line per declared test: <path>::<test> → <SUPERSEDE_SHA>>
 If DONE: update ROADMAP.md to [x] for this epic and commit BEFORE reporting.
 If DONE: pendiente de aprobación visual: do NOT touch the checkbox — leave the epic [/].
@@ -225,7 +227,7 @@ Step 5 with your own result as the report. Record `coordinator_mode: subagent` a
   no `unseal-spec`, no question. At most **one loop per spec and per layer**; a second report for
   the same spec and layer → `EPIC_REPORT: STOPPED — loop repetido`. A rewrite the code-reviewer
   asks for is **not** a new loop (the epic-agent sends it back to the test-writer itself).
-  1. **Judge first, with data.** A fresh `architecture-validator` in `MODE: J9` with the spec,
+  1. **Judge first, with data.** A fresh `architecture-validator` in `MODE: J9` (dispatched with `model: sonnet`, `effort: medium` — a bounded judgement over named tests, v2.8.0) with the spec,
      the epic block, `RULES_RESOLVED`, the last `MECH_CHECK:` line of `_planning.md` and the
      report's `FAILURES:` lines verbatim. The `SÍ` tests go on; `NO`/`INDETERMINABLE` become
      **regressions** for the implementer (step 8). **Write the J9 verdict to `## VEREDICTOS`
@@ -257,7 +259,7 @@ Step 5 with your own result as the report. Record `coordinator_mode: subagent` a
      then `seal-cli.js lift-spec --slug <task-slug>`.
   2. A **fresh** `spec-planner` with `ALCANCE: [<task-slug>]` and `VIOLATIONS` naming the
      affected ID (minimal edit; its `CHANGELOG` is contrasted against `git diff`).
-  3. Gate step 4a and, on `PASS`, `MODE: DELTA` re-validation: the `SPEC_SET` dispatch again only
+  3. Gate step 4a and, on `PASS`, `MODE: DELTA` re-validation (validator dispatched with `model: sonnet`, `effort: medium` — it judges a diff, not a design; v2.8.0): the `SPEC_SET` dispatch again only
      if the `CHANGELOG` touched `COVERAGE_TABLE`, `RESOLVED_ALONE`, a "Fuera de Scope" or a
      Superficie; then the per-spec dispatch of the corrected spec. A finding that needs a human
      decision (not settled by the register or the sources) → regulatory epic:

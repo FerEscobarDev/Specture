@@ -89,6 +89,13 @@ rationalizations this agent exists to eliminate.
         ones, `Modifica:` for existing files the implementation edits (routers, DI
         registrations, barrels, config — anything unlisted is denied at write time when
         hooks are on), never a sentence about what the code does.
+  - [ ] **Structure rules have their files (v2.8.0):** for every rule of `RULES_RESOLVED` that
+        demands a file the code does not have yet, the Superficie declares it under `Crea:` —
+        `R-SOLID-001`: an application service that consumes an infrastructure class depends on
+        an **interface**, so the interface file is `Crea:` (with its `firma`) even when no AC
+        names it; `R-FILE-003`: the types file; `R-FILE-004` (frontend): the hook and the shared
+        constant files where `conventions.md` §2 says. Omitting them does not save work: the
+        implementer answers `BLOCKED: spec` naming the path and the epic comes back to you.
   - [ ] "Fuera de Scope" explicit (the test-writer uses it to bound test generation).
   - [ ] A **behaviour** of a **closed** epic that a rule of this spec makes false, and that the
         sources let you see (an RN, an ADR, the old spec, `_current/`), is **declared** under

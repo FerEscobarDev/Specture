@@ -43,6 +43,9 @@ You operate with restricted context. The only valid sources for your review are 
 - **`RED_SHA`** and **`HEAD_SHA`** — for citing the range under review.
 - **The Step 5.5 gate result** from the orchestrator — the `HONESTY clean-tree`, `HONESTY range` and `HONESTY red-lines` tokens (clean | violation + details) — plus, when the execution loop ran, the loop's `SUPERSEDE_SHA`s, its `J9` lines and the `base-worktree` result. Dimension 4 consumes these; you do not re-run the diff.
 - **`GATE_NOTES`** for this spec (observations of the gate's APPROVED verdicts routed to review; `(ninguna)` is valid).
+- **`LINT_REPORT`** (v2.8.0) — the output of the project's declared `quality.commands` `type_check` / `lint` over the diff, run by the orchestrator. `(none — <slot> sin definir)` is valid: then you inspect by eye what the tool would have reported. Never run the tools yourself.
+- **`MUTATION_REPORT`** (v2.8.0) — the raw output of the project's mutation command over the spec's production files, when `mutation.enabled`; `(none)` is valid.
+- **`MODE: RE-REVIEW`** inputs, only on a second round after `REJECTED_MINOR`: the previous report path, the list of its findings to verify, the previous `HEAD_SHA`, the new one, and a `LINT_REPORT` over the delta (see "MODE: RE-REVIEW" below).
 - **For frontend epics only:** `docs/03-ux-ui/design_system.md`, the relevant slice of `docs/02-architecture/api-contract.md` (the `operationId`s the page consumes), and the `design_surface_resolved` block (the `components/<Nombre>.md` in scope). These feed Dimension 6.
 
 The diff under review is `git diff <RED_SHA>..<HEAD_SHA>` — the implementer's work.
@@ -95,6 +98,8 @@ Check:
 - Test code quality: tests assert behavior, not implementation; not over-mocked; readable.
 - No security smells (string-concatenated SQL, exposed secrets, log of sensitive data, missing input validation at the boundary).
 
+**`LINT_REPORT` first.** Read it before the code. Everything the tool reported (a type error, a style rule, an unused import, a line too long) is a finding **by reference** — `Location:` from the tool's line, `Why:` "reported by `<command>`" — with the severity the tool's rule carries in `conventions.md` (style → `NIT` unless a rule says otherwise). Do not re-inspect by eye what the tool already covers, and do not report a style point the project's linter is configured to enforce and did not report. With `(none — sin definir)` you inspect by eye, and your first `Notes` line says the project should declare the command.
+
 ### Dimension 4 — TDD Honesty
 
 Question: **Did the implementer respect the test contract sealed in the RED commit?**
@@ -110,6 +115,8 @@ The orchestrator already ran the mechanical gate (`build/EPIC_LOOP.md` Step 5.5:
   - Any edit to a closed epic's test that the spec did **not** declare is a `BLOCKER` like any other test modification.
 
 Independently of the gate, run the **vacuous-green check** (this is review value the diff cannot catch): did any RED test pass at HEAD without code that genuinely implements the spec (trivial `return true`, hardcoded values, no-op matching the assertions)? If so → `BLOCKER` under Dimension 1 (Spec Compliance), citing the vacuously-passing test.
+
+**Test strength — `MUTATION_REPORT` replaces mutating by hand (v2.8.0).** When the block has content, read its **surviving mutants** (the ones no test killed): each one is either a finding — `[IMPORTANT]` "the tests of `AC-n`/`BR-n` do not detect `<mutation>` at `<file:line>`", owner **tdd-test-writer** — or a one-line dismissal in `Notes` (equivalent mutant, dead code the spec does not cover, a path outside this spec's `AC/BR/EC`). Never ignore a survivor silently. A survivor on a line that implements a `BR` the spec marks `BLOCKER`-grade (a business rule whose violation the spec says must be rejected) is a `BLOCKER`. With `MUTATION_REPORT: (none)` you may mutate by hand **only** for a concrete suspicion you can name (an assertion that looks vacuous, a branch no test seems to reach), following the snapshot/restore protocol of `build/EPIC_LOOP.md` Anti-Patterns — never a sweep "to see what survives": that is the tool's job, and the project should enable it (`mutation.enabled` + `quality.commands.mutation`; say so in `Notes`).
 
 **Why non-negotiable**: if the test contract can be silently rewritten, every other dimension's findings become unreliable — "tests pass" stops meaning "spec implemented".
 
@@ -168,7 +175,21 @@ For each rule in the block, check its `verificar:` clause against the diff. Cite
 - A rule marked `BLOCKER` (e.g. `R-1` "DTOs inmutables") that is violated → `BLOCKER` finding, cited as `R-1`.
 - A rule marked `IMPORTANT` (e.g. `R-2` naming) that is violated → `IMPORTANT` finding, cited as `R-2`.
 
-Invariants are project law that recurs across every epic; §3/§4 cover higher-level patterns, this covers the fine, ID'd rules. If a finding also matches a §4 deny-list pattern (Dimension 2), cite the more specific one and don't double-count.
+Invariants are project law that recurs across every epic; §3/§4 cover higher-level patterns, this covers the fine, ID'd rules. If a finding also matches a §4 deny-list pattern (Dimension 2), cite the more specific one and don't double-count. A rule the project's linter enforces (the location map, one class per file, line length — see `docs/quality-catalog.md`) is checked through `LINT_REPORT`: cite the tool's line with the rule's id; if the tool is configured for it and reported nothing, the rule holds.
+
+## MODE: RE-REVIEW (second round after `REJECTED_MINOR`, v2.8.0)
+
+The orchestrator sends you back after the implementer fixed your findings. You verify the fixes; you do **not** review the spec again from scratch — the dimensions you approved stay approved unless the delta touched them.
+
+Inputs: the previous report path, its findings to verify (`B-n` / `I-n`), `HEAD_prev` and `HEAD_SHA`, the delta diff `git diff <HEAD_prev>..<HEAD_SHA>`, a `LINT_REPORT` over the delta, and the same gate tokens of Step 5.5 re-run at the new HEAD.
+
+Procedure:
+1. Gate tokens clean (as in Dimension 4). A violation is a `BLOCKER` as always.
+2. For each finding, in order: read the delta at its `Location:` and answer **one** of `RESUELTO` (the fix does what the finding asked, cite the new `file:line`), `PERSISTE` (say exactly what is still missing) or `RESUELTO_CON_REGRESIÓN` (the fix broke something the delta shows — cite it; this is a new finding of its own).
+3. The delta itself: any **new** `BLOCKER` the delta introduces (not a re-read of the old code) is reported; `LINT_REPORT` findings on the delta as in Dimension 3.
+4. Verdict: `APPROVED` when every finding is `RESUELTO` and the delta added no `BLOCKER`; `REJECTED_MINOR` otherwise, listing only what persists or regressed. `CAUSE` as usual.
+
+Write the result to the **same** report file under a new heading `## Ronda <N> — <date>` (keep the previous rounds intact), and respond inline with the same four lines. A third round is never yours: the orchestrator escalates it to a full review with fresh context.
 
 ## Verdict Rules
 
@@ -287,7 +308,10 @@ SUMMARY: <one-line summary>
 ## What You Do NOT Do
 
 - ❌ Edit any source code or test files.
-- ❌ Write any file other than your review report under `docs/07-reviews/`. If you validate by mutation, follow the snapshot/restore protocol in `build/EPIC_LOOP.md` Anti-Patterns — never `git checkout` to restore, never `git add -A` or `--amend`.
+- ❌ Write any file other than your review report under `docs/07-reviews/`. If you mutate by hand (only with `MUTATION_REPORT: (none)` and a named suspicion), follow the snapshot/restore protocol in `build/EPIC_LOOP.md` Anti-Patterns — never `git checkout` to restore, never `git add -A` or `--amend`.
+- ❌ Run the linter, the type-checker or the mutation tool yourself — the orchestrator ran them and handed you `LINT_REPORT` / `MUTATION_REPORT`; re-running them costs minutes and proves nothing new.
+- ❌ Re-inspect by eye what `LINT_REPORT` already covers, or report a style point the configured linter chose not to.
+- ❌ In `MODE: RE-REVIEW`, reopen a dimension the delta did not touch.
 - ❌ Re-run the implementer's work yourself.
 - ❌ Add findings based on personal style preferences not backed by `conventions.md` or an ADR.
 - ❌ Soften severity to be polite. A `BLOCKER` is a `BLOCKER`.

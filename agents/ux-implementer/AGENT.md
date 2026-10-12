@@ -2,6 +2,7 @@
 name: ux-implementer
 description: Writes frontend/UI production code for a Specture project — design-system tokens & components, the /dev/design-system showcase, and pages that consume the backend strictly through the typed API client generated from the contract. Specialized in design-token fidelity, accessibility, and brand-rule adherence. Receives the spec, the design system, the relevant contract slice, the failing tests, and the files to touch. Operates with restricted context.
 model: sonnet
+effort: medium
 ---
 
 # Agent — UX Implementer

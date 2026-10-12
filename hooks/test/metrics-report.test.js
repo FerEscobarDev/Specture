@@ -128,7 +128,7 @@ test("v2.2 fields: averaged like the other numeric fields; `effort` as an object
   const root = createProject({
     "docs/.specture-meta/build-metrics.jsonl": [
       line("epic-0.9-old"),
-      line("epic-1.1-a", { ...v22(2), gate_rounds: 2, supersede_loops: 1, effort: { planner: "high", validator: "medium" } }),
+      line("epic-1.1-a", { ...v22(2), gate_rounds: 2, supersede_loops: 1, red_check_failures: 2, effort: { planner: "high", validator: "medium", test_writer: "high", implementer: "medium", reviewer: "high", coordinator: "medium" } }),
       line("epic-1.2-b", { ...v22(4), gate_rounds: 4, supersede_loops: 0 })
     ].join("\n") + "\n"
   });
@@ -141,8 +141,9 @@ test("v2.2 fields: averaged like the other numeric fields; `effort` as an object
   assert.equal(json.gate.supersede_loops, 0.5);
   assert.equal(json.gate.late_findings, 3);
   assert.equal(json.gate.validator_dispatches, 3, "the v1.18 fields keep their mean");
-  assert.deepEqual(json.entries[1].effort, { planner: "high", validator: "medium" });
+  assert.deepEqual(json.entries[1].effort, { planner: "high", validator: "medium", test_writer: "high", implementer: "medium", reviewer: "high", coordinator: "medium" });
   assert.ok(!("effort" in json.gate), "effort is not numeric: it is not averaged");
+  assert.equal(json.gate.red_check_failures, 2, "v2.8.0: red_check_failures is numeric and averaged over the lines that carry it");
 
   const onlyOld = run(createProject({ "docs/.specture-meta/build-metrics.jsonl": line("epic-0.9-old") + "\n" }), "--json");
   assert.equal(onlyOld.status, 0);

@@ -54,7 +54,8 @@ const COMMAND_FLAGS = {
   "spec-delta": ["epic-dir", "base", "slug"],
   protected: ["epic-dir", "slug"],
   "base-worktree": ["lock", "files", "dir", "remove"],
-  "fix-range": ["base", "head", "test-globs", "allowed"]
+  "fix-range": ["base", "head", "test-globs", "allowed"],
+  "red-fix-kind": ["slug", "head"]
 };
 const LIST_FLAGS = ["test-globs", "files", "allowed"];
 const SPECS_DIR = path.join("docs", "05-specs");
@@ -74,7 +75,8 @@ function usage() {
     "  spec-delta    --epic-dir <dir> --base <SPEC_SHA> --slug <task-slug>",
     "  protected     --epic-dir <dir> [--slug <task-slug>]",
     "  base-worktree --lock <sha> [--files a,b] --dir <tmp> | --remove <dir>",
-    "  fix-range     --base <sha> --test-globs a,b --allowed a,b [--head <rev>]"
+    "  fix-range     --base <sha> --test-globs a,b --allowed a,b [--head <rev>]",
+    "  red-fix-kind  --slug <task-slug> [--head <rev>]"
   ].join("\n");
 }
 
@@ -738,8 +740,44 @@ function fixRange(opts, root) {
   return verdict(cmd, findings, `${commits.length} commit(s) de corrección dentro de ${allowed.length} archivo(s), sin tests (${short(from)}..${short(to)})`, { from, to, commits: commits.length });
 }
 
+// (9) red-fix-kind — did the red-fix of <s> REWRITE lines of its RED (an assertion changed:
+// the retroactive RED must prove the new assertion discriminates) or only ADD tests (ADDITIVE:
+// the retroactive RED proves nothing new and EPIC_LOOP Step 5.3 skips it)? Deletions in
+// RED_ORIG..HEAD over the spec's test_paths decide it. Always PASS; the detail is the kind.
+function redFixKind(opts, root) {
+  const cmd = "red-fix-kind";
+  requireFlags(opts, "slug");
+  const ctx = repoContext(root);
+  if (ctx.error) return unverifiable(cmd, ctx.error);
+  const loaded = loadSeal(cmd, root);
+  if (loaded.error) return loaded.error;
+  const spec = loaded.seal.specs.find((s) => s.slug === opts.flags.slug);
+  if (!spec) return unverifiable(cmd, `el sello no tiene specs[${opts.flags.slug}]`);
+  const red = spec.red_sha_orig || spec.red_sha;
+  if (!red) return unverifiable(cmd, `specs[${opts.flags.slug}] sin red_sha_orig ni red_sha`);
+  const base = resolveCommit(root, red);
+  if (!base) return unverifiable(cmd, `commit desconocido: RED ${red}`);
+  const head = resolveCommit(root, opts.flags.head || "HEAD");
+  if (!head) return unverifiable(cmd, `commit desconocido: ${opts.flags.head || "HEAD"}`);
+  const paths = (spec.test_paths || []).map(posix);
+  if (paths.length === 0) return unverifiable(cmd, `specs[${opts.flags.slug}] sin test_paths`);
+  const diff = git(root, ["diff", "--numstat", "--no-renames", `${base}..${head}`, "--", ...paths]);
+  if (!diff.ok) return unverifiable(cmd, `git diff falló: ${firstLine(diff.stderr)}`);
+  let added = 0;
+  let deleted = 0;
+  for (const line of diff.stdout.split(/\r?\n/)) {
+    const m = line.match(/^(\d+|-)\t(\d+|-)\t/);
+    if (!m) continue;
+    if (m[1] !== "-") added += Number(m[1]);
+    if (m[2] !== "-") deleted += Number(m[2]);
+  }
+  const kind = deleted > 0 ? "REWRITE" : "ADDITIVE";
+  return verdict(cmd, [], `${kind} (+${added} -${deleted} en ${paths.length} archivo(s) de test, ${short(base)}..${short(head)})`, { kind, added, deleted });
+}
+
 const COMMANDS = {
   "fix-range": fixRange,
+  "red-fix-kind": redFixKind,
   "clean-tree": cleanTree,
   range,
   "red-lines": redLines,

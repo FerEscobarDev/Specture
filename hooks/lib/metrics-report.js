@@ -70,7 +70,9 @@ const NUMERIC = [
   // v2.3.0 — per epic
   "parked",
   // v2.7.0 — per epic
-  "epic_coordinator_dispatches"
+  "epic_coordinator_dispatches",
+  // v2.8.0 — per epic: RED-CHECK FAILs that re-dispatched the test-writer (red-check.js)
+  "red_check_failures"
 ];
 // v2.3.0 — per batch (one review register), read once per `batch_id`.
 const BATCH_FIELDS = ["review_rounds", "review_questions", "review_filtered", "review_human_contacts", "late_questions", "premises_false"];

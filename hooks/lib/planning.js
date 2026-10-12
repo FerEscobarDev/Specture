@@ -521,6 +521,17 @@ function parseVerdictHeaders(text) {
 
 const GUARD_LINE = new RegExp(`^\\s*-\\s*\\*\\*(GUARD-\\d+)\\s*:?\\s*\\*\\*.*?${ARROW}\\s*test\\s*:\\s*\`?([^\`\\s:]+)::([^\`]+?)\`?\\s*$`);
 
+// The stable IDs a spec declares (`- **AC-n**`, `- **BR-n**`, `- **EC-n**`), in order of
+// appearance, each once. `red-check.js coverage` holds the test-writer's COVERAGE_MAP to them.
+function parseSpecIds(text) {
+  const out = [];
+  for (const line of lines(text)) {
+    const m = line.match(/^\s*-\s*\*\*((?:AC|BR|EC)-\d+)\b/);
+    if (m && !out.includes(m[1])) out.push(m[1]);
+  }
+  return out;
+}
+
 // `- **GUARD-n:** <comportamiento> → test: \`<path>::<nombre>\`` (templates/SPEC_TEMPLATE.md).
 // A GUARD without a test pointer protects nothing mechanically and is skipped.
 function parseGuards(text) {
@@ -554,5 +565,6 @@ module.exports = {
   parseSpec,
   parseSupersessionRegister,
   parseVerdictHeaders,
-  parseGuards
+  parseGuards,
+  parseSpecIds
 };

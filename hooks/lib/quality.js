@@ -26,13 +26,15 @@ const UNDEFINED_VALUES = ["", "sin definir", "undefined", "tbd", "todo"];
 const NONE_VALUES = ["none", "n/a", "no aplica"];
 
 function stripValue(raw) {
-  // A `#` starts a comment unless inside quotes; then unquote.
+  // A `#` starts a comment unless inside quotes (a backslash escapes the next char inside double
+  // quotes, YAML-style: `"node -e \"x\" {files}"`); then unquote and unescape.
   let inQuote = null;
   let end = raw.length;
   for (let i = 0; i < raw.length; i++) {
     const c = raw[i];
     if (inQuote) {
-      if (c === inQuote) inQuote = null;
+      if (inQuote === '"' && c === "\\") i++;
+      else if (c === inQuote) inQuote = null;
     } else if (c === '"' || c === "'") {
       inQuote = c;
     } else if (c === "#") {
@@ -40,7 +42,10 @@ function stripValue(raw) {
       break;
     }
   }
-  return raw.slice(0, end).trim().replace(/^(["'])(.*)\1$/, "$2").trim();
+  const text = raw.slice(0, end).trim();
+  if (/^".*"$/s.test(text)) return text.slice(1, -1).replace(/\\(["\\])/g, "$1").trim();
+  if (/^'.*'$/s.test(text)) return text.slice(1, -1).replace(/''/g, "'").trim();
+  return text;
 }
 
 // Raw `quality.commands` entries as written: { key: "value" } (unknown keys kept), plus the

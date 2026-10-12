@@ -58,11 +58,12 @@ test("2.8-quality-commands keeps CRLF and is n/a without stack.yml or without a 
 
 test("quality.js: readQualityCommands classifies defined / none / undefined and expands {files}", () => {
   const root = makeProject({
-    [STACK]: 'quality:\n  linter: "x"\n  commands:\n    test: "npm test"   # suite\n    type_check: none\n    lint: "npx eslint {files}"\n    format_check: ""\n    extra: "ignored"\n'
+    [STACK]: 'quality:\n  linter: "x"\n  commands:\n    test: "npm test"   # suite\n    type_check: none\n    lint: "npx eslint {files}"\n    format_check: ""\n    mutation: "node -e \\"console.log(\'#\')\\" {files}"  # escaped quotes, a # inside\n    extra: "ignored"\n'
   });
   const q = readQualityCommands(root);
-  assert.deepEqual(q.states, { test: "defined", type_check: "none", lint: "defined", format_check: "undefined", mutation: "undefined" });
+  assert.deepEqual(q.states, { test: "defined", type_check: "none", lint: "defined", format_check: "undefined", mutation: "defined" });
   assert.equal(q.commands.test, "npm test");
+  assert.equal(q.commands.mutation, "node -e \"console.log('#')\" {files}", "YAML escapes are undone and the # inside quotes is not a comment");
   assert.equal(q.commands.type_check, null);
   const { expandCommand } = require("../../hooks/lib/quality");
   assert.equal(expandCommand(q.commands.lint, ["src/a.ts", "src/with space.ts"]), 'npx eslint src/a.ts "src/with space.ts"');
