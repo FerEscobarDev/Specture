@@ -20,7 +20,8 @@ const TOGGLE_KEYS = [
   "docs_index.enabled",
   "docs_index.max_entries_per_dispatch",
   "knowledge.enabled",
-  "compliance_review.enabled"
+  "compliance_review.enabled",
+  "mutation.enabled"
 ];
 
 const KEYS = ["schema_version", "profile", ...TOGGLE_KEYS];
@@ -33,7 +34,8 @@ const DEFAULTS = Object.freeze({
   "docs_index.enabled": true,
   "docs_index.max_entries_per_dispatch": 3,
   "knowledge.enabled": false,
-  "compliance_review.enabled": true
+  "compliance_review.enabled": true,
+  "mutation.enabled": false
 });
 
 // `lean` / `full` override the four boolean toggles; `custom` reads them individually.
@@ -47,7 +49,8 @@ const PROFILES = Object.freeze({
 // `lean`/`full` (see migrations/2.0-design-channel.js).
 const PROFILE_INDEPENDENT_KEYS = Object.freeze([
   "docs_index.max_entries_per_dispatch",
-  "compliance_review.enabled"
+  "compliance_review.enabled",
+  "mutation.enabled" // needs a tool installed in the project: off under every profile unless declared (v2.8.0)
 ]);
 
 // Key names used by older conventions.md §10 blocks.
@@ -146,6 +149,9 @@ function effectiveValues(raw) {
   if (typeof values["compliance_review.enabled"] !== "boolean") {
     values["compliance_review.enabled"] = DEFAULTS["compliance_review.enabled"];
   }
+  if (typeof values["mutation.enabled"] !== "boolean") {
+    values["mutation.enabled"] = DEFAULTS["mutation.enabled"];
+  }
   return values;
 }
 
@@ -199,6 +205,7 @@ function serializeSettings(values, options = {}) {
     `docs_index.max_entries_per_dispatch: ${v["docs_index.max_entries_per_dispatch"]}    # hard cap of indexed docs per agent dispatch`,
     `knowledge.enabled: ${v["knowledge.enabled"]}                  # opt-in knowledge-capture prompts (build 8.5, debug 4.5)`,
     `compliance_review.enabled: ${v["compliance_review.enabled"]}           # compliance review at milestone close (any profile)`,
+    `mutation.enabled: ${v["mutation.enabled"]}                   # run stack.yml quality.commands.mutation in build Step 6 (any profile; needs the tool installed)`,
     ""
   ].join("\n");
 }

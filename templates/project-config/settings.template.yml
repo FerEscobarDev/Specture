@@ -17,3 +17,4 @@ docs_index.enabled: true                  # Docs Index Resolution when .specture
 docs_index.max_entries_per_dispatch: 3    # hard cap of indexed docs passed to ONE agent dispatch
 knowledge.enabled: false                  # opt-in knowledge-capture prompts (build Step 8.5, debug Phase 4.5)
 compliance_review.enabled: true           # compliance review when a milestone closes (/specture:compliance-review); honoured under every profile
+mutation.enabled: false                   # build Step 6 runs stack.yml `quality.commands.mutation` on the spec's production files and hands the raw report to the code-reviewer; needs the tool installed (any language — see docs/quality-catalog.md); honoured under every profile

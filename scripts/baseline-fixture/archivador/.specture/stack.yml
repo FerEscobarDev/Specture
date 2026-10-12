@@ -54,6 +54,12 @@ quality:
   linter: "eslint"
   formatter: "prettier"
   type_checker: "none"
+  commands:
+    test: "npm test"
+    type_check: "none"
+    lint: "npx eslint {files}"
+    format_check: "npx prettier --check {files}"
+    mutation: "none"
 
 migration:
   source: "node callbacks (errback) en archivador_api/src/tags"

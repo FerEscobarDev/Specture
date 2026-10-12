@@ -78,6 +78,21 @@ quality:
   linter: "[e.g. eslint | ruff | dotnet-format | golangci-lint | none]"
   formatter: "[e.g. prettier | black | dotnet-format | gofmt | none]"
   type_checker: "[e.g. tsc | mypy | none]"
+  # What the framework EXECUTES (since v2.8.0) — any language, any tool: the build runs these
+  # commands as written, it never guesses one from the names above. `red-check.js` runs
+  # type_check / lint / format_check on the RED tests before sealing them; build Step 6 runs
+  # lint / type_check (and mutation when settings.yml `mutation.enabled`) on the spec's files
+  # and hands the output to the code-reviewer; the compliance review receives lint + format_check.
+  # A command may contain `{files}`: it is replaced by the files under check, space-separated
+  # and shell-quoted. Without it the command runs as-is. `none` = does not apply to this
+  # project; `sin definir` = not decided yet (the doctor reminds you; the check is SKIPPED).
+  # Examples per stack, as EXAMPLES only: docs/quality-catalog.md.
+  commands:
+    test: "sin definir"            # the whole suite, e.g. the command conventions.md names
+    type_check: "sin definir"      # e.g. a compiler or type checker over {files}, or `none`
+    lint: "sin definir"            # e.g. the linter over {files}
+    format_check: "sin definir"    # the formatter in CHECK mode (never writes), or `none`
+    mutation: "sin definir"        # the mutation tool over {files}, only with mutation.enabled
 
 # --- Conventions Pointer ---------------------------------------------------
 conventions_file: ".specture/conventions.md"

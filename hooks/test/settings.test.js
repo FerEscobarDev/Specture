@@ -85,6 +85,17 @@ test("compliance_review.enabled defaults to true and an explicit value wins unde
   assert.equal(settings.readSettings(garbage).values["compliance_review.enabled"], true, "a non-boolean falls back to the default");
 });
 
+test("mutation.enabled defaults to false, is honoured under every profile and is serialized", () => {
+  assert.equal(settings.readSettings(createProject({ settingsYaml: "profile: full\n" })).values["mutation.enabled"], false, "full does not switch it on: it needs a tool installed");
+  for (const profile of ["lean", "full", "custom"]) {
+    const on = createProject({ settingsYaml: `profile: ${profile}\nmutation.enabled: true\n` });
+    assert.equal(settings.readSettings(on).values["mutation.enabled"], true, profile);
+  }
+  assert.equal(settings.readSettings(createProject({ settingsYaml: "mutation.enabled: yes\n" })).values["mutation.enabled"], false, "a non-boolean falls back to the default");
+  assert.match(settings.serializeSettings({ "mutation.enabled": true }), /^mutation\.enabled: true/m);
+  assert.ok(settings.TOGGLE_KEYS.includes("mutation.enabled"));
+});
+
 test("falls back to conventions.md §10 (bold and plain forms, legacy aliases) when settings.yml is absent", () => {
   const root = createProject({
     conventions:

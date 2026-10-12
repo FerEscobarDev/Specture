@@ -23,8 +23,8 @@
     "templates/project-config/docs-index.template.yml": "a7dcdefb59a1589cb6a3b0d400952039a9fbebcce41b637b256bca7cacd25419",
     "templates/project-config/review-rules.template.md": "d2ee7952de5bbd0e3356b60ecebc8fb0560e9a36db3361a4211550ab44f282e7",
     "templates/project-config/rules.template.yml": "ebebe8592b0fc2d5938f711ed4d48c9b76daf811dd7d5e2eb70f858eaf05b9ba",
-    "templates/project-config/settings.template.yml": "639d305bb9d7e202e35b58137e36f92f9c8460a03ecd650107d27fa50d6c1f99",
-    "templates/project-config/stack.template.yml": "9cdffd6e7fbf40c822725c0c5d736ba0d1a4a18bded457422b7f8005df743370",
+    "templates/project-config/settings.template.yml": "59ee813531e9f9a0564d0b2261717f62ae64e2bc7a2004790d741d41aea6b39d",
+    "templates/project-config/stack.template.yml": "61e2a7a2d90ac6e57af80ef2f5075f8835c8e6581baea35060181b95290e64db",
     "templates/ROADMAP_TEMPLATE.md": "51b0fbc8e0ddeaa104b2b07b0b2a7e9a59d30c6c4961df67e4f2dab616271112",
     "templates/SPEC_TEMPLATE.md": "f05512fd658becd472f38270775e682d508e774fbaf5313a39e0469052bebb2f"
   }

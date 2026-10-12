@@ -685,6 +685,29 @@ test("doctor check: rules-tag-unreachable warns only for tags no spec can produc
   assert.notEqual(status, 1, "a warning never fails the check");
 });
 
+test("doctor check: quality-commands-undefined and mutation-enabled-no-command", () => {
+  const stack = (commands) => `${CLEAN[".specture/stack.yml"]}quality:\n  linter: "eslint"\n  commands:\n${commands}`;
+  const undefinedSlots = createProject({ ...CLEAN, ".specture/stack.yml": stack('    test: "npm test"\n    type_check: none\n    lint: "sin definir"\n    format_check: "sin definir"\n    mutation: "sin definir"\n') });
+  const { status, json } = runDoctor(undefinedSlots);
+  const q = json.findings.filter((f) => f.group === "quality");
+  assert.equal(q.length, 1, JSON.stringify(json.findings));
+  assert.equal(q[0].check, "quality-commands-undefined");
+  assert.match(q[0].detail, /lint, format_check, mutation still/);
+  assert.equal(q[0].severity, "WARNING");
+  assert.notEqual(status, 1);
+
+  const defined = stack('    test: "npm test"\n    type_check: none\n    lint: "npx eslint {files}"\n    format_check: none\n    mutation: none\n');
+  assert.deepEqual(runDoctor(createProject({ ...CLEAN, ".specture/stack.yml": defined })).json.findings.filter((f) => f.group === "quality"), [], "none is a decision");
+
+  const toggleOn = createProject({ ...CLEAN, ".specture/stack.yml": defined, ".specture/settings.yml": `${CLEAN[".specture/settings.yml"]}mutation.enabled: true\n` });
+  const mut = runDoctor(toggleOn).json.findings.filter((f) => f.group === "quality");
+  assert.equal(mut.length, 1, JSON.stringify(mut));
+  assert.equal(mut[0].check, "mutation-enabled-no-command");
+  assert.equal(mut[0].file, ".specture/settings.yml");
+
+  assert.deepEqual(runDoctor(createProject(CLEAN)).json.findings.filter((f) => f.group === "quality"), [], "no quality section: nothing to say");
+});
+
 test("doctor check: rules-core-overlap warns when an adapted R-FILE-003 still demands constants or hooks outside the file", () => {
   const adapted = TEMPLATE_RULES.replace(/rule: "Interfaces y types viven[^"]*"/, 'rule: "Types, interfaces, constantes y hooks en su archivo, siempre"');
   const { status, json } = runDoctor(createProject({ ...CLEAN, ".specture/rules.yml": adapted }));
