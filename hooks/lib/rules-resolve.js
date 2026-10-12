@@ -24,8 +24,9 @@
 const fs = require("fs");
 const path = require("path");
 const { findProjectRoot } = require("./specture-guard");
-const { readRules, resolveRules, formatBlock, legacyRules, normalizeTag, RULES_FILE } = require("./rules");
-const { loadSpecs } = require("./current-state");
+const { readRules, resolveRules, formatBlock, legacyRules, normalizeTag, moduleTag, LAYER_TAGS, RULES_FILE } = require("./rules");
+const { loadSpecs, epicComponents } = require("./current-state");
+const { readText } = require("./doctor/project");
 
 function usage(message) {
   if (message) process.stderr.write(`rules-resolve: ${message}\n`);
@@ -56,12 +57,28 @@ function specTags(root, specPath) {
   const spec = loadSpecs(root).find((s) => s.path === rel);
   if (!spec) return { error: `${rel} no está bajo docs/05-specs/<epic>/ (o es un archivo _de coordinación)` };
   const text = fs.readFileSync(abs, "utf8");
+  // Layer: an explicit `**Capa:** backend|frontend|mobile` header wins; else the contract
+  // section — **Implementa** = backend, **Consume** = frontend.
+  const capa = text.match(/\*\*Capa\s*:\*\*\s*`?([A-Za-z]+)`?/i);
+  const explicit = capa ? normalizeTag(capa[1]) : null;
   const implementa = /^\s*-\s*\*\*Implementa\b/im.test(text);
   const consume = /^\s*-\s*\*\*Consume\b/im.test(text);
-  const layer = implementa ? "backend" : consume ? "frontend" : null;
-  const components = spec.epicComponents.map(normalizeTag);
-  const tags = [...new Set([spec.module ? normalizeTag(spec.module) : null, ...components, layer].filter(Boolean))];
-  return { tags, derived: { path: rel, epic: spec.epicId, module: spec.module, components: spec.epicComponents, layer } };
+  const layer = LAYER_TAGS.includes(explicit) ? explicit : implementa ? "backend" : consume ? "frontend" : null;
+  // Epic: the directory name (`epic-1.1-…`), else the spec's `**Epic:**` header (`HC-IHCE.9`),
+  // looked up in ROADMAP's "Componentes de arquitectura involucrados".
+  let epicId = spec.epicId;
+  let componentNames = spec.epicComponents;
+  if (!epicId) {
+    const header = text.match(/\*\*Epic\s*:\*\*\s*`?([A-Za-z0-9][A-Za-z0-9._-]*)`?/i);
+    if (header) {
+      epicId = header[1];
+      componentNames = epicComponents(readText(root, "docs/04-roadmap/ROADMAP.md"))[epicId] || [];
+    }
+  }
+  // ROADMAP blocks name components the way specs name modules (`Plataforma API (architecture.md §2.13)`).
+  const components = componentNames.map(moduleTag).filter(Boolean);
+  const tags = [...new Set([moduleTag(spec.module), ...components, layer].filter(Boolean))];
+  return { tags, derived: { path: rel, epic: epicId, module: spec.module, components: componentNames, layer } };
 }
 
 function main(argv) {

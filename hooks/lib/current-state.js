@@ -98,7 +98,10 @@ function epicComponents(roadmapText) {
     }
     const field = line.match(EPIC_COMPONENTS);
     if (field && currentId) {
-      out[currentId] = field[1].split(/[,;·]/).map(cleanValue).filter(Boolean);
+      // `Core y Tenancy (§2.2, ADR-007)` — the parenthesised references are not components and
+      // their commas are not separators.
+      out[currentId] = field[1].replace(/\([^)]*\)/g, "").split(/[,;·]/).map(cleanValue)
+        .filter((name) => name && !/^(ADR|RN|GAP|MK|CL|FA)-\d/i.test(name) && !/^[§\d]/.test(name));
     }
   }
   return out;

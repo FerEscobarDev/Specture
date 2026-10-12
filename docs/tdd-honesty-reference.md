@@ -206,6 +206,26 @@ register lines, its J9 verdict and its commits on disk. To audit by hand:
 `git log --oneline <red_sha_orig>..HEAD -- <test-globs>` and compare each SHA with
 `## SUPERSESIONES` of the epic's `_planning.md`.
 
+## Red-fix kind: when the retroactive RED runs (v2.8.0)
+
+A red-fix of the spec's own RED (`test(red-fix): …`, Step 5.3) used to pay the retroactive RED
+every time: a temporary worktree at the commit before the spec's RED, the red-fixed tests run
+there, the worktree removed. Real runs showed most red-fixes only **add** tests (a missing `AC`,
+a branch the reviewer asked for): for those the retroactive RED proves nothing new — the added
+tests fail at HEAD by construction and the surviving RED lines are already covered by
+`red-lines`. `honesty-check.js red-fix-kind --slug <s>` answers `ADDITIVE` (no line of the RED
+was deleted or changed in `red_sha_orig..HEAD` over the spec's `test_paths`) or `REWRITE` (at
+least one was): the retroactive RED runs only on `REWRITE`, where an assertion may have been
+weakened. The register line records the kind (`— kind: ADDITIVE | REWRITE`) so the reviewer and
+a later audit can see which path was taken. Every other safeguard (`clean-tree`, `range`,
+`red-lines`, the reviewer's reading of each red-fixed test against the spec) is unchanged.
+
+The RED commit itself is now checked before it is sealed (`red-check.js`: files inside the
+test globs or the declared surface, every id of the spec mapped to an existing test, the
+project's declared type-check / lint / format commands green on the test files). It is not an
+honesty safeguard — nothing in it says whether a test is right — but it removes the mechanical
+causes that used to come back as red-fixes after the implementation.
+
 ## Retroactive remediation of closed epics without a real RED
 
 A closed epic whose tests were never RED (or never sealed) is remediated by a **remediation

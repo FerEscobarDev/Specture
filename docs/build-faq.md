@@ -285,3 +285,53 @@ la sesión antes, el reporte queda `TRIAGE: PENDIENTE` y se te pregunta en el pr
 con `/specture:compliance-review triage`). No publica nada en GitHub ni en Azure DevOps. Para
 apagarlo: `compliance_review.enabled: false` en `.specture/settings.yml`. Guía completa:
 [`docs/compliance-review-guide.md`](compliance-review-guide.md).
+
+## El RED se volvió a despachar "por red-check". ¿Qué es eso?
+
+Desde v2.8.0, antes de sellar el RED de cada spec el epic-agent corre `hooks/lib/red-check.js`:
+tres hechos mecánicos que en Psikora y CEAgenda explicaban la mayoría de los `test(red-fix)`
+posteriores. `files`: todo archivo del commit RED es un test o está declarado en la Superficie
+del spec (`Crea:` / `Fixtures disponibles:`) — un helper fuera de eso es un hueco del spec y sale
+como `BLOCKED: spec` ahora, no como un hook denegando a mitad del GREEN. `coverage`: cada
+`AC/BR/EC` del spec aparece una vez en el `COVERAGE_MAP` del test-writer (que ahora también lo
+escribe en `docs/.specture-meta/coverage/<slug>.map`) y cada test citado existe. `commands`: los
+comandos `type_check` / `lint` / `format_check` que declaraste en `stack.yml` →
+`quality.commands`, sobre los archivos del RED. Un FAIL re-despacha al writer **una** vez con los
+hallazgos; el segundo es `BLOCKED: red-fix`. Si un slot está `sin definir`, ese check queda
+`SKIPPED` y el doctor te lo recuerda (`quality-commands-undefined`): el framework nunca inventa
+un comando a partir del nombre de una herramienta.
+
+## ¿Qué son `quality.commands` y `mutation.enabled`?
+
+`stack.yml` guardaba nombres (`linter: eslint`) que nadie podía ejecutar. Desde v2.8.0 el bloque
+`quality.commands` guarda los comandos que el build **corre** tal cual — `test`, `type_check`,
+`lint`, `format_check`, `mutation` — con `{files}` donde la herramienta acepte rutas; `none`
+cuando no aplica. Es agnóstico de lenguaje: `docs/quality-catalog.md` trae ejemplos por pila, y
+solo son ejemplos. Con ellos el Step 6 lanza lint y type-check en background y le entrega el
+resultado al reviewer como `LINT_REPORT`: el reviewer cita lo que la herramienta reportó y no
+re-inspecciona formato a ojo (la revisión de cumplimiento igual). `mutation.enabled: true` en
+`settings.yml` añade el comando `mutation` sobre los archivos de producción del spec; su salida
+llega al reviewer como `MUTATION_REPORT` y cada mutante sobreviviente es un hallazgo de fuerza de
+tests o se descarta con una línea — el reviewer deja de mutar a mano, que era lento y frágil.
+Necesita la herramienta instalada en tu proyecto (Stryker, Infection, mutmut, Pitest… la que sea).
+
+## ¿Qué es `MODE: RE-REVIEW`?
+
+Tras un `REJECTED_MINOR` el reviewer volvía a revisar las siete dimensiones desde cero, a
+esfuerzo alto. Desde v2.8.0 la segunda ronda es acotada: recibe el reporte anterior, la lista de
+hallazgos, el diff entre el HEAD anterior y el nuevo y un `LINT_REPORT` del delta, y responde por
+hallazgo `RESUELTO` / `PERSISTE` / `RESUELTO_CON_REGRESIÓN`, con `effort: medium`. No reabre lo
+aprobado salvo que el delta lo toque. Un `REJECTED_MAJOR` o una tercera ronda vuelven a ser una
+revisión completa con contexto fresco.
+
+## ¿Por qué cada agente tiene ahora un `effort` y a veces un modelo distinto por modo?
+
+Porque heredar el esfuerzo del chat principal hacía que un orquestador con decenas de llamadas a
+herramientas (el coordinador del epic) pagara `high` en cada turno, y que un re-despacho acotado
+(un `RED-FIX`, una re-validación `DELTA`) costara lo mismo que el trabajo original. Desde v2.8.0:
+`tdd-test-writer` sonnet `high` (la calidad del RED evita red-fix; `medium` en `RED-FIX` y
+`SUPERSEDE-HEAD`), `implementer` / `ux-implementer` sonnet `medium`, `code-reviewer` opus `high`
+(`medium` en `RE-REVIEW`), `architecture-validator` opus `medium` (sonnet `medium` en `DELTA` y
+`J9`), coordinador del epic opus `medium`. La métrica `effort` de `build-metrics.jsonl` registra
+lo efectivamente despachado para que `knowledge stats` pueda leer el efecto. En Copilot y
+Antigravity el frontmatter no viaja (brecha documentada en `docs/copilot-cli-plugin.md`).

@@ -73,6 +73,32 @@ ux-implementer en sonnet; reviewer y planner en opus).
   deja el `spec <ID>` en `CONCERNS`; el epic-agent lo lee igual, pero la forma canónica es
   `STATUS: BLOCKED: spec <ID>`.
 
+## Adenda v2.8.0 (final) — sonda P2 y lo que no se sondeó
+
+**P2 — planner, backend, solo `R-SOLID-001` pide la abstracción** (servicio de aplicación que
+consume `SmtpEmailSender`, clase concreta de infraestructura sin interfaz; §3 y ADRs callados;
+corrida 2026-10-12 con el checklist de la Superficie de v2.7.0 y de v2.8.0, modelo opus, effort
+medium, solo la sección Superficie + justificación con cita):
+
+| Versión | Declara `Crea: IEmailSender` | Justificación citada |
+|---|---|---|
+| v2.7.0 (RED) | sí, en `src/Application/Abstractions/Email/IEmailSender.cs` | ninguna línea del checklist: "la decisión salió por completo de RULES_RESOLVED, de la cláusula de verificación de R-SOLID-001"; el propio agente observa que "un planner que siga solo este checklist puede legítimamente terminar en no hay interfaz" |
+| v2.8.0 (GREEN) | sí, misma ruta y firma | "Structure rules have their files (v2.8.0)… `R-SOLID-001`: an application service that consumes an infrastructure class depends on an interface, so the interface file is `Crea:`" |
+
+Veredicto: **PASA; no discrimina** — como P1 y R1/R2, el planner ya lo hacía por iniciativa. La
+línea nueva del checklist convierte esa iniciativa en obligación citable, que es lo que el
+implementer de v2.8.0 necesita para no caer en `BLOCKED: spec`. Ambas corridas dejaron como
+`OPEN_QUESTION` el archivo DI de Infrastructure que `CODE_SURFACE` no listaba: correcto, no
+inventaron la ruta.
+
+**No sondeado antes del release** (se mide en la primera tanda real sobre ≥ 2.8.0 con
+`red_check_failures` y `review_rejections` de `knowledge stats`): I-RC (writer ante un
+`RED-CHECK FAIL` corrige sin tocar producción), R-MUT (reviewer con `MUTATION_REPORT` no muta a
+mano), R-RR (`MODE: RE-REVIEW` no reabre dimensiones). Lo mecánico sí tiene tests:
+`hooks/test/red-check.test.js`, `migrations/test/quality-commands.test.js`,
+`hooks/test/rules-resolve.test.js` (`--spec`, probado además en lectura sobre specs reales de
+Psikora y CEAgenda).
+
 ## Qué no prueba este baseline
 
 - Que en un epic real la tasa de `REJECTED_MINOR` por reglas baje: lo mide `review_rejections`

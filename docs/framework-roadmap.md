@@ -802,6 +802,32 @@ qué se aborda, con comentarios que cualquiera entienda sin los documentos inter
 
 ---
 
+## Milestone 10 — Verificación mecanizada y reglas alineadas (v2.8.0)
+
+Disparador: un usuario reportó que el reviewer encontraba una y otra vez los mismos errores de
+reglas ya registradas, y que "crear los tests" se sentía lento. La medición sobre git de Psikora
+(14 specs) y CEAgenda (9 specs), 3-11 oct 2026, dijo otra cosa: RED→GREEN 16-29 min de media,
+pero 91 min por spec en total, con 1.4-2.1 `test(red-fix)` por spec. Las causas de los red-fix
+eran mecanizables (tests débiles que el reviewer detectaba mutando a mano, tipado/formato de los
+tests detectado tarde, fixtures fuera de la Superficie, IDs sin test) y 7 de 12 hallazgos de la
+revisión de cumplimiento eran de formato. Diseño y datos: `docs/rules-alignment-baseline.md`.
+
+- [x] **80. Reglas alineadas: el implementer no se salta la estructura** · hecho 2026-10-12, v2.8.0 — Iron Rule 2 "mínimo en comportamiento, nunca por debajo de las reglas de estructura"; `BLOCKED: spec` cuando una regla exige un archivo que la Superficie no declara; `RULES_CHECK:` en el reporte; `R-FILE-003` se parte (interfaces/types [all]) y nace `R-FILE-004` [frontend, mobile] con la excepción de la constante local; `rules-tag-unreachable` y `rules-core-overlap` en el doctor; migración `2.8-rules-core-scope`; `normalizeTag` sin diacríticos (el doctor y el resolver comparaban distinto).
+- [x] **81. Comandos de calidad declarados por el proyecto (agnóstico)** · hecho 2026-10-12, v2.8.0 — `stack.yml` → `quality.commands` (`test`, `type_check`, `lint`, `format_check`, `mutation`; `{files}`; `none`; `sin definir` = SKIPPED visible); `hooks/lib/quality.js`; migración mecánica `2.8-quality-commands`; `quality-commands-undefined` y `mutation-enabled-no-command`; `docs/quality-catalog.md` con ejemplos por pila y equivalencias de `R-FILE-*` en linters, **solo ejemplos**; `setup` los pregunta y propone en Plan mode, nunca escribe configuración de linter sola.
+- [x] **82. `red-check.js` antes del sello** · hecho 2026-10-12, v2.8.0 — `files` · `coverage` · `commands`; el test-writer escribe el `COVERAGE_MAP` en `docs/.specture-meta/coverage/<slug>.map`; un FAIL re-despacha al writer una vez (cuenta en el Iteration Cap), el segundo es `BLOCKED: red-fix`; `honesty-check red-fix-kind` hace condicional el RED retroactivo del Step 5.3 (`ADDITIVE` lo salta). Métrica `red_check_failures`.
+- [x] **83. Herramientas antes del reviewer; mutation testing opt-in** · hecho 2026-10-12, v2.8.0 — Step 6 lanza `lint` / `type_check` (y `mutation` con `settings.yml` `mutation.enabled`) en background y despacha al reviewer con `LINT_REPORT` y `MUTATION_REPORT`; el reviewer cita el linter en vez de re-inspeccionar y no muta a mano cuando hay reporte (cada sobreviviente es hallazgo o descarte en una línea); la revisión de cumplimiento recibe `LINT_REPORT` y no reporta lo que el formatter ya reporta.
+- [x] **84. `MODE: RE-REVIEW` acotado** · hecho 2026-10-12, v2.8.0 — tras `REJECTED_MINOR`: hallazgos `RESUELTO` / `PERSISTE` / `RESUELTO_CON_REGRESIÓN` sobre el delta, `effort: medium`, mismo reporte con `## Ronda N`; una tercera ronda o un `REJECTED_MAJOR` vuelven a ser revisión completa.
+- [x] **85. Modelo y esfuerzo por rol y por modo** · hecho 2026-10-12, v2.8.0 — frontmatter: `tdd-test-writer` sonnet high, `implementer` / `ux-implementer` sonnet medium, `code-reviewer` opus high; por despacho: `RED-FIX` / `SUPERSEDE-HEAD` medium, validador `DELTA` / `J9` sonnet medium, `RE-REVIEW` medium, coordinador del epic opus medium. `effort` en `build-metrics.jsonl` pasa a `{planner, validator, coordinator, test_writer, implementer, reviewer}` con lo efectivamente despachado. Brecha Copilot/Antigravity sin cambios (ítem 55).
+- [x] **86. Tags del spec por script** · hecho 2026-10-12, v2.8.0 — `rules-resolve.js --spec <ruta>` deriva los tags (módulo, componentes del epic, capa) con el mismo vocabulario que el doctor (`reachableTags` compartido); `--tags` solo añade. El spec-planner declara en `Crea:` los archivos que exigen las reglas de estructura (interfaz de `R-SOLID-001`, types, hook, constante compartida).
+
+### Lo que v2.8.0 deliberadamente NO envió
+
+- **Mutation testing obligatorio.** Exige una herramienta instalada en el proyecto; opt-in por `mutation.enabled`, con aviso del doctor si está encendido sin comando.
+- **Configuración de linter escrita por el framework.** El catálogo es documental; `setup` propone y el usuario confirma archivo por archivo. Una regla de linter que nadie eligió es una convención invisible.
+- **`RULES_CHECK` del implementer como entrada del reviewer.** Anclaría al reviewer en la autoevaluación del implementer; la Dimensión 7 ya recorre cada regla.
+- **Recorte del hot path** (3.400 líneas entre agentes y `build/*`): sin medición de su efecto sobre la calidad, no se toca (`docs/token-optimization-report.md`).
+- **Espera humana en los gates**: el mayor consumidor de reloj de pared, y no es del framework.
+
 ## Apéndice A — Decisiones que condicionan el orden
 
 > **A1-A5 cerradas el 2026-08-28** (la recomendación fue aceptada en las cinco; ver

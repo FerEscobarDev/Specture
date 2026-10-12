@@ -84,6 +84,16 @@ test("--spec derives the tags from the spec: Módulo, the epic's components and 
   assert.deepEqual(extra.tags, ["facturacion", "gestion-de-pacientes", "backend", "a11y"], "--tags merges, normalized, without duplicates");
   assert.ok(extra.resolved.some((r) => r.id === "R-3"), "a11y reaches R-3");
 
+  // Real-world headers: a Módulo with references after the name, an epic id the directory does
+  // not carry (`hc-ihce-9-…` → `**Epic:** \`HC-IHCE.9\``), an explicit Capa, no Implementa/Consume.
+  const ROADMAP_HC = ROADMAP + "\n- [/] **Epic HC-IHCE.9: Roles de base de datos separados**\n  - **Componentes de arquitectura involucrados:** `Plataforma API` (architecture §2.13, §5.1); ADR-045, ADR-047\n  - **Dependencias:** Ninguna\n";
+  const SPEC_HC = "# SPEC: Roles — id: hc-ihce-9/01\n\n**Epic:** `HC-IHCE.9` (ROADMAP — Roles)   **Módulo:** Plataforma API (`architecture.md` §2.13, Carpeta raíz `psikora_api`)   **Capa:** backend\n\n## Operaciones del Contrato de API\n\n(ninguna)\n\n- **AC-1:** x\n";
+  const real = project({ ".specture/stack.yml": STACK, ".specture/rules.yml": RULES_ACCENTS + '  - id: R-7\n    tags: [plataforma-api]\n    rule: "Solo la API habla con la base"\n    severity: BLOCKER\n', "docs/04-roadmap/ROADMAP.md": ROADMAP_HC, "docs/05-specs/hc-ihce-9-roles/01-roles.spec.md": SPEC_HC });
+  const hc = JSON.parse(run(real, "--spec", "docs/05-specs/hc-ihce-9-roles/01-roles.spec.md", "--json").stdout);
+  assert.deepEqual(hc.tags, ["plataforma-api", "backend"], JSON.stringify(hc.spec));
+  assert.equal(hc.spec.epic, "HC-IHCE.9");
+  assert.deepEqual(hc.resolved.map((r) => r.id), ["R-2", "R-6", "R-7"]);
+
   const missing = run(dir, "--spec", "docs/05-specs/epic-1.1-facturacion/nope.spec.md");
   assert.equal(missing.status, 2);
   assert.match(missing.stderr, /no existe/);

@@ -139,6 +139,15 @@ function normalizeTag(tag) {
 const LAYER_TAGS = ["backend", "frontend", "mobile"];
 const ARCHITECTURE_FILE = path.join("docs", "02-architecture", "architecture.md");
 
+// The tag a spec's `Módulo:` header yields. Real headers carry references after the name —
+// `Plataforma API (architecture.md §2.13, Carpeta raíz psikora_api)` — so only the name before
+// the first `(`, `—`, `:` or `·` counts, slugified like a component (`plataforma-api`).
+function moduleTag(module) {
+  const name = String(module || "").replace(/[`*]/g, "").split(/\s*[(—–:·|]\s*/)[0];
+  const slug = name.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+  return slug || null;
+}
+
 function reachableTags(projectRoot) {
   const { parseComponents, loadSpecs } = require("./current-state");
   const tags = new Set([ALL_TAG, ...LAYER_TAGS]);
@@ -150,7 +159,10 @@ function reachableTags(projectRoot) {
   }
   if (architecture !== null) for (const c of parseComponents(architecture)) if (c.slug) tags.add(normalizeTag(c.slug));
   try {
-    for (const spec of loadSpecs(projectRoot)) if (spec.module) tags.add(normalizeTag(spec.module));
+    for (const spec of loadSpecs(projectRoot)) {
+      const tag = moduleTag(spec.module);
+      if (tag) tags.add(tag);
+    }
   } catch {
     // no specs yet — the fixed vocabulary and the components are enough
   }
@@ -479,6 +491,7 @@ module.exports = {
   RulesParseError,
   parseRulesYaml,
   normalizeTag,
+  moduleTag,
   reachableTags,
   LAYER_TAGS,
   lintRules,

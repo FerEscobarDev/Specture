@@ -111,11 +111,11 @@ flowchart LR
     O["Orquestador<br/>(build / architecture / modernize / new-feature)<br/>ensambla contexto RESTRINGIDO por agente"]
 
     O -->|"bloque del epic + fuentes + slice contrato + template<br/>(firmas y paths, NUNCA comportamiento)"| SP["spec-planner · Opus · effort medium<br/>1-3 specs + OPEN_QUESTIONS / RESOLVED_ALONE<br/>(despacho fresco por pase · MODE: SUPERSESSIONS en el loop<br/>· MODE: DRAFT / QUESTIONS / REFRESH en la revisión, v2.3.0)"]
-    O -->|"documento + .specture/<br/>(SIN código · salvo MODE: REVIEW)"| AV["architecture-validator · Opus · effort medium<br/>tools: Read, Glob<br/>APPROVED / REJECTED / BLOCKED · MODE: DELTA / J9<br/>· MODE: REVIEW: lee código para decisiones y premisas (v2.3.0)"]
-    O -->|"spec + business rules + framework de test<br/>(SIN implementación — anti-bias)"| TW["tdd-test-writer · Sonnet<br/>tests RED (fallidos)"]
-    O -->|"spec + tests RED + archivos a tocar + RED_SHA"| IM["implementer · Sonnet<br/>código GREEN (lógica)"]
-    O -->|"spec + design_system + slice contrato<br/>+ tests + checklist de marca"| UX["ux-implementer · Sonnet<br/>UI fiel a tokens/contrato/a11y"]
-    O -->|"diff + spec + .specture/<br/>+ resultado del gate 5.5"| CR["code-reviewer · Opus<br/>APPROVED / REJECTED_MINOR / REJECTED_MAJOR"]
+    O -->|"documento + .specture/<br/>(SIN código · salvo MODE: REVIEW)"| AV["architecture-validator · Opus · effort medium<br/>(MODE: DELTA / J9 · Sonnet · medium)<br/>tools: Read, Glob<br/>APPROVED / REJECTED / BLOCKED · MODE: DELTA / J9<br/>· MODE: REVIEW: lee código para decisiones y premisas (v2.3.0)"]
+    O -->|"spec + business rules + framework de test<br/>(SIN implementación — anti-bias)"| TW["tdd-test-writer · Sonnet · effort high<br/>(medium en RED-FIX / SUPERSEDE-HEAD)<br/>tests RED (fallidos) + COVERAGE_MAP file<br/>→ red-check.js files · coverage · commands"]
+    O -->|"spec + tests RED + archivos a tocar + RED_SHA"| IM["implementer · Sonnet · effort medium<br/>código GREEN (lógica) + RULES_CHECK"]
+    O -->|"spec + design_system + slice contrato<br/>+ tests + checklist de marca"| UX["ux-implementer · Sonnet · effort medium<br/>UI fiel a tokens/contrato/a11y + RULES_CHECK"]
+    O -->|"diff + spec + .specture/<br/>+ resultado del gate 5.5<br/>+ LINT_REPORT + MUTATION_REPORT (quality.commands)"| CR["code-reviewer · Opus · effort high<br/>(MODE: RE-REVIEW · medium tras REJECTED_MINOR)<br/>APPROVED / REJECTED_MINOR / REJECTED_MAJOR"]
 
     SP -.->|"NO recibe"| X5["comportamiento del código · memoria · Context7"]
     AV -.->|"NO recibe"| X1["código de implementación<br/>(salvo en MODE: REVIEW)"]
