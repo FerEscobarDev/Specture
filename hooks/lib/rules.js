@@ -126,8 +126,35 @@ function parseRulesYaml(text) {
   return out;
 }
 
+// Diacritics are dropped so `facturación` (a spec's `Módulo`) and `facturacion` (a tag written by
+// hand, or the component slug `slugify` produces) are the same tag — the doctor's reachability
+// check and the coordinator's resolution must agree (v2.8.0).
 function normalizeTag(tag) {
-  return String(tag).trim().toLowerCase().replace(/[\s_]+/g, "-");
+  return String(tag).normalize("NFD").replace(/[̀-ͯ]/g, "").trim().toLowerCase().replace(/[\s_]+/g, "-");
+}
+
+// Every tag a spec of this project can produce — Rules Resolution's vocabulary: `all`, a layer,
+// a component slug of architecture.md, a `Módulo` a spec declares. Shared by the doctor
+// (`rules-tag-unreachable`) and `rules-resolve.js --spec` (v2.8.0).
+const LAYER_TAGS = ["backend", "frontend", "mobile"];
+const ARCHITECTURE_FILE = path.join("docs", "02-architecture", "architecture.md");
+
+function reachableTags(projectRoot) {
+  const { parseComponents, loadSpecs } = require("./current-state");
+  const tags = new Set([ALL_TAG, ...LAYER_TAGS]);
+  let architecture = null;
+  try {
+    architecture = fs.readFileSync(path.join(projectRoot, ARCHITECTURE_FILE), "utf8");
+  } catch {
+    architecture = null;
+  }
+  if (architecture !== null) for (const c of parseComponents(architecture)) if (c.slug) tags.add(normalizeTag(c.slug));
+  try {
+    for (const spec of loadSpecs(projectRoot)) if (spec.module) tags.add(normalizeTag(spec.module));
+  } catch {
+    // no specs yet — the fixed vocabulary and the components are enough
+  }
+  return tags;
 }
 
 // Mechanical lint: [{ check: "rules-schema" | "rule-length", id, line, detail, action }].
@@ -452,6 +479,8 @@ module.exports = {
   RulesParseError,
   parseRulesYaml,
   normalizeTag,
+  reachableTags,
+  LAYER_TAGS,
   lintRules,
   resolveRules,
   formatBlock,

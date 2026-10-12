@@ -14,34 +14,43 @@
 //                          never injects it, so the implementer and the per-spec reviewer never
 //                          see it — only the milestone compliance review (which reads every rule)
 //                          does, which is how the same finding keeps coming back (since v2.8.0)
+//   rules-core-overlap   WARNING a team-adapted `R-FILE-003` still demands constants or hooks
+//                          outside the file: since v2.8.0 those belong to `R-FILE-004`
+//                          [frontend, mobile] (with the local-constant exception), so the two
+//                          rules contradict each other in frontend and the old one over-asks in
+//                          backend. The migration `2.8-rules-core-scope` never rewrites an
+//                          adapted wording — this warning is how the team learns to narrow it
 //
 // The core is the one thing in this file the framework owns rather than the team: a project may
 // tighten it and may add rules of its own, but removing an id or lowering a severity breaks the
 // contract every Specture project is meant to share. `/specture:doctor migrate` restores it.
 
-const { readRules, lintRules, lintCore, denyListItems, normalizeTag, DENY_LIST_MAX_LINES, ALL_TAG } = require("../../rules");
-const { parseComponents, loadSpecs, slugify } = require("../../current-state");
+const { readRules, lintRules, lintCore, denyListItems, normalizeTag, reachableTags, CORE_RULES, DENY_LIST_MAX_LINES } = require("../../rules");
 
 const RULES = ".specture/rules.yml";
 const CONVENTIONS = ".specture/conventions.md";
-const ARCHITECTURE = "docs/02-architecture/architecture.md";
-const LAYER_TAGS = ["backend", "frontend", "mobile"];
+const OVERLAP_ID = "R-FILE-003";
+const OVERLAP_WORDS = /\b(constante|constant|hook|composable)/i;
 
-// Every tag a spec can produce in this project (Rules Resolution: layer, component, module).
-function reachableTags(project) {
-  const tags = new Set([ALL_TAG, ...LAYER_TAGS]);
-  const architecture = project.read(ARCHITECTURE);
-  if (architecture !== null) for (const c of parseComponents(architecture)) if (c.slug) tags.add(c.slug);
-  try {
-    for (const spec of loadSpecs(project.root)) if (spec.module) tags.add(normalizeTag(slugify(spec.module)));
-  } catch {
-    // no specs yet — the fixed vocabulary and the components are enough
-  }
-  return tags;
+const plain = (value) => String(value || "").normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/\s+/g, " ").trim();
+
+function coreOverlap(rules) {
+  const rule = rules.find((r) => r.id === OVERLAP_ID);
+  const core = CORE_RULES.find((r) => r.id === OVERLAP_ID);
+  if (!rule || !core || !rules.some((r) => r.id === "R-FILE-004")) return [];
+  const text = `${plain(rule.rule)} ${plain(rule.verify)}`;
+  if (plain(rule.rule) === plain(core.rule) || !OVERLAP_WORDS.test(text)) return [];
+  return [finding(
+    "WARNING",
+    "rules-core-overlap",
+    RULES,
+    `${OVERLAP_ID}: the team's wording still demands constants or hooks outside the file${rule._line ? ` (line ${rule._line})` : ""} — since v2.8.0 that is \`R-FILE-004\` [frontend, mobile], which also allows a local, non-exported constant; in backend constants may live in their class`,
+    "narrow `rule` and `verify` of R-FILE-003 to interfaces and types (the template's text is in `templates/project-config/rules.template.yml`); keep any extra wording you need in R-FILE-004 instead"
+  )];
 }
 
 function unreachable(project, rules) {
-  const reachable = reachableTags(project);
+  const reachable = reachableTags(project.root);
   return rules
     .filter((rule) => Array.isArray(rule.tags) && rule.tags.length > 0)
     .filter((rule) => !rule.tags.map(normalizeTag).some((t) => reachable.has(t)))
@@ -66,7 +75,7 @@ function rulesFile(project) {
   }
   const lint = lintRules(rules.parsed).map((f) => finding(f.check === "rule-length" ? "WARNING" : "ERROR", f.check, RULES, f.line ? `${f.detail} (line ${f.line})` : f.detail, f.action));
   const core = lintCore(rules.parsed.rules).map((f) => finding("ERROR", f.check, RULES, f.line ? `${f.detail} (line ${f.line})` : f.detail, f.action));
-  return [...lint, ...core, ...unreachable(project, rules.parsed.rules)];
+  return [...lint, ...core, ...coreOverlap(rules.parsed.rules), ...unreachable(project, rules.parsed.rules)];
 }
 
 function denyList(project) {

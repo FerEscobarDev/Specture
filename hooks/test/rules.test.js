@@ -99,6 +99,10 @@ test("resolve: tag intersection (normalized), `all`, and --all", () => {
   assert.deepEqual(resolveRules(noAll, ["frontend"]), []);
   assert.deepEqual(resolveRules(noAll, [], { all: true }).map((r) => r.id), ["R-1", "R-2"]);
   assert.deepEqual(resolveRules(noAll, ["dto"]).map((r) => r.id), ["R-1"]);
+  const accented = [{ id: "R-9", tags: ["Facturación"], rule: "x", severity: "IMPORTANT" }];
+  assert.deepEqual(resolveRules(accented, ["facturacion"]).map((r) => r.id), ["R-9"], "diacritics never split a tag");
+  assert.deepEqual(resolveRules(accented, ["Gestión de Pacientes"]), []);
+  assert.deepEqual(resolveRules([{ id: "R-10", tags: ["gestion-de-pacientes"] }], ["Gestión de Pacientes"]).map((r) => r.id), ["R-10"]);
 });
 
 test("formatBlock: the dispatch block, and the exact empty token", () => {

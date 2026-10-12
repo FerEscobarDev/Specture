@@ -10,8 +10,9 @@ const { parseRulesYaml, CORE_RULES } = require("../hooks/lib/rules");
 // The missing `R-FILE-004` is restored by `2.0-rules-core` (its detect reads `CORE_RULES`, so a
 // project without the id is pending there and that migration appends it). This one only narrows
 // the wording of `R-FILE-003`, and only when the project never touched it: the text must still be
-// the literal v2.0 core text. A sharpened or translated rule is the team's — it is left alone and
-// a note names what to review. Tags, severity, comments and every other rule survive byte-for-byte.
+// the literal v2.0 core text. A sharpened or translated rule is the team's — it is left alone
+// (`done`), and the doctor's `rules-core-overlap` warns while it still demands constants or hooks
+// outside the file. Tags, severity, comments and every other rule survive byte-for-byte.
 
 const STACK = ".specture/stack.yml";
 const RULES = ".specture/rules.yml";
@@ -79,9 +80,8 @@ module.exports = {
   },
   apply(ctx) {
     const s = state(ctx);
-    if (s.kind === "edited") {
-      return { notes: [`${ID} in ${RULES} was adapted by the team, so its text was not rewritten. Since v2.8.0 it covers interfaces and types only; hooks and shared constants are \`R-FILE-004\` [frontend, mobile]. Review your wording so it no longer demands constants or hooks outside the file in backend.`] };
-    }
+    // `edited` is `done` for detect(), so the runner never reaches apply() for it: a wording the
+    // team adapted is the doctor's business (`rules-core-overlap`), not a migration's.
     if (s.kind !== "legacy") return { notes: [] };
 
     const eol = eolOf(s.text);

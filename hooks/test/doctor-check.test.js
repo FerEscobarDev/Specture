@@ -674,7 +674,7 @@ test("doctor check: rules-tag-unreachable warns only for tags no spec can produc
     ...CLEAN,
     "docs/02-architecture/architecture.md": "# Arquitectura\n\n## Componentes\n\n### Archivos\n- **Carpeta raíz:** `demo_api/`\n",
     "docs/05-specs/epic-1.1-notas/crear-nota.spec.md": "# Spec\n\n**Módulo:** Facturación\n",
-    ".specture/rules.yml": TEMPLATE_RULES + rule("R-1", "dto") + rule("R-2", "naming, seguridad") + rule("R-3", "all") + rule("R-4", "backend") + rule("R-5", "archivos") + rule("R-6", "dto, frontend") + rule("R-7", "facturacion")
+    ".specture/rules.yml": TEMPLATE_RULES + rule("R-1", "dto") + rule("R-2", "naming, seguridad") + rule("R-3", "all") + rule("R-4", "backend") + rule("R-5", "archivos") + rule("R-6", "dto, frontend") + rule("R-7", "facturacion") + rule("R-8", "Facturación")
   });
   const { status, json } = runDoctor(projectRoot);
   const warned = json.findings.filter((f) => f.check === "rules-tag-unreachable");
@@ -683,6 +683,21 @@ test("doctor check: rules-tag-unreachable warns only for tags no spec can produc
   assert.ok(warned.every((f) => /\(line \d+\)/.test(f.detail)), "the line travels to the finding");
   assert.match(warned[0].action, /component slug/);
   assert.notEqual(status, 1, "a warning never fails the check");
+});
+
+test("doctor check: rules-core-overlap warns when an adapted R-FILE-003 still demands constants or hooks outside the file", () => {
+  const adapted = TEMPLATE_RULES.replace(/rule: "Interfaces y types viven[^"]*"/, 'rule: "Types, interfaces, constantes y hooks en su archivo, siempre"');
+  const { status, json } = runDoctor(createProject({ ...CLEAN, ".specture/rules.yml": adapted }));
+  const overlap = json.findings.filter((f) => f.check === "rules-core-overlap");
+  assert.equal(overlap.length, 1, JSON.stringify(json.findings));
+  assert.equal(overlap[0].severity, "WARNING");
+  assert.match(overlap[0].detail, /R-FILE-003: .*\(line \d+\).*R-FILE-004/);
+  assert.match(overlap[0].action, /interfaces and types/);
+  assert.notEqual(status, 1);
+
+  const narrowed = TEMPLATE_RULES.replace(/rule: "Interfaces y types viven[^"]*"/, 'rule: "Interfaces and types live outside the component file, where §2 says"');
+  assert.deepEqual(runDoctor(createProject({ ...CLEAN, ".specture/rules.yml": narrowed })).json.findings.filter((f) => f.check === "rules-core-overlap"), [], "a translated wording without constants/hooks is fine");
+  assert.deepEqual(runDoctor(createProject({ ...CLEAN, ".specture/rules.yml": TEMPLATE_RULES })).json.findings.filter((f) => f.check === "rules-core-overlap"), [], "the template is clean");
 });
 
 test("review-rules: the template is clean; grammar, includes, nesting, size and whole-agent includes are reported", () => {

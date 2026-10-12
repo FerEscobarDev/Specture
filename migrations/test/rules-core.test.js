@@ -200,14 +200,14 @@ test("2.8-rules-core-scope narrows an untouched v2.0 R-FILE-003 and leaves every
   assert.deepEqual(snapshot(root), before, "idempotent");
 });
 
-test("2.8-rules-core-scope never rewrites a R-FILE-003 the team adapted — it leaves a note", () => {
+test("2.8-rules-core-scope never rewrites a R-FILE-003 the team adapted — it is done, and the doctor's rules-core-overlap takes over", () => {
   const adapted = WITH_LEGACY.replace(/rule: "Interfaces, types, constantes[^"]*"/, 'rule: "Types, interfaces y constantes en su archivo, siempre"');
   const root = makeProject({ ".specture/stack.yml": STACK, [RULES]: adapted, [CONVENTIONS]: CONV_MIN });
-  assert.equal(scope.detect(contextFor(root)), "done");
+  assert.equal(scope.detect(contextFor(root)), "done", "the runner never calls apply() for it");
   const before = snapshot(root);
   const result = scope.apply(contextFor(root));
   assert.deepEqual(snapshot(root), before, "nothing written");
-  assert.ok(result.notes.some((n) => /adapted by the team/.test(n)));
+  assert.deepEqual(result.notes, [], "no note nobody would ever see");
 });
 
 test("2.8-rules-core-scope keeps CRLF and runs after 2.0-rules-core, which adds R-FILE-004", () => {
