@@ -38,6 +38,17 @@ Proyectos creados antes de v1.15.0 pueden tener el toggle en `.specture/conventi
 
 ---
 
+### `pre-tool-use-wait-gate.js` (Claude Code) · `specture-pre-tool-use-wait-gate.js` (Copilot / Antigravity) — Wait Guard (v2.9.0)
+
+| | |
+|---|---|
+| Evento | `PreToolUse` con matcher `Bash\|PowerShell` (Copilot/Antigravity: + `bash\|shell\|run_command\|execute_command\|run_terminal_cmd`) |
+| Disparador | Antes de cualquier comando de shell |
+| Acción | Deniega un comando que **espera** en vez de trabajar: un `sleep` / `Start-Sleep` / `timeout /t` de 30 s o más, o **cualquier** `sleep` dentro de un bucle (`for` / `while` / `until`: un sondeo por construcción). Permite pausas cortas fuera de un bucle y los límites de tiempo sobre trabajo real (`timeout 590 dotnet test`). El motivo nombra la vía correcta: llamada al Agent en primer plano, o la notificación / `Monitor` de un background; ningún despacho tiene límite de tiempo. |
+| Por qué | Medido en Psikora HC-IHCE.14 (2026-10-14): un epic-agent pasó 222 de sus 510 minutos en `sleep` sondeando a sus workers, el coordinador se puso un reloj con `sleep 3060` por una regla de "55 minutos" que nadie definió, y el 97 % de los turnos tras una pausa de más de 5 minutos fueron cache miss (la caché de prompts dura 5 minutos). `lib/wait-guard.js` es la regla; opt-in por `hooks.enabled` como todo hook. |
+
+---
+
 ## Schema: `.specture/state/build-locked.json`
 
 **v3 (v1.18.0+, ampliado en v2.2.0) — sello de specs + superficie permitida + una entrada por spec:**
@@ -125,6 +136,10 @@ node "${CLAUDE_PLUGIN_ROOT}/hooks/lib/red-check.js" <comando> [opciones] [--proj
 Un token por check: `RED-CHECK <cmd>: PASS … | FAIL <n> | SKIPPED <motivo> | UNVERIFIABLE <motivo>`; exit 0 / 1 / 2. `files`: todo archivo del commit RED es un test (los `test_globs` del sello) o una ruta que el spec declara (`Crea:` / `Fixtures disponibles:`) — lo demás es un hueco del spec (`BLOCKED: spec`). `coverage`: cada `AC/BR/EC` del spec aparece una vez en el `COVERAGE_MAP` que el test-writer escribe en `docs/.specture-meta/coverage/<slug>.map`, y cada nombre de test citado existe en el RED. `commands`: corre `type_check` / `lint` / `format_check` de `stack.yml` → `quality.commands` con `{files}` = los archivos del RED; un slot `sin definir` o `none` es `SKIPPED`. El epic-agent lo corre en el Step 4 (post-check 2b) **antes** de `merge-spec`: un FAIL re-despacha al writer una vez; nunca se sella sobre UNVERIFIABLE.
 
 Primera línea de stdout = token `HONESTY <cmd>: PASS … | FAIL <n> | UNVERIFIABLE <motivo>`; exit 0 / 1 / 2. `clean-tree` exige nada sin commitear bajo los globs de test; `range` es la **allowlist** del Step 5.5 (todo commit que toca tests en `red_sha_orig..HEAD` está registrado en `## SUPERSESIONES` con exactamente sus paths — o es el primer RED de un spec hermano — y `supersede_paths` está vacío); `red-lines` verifica que cada línea que agregó el RED original siga en HEAD; `spec-delta` que un spec liberado solo cambió su sección de supersesiones; `protected` que ninguna supersesión toque un test de `verify:` de `rules.yml` o un GUARD de otro epic; `base-worktree` arma el worktree en `LOCK_SHA` para el RED retroactivo; `fix-range` (v2.4.0) es el chequeo posterior del loop de corrección de cumplimiento, que corre sin sello: cada commit de `BASE..HEAD` toca solo los archivos declarados para los hallazgos elegidos (el del hallazgo, los nuevos que crea un arreglo estructural y los que lo usan, nunca un test). Lo usan `skills/build/EPIC_LOOP.md` (Step 5.2 y 5.5), el loop de supersesiones de `skills/build/SKILL.md` y `skills/compliance-review/CORRECTION_LOOP.md`; el detalle y el riesgo residual están en `docs/tdd-honesty-reference.md`.
+
+### `lib/quality.js` — comandos de calidad del proyecto (v2.8.0 · CLI v2.9.0)
+
+`node hooks/lib/quality.js show` lista los seis slots de `stack.yml` → `quality.commands` (`test`, `test_scoped`, `type_check`, `lint`, `format_check`, `mutation`) y `expand <slot> --files a,b` imprime el comando con `{files}` / `{names}` sustituidos — o `SKIPPED <slot>: sin definir | none` (exit 3). Es lo que el epic-agent, el writer y el implementer ejecutan en vez de adivinar el runner: `test` solo en la línea base (Step 3.9) y el Step 7, `test_scoped` en todo lo demás. En Psikora HC-IHCE.14 el implementer corrió la suite completa 38 veces en un epic (66 min de una suite de 20–40 min, con un cache miss en cada vuelta).
 
 ### Revisión de cumplimiento (v2.4.0; PR y rama v2.5.0) — `lib/review-rules-resolve.js`, `lib/compliance.js` y `lib/pr.js`
 

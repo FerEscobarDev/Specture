@@ -8,6 +8,13 @@
         "bash": "node \"${PLUGIN_ROOT}/hooks/specture-pre-tool-use-tdd-gate.js\"",
         "powershell": "node \"${PLUGIN_ROOT}/hooks/specture-pre-tool-use-tdd-gate.js\"",
         "timeoutSec": 10
+      },
+      {
+        "type": "command",
+        "matcher": "Bash|PowerShell|bash|shell|run_command|execute_command|run_terminal_cmd",
+        "bash": "node \"${PLUGIN_ROOT}/hooks/specture-pre-tool-use-wait-gate.js\"",
+        "powershell": "node \"${PLUGIN_ROOT}/hooks/specture-pre-tool-use-wait-gate.js\"",
+        "timeoutSec": 10
       }
     ]
   }

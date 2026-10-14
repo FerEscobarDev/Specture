@@ -81,12 +81,15 @@ Specture declara sus hooks en `hooks.json` usando el evento `PreToolUse`. Mientr
 
 Los hooks de Copilot CLI operan con manejo de excepciones para fallar de forma abierta (*fail open*) en caso de errores no evaluables, manteniendo los `git diff` del coordinador y del epic-agent como defensa en profundidad.
 
+Desde v2.9.0 `hooks.json` registra además el **Wait Guard** (`specture-pre-tool-use-wait-gate.js`, matcher `Bash|PowerShell|bash|shell|run_command|execute_command|run_terminal_cmd`): deniega un `sleep` / `Start-Sleep` de 30 s o más y cualquier `sleep` dentro de un bucle. Lee el comando de `tool_input.command`, `CommandLine` o `cmd`; si tu CLI usa otro nombre de herramienta o de campo, ajustá el matcher — el motivo de la denegación nombra la vía correcta (esperar el resultado del despacho; ningún despacho tiene límite de tiempo).
+
 Los scripts del gate se invocan con la raíz del plugin de Copilot (`${PLUGIN_ROOT}` en vez de `${CLAUDE_PLUGIN_ROOT}`), igual que el doctor:
 
 ```shell
 node "${PLUGIN_ROOT}/hooks/lib/spec-set-check.js" docs/05-specs/<epic> --roadmap docs/04-roadmap/ROADMAP.md --epic <X.Y>   # gate 4a → MECH_CHECK
 node "${PLUGIN_ROOT}/hooks/lib/seal-cli.js" write|merge-spec|unseal-spec|lift-spec|supersede|release|show                # único escritor del sello
 node "${PLUGIN_ROOT}/hooks/lib/honesty-check.js" clean-tree|range|red-lines|spec-delta|protected|base-worktree           # Step 5.5 y loop de supersesiones (v2.2.0)
+node "${PLUGIN_ROOT}/hooks/lib/quality.js" show | expand <slot> --files a,b                                               # comandos de calidad declarados: test / test_scoped / … (v2.9.0)
 node "${PLUGIN_ROOT}/hooks/lib/review.js" status|scope-hash|scope-check                                                   # etapa de revisión por tanda (v2.3.0)
 node "${PLUGIN_ROOT}/hooks/lib/metrics-report.js" --project . [--baseline --write]                                        # knowledge stats
 node "${PLUGIN_ROOT}/hooks/lib/rules-resolve.js" --project . --tags <a,b,c> | --all                                        # Rules Resolution → RULES_RESOLVED (v1.19.0)
