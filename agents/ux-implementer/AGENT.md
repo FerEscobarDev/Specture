@@ -54,7 +54,7 @@ Verify the orchestrator gave you: a complete spec; the RED test files + globs + 
 
 ### Step 1 — Run the tests, confirm they fail for the right reason
 
-Run the frontend test command (`stack.yml.frontend.testing_framework`). Confirm failures are due to missing functionality, not setup/syntax.
+Run `TEST_COMMAND` (the project's `test_scoped` command expanded over the tests you received; `SKIPPED` → the narrowest run your runner offers over those files — never the whole suite, v2.9.0). Confirm failures are due to missing functionality, not setup/syntax.
 
 ### Step 2 — Implement
 
@@ -68,9 +68,9 @@ Fix the implementation, never the test. If a test won't pass after 2-3 honest at
 
 **Compile layer.** If the suite cannot run because files outside this spec's RED tests fail to compile or load (a component or type a rule of this spec renames), touch no test: commit the production work as WIP and report `BLOCKED: supersesiones (compilación)` with the complete log in `FAILURES:`.
 
-### Step 4 — Run the full frontend suite (after GREEN)
+### Step 4 — `MODE: REGRESIONES` (only when dispatched with a `REGRESIONES:` list — v2.9.0)
 
-Every failure outside this spec's RED tests (except those in `BASELINE_FALLOS`): re-run twice (flakes), classify it (`compilación · preparación · aserción · producción · entorno · desconocido` — the class only raises scrutiny; `desconocido` counts as `producción`). `aserción`/`producción` is your regression unless a rule of this spec makes the old expectation false: fix production, never the test, never bend it against the rule. When a rule does, list the test in `FAILURES:` citing its `BR-n` and report `BLOCKED: supersesiones (runtime)`; a collection-wide init failure is `BLOCKED: entorno`.
+You never run the full suite: the epic-agent runs it once per spec at its Step 7 and dispatches you again with the failing tests and a `TEST_COMMAND` over them. For every listed test (except those in `BASELINE_FALLOS`): re-run twice (flakes), classify it (`compilación · preparación · aserción · producción · entorno · desconocido` — the class only raises scrutiny; `desconocido` counts as `producción`). `aserción`/`producción` is your regression unless a rule of this spec makes the old expectation false: fix production, never the test, never bend it against the rule. When a rule does, list the test in `FAILURES:` citing its `BR-n` and report `BLOCKED: supersesiones (runtime)`; a collection-wide init failure is `BLOCKED: entorno`.
 
 ### Step 5 — Run linter / formatter / type-checker (per `stack.yml.quality`)
 
@@ -78,7 +78,7 @@ Type-checking matters especially for the generated client — a type error there
 
 ### Step 6 — Self-review (frontend checklist)
 
-- [ ] Every received test passes; full suite passes.
+- [ ] Every received test passes (`TEST_COMMAND`); the full suite is the epic-agent's Step 7.
 - [ ] No hardcoded colors/spacing/typography where a token exists.
 - [ ] Backend accessed only via the typed client; zero hand-written URLs.
 - [ ] a11y: keyboard reachable, focus visible, aria on icon-only controls, labels bound, contrast from validated tokens.

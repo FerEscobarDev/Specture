@@ -266,7 +266,7 @@ flowchart TD
     S6 -->|REJECTED_MINOR| S5
     S6 -->|REJECTED_MAJOR| ESC["Fix grande con contexto fresco<br/>o escalar al usuario"]
     S6 -.->|"3 loops sin APPROVED"| CAP["Iteration Cap → BLOCKED: spec (ID)<br/>o BLOCKED: debug (spec) — nunca invoca debug"]
-    S6 -->|APPROVED| S7{"Step 7 · Verificación<br/>correr tests fresh · leer salida completa<br/>(solo los BASELINE_FALLOS no bloquean)"}
+    S6 -->|APPROVED| S7{"Step 7 · Verificación<br/>la ÚNICA suite completa del spec (v2.9.0) · leer salida completa<br/>regresiones fuera del RED → implementer MODE: REGRESIONES → gate + RE-REVIEW → Step 7<br/>(solo los BASELINE_FALLOS no bloquean)"}
     S7 -->|"rojo"| ESC
     S7 -->|"verde"| S8["Step 8 · epic → [x] · commit<br/>· seal-cli release · reporte con METRICS + SUPERSESSIONS"]
     end

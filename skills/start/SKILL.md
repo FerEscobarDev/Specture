@@ -25,6 +25,7 @@ Run `node "${CLAUDE_PLUGIN_ROOT}/scripts/doctor.js" check --brief` (Copilot / An
 
 - **Pending migrations** → announce in Spanish **before** routing: *"Hay N migraciones pendientes (M mecánicas, K asistidas, C de contenido). ¿Corro `/specture:doctor migrate` antes de enrutar?"* Do **not** block: if the user declines or does not answer, continue to Step 1 — the warning stays in the transcript.
 - **ERROR findings** (stale seal, duplicate ADR, broken paths) → one line naming them; they do not change the routing.
+- **`config pendiente`** in the line (v2.9.0 — e.g. `quality-commands-undefined → /specture:setup (reconfigure) → quality.commands`) → one line in Spanish **before** routing, naming the command: *"`quality.commands` sin definir en `stack.yml` — el build corre sin red-check de comandos, sin LINT_REPORT y sin tests acotados; corré `/specture:setup` (reconfigure) o completalos a mano (`docs/quality-catalog.md`)"*. Do not block, and do not fold it into the WARNING count — a real project ran a whole batch without ever hearing it.
 - **No Node ≥ 22** → one line, *"doctor no disponible (requiere Node ≥ 22)"*, then Step 1. Never re-implement the checks by hand.
 - Nothing pending and no ERROR → say nothing; go to Step 1.
 

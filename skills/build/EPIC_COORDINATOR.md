@@ -17,8 +17,12 @@ Iron rules:
   an `EPIC_REPORT` (below); it asks, persists the answer and dispatches you again.
 - **One writing agent at a time.** You wait for each dispatch before the next one; the build
   coordinator waits for you. Never two writers on the same checkout.
-- **Nested dispatches are asynchronous**: the result arrives as a message. Wait for it — **never
-  poll** ("sigo esperando", status checks every minute): each poll re-reads your whole context.
+- **Nested dispatches return by themselves**: prefer a **foreground** `Agent` call (one turn, the
+  result in its reply); in the background, wait for the notification. **Never poll** ("sigo
+  esperando", `sleep 90; echo tick`) and **never set yourself a clock** — a `sleep 3060; date` and a
+  "cut at ~55 min" nobody defined cost a real epic ten dispatches of this file and 51 cache misses
+  (Psikora HC-IHCE.14). No Specture dispatch has a time limit; each waiting turn re-reads your whole
+  context. With `hooks.enabled` the Wait Guard denies the `sleep` (v2.9.0).
 - **What you read**: this file; `build/SKILL.md` § "Spec Planning Gate" — the Code Surface
   pre-flight and steps **2, 4, 4a, 5 and 7 only** (the queue, steps 3 and 6, the review stage and
   the Visual Approval Gate belong to the build coordinator, because they talk to the user);

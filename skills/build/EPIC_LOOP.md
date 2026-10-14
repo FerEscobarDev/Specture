@@ -9,8 +9,14 @@ queue, and your context is discarded when you finish.
 **Step 0 — Nesting check.** You dispatch workers (`tdd-test-writer`, `implementer`,
 `ux-implementer`, `code-reviewer`). If you do not have the Agent tool (the nested-subagent depth
 limit is below three levels), report `BLOCKED: nesting` **immediately, touching nothing**: the
-epic coordinator then runs this procedure itself. Every dispatch of yours is asynchronous —
-wait for its notification; never poll.
+epic coordinator then runs this procedure itself. Every dispatch of yours returns by itself —
+wait for its result; never poll. **How to wait (v2.9.0):** dispatch a worker as a **foreground**
+`Agent` call (one turn; it returns when the worker finishes) or, when it must run in the
+background, wait for its notification or the `Monitor` tool. **Never `sleep`**, never loop on a
+flag, never set yourself a clock budget: no Specture dispatch has a time limit, and every waiting
+turn re-reads your whole context (Psikora HC-IHCE.14: one epic-agent spent 222 of its 510 minutes
+in `sleep`). With `hooks.enabled`, the Wait Guard hook denies a `sleep` of 30 s or more and any
+sleep inside a loop.
 
 Ground rules:
 
@@ -95,11 +101,13 @@ Before Step 4 (tdd-test-writer) and Step 5 (implementer), the orchestrator MUST 
 - [ ] `stack.yml`: testing_framework + language present
 - [ ] `conventions.md`: testing + naming + file-org + §8 (identifier language) present
 - [ ] Existing fixtures/helpers paths listed (so tests don't duplicate them)
+- [ ] `TEST_COMMAND` (v2.9.0) — the project's `quality.commands.test_scoped` slot as `node "${CLAUDE_PLUGIN_ROOT}/hooks/lib/quality.js" show` prints it (the writer expands it over its own files with `quality.js expand test_scoped --files …`), or `SKIPPED (<motivo>)` when the slot is `sin definir` / `none` — passed verbatim, never replaced by the whole suite
 - [ ] Relevant docs from `docs-index.yml` resolved (see "Docs Index Resolution" below) — empty list is valid if the index does not exist or no entries match the spec
 
 **For implementer:**
 - [ ] Spec (same completeness as above)
 - [ ] RED test file contents + test path globs + `RED_SHA`
+- [ ] `TEST_COMMAND` (v2.9.0) — `test_scoped` already expanded over the RED test paths (`node "${CLAUDE_PLUGIN_ROOT}/hooks/lib/quality.js" expand test_scoped --files <RED test paths>`; on a resumed `supersede` / `red-fix`, the superseded or red-fixed files too), or `SKIPPED (<motivo>)` — the implementer never runs the whole suite; Step 7 does, once
 - [ ] Spec's "Superficie de Código Existente" section carries the **exact signatures** of every existing symbol the implementation will call — for symbols marked `(planeada — re-anclar)`, verified by the **signature re-read** below
 - [ ] `stack.yml` + `conventions.md` + all ADRs
 - [ ] The `RULES_RESOLVED` block (see "Rules Resolution" below — `RULES_RESOLVED: []` is valid and explicit)
@@ -245,7 +253,7 @@ It prints the block — `CUSTOM_RULES: …` + severities, flexible paths, preced
 
 ## Step 3.9 — Failure baseline (once per epic, before the first RED)
 
-Run the **full** test suite once, before any RED commit of the epic. Re-run each failing
+Run the **full** test suite once — `quality.commands.test` (`node "${CLAUDE_PLUGIN_ROOT}/hooks/lib/quality.js" expand test`; `sin definir` → the suite command `conventions.md` names) — before any RED commit of the epic. **This and Step 7 are the only two full runs per spec** (v2.9.0): everything in between runs `test_scoped` over the files under work. Re-run each failing
 test twice; the ones that still fail are the epic's **`BASELINE_FALLOS`** — they failed
 before this epic touched anything. Write them to `## BASELINE_FALLOS` of `_planning.md`
 (`- <path>::<test> — <first line of the failure> — <ISO-8601>`, or `- (ninguno)`), pass them
@@ -270,7 +278,7 @@ Dispatch the `tdd-test-writer` agent (`agents/tdd-test-writer/AGENT.md`).
 
 **Orchestrator post-checks (all mandatory)**:
 
-1. **Verify failure reason**: run the tests yourself and confirm they fail for the right reason ("function not defined" / "wrong return value"), not because of syntax errors or missing dependencies. **Exception — guards**: tests declared in the spec's "Guards de no-regresión (nacen verdes)" section are born green by definition — verify they PASS, and that they don't count toward the RED tally.
+1. **Verify failure reason**: run **only the RED files** yourself (`node "${CLAUDE_PLUGIN_ROOT}/hooks/lib/quality.js" expand test_scoped --files <RED test paths>`; `SKIPPED` → the narrowest run your runner offers over those files, noted once per epic in `GATE_NOTES` — never the whole suite, v2.9.0) and confirm they fail for the right reason ("function not defined" / "wrong return value"), not because of syntax errors or missing dependencies. **Exception — guards**: tests declared in the spec's "Guards de no-regresión (nacen verdes)" section are born green by definition — verify they PASS, and that they don't count toward the RED tally.
 2. **Verify the RED commit exists and is clean**:
    ```
    git show --stat <RED_SHA>
@@ -317,6 +325,7 @@ Dispatch the `implementer` agent (`agents/implementer/AGENT.md`).
 - The `.spec.md`.
 - The test files just written (as content reference — the implementer must NOT edit them).
 - The `RED_SHA` value, with an explicit instruction: *"The tests committed at `<RED_SHA>` are the sealed contract. You must NOT modify, delete, skip, rename, or move any of those test files. The TDD Honesty Gate will run `git diff <RED_SHA>..HEAD -- <test-globs>` after your work and any change will abort the spec."*
+- **`TEST_COMMAND`** (v2.9.0): `test_scoped` expanded over this spec's RED test paths (plus the superseded / red-fixed files on a resume), or `SKIPPED (<motivo>)`. The implementer runs **that** at its Steps 1 and 3 — never the whole suite; the full run is Step 7, once, yours.
 - `.specture/stack.yml`, `.specture/conventions.md`, all ADRs.
 - **The `RULES_RESOLVED` block** from "Rules Resolution" (the project invariants whose tags match this spec, with their declared severity — the implementer honors them; the reviewer's Dimension 7 enforces them by ID). Pass `RULES_RESOLVED: []` when nothing matches.
 - **The `CUSTOM_RULES` block** from "Custom Rules Resolution" (the team criteria that apply to this spec's surface — criteria only, never procedure; Specture's rules prevail on a conflict). Pass `CUSTOM_RULES: []` when nothing applies.
@@ -327,10 +336,10 @@ Dispatch the `implementer` agent (`agents/implementer/AGENT.md`).
 
 **Expected output**: minimal code to make tests pass; agent commits implementation in commits **separate from the RED commit**; reports status `DONE` / `DONE_WITH_CONCERNS` / `NEEDS_CONTEXT` / `BLOCKED`, plus the `HEAD_SHA` after the last implementation commit.
 
-Handle each status per the implementer's protocol. **Execution runs in two layers** (the implementer's Steps 3-4):
+Handle each status per the implementer's protocol. **Execution runs in two layers** (the implementer's Step 3, and Step 7 of this loop — v2.9.0):
 
 - **Compile layer (before GREEN).** `BLOCKED: supersesiones (compilación)` with a WIP commit and the full log → report it upward **as is**, one BLOCKED for the spec, without touching any test.
-- **Runtime layer (after GREEN).** `BLOCKED: supersesiones (runtime)` → check each `FAILURES:` line is outside this spec's RED tests and outside `BASELINE_FALLOS`, and cites a rule of this spec; a line without a rule goes back to the implementer as its regression (it counts toward the Iteration Cap). Then report `BLOCKED: supersesiones (runtime) <task-slug>` upward with every remaining line — **one** report per spec and layer, not one per test. The class only raises scrutiny: `aserción` and `producción` reach you only after the implementer tried them as regressions.
+- **Runtime layer (Step 7 — the full suite runs once per spec, after the review; v2.9.0).** The implementer in `MODE: REGRESIONES` reports `BLOCKED: supersesiones (runtime)` → check each `FAILURES:` line is outside this spec's RED tests and outside `BASELINE_FALLOS`, and cites a rule of this spec; a line without a rule goes back to the implementer as its regression (it counts toward the Iteration Cap). Then report `BLOCKED: supersesiones (runtime) <task-slug>` upward with every remaining line — **one** report per spec and layer, not one per test. The class only raises scrutiny: `aserción` and `producción` reach you only after the implementer tried them as regressions.
 - **`BLOCKED: entorno`** → report upward with the log. No retries.
 
 The coordinator judges each test (J9), amends the spec's Supersesiones section and re-dispatches you with `RESUME_AT: supersede <task-slug>` (Step 5.2). At most one loop per spec and per layer.
@@ -447,11 +456,19 @@ Do NOT do a 4th naive retry.
 Before declaring the spec done:
 
 ```
-[Run the test command yourself — not the agents]
+[Run the FULL suite yourself — `node "${CLAUDE_PLUGIN_ROOT}/hooks/lib/quality.js" expand test` (`sin definir` → the suite command conventions.md names) — not the agents]
 [Read the full output]
-[Confirm: 0 failures, 0 errors, no unexpected warnings]
+[Confirm: 0 failures, 0 errors, no unexpected warnings — BASELINE_FALLOS aside]
 [Run linter / type-checker if conventions.md requires]
 ```
+
+**This is the one full run of the spec (v2.9.0).** The writer, the implementer and your own post-checks ran `test_scoped` over the files under work; the old tests of other epics meet this spec's production here, for the first time. Failures **outside this spec's RED tests and outside `BASELINE_FALLOS`**:
+
+1. Re-run each failing test twice; a test that passes is a flake — note it in the report.
+2. Dispatch the `implementer` (or `ux-implementer`) **once** in **`MODE: REGRESIONES`** with the `REGRESIONES:` list (`<path>::<test> — <first failure line>`), the spec, `RULES_RESOLVED`, `BASELINE_FALLOS`, a `TEST_COMMAND` expanded over the failing files plus the spec's RED, and the same sealed-tests instruction — never the whole suite output. It classifies each one (`aserción` / `producción` are its regressions: production fixed, never the test; a test a rule of the spec makes false goes to `FAILURES:` citing the `BR-n`).
+3. `DONE` with production commits → Step 5.5 again on the new `HEAD_SHA`, then the `code-reviewer` in `MODE: RE-REVIEW` (`effort: medium`) over `git diff <HEAD_prev>..<HEAD_SHA>` with the regression list as its findings, then this Step 7 again. A non-empty `FAILURES:` → `BLOCKED: supersesiones (runtime) <task-slug>` upward, one report per spec, as before (the loop resumes you at Step 5.2, whose GREEN continues on `test_scoped` and ends here again). `BLOCKED: entorno` → upward, no retries.
+
+What this buys: in Psikora HC-IHCE.14 the implementer ran the full suite 38 times in one epic — 66 minutes of a 20-40 minute suite, and a cache miss on every return.
 
 **Parallelism**: the fresh test-suite run can be launched via `Bash` with `run_in_background: true` while the orchestrator prepares the `ROADMAP.md` update payload for Step 8. Do NOT commit the ROADMAP update until the background test run has completed and its output has been read in full. The verification gate is non-negotiable; concurrency only reduces wall-clock, never the rigor of the check.
 
@@ -485,7 +502,8 @@ After all specs in the epic are APPROVED + verified:
 | Omitir el review porque "el implementer ya hizo self-review" | Self-review ≠ review independiente. Ambos son necesarios. |
 | Usar `git add -A` o `git commit --amend` durante un epic | `git add <paths explícitos>` y commits nuevos. Un `add -A` captura trabajo en vuelo de otro agente; un `--amend` puede reescribir el commit de un tercero. |
 | Restaurar un archivo con `git checkout -- <archivo>` después de mutarlo (p. ej. para comprobar que un test detecta el cambio) | `git checkout` restaura a HEAD, no al árbol previo: destruye arreglos sin commitear. Snapshot a scratch **antes** de mutar, restaurar desde el snapshot y verificar con `git hash-object`. Y commitear todo arreglo de producción antes de abrir un bucle de mutación. |
-| Sondear un despacho en curso ("sigo esperando", consultas de estado cada minuto) | Los despachos son asíncronos: esperá la notificación. Cada sondeo relee todo tu contexto. |
+| Sondear un despacho en curso ("sigo esperando", `sleep 90; echo tick`, `until grep -q DONE …; do sleep 20; done`) o ponerse un reloj (`sleep 3060; date`) | Esperá el resultado: llamada al Agent en primer plano, o la notificación / `Monitor` de un background. Cada turno de espera relee todo tu contexto y, pasados 5 minutos, reescribe la caché entera. Ningún despacho tiene límite de tiempo. Con hooks, el Wait Guard deniega el `sleep` (v2.9.0). |
+| Correr la suite completa en cada paso (writer, implementer, post-checks) | Solo dos corridas completas por spec: la línea base (Step 3.9) y el Step 7. Todo lo demás corre `test_scoped` sobre los archivos en obra; `sin definir` se reporta como SKIPPED y se corre lo más acotado que ofrezca el runner, nunca la suite (v2.9.0). |
 | Despachar dos agentes que escriban al mismo checkout | Uno a la vez. La concurrencia de Step 6 es válida solo porque linter y type-checker no escriben, y el reviewer escribe únicamente su archivo en `docs/07-reviews/`. |
 
 > Comportamiento observable con hooks/Context7 activos: ver `docs/native-integration-guide.md` ("Comportamiento observable por skill").

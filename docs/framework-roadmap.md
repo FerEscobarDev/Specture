@@ -828,6 +828,25 @@ revisión de cumplimiento eran de formato. Diseño y datos: `docs/rules-alignmen
 - **Recorte del hot path** (3.400 líneas entre agentes y `build/*`): sin medición de su efecto sobre la calidad, no se toca (`docs/token-optimization-report.md`).
 - **Espera humana en los gates**: el mayor consumidor de reloj de pared, y no es del framework.
 
+## Milestone 11 — Esperas y suite acotada (v2.9.0)
+
+Medición sobre los transcripts de Claude Code de Psikora HC-IHCE.12–.14 (2026-10-11 → 14, `usage`
+deduplicado por `message.id`; espera humana descontada por huecos sin agentes): 563M tokens de
+entrada en .14 para 3 specs (191M en toda la tanda deuda de 2.7.0); 97 % de cache miss tras pausas
+de 5–60 min (caché de 5 minutos); un epic-agent 222 min en `sleep`; el coordinador con un reloj de
+"55 minutos" inventado por la sesión principal (10 despachos para un epic); el implementer 38
+corridas de la suite completa; `quality.commands` en `sin definir` sin que el usuario lo supiera.
+
+- [x] **87. Wait Guard** · hecho 2026-10-14, v2.9.0 — hook `PreToolUse` sobre Bash/PowerShell (`hooks/lib/wait-guard.js`, Claude Code y CLI): deniega `sleep` ≥ 30 s y cualquier `sleep` en bucle; EPIC_LOOP, EPIC_COORDINATOR y build: despacho en primer plano o notificación, nunca sondeo ni reloj propio.
+- [x] **88. `test_scoped`** · hecho 2026-10-14, v2.9.0 — sexto slot de `quality.commands` (`{files}` / `{names}`), CLI `quality.js show | expand`, migración `2.9-test-scoped-command`; writer, implementer y post-checks corren solo los tests en obra; la suite completa queda en Step 3.9 y Step 7; regresiones de otros epics → implementer `MODE: REGRESIONES` + gate + `RE-REVIEW`.
+- [x] **89. El doctor enruta la configuración pendiente** · hecho 2026-10-14, v2.9.0 — `route` en `quality-commands-undefined`; `check --brief` y `migrate --apply` imprimen `config pendiente: … → /specture:setup (reconfigure)`; `start` lo anuncia antes de enrutar y `build` una vez por tanda.
+
+### Lo que v2.9.0 deliberadamente NO envió
+
+- **Recorte del contexto por despacho** (catálogo MCP diferido ≈ 25K tokens, listado de skills ≈ 15K, releídos en cada turno): es del arnés y de los MCP que el usuario tenga activos, no del framework.
+- **Tope duro de tamaño de spec**: `spec-size` ya avisa a 300 líneas; partir el spec sigue siendo decisión del usuario (A-221 aceptó 107 IDs).
+- **Reportes verbatim fuera de `_planning.md`** (689 KB en HC-IHCE.14): sin medición del efecto sobre el coordinador, no se mueve.
+
 ## Apéndice A — Decisiones que condicionan el orden
 
 > **A1-A5 cerradas el 2026-08-28** (la recomendación fue aceptada en las cinco; ver

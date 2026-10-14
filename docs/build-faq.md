@@ -335,3 +335,45 @@ herramientas (el coordinador del epic) pagara `high` en cada turno, y que un re-
 `J9`), coordinador del epic opus `medium`. La métrica `effort` de `build-metrics.jsonl` registra
 lo efectivamente despachado para que `knowledge stats` pueda leer el efecto. En Copilot y
 Antigravity el frontmatter no viaja (brecha documentada en `docs/copilot-cli-plugin.md`).
+
+## El hook me denegó un `sleep`. ¿Por qué?
+
+Porque un agente que duerme no trabaja: está esperando a otro. Medido en Psikora HC-IHCE.14
+(2026-10-14), el epic-agent pasó 222 de sus 510 minutos en `sleep 90; echo tick` y
+`until grep -q DONE …; do sleep 20; done` esperando a sus writers, y el coordinador se puso un
+reloj con `sleep 3060` por una regla de "corte a los 55 minutos" que no está en el framework ni la
+dio nadie. Cada uno de esos turnos relee el contexto entero del agente (200K–600K tokens) y, como
+la caché de prompts dura 5 minutos, el 97 % de los turnos tras una pausa larga fueron cache miss
+(la caché entera reescrita a precio completo). Desde v2.9.0 el Wait Guard (`PreToolUse` sobre
+Bash/PowerShell, opt-in por `hooks.enabled`) deniega un `sleep` de 30 s o más y cualquier
+`sleep` dentro de un bucle. La vía correcta: despachar al worker con una llamada al Agent **en
+primer plano** (vuelve cuando termina) o, en background, esperar su notificación o el `Monitor`.
+Ningún despacho de Specture tiene límite de tiempo; una pausa corta fuera de un bucle y un
+`timeout 590 dotnet test` (un límite sobre trabajo real) siguen permitidos.
+
+## ¿Por qué el implementer ya no corre la suite completa?
+
+Porque la corría en cada paso: 38 veces en un epic de Psikora (66 minutos de una suite de 20–40
+minutos), y cada vuelta volvía con la caché vencida. Desde v2.9.0 `quality.commands` tiene dos
+slots de test: `test` (la suite completa) corre **solo dos veces por spec** — la línea base del
+Step 3.9 y la verificación del Step 7, ambas del epic-agent — y `test_scoped` (solo los tests de
+`{files}` / `{names}`) es lo que corren el writer, el implementer y los post-checks. Si en el
+Step 7 fallan tests viejos de otros epics, el epic-agent despacha al implementer una vez en
+`MODE: REGRESIONES` con esa lista (producción se arregla, el test nunca; un test que una regla del
+spec vuelve falso va a `FAILURES:` y al loop de supersesiones como siempre), vuelve a correr el
+gate y una `RE-REVIEW` acotada, y repite el Step 7. Es agnóstico: el proyecto declara cómo acotar
+(`pytest -q {files}`, `npx vitest run {files}`, un `--filter` por `{names}` en .NET — ejemplos en
+`docs/quality-catalog.md`). Con `test_scoped` en `sin definir` el agente corre lo más acotado que
+ofrezca su runner sobre esos archivos y lo dice como `SKIPPED`; nunca la suite.
+
+## Corrí `doctor migrate` y nadie me avisó de que `quality.commands` seguía sin definir
+
+Pasó de verdad: la migración `2.8-quality-commands` escribió los slots en `sin definir`, `start`
+solo mostraba el conteo de WARNING y el chat del coordinador resumió el resto. El proyecto corrió
+una tanda entera con `red-check commands`, `LINT_REPORT` y los tests acotados en `SKIPPED`.
+Desde v2.9.0 el hallazgo `quality-commands-undefined` lleva una **ruta**: `check --brief` y el
+final de `migrate --apply` imprimen `config pendiente: quality-commands-undefined →
+/specture:setup (reconfigure) → quality.commands`, `start` lo dice en una línea antes de enrutar
+y `build` lo repite una vez por tanda antes del primer epic. La respuesta es la misma de
+siempre: `/specture:setup` (reconfigure) pregunta los seis comandos, o los completás a mano con
+`docs/quality-catalog.md` como ejemplo.

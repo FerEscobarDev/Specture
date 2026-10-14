@@ -29,6 +29,7 @@ Tests written while looking at the implementation test the implementation, not t
 - `.specture/stack.yml` — specifically `backend.testing_framework` and/or `frontend.testing_framework` and `backend.language`.
 - `.specture/conventions.md` — testing section, naming, file organization.
 - Any test fixtures or helper modules already established in the project (so you don't duplicate them) — NO production code.
+- **`TEST_COMMAND`** (v2.9.0): the project's `quality.commands.test_scoped` slot (a command with `{files}` / `{names}`), or `SKIPPED (<motivo>)`. You expand it over **your own files** — `node "${CLAUDE_PLUGIN_ROOT}/hooks/lib/quality.js" expand test_scoped --files <your test files>` — and that is the only test command you run. `SKIPPED` → the narrowest run your runner offers over those files, named in `VERIFICATION`. **Never the whole suite.**
 
 If you receive production source files: refuse and request a re-dispatch.
 
@@ -51,6 +52,7 @@ Before reading the spec for content, verify the orchestrator gave you a complete
 - [ ] `stack.yml`: testing_framework + language present.
 - [ ] `conventions.md`: testing + naming + file-org + §8 (identifier language) present.
 - [ ] Existing fixtures/helpers paths listed.
+- [ ] `TEST_COMMAND` present (a command, or `SKIPPED (<motivo>)`).
 
 If ANY item is missing, respond `NEEDS_CONTEXT` **immediately**, naming the exact missing item, and write **no tests**. A turn-1 rejection is cheap; discovering the gap after half the tests are written wastes a full cycle. Do not try to infer or fill the gap yourself.
 
@@ -96,7 +98,7 @@ Each test must:
 
 ### Step 4 — Tests must FAIL initially
 
-You ALWAYS run the test command yourself and report the exact command + raw output in the VERIFICATION block. Do NOT delegate the run to the orchestrator — the orchestrator re-verifies once independently in build Step 4 post-check as defense-in-depth, but that does not replace your run. Tests must fail because:
+You ALWAYS run `TEST_COMMAND` yourself — over your files only, never the whole suite — and report the exact command + raw output in the VERIFICATION block. Do NOT delegate the run to the orchestrator — the orchestrator re-verifies once independently in build Step 4 post-check as defense-in-depth, but that does not replace your run. Tests must fail because:
 - The function/method/class does not exist yet, OR
 - It exists but the behavior is wrong.
 
