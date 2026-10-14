@@ -151,7 +151,7 @@ Para más detalles sobre la integración de hooks y TDD Honesty Gate en Antigrav
 ```
 $SPECTURE_ROOT/
 ├── CLAUDE.md                          # Punto de entrada (modo @import manual)
-├── settings.json                      # Registra el TDD Honesty Gate (PreToolUse) — Claude Code
+├── settings.json                      # Registra el TDD Honesty Gate y el Wait Guard (PreToolUse) — Claude Code
 ├── hooks.json                         # Registro de hooks — Copilot CLI / Antigravity CLI
 ├── plugin.json                        # Manifiesto del plugin — Copilot CLI / Antigravity CLI
 ├── .claude-plugin/
@@ -171,6 +171,8 @@ $SPECTURE_ROOT/
 │   ├── pre-tool-use-tdd-gate.js       # Gate PreToolUse (Claude Code): tests sellados · specs sellados · allowed paths
 │   ├── specture-pre-tool-use-tdd-gate.js  # Mismo gate para Copilot / Antigravity (hooks.json)
 │   ├── copilot-pre-tool-use-tdd-gate.js   # Shim de compatibilidad → specture-pre-tool-use-tdd-gate.js
+│   ├── pre-tool-use-wait-gate.js      # Wait Guard (Claude Code, v2.9.0): deniega sleep ≥ 30 s y sleep en bucle en Bash/PowerShell
+│   ├── specture-pre-tool-use-wait-gate.js # Mismo guard para Copilot / Antigravity (hooks.json)
 │   ├── lib/specture-guard.js          # Guard compartido (opt-in por hooks.enabled)
 │   ├── lib/settings.js                # Lector de .specture/settings.yml (fallback a conventions §10, perfiles)
 │   ├── lib/rules.js                   # Parser/lint de .specture/rules.yml (invariantes R-*, una línea por regla) + lectura del §12 legacy
@@ -686,6 +688,20 @@ Specture está en desarrollo activo. Para decisiones arquitectónicas internas, 
 ---
 
 ## Changelog
+
+### v2.9.0 — Nadie duerme, la suite corre dos veces y el doctor te dice qué falta configurar
+
+**Motivación:** con v2.8.0 recién instalada, HC-IHCE.14 de Psikora seguía tardando y gastando de más. La medición sobre los transcripts de Claude Code (HC-IHCE.12–.14, 2026-10-11 → 14, `usage` deduplicado por `message.id`, espera humana descontada por huecos sin agentes) dio 563M tokens de entrada para tres specs — 191M había costado la tanda entera de 2.7.0 — y tres causas que no son complejidad: (1) el epic-agent esperaba a sus workers con `sleep 90; echo tick` y `until grep … sleep` (222 de sus 510 minutos), y el coordinador se ponía un reloj con `sleep 3060` por una regla de "corte a ~55 min" que la sesión principal inventó y que costó 10 despachos para un epic; con la caché de prompts de 5 minutos, el 97 % de los turnos tras una pausa larga fueron cache miss (15M tokens reescritos a precio completo); (2) el implementer corrió la suite completa 38 veces en un epic (66 min de una suite de 20–40 min); (3) `quality.commands` seguía en `sin definir` tras `doctor migrate` y nadie lo supo — `start` solo mostraba el conteo de WARNING —, así que `red-check commands` y `LINT_REPORT` corrieron en `SKIPPED` toda la tanda. Lo que sí es complejidad quedó medido aparte: el spec 01 tenía 107 IDs, 227 supersesiones y 115 archivos.
+
+**Cambios:**
+- **Wait Guard** (`hooks/lib/wait-guard.js`; `pre-tool-use-wait-gate.js` para Claude Code, `specture-pre-tool-use-wait-gate.js` para Copilot/Antigravity; opt-in por `hooks.enabled` como todo hook): deniega en Bash/PowerShell un `sleep` / `Start-Sleep` / `timeout /t` de 30 s o más y **cualquier** `sleep` dentro de un bucle. Permite pausas cortas y los límites sobre trabajo real (`timeout 590 dotnet test`). El motivo nombra la vía: Agent en primer plano, o notificación / `Monitor`; ningún despacho tiene límite de tiempo. EPIC_LOOP, EPIC_COORDINATOR y `build` lo dicen con las mismas palabras.
+- **`test_scoped`, agnóstico.** Sexto slot de `quality.commands`: el comando que corre **solo** los tests de `{files}` (o `{names}`, los nombres base, para runners que filtran por clase como `dotnet test --filter`). `test` (la suite completa) corre **dos veces por spec**: la línea base del Step 3.9 y el Step 7, ambas del epic-agent. El writer, el implementer, el ux-implementer y los post-checks reciben `TEST_COMMAND` ya expandido y nunca corren la suite; con el slot en `sin definir` corren lo más acotado que ofrezca su runner y lo reportan como `SKIPPED`. Las regresiones de otros epics aparecen en el Step 7 → implementer en `MODE: REGRESIONES` (producción se arregla, el test nunca; con regla del spec, `FAILURES:` y el loop de supersesiones de siempre) → gate → `RE-REVIEW` acotada → Step 7 otra vez. CLI `node hooks/lib/quality.js show | expand <slot> --files a,b`; migración mecánica `2.9-test-scoped-command`; ejemplos por pila en `docs/quality-catalog.md`.
+- **El doctor enruta lo que falta configurar.** `quality-commands-undefined` lleva una ruta; `check --brief` y el final de `migrate --apply` imprimen `config pendiente: quality-commands-undefined → /specture:setup (reconfigure) → quality.commands`; `start` lo anuncia en una línea antes de enrutar y `build` lo dice una vez por tanda antes del primer epic.
+- Tests: 365 → 374. Análisis completo, con la tabla por rol y epic: `docs/framework-roadmap.md` Milestone 11.
+
+**Migración para proyectos existentes:** `/specture:doctor migrate` añade `test_scoped: "sin definir"` debajo de `test:`; al terminar imprime la línea `config pendiente` si quedan slots sin definir. Completá `test` y `test_scoped` (o `none`) — sin ellos el build sigue funcionando, pero cada agente corre lo que su runner le permita acotar y lo reporta. Con `hooks.enabled: true` el Wait Guard queda activo de inmediato; si un script legítimo tuyo necesita un `sleep` largo, corrélo fuera de la sesión del agente o apagá los hooks por decisión de proyecto.
+
+**Backward-compat:** sin `test_scoped` todo corre como en v2.8.0 salvo que el implementer ya no corre la suite completa por su cuenta (el Step 7 la corre una vez). Sin hooks, el Wait Guard no existe y queda la regla escrita. El orden de los pasos no cambia; solo cambia cuándo corre la suite y qué hace un agente mientras espera.
 
 ### v2.8.0 — Verificación mecanizada: el RED se comprueba antes del sello, las herramientas corren antes del reviewer y cada rol declara su esfuerzo
 
