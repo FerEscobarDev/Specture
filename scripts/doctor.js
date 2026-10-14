@@ -122,7 +122,11 @@ if (args.mode === "migrate" && args.decline) {
 
 if (args.mode === "migrate") {
   const result = runMigrate(root, { pluginVersion, catalog, apply: args.apply, by: args.by || "doctor" });
-  emit(result, printMigrate(result, args.apply));
+  // v2.9.0: after writing, one line with what the project still has to decide (e.g. the quality
+  // commands a migration left `sin definir`) — a migration applied in silence was how a real
+  // project ran a whole batch with every mechanical check SKIPPED.
+  const after = args.apply ? "\n\n" + formatBrief(runCheck(root, { pluginVersion, catalog })) : "";
+  emit(result, printMigrate(result, args.apply) + after);
   process.exit(result.failed.length > 0 ? 1 : 0);
 }
 

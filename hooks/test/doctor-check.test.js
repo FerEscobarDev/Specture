@@ -692,11 +692,12 @@ test("doctor check: quality-commands-undefined and mutation-enabled-no-command",
   const q = json.findings.filter((f) => f.group === "quality");
   assert.equal(q.length, 1, JSON.stringify(json.findings));
   assert.equal(q[0].check, "quality-commands-undefined");
-  assert.match(q[0].detail, /lint, format_check, mutation still/);
+  assert.match(q[0].detail, /test_scoped, lint, format_check, mutation still/);
+  assert.equal(q[0].route, "/specture:setup (reconfigure) → quality.commands");
   assert.equal(q[0].severity, "WARNING");
   assert.notEqual(status, 1);
 
-  const defined = stack('    test: "npm test"\n    type_check: none\n    lint: "npx eslint {files}"\n    format_check: none\n    mutation: none\n');
+  const defined = stack('    test: "npm test"\n    test_scoped: "npx vitest run {files}"\n    type_check: none\n    lint: "npx eslint {files}"\n    format_check: none\n    mutation: none\n');
   assert.deepEqual(runDoctor(createProject({ ...CLEAN, ".specture/stack.yml": defined })).json.findings.filter((f) => f.group === "quality"), [], "none is a decision");
 
   const toggleOn = createProject({ ...CLEAN, ".specture/stack.yml": defined, ".specture/settings.yml": `${CLEAN[".specture/settings.yml"]}mutation.enabled: true\n` });

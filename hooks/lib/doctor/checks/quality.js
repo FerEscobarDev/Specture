@@ -18,8 +18,13 @@ const { readQualityCommands, COMMAND_KEYS } = require("../../quality");
 const STACK = ".specture/stack.yml";
 const SETTINGS = ".specture/settings.yml";
 
-function finding(severity, check, file, detail, action) {
-  return { severity, group: "quality", check, file, detail, action };
+// `route` (v2.9.0): the command that closes the finding — `check --brief`, `migrate --apply` and
+// `start` name it, so a project never runs a batch without knowing its quality commands are
+// still undefined (a real project did exactly that: migrated in silence, every check SKIPPED).
+function finding(severity, check, file, detail, action, route) {
+  const out = { severity, group: "quality", check, file, detail, action };
+  if (route) out.route = route;
+  return out;
 }
 
 function run(project) {
@@ -32,8 +37,9 @@ function run(project) {
       "WARNING",
       "quality-commands-undefined",
       STACK,
-      `quality.commands: ${undefinedKeys.join(", ")} still \`sin definir\` — red-check, build Step 6 and the compliance review SKIP those checks and the agents inspect by eye what a tool would report in seconds`,
-      "declare the command your project runs for each slot (`{files}` = the files under check) or write `none` when it does not apply; examples per stack in docs/quality-catalog.md; `/specture:setup` (reconfigure) asks for them"
+      `quality.commands: ${undefinedKeys.join(", ")} still \`sin definir\` — red-check, build Step 6, the compliance review and the scoped test runs (\`test_scoped\`, v2.9.0) SKIP those checks and the agents inspect by eye what a tool would report in seconds`,
+      "declare the command your project runs for each slot (`{files}` = the files under check, `{names}` = their base names) or write `none` when it does not apply; examples per stack in docs/quality-catalog.md; `/specture:setup` (reconfigure) asks for them",
+      "/specture:setup (reconfigure) → quality.commands"
     ));
   }
   if (project.settings.values["mutation.enabled"] === true && quality.states.mutation !== "defined") {

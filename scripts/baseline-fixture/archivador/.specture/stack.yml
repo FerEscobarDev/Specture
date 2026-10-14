@@ -56,6 +56,7 @@ quality:
   type_checker: "none"
   commands:
     test: "npm test"
+    test_scoped: "node --test {files}"
     type_check: "none"
     lint: "npx eslint {files}"
     format_check: "npx prettier --check {files}"

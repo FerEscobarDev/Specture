@@ -11,14 +11,17 @@
 
 | Slot | Quién lo corre | Sobre qué | Qué pasa con la salida |
 |---|---|---|---|
-| `test` | build Step 3 (baseline) e implementer | la suite completa | verde/rojo; `BASELINE_FALLOS` |
+| `test` | **solo** el epic-agent: Step 3.9 (línea base) y Step 7 (v2.9.0) | la suite completa | verde/rojo; `BASELINE_FALLOS`; regresiones de otros epics → implementer `MODE: REGRESIONES` |
+| `test_scoped` (v2.9.0) | tdd-test-writer · implementer / ux-implementer · post-checks del epic-agent | `{files}` = los tests en obra (`{names}` = sus nombres base, para runners que filtran por clase) | verde/rojo; `sin definir` → `SKIPPED`: el agente corre lo más acotado que ofrezca su runner sobre esos archivos y lo dice; nunca la suite |
 | `type_check` | `red-check.js` (Step 4, antes del sello) · Step 6 | `{files}` = tests del RED · archivos del spec | FAIL re-despacha al test-writer · `LINT_REPORT` al reviewer |
 | `lint` | `red-check.js` · Step 6 · revisión de cumplimiento | ídem · archivos del chunk | ídem · el reviewer cita, no re-inspecciona |
 | `format_check` | `red-check.js` · revisión de cumplimiento | ídem | ídem; **modo verificación**, nunca reescribe |
 | `mutation` | Step 6, solo con `settings.yml` → `mutation.enabled: true` | `{files}` = `Crea:`/`Modifica:` del spec (producción) | `MUTATION_REPORT` al reviewer: cada mutante sobreviviente es un hallazgo de fuerza de tests o se descarta con una línea |
 
-`{files}` se sustituye por las rutas separadas por espacio (con comillas si hace falta). Un comando
-sin `{files}` corre tal cual. Un slot `sin definir` deja el check en `SKIPPED` y el doctor avisa
+`{files}` se sustituye por las rutas separadas por espacio (con comillas si hace falta); `{names}` por
+sus nombres base sin extensión ni sufijo `.test` / `.spec` (`FooTests`, `bar`). Un comando sin
+placeholders corre tal cual. `node hooks/lib/quality.js show` lista los slots y `expand <slot> --files a,b`
+imprime el comando expandido (o `SKIPPED`, exit 3): ningún agente adivina el runner. Un slot `sin definir` deja el check en `SKIPPED` y el doctor avisa
 (`quality-commands-undefined`); `none` es una decisión y no avisa.
 
 ## 2. Ejemplos de `quality.commands` por pila
@@ -31,6 +34,7 @@ ejecutar tal cual.
 ```yaml
 commands:
   test: "dotnet test"
+  test_scoped: "dotnet test --no-restore --filter \"$(printf 'FullyQualifiedName~%s|' {names} | sed 's/|$//')\""   # filtra por clase: dotnet no acepta rutas de test
   type_check: "dotnet build --no-restore -warnaserror"          # compila tests y producción
   lint: "dotnet format analyzers --verify-no-changes --include {files}"
   format_check: "dotnet format whitespace --verify-no-changes --include {files}"
@@ -42,6 +46,7 @@ commands:
 ```yaml
 commands:
   test: "php artisan test"
+  test_scoped: "php artisan test {files}"
   type_check: "vendor/bin/phpstan analyse --no-progress {files}"   # Larastan / PHPStan
   lint: "vendor/bin/phpstan analyse --no-progress {files}"
   format_check: "vendor/bin/pint --test {files}"
@@ -53,6 +58,7 @@ commands:
 ```yaml
 commands:
   test: "npm test"
+  test_scoped: "npx vitest run {files}"                          # jest: npx jest {files}
   type_check: "npx tsc --noEmit -p tsconfig.json"                # tsc no filtra por archivo
   lint: "npx eslint {files}"
   format_check: "npx prettier --check {files}"
@@ -64,6 +70,7 @@ commands:
 ```yaml
 commands:
   test: "pytest -q"
+  test_scoped: "pytest -q {files}"
   type_check: "mypy {files}"
   lint: "ruff check {files}"
   format_check: "ruff format --check {files}"
@@ -75,6 +82,7 @@ commands:
 ```yaml
 commands:
   test: "go test ./..."
+  test_scoped: "go test $(dirname {files} | sort -u)"            # los paquetes de esos archivos
   type_check: "go vet ./..."
   lint: "golangci-lint run"
   format_check: "test -z \"$(gofmt -l {files})\""
@@ -86,6 +94,7 @@ commands:
 ```yaml
 commands:
   test: "./gradlew test"
+  test_scoped: "./gradlew test $(printf -- '--tests *%s* ' {names})"
   type_check: "./gradlew compileTestJava"
   lint: "./gradlew checkstyleMain checkstyleTest"
   format_check: "./gradlew spotlessCheck"

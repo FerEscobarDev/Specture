@@ -5,14 +5,16 @@
 //
 //   quality:
 //     commands:
-//       test: "..."           # the whole suite
+//       test: "..."           # the whole suite — Step 3.9 (baseline) and Step 7 only (v2.9.0)
+//       test_scoped: "..."    # only the tests in {files} / {names} — every other run (v2.9.0)
 //       type_check: "..."     # compiler / type checker; may take {files}
 //       lint: "..."           # linter; may take {files}
 //       format_check: "..."   # formatter in check mode (never writes); may take {files}
 //       mutation: "..."       # mutation tool; may take {files}; only with settings `mutation.enabled`
 //
-// `{files}` is replaced by the files under check (space-separated, shell-quoted). A command
-// without it runs as-is. `none` = does not apply; `sin definir` / empty / absent = not decided
+// `{files}` is replaced by the files under check (space-separated, shell-quoted); `{names}` by
+// their base names without extension (for runners that filter by class or test name, e.g.
+// `dotnet test --filter`). A command without placeholders runs as-is. `none` = does not apply; `sin definir` / empty / absent = not decided
 // (readers get `null` and report SKIPPED — never a guess). No YAML dependency: the file is read
 // with the same indentation-based subset the doctor uses for `stack.yml`.
 
@@ -21,7 +23,7 @@ const path = require("path");
 const { spawnSync } = require("child_process");
 
 const STACK_FILE = path.join(".specture", "stack.yml");
-const COMMAND_KEYS = ["test", "type_check", "lint", "format_check", "mutation"];
+const COMMAND_KEYS = ["test", "test_scoped", "type_check", "lint", "format_check", "mutation"];
 const UNDEFINED_VALUES = ["", "sin definir", "undefined", "tbd", "todo"];
 const NONE_VALUES = ["none", "n/a", "no aplica"];
 
@@ -121,9 +123,24 @@ function shellQuote(file) {
   return /^[A-Za-z0-9_./\\:-]+$/.test(file) ? file : `"${String(file).replace(/"/g, '\\"')}"`;
 }
 
+function baseName(file) {
+  return String(file).replace(/\\/g, "/").split("/").pop().replace(/\.[^.]+$/, "").replace(/\.(test|spec|tests)$/i, "");
+}
+
 function expandCommand(command, files) {
-  if (!/\{files\}/.test(command)) return command;
-  return command.replace(/\{files\}/g, (files || []).map(shellQuote).join(" "));
+  const list = files || [];
+  return String(command)
+    .replace(/\{files\}/g, list.map(shellQuote).join(" "))
+    .replace(/\{names\}/g, [...new Set(list.map(baseName))].join(" "));
+}
+
+// The command an agent should run for a slot, expanded — `null` when the slot is `none` or
+// undefined. `test_scoped` falls back to nothing on purpose: a scoped run that silently became
+// the whole suite is exactly the cost this slot exists to avoid; the caller reports SKIPPED.
+function commandFor(projectRoot, key, files) {
+  const quality = readQualityCommands(projectRoot);
+  const command = quality.commands[key];
+  return command ? expandCommand(command, files) : null;
 }
 
 // Runs a declared command in the project (shell), returning { command, status, stdout, stderr }.
@@ -153,4 +170,44 @@ function tailOf(result, maxLines = 40) {
   return lines.length > maxLines ? ["…", ...lines.slice(-maxLines)] : lines;
 }
 
-module.exports = { STACK_FILE, COMMAND_KEYS, parseQualityCommands, classify, readQualityCommands, expandCommand, runCommand, tailOf };
+module.exports = { STACK_FILE, COMMAND_KEYS, parseQualityCommands, classify, readQualityCommands, expandCommand, commandFor, runCommand, tailOf };
+
+// CLI (v2.9.0) — what the build agents call instead of guessing a runner:
+//   node hooks/lib/quality.js show   [--project <root>]            one line per slot: the command | none | sin definir
+//   node hooks/lib/quality.js expand <slot> --files a,b [--project <root>]
+//     prints the expanded command (exit 0), or `SKIPPED <slot>: none | sin definir …` (exit 3)
+if (require.main === module) {
+  const argv = process.argv.slice(2);
+  const opt = (name) => {
+    const i = argv.indexOf(name);
+    return i >= 0 ? argv[i + 1] : null;
+  };
+  const projectRoot = path.resolve(opt("--project") || process.cwd());
+  const mode = argv[0];
+  if (mode === "show") {
+    const quality = readQualityCommands(projectRoot);
+    for (const key of COMMAND_KEYS) {
+      const state = quality.states[key];
+      process.stdout.write(`${key}: ${state === "defined" ? quality.commands[key] : state === "none" ? "none" : "sin definir"}\n`);
+    }
+    process.exit(quality.exists ? 0 : 2);
+  }
+  if (mode === "expand" && argv[1]) {
+    const key = argv[1];
+    if (!COMMAND_KEYS.includes(key)) {
+      process.stderr.write(`unknown slot "${key}" (${COMMAND_KEYS.join(", ")})\n`);
+      process.exit(2);
+    }
+    const files = (opt("--files") || "").split(",").map((f) => f.trim()).filter(Boolean);
+    const quality = readQualityCommands(projectRoot);
+    const command = quality.commands[key];
+    if (!command) {
+      process.stdout.write(`SKIPPED ${key}: ${quality.states[key] === "none" ? "none" : "sin definir en stack.yml quality.commands"}\n`);
+      process.exit(3);
+    }
+    process.stdout.write(expandCommand(command, files) + "\n");
+    process.exit(0);
+  }
+  process.stderr.write("usage: node hooks/lib/quality.js show [--project <root>] | expand <slot> --files a,b [--project <root>]\n");
+  process.exit(2);
+}

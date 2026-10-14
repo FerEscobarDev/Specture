@@ -15,7 +15,9 @@ function formatBrief(result) {
   const drift = result.drift;
   const pending = drift.migrations.filter((m) => m.status === "pending");
   const kinds = ["mechanical", "assisted", "content"].map((k) => `${pending.filter((m) => m.kind === k).length} ${k}`).join(", ");
-  return `doctor: ${result.counts.ERROR} ERROR, ${result.counts.WARNING} WARNING · schema ${drift.schemaVersion || "(none)"} → plugin ${drift.pluginVersion} · pending migrations: ${pending.length} (${kinds})`;
+  const routed = result.findings.filter((f) => f.route);
+  const config = routed.length > 0 ? ` · config pendiente: ${[...new Set(routed.map((f) => `${f.check} → ${f.route}`))].join("; ")}` : "";
+  return `doctor: ${result.counts.ERROR} ERROR, ${result.counts.WARNING} WARNING · schema ${drift.schemaVersion || "(none)"} → plugin ${drift.pluginVersion} · pending migrations: ${pending.length} (${kinds})${config}`;
 }
 
 function formatTable(result) {

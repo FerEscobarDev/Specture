@@ -29,7 +29,7 @@ test("2.8-quality-commands adds the block under quality: with every slot sin def
   const result = migration.apply(contextFor(root));
   const text = readStack(root);
   const parsed = parseQualityCommands(text);
-  assert.deepEqual(parsed.values, { test: "sin definir", type_check: "sin definir", lint: "sin definir", format_check: "sin definir", mutation: "sin definir" });
+  assert.deepEqual(parsed.values, { test: "sin definir", test_scoped: "sin definir", type_check: "sin definir", lint: "sin definir", format_check: "sin definir", mutation: "sin definir" });
   assert.ok(text.startsWith(WITH_QUALITY.slice(0, WITH_QUALITY.indexOf("\nconventions_file"))), "everything before the block is intact");
   assert.ok(text.endsWith('\nconventions_file: ".specture/conventions.md"\n'), "everything after the section is intact");
   assert.match(text, /type_checker: "none"\n  # What the framework EXECUTES/, "the block lands right after the last quality entry");
@@ -41,7 +41,7 @@ test("2.8-quality-commands adds the block under quality: with every slot sin def
   assert.deepEqual(snapshot(root), before, "idempotent");
 
   const q = readQualityCommands(root);
-  assert.deepEqual(q.commands, { test: null, type_check: null, lint: null, format_check: null, mutation: null });
+  assert.deepEqual(q.commands, { test: null, test_scoped: null, type_check: null, lint: null, format_check: null, mutation: null });
   assert.equal(q.states.lint, "undefined");
 });
 
@@ -61,7 +61,7 @@ test("quality.js: readQualityCommands classifies defined / none / undefined and 
     [STACK]: 'quality:\n  linter: "x"\n  commands:\n    test: "npm test"   # suite\n    type_check: none\n    lint: "npx eslint {files}"\n    format_check: ""\n    mutation: "node -e \\"console.log(\'#\')\\" {files}"  # escaped quotes, a # inside\n    extra: "ignored"\n'
   });
   const q = readQualityCommands(root);
-  assert.deepEqual(q.states, { test: "defined", type_check: "none", lint: "defined", format_check: "undefined", mutation: "defined" });
+  assert.deepEqual(q.states, { test: "defined", test_scoped: "undefined", type_check: "none", lint: "defined", format_check: "undefined", mutation: "defined" });
   assert.equal(q.commands.test, "npm test");
   assert.equal(q.commands.mutation, "node -e \"console.log('#')\" {files}", "YAML escapes are undone and the # inside quotes is not a comment");
   assert.equal(q.commands.type_check, null);
