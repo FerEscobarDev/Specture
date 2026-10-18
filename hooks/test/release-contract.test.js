@@ -43,11 +43,38 @@ test("README changelog has an entry for the current version", () => {
   assert.match(readText("README.md"), heading, `README.md must contain "### v${version} — <title>"`);
 });
 
+// Claude Code loads a plugin's hooks from `hooks/hooks.json` (top-level `"hooks"` wrapper, same
+// shape as `hooks` in settings.json, `${CLAUDE_PLUGIN_ROOT}` quoted). A plugin's own
+// `settings.json` only contributes `agent` / `subagentStatusLine` — hooks declared there never
+// run, which is how v1.2.0 → v2.9.0 shipped every gate inert (found in Psikora, 2026-10-18).
+test("hooks/hooks.json registers the Claude Code gates in the shape Claude Code loads", () => {
+  const registry = readJson("hooks/hooks.json");
+  assert.ok(registry.hooks && !Array.isArray(registry.hooks), "top-level \"hooks\" wrapper is required");
+  const groups = registry.hooks.PreToolUse;
+  assert.ok(Array.isArray(groups) && groups.length >= 2, "PreToolUse must register the seal gate and the wait guard");
+
+  const byScript = (name) => groups.find((g) => (g.hooks || []).some((h) => h.command.includes(name)));
+  const seal = byScript("pre-tool-use-tdd-gate.js");
+  const wait = byScript("pre-tool-use-wait-gate.js");
+  assert.ok(seal, "seal gate not registered");
+  assert.ok(wait, "wait guard not registered");
+  for (const tool of ["Edit", "Write", "NotebookEdit"]) assert.ok(seal.matcher.split("|").includes(tool), `seal matcher must cover ${tool}`);
+  for (const tool of ["Bash", "PowerShell"]) assert.ok(wait.matcher.split("|").includes(tool), `wait matcher must cover ${tool}`);
+
+  for (const group of groups) {
+    for (const hook of group.hooks) {
+      assert.equal(hook.type, "command");
+      assert.match(hook.command, /^node "\$\{CLAUDE_PLUGIN_ROOT\}\/hooks\/[^"]+"$/, `command runs through a shell: quote the plugin path (${hook.command})`);
+    }
+  }
+  assert.ok(!fs.existsSync(path.join(root, "settings.json")), "a plugin settings.json does not register hooks — do not bring it back");
+});
+
 test("every registered hook command points to an existing script", () => {
   const commands = [];
 
-  const settings = readJson("settings.json");
-  for (const entries of Object.values(settings.hooks || {})) {
+  const claudeHooks = readJson("hooks/hooks.json");
+  for (const entries of Object.values(claudeHooks.hooks || {})) {
     for (const entry of entries) {
       for (const hook of entry.hooks || []) commands.push(hook.command);
     }
@@ -61,7 +88,7 @@ test("every registered hook command points to an existing script", () => {
     }
   }
 
-  assert.ok(commands.length >= 2, "expected hook commands in settings.json and hooks.json");
+  assert.ok(commands.length >= 4, "expected hook commands in hooks/hooks.json and hooks.json");
   for (const command of commands) {
     const match = command.match(/\$\{[A-Z_]+\}\/([^"']+)/);
     assert.ok(match, `cannot parse a plugin-relative script path from: ${command}`);

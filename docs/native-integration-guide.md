@@ -45,10 +45,11 @@ Las **invariantes del proyecto** (`R-*`) viven desde v1.19.0 en `.specture/rules
 
 ### 2.2 Cómo verificar que un hook está activo
 
-1. Confirmá que el plugin está instalado: `/plugin list` debe mostrar `specture` activo.
-2. Confirmá que `.specture/stack.yml` existe en la raíz del proyecto.
-3. Confirmá que `.specture/settings.yml` tiene `hooks.enabled: true` (o `profile: lean | full`); en un proyecto anterior a v1.15.0 sin migrar, el toggle vive en `.specture/conventions.md` §10.
-4. Probá el TDD Honesty Gate: durante un epic activo del build loop, intentá editar un archivo de test sellado — la edición debe rechazarse. (En v1.5.0 ya no hay `additionalContext` de routing al abrir la sesión: el routing se invoca con `/specture:start`.)
+1. Confirmá que el plugin está instalado y es **≥ 2.9.1**: `/plugin list` debe mostrar `specture` activo. Hasta v2.9.0 los hooks estaban registrados en un `settings.json` del plugin que Claude Code no lee para hooks: nunca se cargaron (hallazgo de Psikora, 2026-10-18). Desde v2.9.1 viven en `hooks/hooks.json`.
+2. Confirmá que Claude Code los cargó: `/hooks` debe listar dos `PreToolUse` (`Edit|Write|NotebookEdit` y `Bash|PowerShell`) con `specture` como origen. Si no aparecen, `/reload-plugins` o abrí una sesión nueva.
+3. Confirmá que `.specture/stack.yml` existe en la raíz del proyecto.
+4. Confirmá que `.specture/settings.yml` tiene `hooks.enabled: true` (o `profile: lean | full`); en un proyecto anterior a v1.15.0 sin migrar, el toggle vive en `.specture/conventions.md` §10. `/specture:doctor check` lo cruza con el plugin instalado (`hooks-registry-missing`, `hooks-self-test-failed`).
+5. Probá el Wait Guard, que no necesita sello: pedí por la tool Bash `for i in 1; do sleep 1; done` — debe denegarse con el motivo del guard. El TDD Honesty Gate se prueba durante un epic activo intentando editar un test sellado. (En v1.5.0 ya no hay `additionalContext` de routing al abrir la sesión: el routing se invoca con `/specture:start`.)
 
 Si no se dispara, ver `hooks/README.md` sección Troubleshooting.
 
@@ -83,9 +84,10 @@ El hook no ve el historial, así que lo que entra **después** del RED lo verifi
 
 Ver `hooks/README.md` — tabla de síntomas y causas. Los más comunes:
 
-1. Plugin no instalado (`/plugin list`).
-2. `hooks.enabled` no está en `true` literal en `.specture/settings.yml` (ni en `conventions.md` §10 para proyectos sin migrar).
-3. `.specture/stack.yml` no existe en cwd (o existe solo en un subdirectorio).
+1. Plugin anterior a 2.9.1 (sus hooks nunca se cargaron) o sesión abierta antes de actualizarlo (`/reload-plugins`); `/hooks` no lista los `PreToolUse` de `specture`.
+2. Plugin no instalado (`/plugin list`).
+3. `hooks.enabled` no está en `true` literal en `.specture/settings.yml` (ni en `conventions.md` §10 para proyectos sin migrar).
+4. `.specture/stack.yml` no existe en cwd (o existe solo en un subdirectorio).
 
 ---
 

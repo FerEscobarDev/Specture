@@ -837,3 +837,42 @@ test("flags off-template spec sections with a suggested destination; template se
   assert.ok(sections.some((f) => f.detail.includes("bitácora") && f.action.includes("Supersede:") && f.action.includes("Supersesiones de tests sellados")));
   assert.ok(!sections.some((f) => f.detail.includes("omitir si no aplica")), "the template's own supersession section is canonical");
 });
+
+// v2.9.1 — the hooks check: a project that promises gates (`hooks.enabled: true`) must have a
+// plugin that registers them where Claude Code loads them (`hooks/hooks.json`).
+test("hooks-registry-missing: an ERROR when the installed plugin registers no hooks/hooks.json, silent with hooks off", () => {
+  const { runCheck } = require("../lib/doctor");
+  const brokenPlugin = createProject({ "hooks/pre-tool-use-wait-gate.js": "process.exit(0);\n" });
+
+  const promised = runCheck(createProject(CLEAN), { pluginVersion, pluginRoot: brokenPlugin }).findings.filter((f) => f.group === "hooks");
+  assert.equal(promised.length, 1, JSON.stringify(promised));
+  assert.equal(promised[0].check, "hooks-registry-missing");
+  assert.equal(promised[0].severity, "ERROR");
+  assert.match(promised[0].detail, /no hooks\/hooks\.json/);
+  assert.match(promised[0].action, /\/hooks/);
+
+  write(brokenPlugin, "hooks/hooks.json", JSON.stringify({ PreToolUse: [] }));
+  const noWrapper = runCheck(createProject(CLEAN), { pluginVersion, pluginRoot: brokenPlugin }).findings.find((f) => f.group === "hooks");
+  assert.match(noWrapper.detail, /"hooks" wrapper/);
+
+  const off = createProject({ ...CLEAN, ".specture/settings.yml": `schema_version: ${pluginVersion}\nprofile: custom\nhooks.enabled: false\n` });
+  assert.deepEqual(runCheck(off, { pluginVersion, pluginRoot: brokenPlugin }).findings.filter((f) => f.group === "hooks"), []);
+});
+
+test("hooks-self-test-failed: a sound registry whose Wait Guard does not deny a polling loop from the project is a WARNING; the real plugin passes", () => {
+  const { runCheck } = require("../lib/doctor");
+  const registry = fs.readFileSync(path.join(root, "hooks", "hooks.json"), "utf8");
+  const mutePlugin = createProject({
+    "hooks/hooks.json": registry,
+    "hooks/pre-tool-use-tdd-gate.js": "process.exit(0);\n",
+    "hooks/pre-tool-use-wait-gate.js": "process.exit(0);\n"
+  });
+  const mute = runCheck(createProject(CLEAN), { pluginVersion, pluginRoot: mutePlugin }).findings.filter((f) => f.group === "hooks");
+  assert.equal(mute.length, 1, JSON.stringify(mute));
+  assert.equal(mute[0].check, "hooks-self-test-failed");
+  assert.equal(mute[0].severity, "WARNING");
+
+  // The CLI defaults to the plugin it ships in: the clean-project test above already proves the
+  // real registry and the real Wait Guard deny from a project with hooks on.
+  assert.deepEqual(runDoctor(createProject(CLEAN)).json.findings.filter((f) => f.group === "hooks"), []);
+});

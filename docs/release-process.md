@@ -59,7 +59,9 @@
   publica) y crea/actualiza el Release con `gh`, con `--latest=true` solo para el tag de
   versión más alta y `--latest=false` para los demás.
 - **`hooks/test/release-contract.test.js`** (corre en ambos): manifiestos iguales, entrada
-  de changelog presente, cada comando de hook en `settings.json`/`hooks.json` apunta a un
+  de changelog presente, `hooks/hooks.json` con el envoltorio `"hooks"` y los dos gates de
+  Claude Code (y sin un `settings.json` en la raíz del plugin, que Claude Code no lee para
+  hooks — v2.9.1), cada comando de hook en `hooks/hooks.json`/`hooks.json` apunta a un
   script existente, `--check` en 0, y `release.yml` pasa `--latest` explícito al crear y al
   editar.
 - **`migrations/test/*.test.js`**: catálogo (pending → apply → done, idempotente), invariante

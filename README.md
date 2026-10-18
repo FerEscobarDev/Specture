@@ -151,7 +151,7 @@ Para más detalles sobre la integración de hooks y TDD Honesty Gate en Antigrav
 ```
 $SPECTURE_ROOT/
 ├── CLAUDE.md                          # Punto de entrada (modo @import manual)
-├── settings.json                      # Registra el TDD Honesty Gate y el Wait Guard (PreToolUse) — Claude Code
+├── hooks/hooks.json                   # Registra el TDD Honesty Gate y el Wait Guard (PreToolUse) — Claude Code (v2.9.1)
 ├── hooks.json                         # Registro de hooks — Copilot CLI / Antigravity CLI
 ├── plugin.json                        # Manifiesto del plugin — Copilot CLI / Antigravity CLI
 ├── .claude-plugin/
@@ -633,6 +633,8 @@ context7.enabled: true       # activa Context7 en code-reviewer y modernize
 
 Sin esos toggles, los hooks shippean pero no actúan, y Context7 nunca se consulta. Proyectos anteriores a v1.15.0 los tienen en `conventions.md` §10 (`- **hooks.enabled**: true`); el framework los sigue leyendo ahí hasta que `/specture:doctor migrate` los mueva a `settings.yml`.
 
+> **Requiere plugin ≥ 2.9.1.** Hasta v2.9.0 el plugin registraba los hooks en su `settings.json`, un archivo del que Claude Code solo lee `agent`: los gates nunca se cargaron y ninguna edición fue denegada (lo descubrió Psikora el 2026-10-18 al ver pasar un `sleep` en bucle). Desde v2.9.1 viven en `hooks/hooks.json`, el registro que Claude Code carga de un plugin. Después de actualizar, corré `/reload-plugins` (o abrí una sesión nueva) y verificá con `/hooks` que los dos `PreToolUse` nombran a `specture` como origen; `/specture:doctor check` falla con `hooks-registry-missing` si el plugin instalado no trae el registro.
+
 > **Cambio en v1.5.0 — routing opt-in.** El antiguo hook `SessionStart` (auto-routing al abrir Claude Code) fue **deregistrado**. Ahora se entra a Specture **solo** invocando `/specture:start` (o pidiendo iniciar/continuar). `hooks.enabled` ya únicamente controla el TDD Honesty Gate.
 
 ### Lo que vas a ver distinto
@@ -688,6 +690,17 @@ Specture está en desarrollo activo. Para decisiones arquitectónicas internas, 
 ---
 
 ## Changelog
+
+### v2.9.1 — Los hooks se registran donde Claude Code los carga
+
+**Motivación:** Psikora (2026-10-18), con `hooks.enabled: true` y el plugin 2.9.0 recién instalado, ejecutó `for i in 1; do sleep 1; done` por la tool Bash y pasó sin bloqueo; el mismo script, corrido a mano con el payload por stdin, sí denegaba. La lógica estaba bien: Claude Code nunca la invocaba. El registro en formato Claude Code vivía desde v1.2.0 en el `settings.json` del plugin, un archivo del que Claude Code solo lee `agent` y `subagentStatusLine`; `hooks/hooks.json` — el archivo que sí carga — no existía, y el `hooks.json` raíz es el formato de Copilot/Antigravity. Consecuencia: **en Claude Code ningún gate corrió nunca** (TDD Honesty Gate, Spec Seal, Allowed Paths, Wait Guard); las defensas efectivas fueron los `git diff` post-mortem (`honesty-check`, `SPEC_SHA`) y la Dimensión 1 del reviewer. Toda afirmación anterior del tipo "el hook deniega / no deniega" se había verificado por script, no por el hook registrado.
+
+**Cambios:**
+- **`hooks/hooks.json`** registra los dos `PreToolUse` (`Edit|Write|NotebookEdit` → `pre-tool-use-tdd-gate.js`; `Bash|PowerShell` → `pre-tool-use-wait-gate.js`) con el envoltorio `"hooks"`, `${CLAUDE_PLUGIN_ROOT}` entre comillas y `timeout: 10`. El `settings.json` del plugin desaparece. Después de actualizar: `/reload-plugins` (o sesión nueva) y `/hooks` debe listar ambos con `specture` como origen.
+- **El contrato de release lo asegura** (`release-contract.test.js`): el registro existe, tiene el envoltorio, cubre los dos gates, cita cada script entre comillas, y no hay `settings.json` en la raíz del plugin.
+- **El doctor lo verifica en cada proyecto** (`hooks-registry-missing`, ERROR; `hooks-self-test-failed`, WARNING): con `hooks.enabled: true`, el plugin instalado debe traer el registro y el Wait Guard, corrido desde la raíz del proyecto con un bucle de sondeo conocido, debe denegarlo. Lo que el doctor no puede ver — si la sesión abierta cargó el registro — lo responde `/hooks`.
+- Documentación: `hooks/README.md` § Registro, guía nativa §2.2 y §3.3, `docs/release-process.md`.
+- Tests: 374 → 377.
 
 ### v2.9.0 — Nadie duerme, la suite corre dos veces y el doctor te dice qué falta configurar
 

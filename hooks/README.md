@@ -16,6 +16,17 @@ hooks.enabled: true      # o profile: lean | full, que lo encienden
 
 Proyectos creados antes de v1.15.0 pueden tener el toggle en `.specture/conventions.md` §10 (`- **hooks.enabled**: true`); `lib/settings.js` lo lee de ahí como fallback hasta que `/specture:doctor migrate` lo mueva. Sin el toggle (o con `false`), cada hook llama a `lib/specture-guard.js`, recibe `{ active: false }` y sale con exit 0 inmediatamente. El plugin no toca nada.
 
+### Registro (dónde los carga cada plataforma)
+
+| Plataforma | Archivo | Formato |
+|---|---|---|
+| Claude Code | `hooks/hooks.json` (v2.9.1) | `{ "hooks": { "PreToolUse": [ { "matcher", "hooks": [ { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/<script>.js\"", "timeout" } ] } ] } }` — el mismo objeto que `hooks` en un `settings.json` de usuario, con el envoltorio `"hooks"` obligatorio |
+| Copilot CLI / Antigravity CLI | `hooks.json` (raíz, referenciado por `plugin.json` raíz) | `version: 1`, claves `bash` / `powershell`, `${PLUGIN_ROOT}` |
+
+Claude Code carga los hooks de un plugin **solo** desde `hooks/hooks.json` o desde el campo `hooks` de `.claude-plugin/plugin.json`. Del `settings.json` de un plugin lee únicamente `agent` y `subagentStatusLine`: cualquier otra clave se descarta. Entre v1.2.0 y v2.9.0 el registro vivía en ese `settings.json`, así que **ningún gate corrió nunca en Claude Code** — el TDD Honesty Gate, el Spec Seal, Allowed Paths y el Wait Guard quedaron inertes, y las únicas defensas efectivas fueron los `git diff` post-mortem (`honesty-check`, `SPEC_SHA`) y la Dimensión 1 del reviewer. Lo detectó Psikora el 2026-10-18: un `for … do sleep 1; done` pasó con `hooks.enabled: true`, y el mismo script, corrido a mano con el payload por stdin, sí denegaba. Toda afirmación anterior sobre "el hook deniega / no deniega" se había verificado así, por script, nunca por el hook registrado.
+
+Después de actualizar el plugin: `/reload-plugins` (o sesión nueva), y `/hooks` debe listar los dos `PreToolUse` con `specture` como origen. `/specture:doctor check` reporta `hooks-registry-missing` (ERROR) si el plugin instalado no trae el registro y `hooks-self-test-failed` (WARNING) si el Wait Guard, corrido desde el proyecto con un bucle de sondeo conocido, no lo deniega. La prueba de aceptación real es desde una sesión de Claude Code en un proyecto con `hooks.enabled: true`: pedir `for i in 1; do sleep 1; done` por la tool Bash y ver la denegación.
+
 ---
 
 ## Hooks incluidos
@@ -208,7 +219,7 @@ Si querés agregar tu propio hook siguiendo el patrón:
    ```
 3. Leé el payload del hook con `readHookPayload()` y decidí.
 4. Para devolver una decisión, emití el JSON correspondiente por stdout y exit 0.
-5. Registralo en el `settings.json` del plugin bajo el evento que corresponda.
+5. Registralo en `hooks/hooks.json` (Claude Code) bajo el evento que corresponda — nunca en un `settings.json` del plugin, que Claude Code no lee para hooks — y, si aplica a Copilot/Antigravity, en el `hooks.json` raíz.
 
 `lib/specture-guard.js` exporta:
 
@@ -229,7 +240,7 @@ Si querés agregar tu propio hook siguiendo el patrón:
 
 | Síntoma | Causa probable |
 |---------|---------------|
-| El hook nunca se dispara aunque `hooks.enabled: true` | El plugin no está instalado, o `${CLAUDE_PLUGIN_ROOT}` no resuelve. Verificá `claude /plugin list`. |
+| El hook nunca se dispara aunque `hooks.enabled: true` | Plugin anterior a 2.9.1 (registraba los hooks en un `settings.json` que Claude Code ignora: ver "Registro" arriba), plugin no instalado, o sesión abierta antes de actualizar (`/reload-plugins`). Verificá con `/hooks` que los `PreToolUse` nombran a `specture`, y con `/specture:doctor check` (`hooks-registry-missing`). |
 | El TDD Gate no bloquea aunque estoy en build loop | `.specture/state/build-locked.json` no existe o sus `test_paths` no matchean. Inspeccioná el sello con `node "${CLAUDE_PLUGIN_ROOT}/hooks/lib/seal-cli.js" show` (o `cat .specture/state/build-locked.json`). |
 | El TDD Gate bloquea archivos que no son tests | Algún glob en `test_paths` es demasiado amplio. Revisá la línea de testing en `conventions.md` (desde v1.18.0 `merge-spec` guarda la lista de archivos del RED commit, no globs). |
 | El hook deniega un archivo de producción con "Allowed Paths" | El spec no lo declara en `Crea:`/`Modifica:`. No es un falso positivo: el implementer reporta `BLOCKED: spec <ID>` con el archivo y el planner agrega la línea `Modifica:` (loop de corrección). Si es un helper de tests, `test_globs` debe incluir la carpeta raíz de tests (`tests/**`). |

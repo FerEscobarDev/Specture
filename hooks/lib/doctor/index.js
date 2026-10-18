@@ -15,7 +15,10 @@ const gate = require("./checks/gate");
 const review = require("./checks/review");
 const compliance = require("./checks/compliance");
 const quality = require("./checks/quality");
+const hooks = require("./checks/hooks");
 
+// `options.pluginRoot` (v2.9.1): the installed plugin the hooks check inspects; defaults to the
+// plugin this file ships in. Tests point it at a broken copy.
 function runCheck(projectRoot, options = {}) {
   const pluginVersion = options.pluginVersion;
   if (!pluginVersion) throw new Error("runCheck: pluginVersion is required");
@@ -23,7 +26,7 @@ function runCheck(projectRoot, options = {}) {
   const project = loadProject(projectRoot, pluginVersion);
 
   const driftResult = drift.run(project, catalog);
-  const findings = [...corpus.run(project), ...requirements.run(project), ...rules.run(project), ...state.run(project), ...gate.run(project), ...review.run(project), ...compliance.run(project), ...quality.run(project), ...driftResult.findings];
+  const findings = [...corpus.run(project), ...requirements.run(project), ...rules.run(project), ...state.run(project), ...gate.run(project), ...review.run(project), ...compliance.run(project), ...quality.run(project), ...hooks.run(project, { pluginRoot: options.pluginRoot }), ...driftResult.findings];
   const counts = { ERROR: 0, WARNING: 0, INFO: 0 };
   for (const f of findings) counts[f.severity] = (counts[f.severity] || 0) + 1;
 
