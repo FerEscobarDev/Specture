@@ -225,6 +225,8 @@ a otra pasada ni a otra pregunta; 3 rondas sin APPROVED → **una** pregunta cer
 según la clase del BLOCKER vivo. Los FAIL de 4a no cuentan para el tope. La completitud de la
 lista de supersesiones ya no es criterio del gate: la ejecución la descubre (3.5 y 3.6).
 
+> **Nivel de TDD (v3.1.0).** El diagrama es el nivel `strict`. Con `tdd.level: essential` el writer escribe un test por AC y `red-check coverage --level essential` exige solo los AC; con `none` se saltan Step 3.9, 4, 5.2, 5.3 y 5.5, el implementer corre en `MODE: SIN_TESTS` con `RED_SHA = LOCK_SHA`, el reviewer omite la Dimensión 4 y Step 7 corre type_check/lint y la suite existente como regresión. El nivel lo congela el coordinador del epic en `_planning.md` (`TDD_LEVEL`).
+
 ```mermaid
 flowchart TD
     S1["Step 1 · Pick & Lock (coordinador)<br/>epic → [/] · commit"] --> SP

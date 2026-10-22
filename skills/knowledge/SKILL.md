@@ -171,6 +171,7 @@ the Spec Planning Gate was designed to be judged by (`docs/spec-planning-gate-de
    line carries `coordinator_mode` (`subagent` | `inline`; a line without it is unknown, not
    inline — the table's `mode` column, a `gate modo del coordinador:` line with the count per
    mode) and `epic_coordinator_dispatches` (averaged per epic), and `parked` is always written (0|1).
+   **Since v3.1 — the level the epic ran under.** The line carries `tdd_level` (`strict` | `essential` | `none`; absent = unknown, never read as strict) and the table adds the `tdd` column (`str` | `ess` | `non`). The reading is comparative, never a verdict: for each level, set downstream defects (`nctx`, `cap`, `blk`), `spec_def` and reviewer rejections side by side. More defects under `essential` or `none` than under `strict` on comparable epics is the data that says the project lowered the discipline too far; the same figures say it did not. Recommend a level change only with ≥3 epics per level.
 2. **No file yet** → say so and offer the baseline: *"No hay métricas todavía. ¿Reconstruyo
    el baseline de los epics cerrados antes del gate (`--baseline --write`)?"* On yes:
    ```

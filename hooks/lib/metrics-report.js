@@ -43,6 +43,9 @@
 //   value is unknown, never "inline") and `epic_coordinator_dispatches` (numeric, averaged over
 //   the lines that carry it; 0 or absent in inline mode). `parked` keeps its v2.3.0 meaning; from
 //   v2.7.0 on the coordinator always writes it (0|1).
+// Additive field (v3.1.0, per epic): `tdd_level` ("strict" | "essential" | "none"; string,
+//   carried — the project's `tdd.level` frozen when the epic opened; counted by level in
+//   `tdd_levels`; absent or any other value is unknown, never "strict").
 // Compliance records (v2.4.0, `kind: "compliance"` — one per milestone report, appended by
 //   `compliance.js record` after the triage): { kind, milestone, report, status,
 //   findings: {BLOCKER, IMPORTANT, NIT}, tipo: {refactor, comportamiento, test, proceso},
@@ -141,6 +144,16 @@ function coordinatorModeOf(entry) {
   return COORDINATOR_MODES.includes(mode) ? mode : null;
 }
 
+// v3.1.0 — the test discipline the epic ran under: "strict" | "essential" | "none", or null
+// (absent, or a value the reader does not know) — unknown, never read as "strict".
+const TDD_LEVELS = ["strict", "essential", "none"];
+const LEVEL_COLUMN = { strict: "str", essential: "ess", none: "non" };
+
+function tddLevelOf(entry) {
+  const level = typeof entry.tdd_level === "string" ? entry.tdd_level.trim().toLowerCase() : null;
+  return TDD_LEVELS.includes(level) ? level : null;
+}
+
 // batch_id → {field: value} with the first value each BATCH_FIELDS field takes in the batch.
 function batchFigures(entries) {
   const batches = new Map();
@@ -181,6 +194,8 @@ function aggregate(entries) {
   out.zero_question_share = asked.length === 0 ? null : Math.round((asked.filter((q) => q === 0).length / asked.length) * 100) / 100;
   out.modes = { subagent: 0, inline: 0, desconocido: 0 };
   for (const e of entries) out.modes[coordinatorModeOf(e) || "desconocido"]++;
+  out.tdd_levels = { strict: 0, essential: 0, none: 0, desconocido: 0 };
+  for (const e of entries) out.tdd_levels[tddLevelOf(e) || "desconocido"]++;
   out.downstream_defects = mean(entries.map((e) => sumOrNull([e.needs_context_spec, e.iteration_cap_spec, e.blocked_spec])));
   out.tokens = mean(entries.map((e) => (e.tokens && typeof e.tokens === "object" ? (e.tokens.input || 0) + (e.tokens.output || 0) : null)));
   out.outcomes = entries.reduce((acc, e) => ({ ...acc, [e.outcome || "unknown"]: (acc[e.outcome || "unknown"] || 0) + 1 }), {});
@@ -266,11 +281,12 @@ function renderSummary(result) {
   out.push("");
   // `rev` = the line's review_questions (its batch's figure; the aggregate counts it once per batch).
   // `mode` = coordinator_mode: `sub` (epic coordinator in a subagent) | `inl` (inline) | `-` (unknown).
-  out.push("epic | source | specs | Q | rev | mode | R | c7 | mech | val | rnd | nctx | cap | blk | spec_def | rej m/M | sup | sup-loop | outcome");
+  // `tdd` = tdd_level: `str` | `ess` | `non` | `-` (unknown — the epic predates v3.1.0).
+  out.push("epic | source | specs | Q | rev | mode | tdd | R | c7 | mech | val | rnd | nctx | cap | blk | spec_def | rej m/M | sup | sup-loop | outcome");
   for (const e of result.entries) {
     const v = (x) => (x === null || x === undefined ? "-" : x);
     const rr = e.review_rejections || {};
-    out.push(`${e.epic} | ${e.source || "gate"} | ${v(e.specs)} | ${v(e.open_questions)} | ${v(e.review_questions)} | ${v(MODE_COLUMN[coordinatorModeOf(e)])} | ${v(e.resolved_alone)} | ${v(e.c7_rejections)} | ${v(e.mech_check_failures)} | ${v(e.validator_dispatches)} | ${v(e.gate_rounds)} | ${v(e.needs_context_spec)} | ${v(e.iteration_cap_spec)} | ${v(e.blocked_spec)} | ${v(e.reviewer_rejected_major_spec_defect)} | ${v(rr.minor)}/${v(rr.major)} | ${v(e.supersessions)} | ${v(e.supersede_loops)} | ${v(e.outcome)}`);
+    out.push(`${e.epic} | ${e.source || "gate"} | ${v(e.specs)} | ${v(e.open_questions)} | ${v(e.review_questions)} | ${v(MODE_COLUMN[coordinatorModeOf(e)])} | ${v(LEVEL_COLUMN[tddLevelOf(e)])} | ${v(e.resolved_alone)} | ${v(e.c7_rejections)} | ${v(e.mech_check_failures)} | ${v(e.validator_dispatches)} | ${v(e.gate_rounds)} | ${v(e.needs_context_spec)} | ${v(e.iteration_cap_spec)} | ${v(e.blocked_spec)} | ${v(e.reviewer_rejected_major_spec_defect)} | ${v(rr.minor)}/${v(rr.major)} | ${v(e.supersessions)} | ${v(e.supersede_loops)} | ${v(e.outcome)}`);
   }
   out.push("");
   for (const [label, agg] of [["gate", result.gate], ["baseline", result.baseline]]) {
@@ -280,6 +296,9 @@ function renderSummary(result) {
     }
     if (agg.modes.subagent + agg.modes.inline > 0) {
       out.push(`${label} modo del coordinador: subagente ${agg.modes.subagent} · en línea ${agg.modes.inline} · sin dato ${agg.modes.desconocido} · despachos del coordinador del epic/epic ${agg.epic_coordinator_dispatches ?? "-"}`);
+    }
+    if (agg.tdd_levels && agg.tdd_levels.strict + agg.tdd_levels.essential + agg.tdd_levels.none > 0) {
+      out.push(`${label} nivel de TDD: strict ${agg.tdd_levels.strict} · essential ${agg.tdd_levels.essential} · none ${agg.tdd_levels.none} · sin dato ${agg.tdd_levels.desconocido} — compará defectos aguas abajo y rechazos del reviewer por nivel antes de bajar el rigor de un proyecto`);
     }
   }
   if (result.compliance && result.compliance.count > 0) {
@@ -431,6 +450,8 @@ function reconstructEpic(projectRoot, epicSlug, epicState, commits, gitOk, plugi
     // v2.7.0 coordinator fields: the epic ran before the epic coordinator existed.
     coordinator_mode: null,
     epic_coordinator_dispatches: null,
+    // v3.1.0: the level is unknown for an epic that predates it (strict in practice, never assumed).
+    tdd_level: null,
     outcome: epicState === "done" ? "DONE" : epicState === "in-progress" ? "ESCALATED" : "unknown",
     tokens: null
   };

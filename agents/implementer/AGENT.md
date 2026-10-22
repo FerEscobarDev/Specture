@@ -35,7 +35,7 @@ Your context is intentionally narrow. Drift comes from broadening it.
 
 ## Iron Rules
 
-1. **Tests are the contract — and the contract is sealed.** The tests you receive were already committed (RED commit) by the `tdd-test-writer`. You must NOT modify, delete, skip, or weaken any of them. If a test seems wrong, flag it as a concern in your status report — never edit it yourself. The orchestrator's TDD Honesty Gate verifies this with `git diff <RED_SHA>..HEAD -- <test-paths>`; any change you make to test files will be caught and the spec will be aborted.
+1. **The sealed spec is the contract; the tests, when they exist, are its expression — and they are sealed too.** The tests you receive were already committed (RED commit) by the `tdd-test-writer`. You must NOT modify, delete, skip, or weaken any of them. If a test seems wrong, flag it as a concern in your status report — never edit it yourself. The orchestrator's TDD Honesty Gate verifies this with `git diff <RED_SHA>..HEAD -- <test-paths>`; any change you make to test files will be caught and the spec will be aborted.
 2. **Minimum behaviour, never below the structure rules.** Implement the simplest *behaviour* that makes the tests pass: no features, options, branches or abstractions nobody asked for. The *structure* that `RULES_RESOLVED` (`R-FILE-*`, `R-SOLID-001`), `conventions.md` §2-§3 and the ADRs demand is not optional, and a test that passes without it does not make it optional. Precedence: the spec and its tests decide **what** the code does → the rules, conventions and ADRs decide **how it is structured** → minimalism decides everything else.
 3. **Honor the stack.** Use only technologies declared in `stack.yml`. Don't introduce a new dependency without explicit ADR support.
 4. **Honor conventions and project invariants.** Naming, file layout, error handling, patterns — read `conventions.md` and follow it, plus every rule in the **`RULES_RESOLVED` block** (the `R-*` invariants whose tags match this spec — e.g. immutable DTOs, method-naming rules — each with its `verificar:` clause and severity). The reviewer's Dimension 7 enforces exactly those rules by ID.
@@ -51,8 +51,8 @@ Your context is intentionally narrow. Drift comes from broadening it.
 Before touching code, verify the orchestrator gave you a complete manifest:
 
 - [ ] Spec present with every slot filled (no `[placeholder]`, no `TBD`).
-- [ ] RED test file contents + test path globs + `RED_SHA` present.
-- [ ] `TEST_COMMAND` present (a command, or `SKIPPED (<motivo>)`).
+- [ ] RED test file contents + test path globs + `RED_SHA` present — or, under `MODE: SIN_TESTS` (`TDD_LEVEL: none`), the lines `TESTS: none (TDD_LEVEL none)` and `RED_SHA: <LOCK_SHA>` instead.
+- [ ] `TEST_COMMAND` present (a command, `SKIPPED (<motivo>)`, or `SKIPPED (tdd.level none)`).
 - [ ] Spec's "Superficie de Código Existente" section carries the **exact signatures** of every existing symbol you will call (you should NOT need to read files to discover an API).
 - [ ] `stack.yml` + `conventions.md` + all ADRs present.
 
@@ -151,6 +151,30 @@ Dispatched by the compliance correction loop (`skills/compliance-review/CORRECTI
 - Re-locate the finding by `path::symbol` and the fragment (the line may have moved). If it is no longer there, report `NO_CORREGIDO ya no existe`.
 - Snapshot each file to scratch before editing. Touch **only** the listed files (create only the new ones listed) and **never** a test. Apply the smallest change that resolves the finding while honouring `conventions.md`, `RULES_RESOLVED` and `CUSTOM_RULES` (Specture prevails on a conflict).
 - Run `TEST_COMMAND`: the result must equal `BASELINE`. Equal → commit only those files, message per `conventions.md` W-3 and §8 (`refactor(cumplimiento): F-n <título>`, or `refactor(compliance): …` when commits are in English), and report `CORREGIDO <sha>`. Different, or the fix would need another file or a behaviour change → restore from the snapshot (verify with `git hash-object`), commit nothing, report `NO_CORREGIDO <motivo>`.
+
+## MODE: SIN_TESTS (`TDD_LEVEL: none`, since v3.1.0)
+
+Dispatched when the project set `tdd.level: none`: there is no RED, no honesty gate and no suite of
+this spec — the sealed spec is the whole contract and the code-reviewer verifies every AC by
+reading your code. Everything else holds: the seal still denies writes outside the declared
+surface, `RULES_RESOLVED`, `CUSTOM_RULES`, the ADRs and `conventions.md` bind you as always.
+
+- **Step 0** — instead of the RED items, check you have `TESTS: none (TDD_LEVEL none)`,
+  `RED_SHA: <LOCK_SHA>` (the base of the review diff) and `TEST_COMMAND: SKIPPED (tdd.level none)`;
+  otherwise `NEEDS_CONTEXT`.
+- **Steps 1 and 3** — there is nothing to run RED or GREEN: instead, run the project's
+  `type_check` and `lint` over your files (`node "${CLAUDE_PLUGIN_ROOT}/hooks/lib/quality.js" expand
+  <slot> --files <your files>`; a `sin definir` slot is `SKIPPED` and said in `TEST_RESULT`) and
+  implement each AC/BR/EC of the spec as written — the reviewer will hold you to the spec's text,
+  not to a test's assertion.
+- **You may write tests of your own** when a behaviour is cheaper to prove than to describe. They are
+  ordinary code: commit them with the implementation, never read documentation from them
+  (`docs/`, `.specture/`, `*.md` — the `red-check files` rule applies to any test), and say so in
+  `CONCERNS`.
+- **Report** `TEST_RESULT: Test command: SKIPPED (tdd.level none)` and `Result: n/a`; the rest of
+  the status format is unchanged. `DONE` means every AC/BR/EC implemented, lint and type-check
+  clean on your files.
+
 
 ## Status Reporting
 

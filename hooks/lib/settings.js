@@ -21,10 +21,22 @@ const TOGGLE_KEYS = [
   "docs_index.max_entries_per_dispatch",
   "knowledge.enabled",
   "compliance_review.enabled",
-  "mutation.enabled"
+  "mutation.enabled",
+  "tdd.level"
 ];
 
 const KEYS = ["schema_version", "profile", ...TOGGLE_KEYS];
+
+// `tdd.level` (v3.1.0): how much test discipline the build loop enforces per project.
+//   strict    — today's loop: RED for every AC/BR/EC, seal, honesty gate, full suite twice.
+//   essential — the same loop with fewer tests: coverage demands a test only per AC, one per
+//               AC, no test+/test- variants, no mandatory guards, no mutation.
+//   none      — spec → implement → review → verify: no RED, no honesty gate, no suite; the
+//               seal still protects the spec and the allowed paths; Step 7 runs the project's
+//               type_check / lint / format_check and the existing suite as regression.
+// The epic coordinator reads it when it opens the epic and freezes it in `_planning.md`
+// (`- TDD_LEVEL:`): a change applies to the next epic, never to the running one.
+const TDD_LEVELS = Object.freeze(["strict", "essential", "none"]);
 
 // Effective values when nothing is declared (behaviour of v1.11.0 "custom" without toggles).
 const DEFAULTS = Object.freeze({
@@ -35,7 +47,8 @@ const DEFAULTS = Object.freeze({
   "docs_index.max_entries_per_dispatch": 3,
   "knowledge.enabled": false,
   "compliance_review.enabled": true,
-  "mutation.enabled": false
+  "mutation.enabled": false,
+  "tdd.level": "strict"
 });
 
 // `lean` / `full` override the four boolean toggles; `custom` reads them individually.
@@ -50,7 +63,8 @@ const PROFILES = Object.freeze({
 const PROFILE_INDEPENDENT_KEYS = Object.freeze([
   "docs_index.max_entries_per_dispatch",
   "compliance_review.enabled",
-  "mutation.enabled" // needs a tool installed in the project: off under every profile unless declared (v2.8.0)
+  "mutation.enabled", // needs a tool installed in the project: off under every profile unless declared (v2.8.0)
+  "tdd.level" // a project decision, not a footprint: honoured under every profile (v3.1.0)
 ]);
 
 // Key names used by older conventions.md §10 blocks.
@@ -152,6 +166,11 @@ function effectiveValues(raw) {
   if (typeof values["mutation.enabled"] !== "boolean") {
     values["mutation.enabled"] = DEFAULTS["mutation.enabled"];
   }
+  // An unknown level is the strict default: a typo never lowers the discipline. The doctor
+  // reports the raw value (`tdd-level-invalid`).
+  values["tdd.level"] = typeof values["tdd.level"] === "string" && TDD_LEVELS.includes(values["tdd.level"].toLowerCase())
+    ? values["tdd.level"].toLowerCase()
+    : DEFAULTS["tdd.level"];
   return values;
 }
 
@@ -206,6 +225,7 @@ function serializeSettings(values, options = {}) {
     `knowledge.enabled: ${v["knowledge.enabled"]}                  # opt-in knowledge-capture prompts (build 8.5, debug 4.5)`,
     `compliance_review.enabled: ${v["compliance_review.enabled"]}           # compliance review at milestone close (any profile)`,
     `mutation.enabled: ${v["mutation.enabled"]}                   # run stack.yml quality.commands.mutation in build Step 6 (any profile; needs the tool installed)`,
+    `tdd.level: ${v["tdd.level"]}                        # strict | essential | none — test discipline of the build loop (any profile; frozen per epic when it opens)`,
     ""
   ].join("\n");
 }
@@ -214,6 +234,7 @@ module.exports = {
   SETTINGS_FILE,
   KEYS,
   TOGGLE_KEYS,
+  TDD_LEVELS,
   DEFAULTS,
   PROFILES,
   PROFILE_INDEPENDENT_KEYS,

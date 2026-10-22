@@ -80,7 +80,12 @@ First, under `## SPEC_SHA` of `_planning.md` (once the file exists): add `- LOCK
 <ISO-8601>` if it is not there (the build coordinator's lock commit touches only `ROADMAP.md`),
 and append `- EPIC_COORDINATOR: despacho <n> — ENTRY <entry> — <ISO-8601>` (`n` = the previous
 such lines + 1; inline, write `en línea` instead of `despacho <n>`). Both ride with your next
-commit; Step 6 counts the dispatches from them.
+commit; Step 6 counts the dispatches from them. **`TDD_LEVEL`** (v3.1.0): on the first entry of the
+epic, read `tdd.level` from `.specture/settings.yml` (`strict` when absent) and append
+`- TDD_LEVEL: <level>` under `## SPEC_SHA`; on every later entry **read that line back** and use
+it — never `settings.yml` again. The level is frozen for the epic: a user who changes the setting
+mid-epic changes the next epic, which is the only way the honesty gate and the metrics stay
+comparable within one epic. Every dispatch below carries it as `TDD_LEVEL: <level>`.
 
 - `refresh` → Step 2.
 - `sealed` → Step 4 with `SPEC_SHA` (the per-epic gate already ran in the build coordinator).
@@ -163,6 +168,7 @@ Honor every gate: Dispatch Manifest, RED commit, TDD Honesty Gate
 (Step 5.5), code-reviewer, verification.
 
 ## Evidence (mandatory — missing either one → respond NEEDS_CONTEXT)
+TDD_LEVEL: [strict | essential | none — the `- TDD_LEVEL:` line of _planning.md; EPIC_LOOP.md § "What changes with TDD_LEVEL"]
 SPEC_SHA: [sha of the docs(specs) plan commit]
 LOCK_SHA: [sha of the commit that marked the epic [/]]
 VALIDATOR VERDICT (verbatim):
@@ -311,6 +317,7 @@ seal-diff | protected | loop repetido | entorno | debug | insufficient context |
 counters: yours for a refresh, the dispatch's `GATE_METRICS` for `ENTRY: sealed`;
 `gate_human_contacts` = the dispatch's `HUMAN_CONTACTS`; the report's `METRICS` values) plus
 `coordinator_mode: "subagent"` (`"inline"` when the build coordinator runs this file itself),
+`tdd_level` (the `- TDD_LEVEL:` line of `_planning.md`: `"strict" | "essential" | "none"`),
 `epic_coordinator_dispatches` (the `- EPIC_COORDINATOR: despacho` lines of `_planning.md`; `0`
 inline), `parked` (`0`|`1`), `batch_id` when the epic belongs to
 a review register, and `ts` with time. `git add docs/.specture-meta/build-metrics.jsonl` and

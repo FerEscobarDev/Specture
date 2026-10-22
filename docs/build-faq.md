@@ -415,3 +415,21 @@ specs en reglas `R-G-<n>` de `rules.yml`, así los tests que protegían siguen p
 aprobación visual del design system queda registrada en `design_system.md`, por eso los epics de
 página de la milestone siguiente no se bloquean. Las milestones que ya estaban cerradas al
 actualizar no se borran solas: corré el script cuando quieras.
+
+## El TDD me parece demasiado para este proyecto. ¿Puedo bajarlo?
+
+Sí, desde v3.1.0, por proyecto y de forma explícita: `tdd.level` en `.specture/settings.yml`.
+`strict` es el loop de siempre (producción). `essential` mantiene el loop pero con menos tests —
+un test por AC, sin positivo/negativo por BR, sin test por caso borde salvo que el spec declare un
+guard, sin mutación — para un proyecto chico o interno. `none` quita el RED entero: el implementer
+construye a partir del spec sellado, el `code-reviewer` verifica cada AC/BR/EC leyendo el código y
+Step 7 corre `type_check` / `lint` y la suite que ya tengas como regresión. `none` no es TDD: el
+reviewer queda como único verificador, y por eso es para experimentos.
+
+Dos cosas que no cambian con el nivel: el **sello** sigue protegiendo el spec y los `allowed_paths`
+(un write fuera de la superficie declarada es `BLOCKED: spec` en cualquier nivel), y la regla de que
+**ningún test lee documentación**. Y una que te va a sorprender: el nivel se **congela al abrir el
+epic** (`TDD_LEVEL` en `_planning.md`). Si lo cambiás a mitad de un epic, aplica al siguiente — así
+nadie baja el rigor para escapar de un rojo. Cada línea de métricas lleva `tdd_level`; antes de
+dejar un proyecto en `essential` o `none` para siempre, mirá con `/specture:knowledge stats` si los
+defectos aguas abajo y los rechazos del reviewer subieron respecto a los epics en `strict`.

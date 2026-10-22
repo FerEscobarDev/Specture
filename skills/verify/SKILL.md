@@ -46,7 +46,7 @@ Skipping any step = lying, not verifying.
 | "Regression test works" | RED-GREEN cycle: revert fix, see FAIL, restore fix, see PASS | Test passed once after the fix |
 | "Spec implemented" | Line-by-line checklist against spec acceptance criteria, plus all tests | Tests pass alone |
 | "Agent completed task" | VCS diff shows the changes, run tests independently | Agent's success report |
-| "Epic complete" | All specs verified + tests pass + reviewer APPROVED + lint clean | Some specs done |
+| "Epic complete" | All specs verified + tests pass + reviewer APPROVED + lint clean (under `tdd.level: none`: type-check + lint clean on the diff and the existing suite without regressions, since no RED exists) | Some specs done |
 
 ## Red Flags — STOP
 
@@ -90,7 +90,7 @@ Implementer says "DONE"
 ```
 About to mark epic [x] in ROADMAP
   → invoke skills/verify/SKILL.md
-  → run full test suite, lint, type-check (per stack.yml)
+  → run full test suite, lint, type-check (per stack.yml; tdd.level none → type-check + lint + the existing suite as regression)
   → all pass: write [x]
   → any fail: stay [/], escalate
 ```

@@ -74,4 +74,5 @@ PRIOR:
 
 ## SPEC_SHA (coordinador)
 - LOCK_SHA: <sha> — <ISO-8601>
+- TDD_LEVEL: <strict | essential | none> — leído de settings.yml `tdd.level` al abrir el epic; congelado: un cambio del setting aplica al epic siguiente
 - SPEC_SHA: <sha> — <fecha> — <primer sello | corrección de <task-slug> | loop <capa> de <task-slug>>

@@ -59,6 +59,7 @@ Before reading the spec for content, verify the orchestrator gave you a complete
 - [ ] `conventions.md`: testing + naming + file-org + §8 (identifier language) present.
 - [ ] Existing fixtures/helpers paths listed.
 - [ ] `TEST_COMMAND` present (a command, or `SKIPPED (<motivo>)`).
+- [ ] `TDD_LEVEL` present (`strict` | `essential` — under `none` you are never dispatched).
 
 If ANY item is missing, respond `NEEDS_CONTEXT` **immediately**, naming the exact missing item, and write **no tests**. A turn-1 rejection is cheap; discovering the gap after half the tests are written wastes a full cycle. Do not try to infer or fill the gap yourself.
 
@@ -80,6 +81,7 @@ Identify every **edge case** described in the spec or in the business requiremen
 - Do NOT generate exhaustive input matrices, combinatorial permutations, or tests for theoretical inputs the spec does not call out. Respect the spec's "Fuera de Scope" section as a hard boundary on what to test.
 - If you feel a matrix is needed, that is a signal the spec is under-specified — report it in `CONCERNS`, do not paper over it with 30 tests.
 - Heuristic ceiling: total tests ≈ count(AC) + count(BR effective) + count(EC). Materially exceeding this means re-read the spec, not add more tests. Test count is ~linear in the implementer's GREEN time — bloat here is the single biggest multiplier on the slow phase.
+- **`TDD_LEVEL: essential`** (the project chose less discipline for a small or internal project): the ceiling is **count(AC)** — exactly one test per `AC-n`, no `test+/test-` per BR, no test per EC unless the spec declares it as a guard. A BR or EC whose behaviour no AC exercises is a `CONCERNS` line ("BR-2 sin AC que lo ejercite"), not an extra test. The `COVERAGE_MAP` lists the AC only; `red-check coverage --level essential` demands nothing else.
 
 ### Step 2 — Determine the test file location
 

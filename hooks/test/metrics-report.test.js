@@ -52,7 +52,7 @@ test("summary: per-epic table, aggregates split by source, --last, --json", () =
   const text = run(root);
   assert.equal(text.status, 0, text.stderr);
   assert.match(text.stdout, /3 epic\(s\)/);
-  assert.match(text.stdout, /^epic-1\.1-a \| gate \| 2 \| 1 \| - \| - \| 6/m);
+  assert.match(text.stdout, /^epic-1\.1-a \| gate \| 2 \| 1 \| - \| - \| - \| 6/m);
   assert.match(text.stdout, /^gate: 2 epic\(s\)/m);
   assert.match(text.stdout, /^baseline: 1 epic\(s\)/m);
   assert.match(text.stdout, /Bajan needs_context\/iteration_cap\/blocked por epic \(2 → 0\)/);
@@ -161,11 +161,11 @@ test("summary: the table gains the `rev`, `mode`, `rnd` and `sup-loop` columns; 
   });
   const { status, stdout } = run(root);
   assert.equal(status, 0);
-  assert.match(stdout, /^epic \| source \| specs \| Q \| rev \| mode \| R \| c7 \| mech \| val \| rnd \| nctx \| cap \| blk \| spec_def \| rej m\/M \| sup \| sup-loop \| outcome$/m);
-  assert.match(stdout, /^epic-1\.1-a \| gate \| 2 \| 1 \| 5 \| sub \| 6 \| 0 \| 1 \| 3 \| 3 \| 0 \| 0 \| 0 \| 0 \| 1\/0 \| 0 \| 2 \| DONE$/m);
-  assert.match(stdout, /^epic-1\.2-b \| gate \| 2 \| 1 \| - \| inl \| 6 \| /m);
-  assert.match(stdout, /^epic-1\.3-c \| gate \| 2 \| 1 \| - \| - \| 6 \| /m, "an unknown mode prints `-`");
-  assert.match(stdout, /^epic-0\.9-old \| gate \| 2 \| 1 \| - \| - \| 6 \| 0 \| 1 \| 3 \| - \| 0 \| 0 \| 0 \| 0 \| 1\/0 \| 0 \| - \| DONE$/m);
+  assert.match(stdout, /^epic \| source \| specs \| Q \| rev \| mode \| tdd \| R \| c7 \| mech \| val \| rnd \| nctx \| cap \| blk \| spec_def \| rej m\/M \| sup \| sup-loop \| outcome$/m);
+  assert.match(stdout, /^epic-1\.1-a \| gate \| 2 \| 1 \| 5 \| sub \| - \| 6 \| 0 \| 1 \| 3 \| 3 \| 0 \| 0 \| 0 \| 0 \| 1\/0 \| 0 \| 2 \| DONE$/m);
+  assert.match(stdout, /^epic-1\.2-b \| gate \| 2 \| 1 \| - \| inl \| - \| 6 \| /m);
+  assert.match(stdout, /^epic-1\.3-c \| gate \| 2 \| 1 \| - \| - \| - \| 6 \| /m, "an unknown mode prints `-`");
+  assert.match(stdout, /^epic-0\.9-old \| gate \| 2 \| 1 \| - \| - \| - \| 6 \| 0 \| 1 \| 3 \| - \| 0 \| 0 \| 0 \| 0 \| 1\/0 \| 0 \| - \| DONE$/m);
 });
 
 // The v2.7.0 per-epic coordinator fields: `coordinator_mode` (string, carried like park_class)
@@ -438,4 +438,29 @@ test("--baseline reconstructs a closed epic from reviews, _planning.md and git; 
   assert.equal(summary.json.baseline.count, 1);
   assert.equal(summary.json.gate.count, 0);
   assert.deepEqual(summary.json.baseline.modes, { subagent: 0, inline: 0, desconocido: 1 }, "a baseline line's null mode is unknown");
+});
+
+// v3.1.0 — tdd_level: counted by level, a tdd column in the table, unknown when absent or garbage.
+test("v3.1 tdd_level: counted by level, a tdd column in the table, unknown when absent or garbage", () => {
+  const root = createProject({
+    "docs/.specture-meta/build-metrics.jsonl": [
+      line("epic-3.1-a", { tdd_level: "strict" }),
+      line("epic-3.2-b", { tdd_level: "essential" }),
+      line("epic-3.3-c", { tdd_level: "none" }),
+      line("epic-3.4-d", {}),
+      line("epic-3.5-e", { tdd_level: "relaxed" })
+    ].join("\n") + "\n"
+  });
+  const { status, json, stderr } = run(root, "--json");
+  assert.equal(status, 0, stderr);
+  assert.deepEqual(json.gate.tdd_levels, { strict: 1, essential: 1, none: 1, desconocido: 2 }, "absent and unrecognised levels are unknown, never strict");
+  assert.equal(json.entries[0].tdd_level, "strict", "carried, never averaged");
+  assert.ok(!("tdd_level" in json.gate));
+
+  const text = run(root).stdout;
+  assert.match(text, /\| mode \| tdd \|/);
+  assert.match(text, /^epic-3\.1-a \| gate \| 2 \| 1 \| - \| - \| str \| /m);
+  assert.match(text, /^epic-3\.3-c \| gate \| 2 \| 1 \| - \| - \| non \| /m);
+  assert.match(text, /^epic-3\.4-d \| gate \| 2 \| 1 \| - \| - \| - \| /m);
+  assert.match(text, /^gate nivel de TDD: strict 1 · essential 1 · none 1 · sin dato 2/m);
 });
