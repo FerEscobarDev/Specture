@@ -36,51 +36,9 @@ Specture detectará si el proyecto está vacío (Bootstrap), tiene código exist
 
 O simplemente di "continuemos con el roadmap" — el `specture-router` detecta el estado y enruta.
 
-### Plugin GitHub Copilot CLI
+### Plugin Google Antigravity (`agy`)
 
-Specture es compatible como plugin de **GitHub Copilot CLI**, funcionando en paralelo sin alterar ni reemplazar la integración de Claude Code o Antigravity. Puedes instalarlo de las siguientes maneras:
-
-#### Opción 1: Instalación Directa / Marketplace (Recomendado)
-Añade la fuente del marketplace de Specture e instala el plugin:
-
-```bash
-copilot plugin marketplace add https://github.com/FerEscobarDev/Specture.git
-copilot plugin install specture@specture
-```
-
-O instala directamente especificando la URL del repositorio:
-
-```bash
-copilot plugin install https://github.com/FerEscobarDev/Specture.git
-```
-
-#### Opción 2: Carga para Desarrollo Local (`--plugin-dir`)
-Si estás desarrollando o probando modificaciones locales de Specture, inicia Copilot CLI indicando el directorio del plugin:
-
-- **Linux / macOS**:
-  ```bash
-  copilot --plugin-dir /ruta/a/Specture
-  ```
-- **Windows (PowerShell/CMD)**:
-  ```powershell
-  copilot --plugin-dir C:\Proyectos\VibeCoding
-  ```
-
-#### Cómo usar Specture en Copilot CLI
-1. En la sesión de Copilot CLI, selecciona el agente de enrutamiento ejecutando:
-   ```bash
-   /agent specture:specture-router
-   ```
-2. Una vez seleccionado, pide iniciar o continuar el trabajo (*"inicia el proyecto"*, *"continuemos con el roadmap"*).
-3. El router inspecciona el estado del sistema de archivos y responde `PHASE: <fase> · SKILL: <ruta>` — no ejecuta la fase; invocá esa habilidad en el chat principal.
-
-Para más información sobre la arquitectura y la matriz de compatibilidad de Copilot CLI, consulta la guía dedicada en [`docs/copilot-cli-plugin.md`](docs/copilot-cli-plugin.md).
-
----
-
-### Plugin Google Antigravity CLI (`agy`)
-
-Specture es nativamente compatible como plugin en **Google Antigravity CLI (`agy`)** y en el entorno de Antigravity IDE. Puedes instalarlo con un solo comando usando la URL del repositorio o mediante clonado:
+Specture corre también como plugin de **Google Antigravity** (CLI `agy`, IDE y Antigravity 2.0). Desde v2.11.0 Claude Code y Antigravity son las dos plataformas soportadas (la compatibilidad con GitHub Copilot CLI se retiró). Puedes instalarlo con un solo comando usando la URL del repositorio o mediante clonado:
 
 #### Opción 1: Instalación Directa por CLI (Igual que en Claude Code)
 Ejecuta directamente el comando de instalación de plugins de Antigravity especificando la URL del repositorio de GitHub:
@@ -116,7 +74,9 @@ Si ya clonaste Specture localmente en tu equipo y deseas usarlo o modificarlo en
 2. O especifica la ruta absoluta desde cualquier ubicación:
    ```bash
    agy plugin link C:\Proyectos\VibeCoding
+   agy plugin validate C:\Proyectos\VibeCoding --json
    ```
+   `validate` debe reportar `"skills": 18`, `"hooks": 1`, cero errores y ningún aviso de truncamiento (`only the first 24000 are loaded`). `"agents": 0` es lo esperado: los agentes se registran por sesión con `define_subagent`.
 
 #### Cómo usar Specture en Antigravity CLI
 Una vez instalado o enlazado el plugin:
@@ -133,7 +93,7 @@ Una vez instalado o enlazado el plugin:
 
 3. Specture inspeccionará la raíz de tu proyecto e iniciará la fase adecuada (`setup`, `discover`, `architecture`, `ux-design` o `build`).
 
-Para más detalles sobre la integración de hooks y TDD Honesty Gate en Antigravity, consulta la guía dedicada en [`docs/antigravity-cli-plugin.md`](docs/antigravity-cli-plugin.md).
+Los hooks (TDD Honesty Gate, Spec Seal, Allowed Paths y Wait Guard) corren también en Antigravity: `hooks.json` raíz en el formato oficial de `agy`, scripts que leen el sobre camelCase (`toolCall.args`, `workspacePaths`) y responden `decision` / `reason`, y `/specture:doctor check` los verifica con el payload de Antigravity. Qué lee `agy` del repositorio, los flags de `define_subagent` (`enable_write_tools`) y el contrato de los hooks, verificados contra `agy plugin validate` y la documentación oficial, están en [`docs/antigravity-cli-plugin.md`](docs/antigravity-cli-plugin.md).
 
 ---
 
@@ -152,28 +112,25 @@ Para más detalles sobre la integración de hooks y TDD Honesty Gate en Antigrav
 $SPECTURE_ROOT/
 ├── CLAUDE.md                          # Punto de entrada (modo @import manual)
 ├── hooks/hooks.json                   # Registra el TDD Honesty Gate y el Wait Guard (PreToolUse) — Claude Code (v2.9.1)
-├── hooks.json                         # Registro de hooks — Copilot CLI / Antigravity CLI
-├── plugin.json                        # Manifiesto del plugin — Copilot CLI / Antigravity CLI
+├── hooks.json                         # Registro de hooks — Antigravity (formato oficial de agy: grupos con nombre → PreToolUse → hooks[].command)
+├── plugin.json                        # Manifiesto del plugin — Antigravity (solo metadatos: agy descubre skills/ y hooks.json por convención) y la versión que leen la CI y los scripts
 ├── .claude-plugin/
 │   ├── plugin.json                    # Manifiesto del plugin — Claude Code
 │   └── marketplace.json               # Marketplace — Claude Code
-├── .github/plugin/marketplace.json    # Marketplace — Copilot CLI
 ├── .github/workflows/                 # ci.yml (tests ubuntu/windows × node 22/24) · release.yml (GitHub Release desde el changelog)
 ├── package.json                       # Tooling del repo (no del plugin): npm test · bump · check:release
-├── scripts/bump-version.js            # Sincroniza la versión en los 4 manifiestos; --check · --title · --notes
+├── scripts/bump-version.js            # Sincroniza la versión en los 2 manifiestos; --check · --title · --notes
 ├── scripts/doctor.js                  # CLI del doctor: check · migrate · sync (también usable desde la CI de un proyecto)
 ├── scripts/schema-manifest.js         # Hash de los archivos que definen el esquema del proyecto (gate de release)
 ├── scripts/baseline-fixture.js        # Regenera el scratch "Archivador" de los baselines del gate (--stage 1|2|3|4|5|6, --git; la 4 lleva los defectos plantados de los probes de release del gate, la 5 la tanda de las sondas de la etapa de revisión, la 6 el milestone cerrado de las sondas de cumplimiento); árbol en scripts/baseline-fixture/
-├── scripts/copilot-mirrors.js         # Genera copilot/agents/*.agent.md desde agents/*/AGENT.md (mirrors:sync · --check en los tests)
 ├── migrations/                        # Catálogo de migraciones <since>-<slug>.js + schema-manifest.json + tests
 ├── hooks/
 │   ├── README.md                      # Cómo funcionan, schema de build-locked.json, troubleshooting
 │   ├── pre-tool-use-tdd-gate.js       # Gate PreToolUse (Claude Code): tests sellados · specs sellados · allowed paths
-│   ├── specture-pre-tool-use-tdd-gate.js  # Mismo gate para Copilot / Antigravity (hooks.json)
-│   ├── copilot-pre-tool-use-tdd-gate.js   # Shim de compatibilidad → specture-pre-tool-use-tdd-gate.js
+│   ├── specture-pre-tool-use-tdd-gate.js  # Mismo gate para Antigravity (hooks.json): sobre camelCase, proyecto desde workspacePaths, decision/reason
 │   ├── pre-tool-use-wait-gate.js      # Wait Guard (Claude Code, v2.9.0): deniega sleep ≥ 30 s y sleep en bucle en Bash/PowerShell
-│   ├── specture-pre-tool-use-wait-gate.js # Mismo guard para Copilot / Antigravity (hooks.json)
-│   ├── lib/specture-guard.js          # Guard compartido (opt-in por hooks.enabled)
+│   ├── specture-pre-tool-use-wait-gate.js # Mismo guard para Antigravity (hooks.json)
+│   ├── lib/specture-guard.js          # Guard compartido (opt-in por hooks.enabled) + normalización del payload de ambos hosts
 │   ├── lib/settings.js                # Lector de .specture/settings.yml (fallback a conventions §10, perfiles)
 │   ├── lib/rules.js                   # Parser/lint de .specture/rules.yml (invariantes R-*, una línea por regla) + lectura del §12 legacy
 │   ├── lib/rules-resolve.js           # Rules Resolution: --tags a,b | --all → bloque RULES_RESOLVED por dispatch (v1.19.0)
@@ -190,10 +147,7 @@ $SPECTURE_ROOT/
 │   ├── lib/review.js                  # Registro de la revisión por tanda (docs/05-specs/_reviews/): status · scope-hash · scope-check (v2.3.0)
 │   ├── lib/metrics-report.js          # Lector de docs/.specture-meta/build-metrics.jsonl (+ --baseline) — knowledge stats
 │   ├── lib/doctor/                    # Chequeos del doctor: corpus · requirements · rules · estado · revisión · cumplimiento · drift · migrate
-│   └── test/                          # Tests de contrato del plugin, hooks, settings y doctor
-├── copilot/
-│   ├── agents/*.agent.md              # Espejos de los agentes para Copilot CLI — GENERADOS desde agents/*/AGENT.md, no editar
-│   └── compatibility-matrix.json      # Paridad skills/agentes/gates por plataforma
+│   └── test/                          # Tests de contrato del plugin, hooks, settings, doctor y tamaño de skills
 ├── skills/
 │   ├── start/SKILL.md                 # Router: detecta el estado y enruta
 │   ├── setup/SKILL.md                 # Setup en 3 modos: detección + Reconfigure; Bootstrap y Adopt en sus compañeros
@@ -697,6 +651,22 @@ Specture está en desarrollo activo. Para decisiones arquitectónicas internas, 
 ---
 
 ## Changelog
+
+### v2.11.0 — Antigravity de verdad, y adiós a Copilot CLI
+
+**Motivación:** con el plugin instalado en Antigravity, `agy plugin validate` saltaba el plugin entero (`plugin.json` declaraba `"skills": "skills/"` como string: `unexpected token "skills/"`), descartaba `hooks.json` (la clave `"version": 1` no es un grupo de hooks) y, aun cargados, los hooks universales hacían *fail-open* siempre: leían `tool_input` cuando Antigravity manda `toolCall.args` en camelCase, buscaban el proyecto en `process.cwd()` cuando agy corre el hook desde el directorio del plugin y manda el proyecto en `workspacePaths`, y respondían `permissionDecision` cuando agy lee `decision`. Todo verificado contra el validador y la documentación oficial de hooks que Antigravity instala en `~/.gemini/antigravity/builtin/skills/agy-customizations/docs/`. La compatibilidad con GitHub Copilot CLI, que obligaba a un tercer formato de manifiesto y de hooks y a espejos generados de los agentes, deja de mantenerse: Specture soporta Claude Code y Antigravity.
+
+**Cambios:**
+- **Se retira Copilot CLI:** `copilot/` (espejos y matriz de compatibilidad), `.github/plugin/marketplace.json`, `hooks/copilot-pre-tool-use-tdd-gate.js`, `scripts/copilot-mirrors.js`, sus tres tests, `docs/copilot-cli-plugin.md` y los scripts `mirrors:*`. Los `AGENT.md` ya no necesitan sincronizar espejos al editarse.
+- **Manifiesto:** `plugin.json` raíz queda con metadatos solamente (agy descubre `skills/` y `hooks.json` por convención) y sigue siendo la fuente de versión de la CI y los scripts. Dos manifiestos: este y `.claude-plugin/plugin.json`. `agy plugin validate` → `skills: 18`, `hooks: 1`, 0 errores.
+- **`hooks.json` raíz en el formato oficial de Antigravity:** `{ "specture": { "PreToolUse": [ { matcher, hooks: [ { type: "command", command, timeout } ] } ] } }`; matchers `write_to_file|replace_file_content|multi_replace_file_content` y `run_command`.
+- **Hooks universales que entienden a Antigravity** (`hooks/lib/specture-guard.js` → `normalizePayload`, `guard({ payload })`, `denyDecision`): leen `tool_input` o `toolCall.args`, localizan el proyecto en `workspacePaths[0]` y, si falta, en el directorio del archivo que se edita, y deniegan con `{ decision, reason }` más el par plano `permissionDecision` / `permissionDecisionReason` (una versión de gracia para instalaciones viejas). Tests con el sobre de Antigravity y cwd ajeno: `specture-pre-tool-use-tdd-gate.test.js` (renombrado) y `pre-tool-use-wait-gate.test.js`.
+- **Doctor:** `hooks-antigravity-registry` y `hooks-antigravity-self-test` (WARNING con `agy` en el PATH, INFO sin él): el `hooks.json` raíz parsea sin `version` y cada handler tiene `command` a un script existente; el Wait Guard universal, corrido como lo corre agy (cwd = plugin, proyecto solo en `workspacePaths`), deniega el bucle de sondeo conocido.
+- **Skills:** los Steps 0 de `EPIC_LOOP.md` y `EPIC_COORDINATOR.md` reconocen `invoke_subagent` además de `Agent`; `build/SKILL.md` § Cross-Platform Subagent Initialization trae la tabla de `define_subagent` (`enable_write_tools` true para quien escribe, false para `architecture-validator` y `specture-router`, `enable_subagent_tools` solo para el coordinador del epic — los flags valen `false` si no se pasan, y un writer sin `enable_write_tools` no puede crear un test); `compliance-review`, `architecture`, `discover`, `ux-design`, `modernize` y `contract-sync-audit` llevan la nota corta. Los `AGENT.md` **no cambian**: `model`/`effort`/`tools` son de Claude Code; en Antigravity los registra la sesión.
+- **Docs:** `docs/antigravity-cli-plugin.md` reescrito con lo verificado (qué lee agy, límite de 24 KB, flags de subagentes, contrato stdin/stdout de los hooks, `${PLUGIN_ROOT}` solo dentro de los hooks); `docs/antigravity-plugin-plan.md` marcado como superado; README, `hooks/README.md`, `docs/release-process.md`, `docs/build-faq.md`, `docs/execution-flows.md` sin Copilot. El historial del changelog no se reescribe.
+- **Backward-compat:** Claude Code intacto (`.claude-plugin/`, `hooks/hooks.json`, `pre-tool-use-*.js`, `agents/` sin cambios). Quien instaló Specture en Copilot CLI se queda en v2.10.0.
+- **Prueba de aceptación en Antigravity** (pendiente de correr en una sesión real; el validador, los tests con el sobre de agy y el auto-test del doctor ya pasan): `agy plugin link <repo>` → en un proyecto con `hooks.enabled: true` y un sello vigente, pedir al agente que edite un test sellado → deniega con el motivo de Specture; pedir `Start-Sleep -Seconds 120` → deniega.
+- Tests: 380 → 375 (tres archivos de Copilot menos; Antigravity y doctor nuevos).
 
 ### v2.10.0 — Skills bajo 24 KB: lo que cada invocación necesita, y el resto cuando se llega
 

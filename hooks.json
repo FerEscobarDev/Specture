@@ -1,20 +1,25 @@
 {
-  "version": 1,
-  "hooks": {
+  "specture": {
     "PreToolUse": [
       {
-        "type": "command",
-        "matcher": "Edit|Write|NotebookEdit|write_to_file|replace_file_content|multi_replace_file_content",
-        "bash": "node \"${PLUGIN_ROOT}/hooks/specture-pre-tool-use-tdd-gate.js\"",
-        "powershell": "node \"${PLUGIN_ROOT}/hooks/specture-pre-tool-use-tdd-gate.js\"",
-        "timeoutSec": 10
+        "matcher": "write_to_file|replace_file_content|multi_replace_file_content",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${PLUGIN_ROOT}/hooks/specture-pre-tool-use-tdd-gate.js\"",
+            "timeout": 10
+          }
+        ]
       },
       {
-        "type": "command",
-        "matcher": "Bash|PowerShell|bash|shell|run_command|execute_command|run_terminal_cmd",
-        "bash": "node \"${PLUGIN_ROOT}/hooks/specture-pre-tool-use-wait-gate.js\"",
-        "powershell": "node \"${PLUGIN_ROOT}/hooks/specture-pre-tool-use-wait-gate.js\"",
-        "timeoutSec": 10
+        "matcher": "run_command",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${PLUGIN_ROOT}/hooks/specture-pre-tool-use-wait-gate.js\"",
+            "timeout": 10
+          }
+        ]
       }
     ]
   }

@@ -11,6 +11,8 @@ You are a **Product Architect and Business Analyst**. Your job in this phase is 
 Do NOT discuss tech stack, frameworks, libraries, database choices, or code in this phase. If the user asks "¿qué framework uso?" answer "Lo definiremos en la siguiente fase. Ahora estamos enfocados en entender el problema de negocio." If the user steers into tech, gently redirect.
 </HARD-GATE>
 
+> **Antigravity:** if the session exposes `define_subagent`, register the agents this skill dispatches from `agents/<name>/AGENT.md` before the first dispatch — `architecture-validator` read-only (all flags `false`), any agent that writes with `enable_write_tools: true` (the flag defaults to `false`). In Claude Code they are registered by the plugin. The table of flags is in `build/SKILL.md` § "Cross-Platform Subagent Initialization".
+
 ## Required Inputs
 
 - `.specture/stack.yml` — only to know if this is greenfield or adopted (does not influence questioning).
@@ -93,7 +95,7 @@ Once you and the user agree the discovery is sufficient (the user explicitly say
    - **IDs estables** — toda regla de negocio es `- **RN-nnn:** …`, todo caso límite `- **CL-nnn:** …`, toda exclusión de alcance `- **FA-nnn:** …`. Secuenciales, 3 dígitos, prefijo de dominio opcional (`RN-SEG-007`). Nunca se renumeran ni se reutilizan: los specs, el ROADMAP y `_current/` citan estas reglas **por ID**, nunca por sección.
 
 2. **Mechanical output check (mandatory).** Run
-   `node "${CLAUDE_PLUGIN_ROOT}/scripts/doctor.js" check --brief` (Copilot / Antigravity:
+   `node "${CLAUDE_PLUGIN_ROOT}/scripts/doctor.js" check --brief` (Antigravity:
    `${PLUGIN_ROOT}`; manual `@import` setups: `$SPECTURE_ROOT`) and fix every finding of the
    `requirements` group before handing off: unresolved placeholders (TBD/TODO), HUs without
    `Exposición`, `UI`/`API-externa` stories missing from **Capacidades de Frontera**, and
@@ -107,7 +109,7 @@ Once you and the user agree the discovery is sufficient (the user explicitly say
    node "${CLAUDE_PLUGIN_ROOT}/scripts/doctor.js" migrate --verify 2.0-brand-brief --by "discover"
    ```
 
-   (Copilot / Antigravity: `${PLUGIN_ROOT}`; manual `@import` setups: `$SPECTURE_ROOT`.) Commit
+   (Antigravity: `${PLUGIN_ROOT}`; manual `@import` setups: `$SPECTURE_ROOT`.) Commit
    `.specture/migrations.log` alongside the requirements — the log is tracked and append-only. If
    `--verify` fails, the section is not what the migration expects: fix it, never log it by hand.
    In brand-only mode this step and step 3's brand question are the whole Deliverable — skip

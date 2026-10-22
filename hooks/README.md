@@ -21,7 +21,7 @@ Proyectos creados antes de v1.15.0 pueden tener el toggle en `.specture/conventi
 | Plataforma | Archivo | Formato |
 |---|---|---|
 | Claude Code | `hooks/hooks.json` (v2.9.1) | `{ "hooks": { "PreToolUse": [ { "matcher", "hooks": [ { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/<script>.js\"", "timeout" } ] } ] } }` — el mismo objeto que `hooks` en un `settings.json` de usuario, con el envoltorio `"hooks"` obligatorio |
-| Copilot CLI / Antigravity CLI | `hooks.json` (raíz, referenciado por `plugin.json` raíz) | `version: 1`, claves `bash` / `powershell`, `${PLUGIN_ROOT}` |
+| Antigravity (`agy`) | `hooks.json` (raíz; lo descubre por convención junto al `plugin.json` raíz) | grupos con nombre → `PreToolUse[]` → `matcher` + `hooks[{ type: "command", command, timeout }]`, `${PLUGIN_ROOT}` entre comillas; stdin camelCase (`toolCall.args`, `workspacePaths`), stdout `decision` / `reason`; cwd = el directorio del plugin |
 
 Claude Code carga los hooks de un plugin **solo** desde `hooks/hooks.json` o desde el campo `hooks` de `.claude-plugin/plugin.json`. Del `settings.json` de un plugin lee únicamente `agent` y `subagentStatusLine`: cualquier otra clave se descarta. Entre v1.2.0 y v2.9.0 el registro vivía en ese `settings.json`, así que **ningún gate corrió nunca en Claude Code** — el TDD Honesty Gate, el Spec Seal, Allowed Paths y el Wait Guard quedaron inertes, y las únicas defensas efectivas fueron los `git diff` post-mortem (`honesty-check`, `SPEC_SHA`) y la Dimensión 1 del reviewer. Lo detectó Psikora el 2026-10-18: un `for … do sleep 1; done` pasó con `hooks.enabled: true`, y el mismo script, corrido a mano con el payload por stdin, sí denegaba. Toda afirmación anterior sobre "el hook deniega / no deniega" se había verificado así, por script, nunca por el hook registrado.
 
@@ -38,22 +38,22 @@ Después de actualizar el plugin: `/reload-plugins` (o sesión nueva), y `/hooks
 > alguna vez querés restaurar el auto-routing, el script histórico está en git
 > (`git show v1.14.0:hooks/session-start.js`).
 
-### `pre-tool-use-tdd-gate.js` (Claude Code) · `specture-pre-tool-use-tdd-gate.js` (Copilot / Antigravity)
+### `pre-tool-use-tdd-gate.js` (Claude Code) · `specture-pre-tool-use-tdd-gate.js` (Antigravity)
 
 | | |
 |---|---|
-| Evento | `PreToolUse` con matcher `Edit\|Write\|NotebookEdit` (Copilot/Antigravity: + `write_to_file\|replace_file_content\|multi_replace_file_content`) |
+| Evento | `PreToolUse` con matcher `Edit\|Write\|NotebookEdit` (Antigravity: + `write_to_file\|replace_file_content\|multi_replace_file_content`) |
 | Disparador | Antes de cualquier edición de archivo |
 | Acción | Si existe `.specture/state/build-locked.json`, clasifica el `file_path` y deniega — en este orden de precedencia — (1) un **test sellado** (`specs[].test_paths`, mensaje "TDD Honesty Gate"), (2) un **spec sellado** (`spec_paths`, "Spec Seal"), (3) **código fuera de la superficie declarada** (`allowed_paths` — solo cuando el sello los lleva, nunca bajo `docs/` ni `.specture/`; "Allowed Paths"). En cualquier otro caso, allow. |
 | Reemplaza | El `git diff RED_SHA..HEAD -- <test-globs>` y el `git diff SPEC_SHA..HEAD -- <specs>` post-mortem del orchestrator: el hook hace que modificar tests o specs durante el epic, o escribir código que ningún spec declara, sea **imposible**, no solo detectable. |
 
 ---
 
-### `pre-tool-use-wait-gate.js` (Claude Code) · `specture-pre-tool-use-wait-gate.js` (Copilot / Antigravity) — Wait Guard (v2.9.0)
+### `pre-tool-use-wait-gate.js` (Claude Code) · `specture-pre-tool-use-wait-gate.js` (Antigravity) — Wait Guard (v2.9.0)
 
 | | |
 |---|---|
-| Evento | `PreToolUse` con matcher `Bash\|PowerShell` (Copilot/Antigravity: + `bash\|shell\|run_command\|execute_command\|run_terminal_cmd`) |
+| Evento | `PreToolUse` con matcher `Bash\|PowerShell` (Antigravity: + `bash\|shell\|run_command\|execute_command\|run_terminal_cmd`) |
 | Disparador | Antes de cualquier comando de shell |
 | Acción | Deniega un comando que **espera** en vez de trabajar: un `sleep` / `Start-Sleep` / `timeout /t` de 30 s o más, o **cualquier** `sleep` dentro de un bucle (`for` / `while` / `until`: un sondeo por construcción). Permite pausas cortas fuera de un bucle y los límites de tiempo sobre trabajo real (`timeout 590 dotnet test`). El motivo nombra la vía correcta: llamada al Agent en primer plano, o la notificación / `Monitor` de un background; ningún despacho tiene límite de tiempo. |
 | Por qué | Medido en Psikora HC-IHCE.14 (2026-10-14): un epic-agent pasó 222 de sus 510 minutos en `sleep` sondeando a sus workers, el coordinador se puso un reloj con `sleep 3060` por una regla de "55 minutos" que nadie definió, y el 97 % de los turnos tras una pausa de más de 5 minutos fueron cache miss (la caché de prompts dura 5 minutos). `lib/wait-guard.js` es la regla; opt-in por `hooks.enabled` como todo hook. |
@@ -116,7 +116,7 @@ node "${CLAUDE_PLUGIN_ROOT}/hooks/lib/seal-cli.js" <comando> [opciones] [--proje
   release | show
 ```
 
-`write` conserva **íntegras** las entradas `specs[]` del mismo epic (con su `red_sha_orig`) y `lock_sha` si no se pasa, descarta las de otro epic avisando por stderr, y vacía `lifted_spec_paths` / `supersede_paths` / `supersede_for` (un `write` re-sella); `merge-spec` agrega o actualiza **una** entrada por slug sin tocar los campos del epic (`--test-paths` reemplaza, `--add-test-paths` une); `lift-spec` expande a lista explícita el glob que cubre el spec y quita solo ese archivo; `supersede` **rechaza** (exit 1) un path que sea el RED de cualquier spec del sello — propio o hermano — salvo `--shared-with-red` explícito (el RED agregó tests a un archivo existente); `release` es idempotente. Cada comando acepta solo sus flags (más `--project`): un flag desconocido es error de uso. Exit 1 con un archivo corrupto, una supersesión rechazada o un `lift-spec` imposible; exit 2 por uso incorrecto. En Copilot/Antigravity se invoca con `${PLUGIN_ROOT}` en vez de `${CLAUDE_PLUGIN_ROOT}`.
+`write` conserva **íntegras** las entradas `specs[]` del mismo epic (con su `red_sha_orig`) y `lock_sha` si no se pasa, descarta las de otro epic avisando por stderr, y vacía `lifted_spec_paths` / `supersede_paths` / `supersede_for` (un `write` re-sella); `merge-spec` agrega o actualiza **una** entrada por slug sin tocar los campos del epic (`--test-paths` reemplaza, `--add-test-paths` une); `lift-spec` expande a lista explícita el glob que cubre el spec y quita solo ese archivo; `supersede` **rechaza** (exit 1) un path que sea el RED de cualquier spec del sello — propio o hermano — salvo `--shared-with-red` explícito (el RED agregó tests a un archivo existente); `release` es idempotente. Cada comando acepta solo sus flags (más `--project`): un flag desconocido es error de uso. Exit 1 con un archivo corrupto, una supersesión rechazada o un `lift-spec` imposible; exit 2 por uso incorrecto. En Antigravity se invoca con `${PLUGIN_ROOT}` en vez de `${CLAUDE_PLUGIN_ROOT}`.
 
 ### `lib/honesty-check.js` — salvaguardas mecánicas del TDD Honesty Gate (v2.2.0)
 
@@ -187,7 +187,7 @@ El build corre `seal-cli.js`, `honesty-check.js` y `spec-set-check.js` muchas ve
 
 `/specture:doctor check` avisa con `specture-script-permissions` (INFO) cuando el build ya corrió y no encuentra ninguna de las dos. Specture nunca escribe tu configuración de permisos: la decisión es tuya.
 
-**Sello huérfano**: si `docs/04-roadmap/ROADMAP.md` existe y **ningún** epic está `[/]`, el sello sobrevivió a su epic. Los hooks entonces **permiten** la edición para los tres tipos de regla (Claude Code: `permissionDecision: "allow"` con la razón; Copilot/Antigravity: razón por stderr) — un archivo olvidado nunca bloquea trabajo ajeno — y `/specture:doctor check` lo reporta como ERROR (`seal-stale`).
+**Sello huérfano**: si `docs/04-roadmap/ROADMAP.md` existe y **ningún** epic está `[/]`, el sello sobrevivió a su epic. Los hooks entonces **permiten** la edición para los tres tipos de regla (Claude Code: `permissionDecision: "allow"` con la razón; Antigravity: razón por stderr) — un archivo olvidado nunca bloquea trabajo ajeno — y `/specture:doctor check` lo reporta como ERROR (`seal-stale`).
 
 ---
 
@@ -219,7 +219,7 @@ Si querés agregar tu propio hook siguiendo el patrón:
    ```
 3. Leé el payload del hook con `readHookPayload()` y decidí.
 4. Para devolver una decisión, emití el JSON correspondiente por stdout y exit 0.
-5. Registralo en `hooks/hooks.json` (Claude Code) bajo el evento que corresponda — nunca en un `settings.json` del plugin, que Claude Code no lee para hooks — y, si aplica a Copilot/Antigravity, en el `hooks.json` raíz.
+5. Registralo en `hooks/hooks.json` (Claude Code) bajo el evento que corresponda — nunca en un `settings.json` del plugin, que Claude Code no lee para hooks — y, si aplica a Antigravity, en el `hooks.json` raíz.
 
 `lib/specture-guard.js` exporta:
 

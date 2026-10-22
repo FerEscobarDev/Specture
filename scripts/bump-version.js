@@ -9,11 +9,9 @@
 //
 // Exit code 0 on success, 1 on any failure. No dependencies.
 //
-// The four manifests (the "release contract", asserted by hooks/test/release-contract.test.js):
-//   plugin.json                        .version       (Copilot CLI / Antigravity CLI)
+// The two manifests (the "release contract", asserted by hooks/test/release-contract.test.js):
+//   plugin.json                        .version       (repository root — Antigravity's manifest and the version CI and the scripts read)
 //   .claude-plugin/plugin.json         .version       (Claude Code)
-//   .github/plugin/marketplace.json    .metadata.version + .plugins[0].version (Copilot marketplace)
-//   copilot/compatibility-matrix.json  .claudeSource  (version of the Claude source the mirrors track)
 //
 // Writes are done by string replacement so each file keeps its formatting.
 
@@ -27,13 +25,7 @@ const SEMVER = /^\d+\.\d+\.\d+$/;
 
 const MANIFESTS = [
   { file: "plugin.json", read: (j) => [j.version], pattern: /("version"\s*:\s*")(\d+\.\d+\.\d+)(")/g },
-  { file: ".claude-plugin/plugin.json", read: (j) => [j.version], pattern: /("version"\s*:\s*")(\d+\.\d+\.\d+)(")/g },
-  {
-    file: ".github/plugin/marketplace.json",
-    read: (j) => [j.metadata && j.metadata.version, j.plugins && j.plugins[0] && j.plugins[0].version],
-    pattern: /("version"\s*:\s*")(\d+\.\d+\.\d+)(")/g
-  },
-  { file: "copilot/compatibility-matrix.json", read: (j) => [j.claudeSource], pattern: /("claudeSource"\s*:\s*")(\d+\.\d+\.\d+)(")/g }
+  { file: ".claude-plugin/plugin.json", read: (j) => [j.version], pattern: /("version"\s*:\s*")(\d+\.\d+\.\d+)(")/g }
 ];
 
 function readJson(relative) {

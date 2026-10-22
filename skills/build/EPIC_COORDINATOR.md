@@ -14,7 +14,8 @@
 | The EPIC_REPORT · Anti-Patterns | What goes back to the build coordinator |
 
 Read by the **epic coordinator**: the subagent the build coordinator dispatches once per epic
-(Claude Code). When nesting is unavailable — Copilot, Antigravity, or an
+(Claude Code; in Antigravity, a subagent registered with `enable_subagent_tools: true`). When
+nesting is unavailable — an
 `EPIC_REPORT: NESTING_UNAVAILABLE` — the build coordinator runs this same file **inline**, in its
 own chat, exactly as written. The epic-agent never sees it.
 
@@ -47,8 +48,9 @@ Iron rules:
 
 ## Step 0 — Nesting check
 
-If you do not have the Agent tool, answer `EPIC_REPORT: NESTING_UNAVAILABLE — sin herramienta
-Agent` **immediately, touching nothing**: the build coordinator then runs this file inline.
+If you have neither the `Agent` tool (Claude Code) nor `invoke_subagent` (Antigravity), answer
+`EPIC_REPORT: NESTING_UNAVAILABLE — sin herramienta de subagentes` **immediately, touching
+nothing**: the build coordinator then runs this file inline.
 (Inline, skip this step.)
 
 ## Dispatch inputs

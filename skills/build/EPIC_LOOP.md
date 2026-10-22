@@ -23,9 +23,10 @@ dispatched you with this file as your **complete procedure**. You never see the 
 queue, and your context is discarded when you finish.
 
 **Step 0 — Nesting check.** You dispatch workers (`tdd-test-writer`, `implementer`,
-`ux-implementer`, `code-reviewer`). If you do not have the Agent tool (the nested-subagent depth
-limit is below three levels), report `BLOCKED: nesting` **immediately, touching nothing**: the
-epic coordinator then runs this procedure itself. Every dispatch of yours returns by itself —
+`ux-implementer`, `code-reviewer`). If you have neither the `Agent` tool (Claude Code) nor
+`invoke_subagent` (Antigravity) — the nested-subagent depth limit is below three levels — report
+`BLOCKED: nesting` **immediately, touching nothing**: the epic coordinator then runs this
+procedure itself. Every dispatch of yours returns by itself —
 wait for its result; never poll. **How to wait:** dispatch a worker as a **foreground**
 `Agent` call (one turn; it returns when the worker finishes) or, when it must run in the
 background, wait for its notification or the `Monitor` tool. **Never `sleep`**, never loop on a
@@ -252,7 +253,7 @@ The project's invariants `R-*` live in `.specture/rules.yml` (one line per rule,
    node "${CLAUDE_PLUGIN_ROOT}/hooks/lib/rules-resolve.js" --project . --spec docs/05-specs/<epic-slug>/<task-slug>.spec.md [--tags <extra,…>]
    ```
    (`--tags <tag1,tag2,…>` alone still works for a dispatch without a spec file.)
-   (`${PLUGIN_ROOT}` in Copilot / Antigravity; `$SPECTURE_ROOT` in manual setups.) It prints the block — `RULES_RESOLVED: N of M (tags: …)` + one line per rule (`id [tags] SEVERITY — rule · verificar: … · fuente: …`) — or exactly `RULES_RESOLVED: []`. A rule tagged `all` is always included. `--all` returns the whole registry (project-level validator dispatches in `architecture`). Exit 1 = the file does not parse: **stop and report it** (`/specture:doctor check` names the line) — never dispatch with a silently empty block when rules exist.
+   (`${PLUGIN_ROOT}` in Antigravity; `$SPECTURE_ROOT` in manual setups.) It prints the block — `RULES_RESOLVED: N of M (tags: …)` + one line per rule (`id [tags] SEVERITY — rule · verificar: … · fuente: …`) — or exactly `RULES_RESOLVED: []`. A rule tagged `all` is always included. `--all` returns the whole registry (project-level validator dispatches in `architecture`). Exit 1 = the file does not parse: **stop and report it** (`/specture:doctor check` names the line) — never dispatch with a silently empty block when rules exist.
 3. **No Node**: `grep -n "tags:" .specture/rules.yml`, intersect by hand, copy the matching entries verbatim.
 4. **No `.specture/rules.yml`**: the block is `RULES_RESOLVED: []` — unless `conventions.md` §12 still declares rules (project not yet migrated): then the resolver injects **all** of them, unfiltered (they carry no tags), so the project keeps the enforcement it had, and warns. Print once per session: *⚠ Specture: `.specture/rules.yml` no inicializado — las reglas de §12 se inyectan enteras hasta migrar; corré `/specture:doctor migrate`* (migration `1.19-rules-file`) and continue.
 5. **Pass the block verbatim** in the dispatch. Empty is valid and explicit: Dimension 7 of the reviewer is a no-op when the block is empty — the presence of rules is the switch, there is no toggle.

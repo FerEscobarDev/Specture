@@ -30,7 +30,7 @@ Builds (or incrementally updates) the living-behaviour file of **one** component
    `docs/.specture-meta/learn-history.jsonl`). Never edit a spec, the ROADMAP,
    another component's file, or code. characterize never writes code or tests.
 3. EnterPlanMode BEFORE WRITING — the full proposed file is the plan; approval is
-   atomic. (Copilot / Antigravity: a closed proposal in chat + explicit approval.)
+   atomic. (Antigravity: a closed proposal in chat + explicit approval.)
 4. Confianza: ai_reconciled (from specs) | ai_characterized (from code). Never
    spec_reconciled (that is build Step 8.7's mark) and never user_confirmed.
 5. Every vigente item carries `origen:` — the spec id `<epic-dir>/<task-slug>` (the
@@ -42,7 +42,7 @@ Builds (or incrementally updates) the living-behaviour file of **one** component
 ## Reconcile — Inputs
 
 - `docs/04-roadmap/ROADMAP.md` (epic states) and `docs/02-architecture/architecture.md` (§ Componentes: slugs, "Carpeta raíz", "Ubicación"). No `architecture.md` → stop: components are declared there (`architecture` skill).
-- `${CLAUDE_PLUGIN_ROOT}/templates/CURRENT_CAPABILITY_TEMPLATE.md` (`$SPECTURE_ROOT/…` in manual setups; `${PLUGIN_ROOT}` in Copilot / Antigravity).
+- `${CLAUDE_PLUGIN_ROOT}/templates/CURRENT_CAPABILITY_TEMPLATE.md` (`$SPECTURE_ROOT/…` in manual setups; `${PLUGIN_ROOT}` in Antigravity).
 - The existing `docs/05-specs/_current/<slug>.md`, if any (incremental merge, never a blind rebuild).
 - **Only** the specs the helper lists (step 1) — never scan `docs/05-specs/` by hand.
 - The `operationId` list of the contract file (`stack.yml.api.contract_file`; a `grep operationId` is enough) — only to decide what goes under "Operaciones del contrato implementadas". Never `business_requirements.md` or `conventions.md`: the specs already cite their `RN-nnn`.

@@ -23,6 +23,8 @@ Three levels decide **who draws**. They never decide whether the decision gets m
 - Both deliverables exist and the user wants pages → that is `build`, not this phase. **Except** when `design_system.md` predates v2.0.0 and has no semantic token layer (`color.bg.*`, `color.text.*`, `color.border.*`, `color.focus.*`) — that is the content migration `2.0-design-system-layers`, this phase owns it, and bouncing to `build` leaves the contrast gate with nothing to compute. See Step 4.
 - The user wants to change one token on a built system → that is a delta in `design_system.md` §7, not a re-run of this phase.
 
+> **Antigravity:** if the session exposes `define_subagent`, register the agents this skill dispatches from `agents/<name>/AGENT.md` before the first dispatch — `architecture-validator` read-only (all flags `false`), any agent that writes with `enable_write_tools: true` (the flag defaults to `false`). In Claude Code they are registered by the plugin. The table of flags is in `build/SKILL.md` § "Cross-Platform Subagent Initialization".
+
 ## Required Inputs
 
 - `.specture/stack.yml` — `frontend.framework`, `frontend.ui_library`, `frontend.styling`, `frontend.ui_defined`, `frontend.design_channel`.
@@ -57,7 +59,7 @@ Read `frontend.design_channel` from `stack.yml`, and look for `.design-sync/conf
 |---|---|---|
 | **A — Claude Design** | `design_channel: claude-design`, or a pointer to a remote design project exists | The user, in claude.ai/design. Specture pulls per component, on demand, in `build`. |
 | **B — native canvas** | `design_channel: canvas`, or the user asks for visual iteration and has no external project | Claude, via the `design` skill, inside this session. |
-| **C — no external tool** | anything else, including Copilot and other providers | Specture alone. The spine runs whole. |
+| **C — no external tool** | anything else, including other providers | Specture alone. The spine runs whole. |
 
 **Adopt (`ui_defined: true`) is orthogonal to the level** — see Step 5.
 
@@ -112,7 +114,7 @@ The primitives already in the file stay; what gets added is the semantic layer t
 node "${CLAUDE_PLUGIN_ROOT}/scripts/doctor.js" migrate --verify 2.0-design-system-layers --by "ux-design"
 ```
 
-(Copilot / Antigravity: `${PLUGIN_ROOT}`; manual `@import`: `$SPECTURE_ROOT`.) Commit `.specture/migrations.log` with the document — the log is tracked and append-only. If `--verify` fails, the layer is not done: fix it, never log it by hand.
+(Antigravity: `${PLUGIN_ROOT}`; manual `@import`: `$SPECTURE_ROOT`.) Commit `.specture/migrations.log` with the document — the log is tracked and append-only. If `--verify` fails, the layer is not done: fix it, never log it by hand.
 
 Then, for a design system being written for the first time: write `docs/03-ux-ui/design_system.md` from `DESIGN_SYSTEM_TEMPLATE.md`. Brand fields come from `MK-nnn` and are **not re-invented**.
 
@@ -141,7 +143,7 @@ node "${CLAUDE_PLUGIN_ROOT}/scripts/design-lint.js" contrast
 node "${CLAUDE_PLUGIN_ROOT}/scripts/design-inventory.js" --verify
 ```
 
-(Copilot / Antigravity: `${PLUGIN_ROOT}`; manual `@import`: `$SPECTURE_ROOT`.) Never re-implement these by hand, and never report a check you did not run.
+(Antigravity: `${PLUGIN_ROOT}`; manual `@import`: `$SPECTURE_ROOT`.) Never re-implement these by hand, and never report a check you did not run.
 
 Then the judgment-only points:
 

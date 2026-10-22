@@ -844,7 +844,8 @@ test("hooks-registry-missing: an ERROR when the installed plugin registers no ho
   const { runCheck } = require("../lib/doctor");
   const brokenPlugin = createProject({ "hooks/pre-tool-use-wait-gate.js": "process.exit(0);\n" });
 
-  const promised = runCheck(createProject(CLEAN), { pluginVersion, pluginRoot: brokenPlugin }).findings.filter((f) => f.group === "hooks");
+  const claudeOnly = (f) => f.group === "hooks" && !f.check.startsWith("hooks-antigravity");
+  const promised = runCheck(createProject(CLEAN), { pluginVersion, pluginRoot: brokenPlugin }).findings.filter(claudeOnly);
   assert.equal(promised.length, 1, JSON.stringify(promised));
   assert.equal(promised[0].check, "hooks-registry-missing");
   assert.equal(promised[0].severity, "ERROR");
@@ -852,7 +853,7 @@ test("hooks-registry-missing: an ERROR when the installed plugin registers no ho
   assert.match(promised[0].action, /\/hooks/);
 
   write(brokenPlugin, "hooks/hooks.json", JSON.stringify({ PreToolUse: [] }));
-  const noWrapper = runCheck(createProject(CLEAN), { pluginVersion, pluginRoot: brokenPlugin }).findings.find((f) => f.group === "hooks");
+  const noWrapper = runCheck(createProject(CLEAN), { pluginVersion, pluginRoot: brokenPlugin }).findings.find(claudeOnly);
   assert.match(noWrapper.detail, /"hooks" wrapper/);
 
   const off = createProject({ ...CLEAN, ".specture/settings.yml": `schema_version: ${pluginVersion}\nprofile: custom\nhooks.enabled: false\n` });
@@ -867,12 +868,51 @@ test("hooks-self-test-failed: a sound registry whose Wait Guard does not deny a 
     "hooks/pre-tool-use-tdd-gate.js": "process.exit(0);\n",
     "hooks/pre-tool-use-wait-gate.js": "process.exit(0);\n"
   });
-  const mute = runCheck(createProject(CLEAN), { pluginVersion, pluginRoot: mutePlugin }).findings.filter((f) => f.group === "hooks");
+  const mute = runCheck(createProject(CLEAN), { pluginVersion, pluginRoot: mutePlugin }).findings.filter((f) => f.group === "hooks" && !f.check.startsWith("hooks-antigravity"));
   assert.equal(mute.length, 1, JSON.stringify(mute));
   assert.equal(mute[0].check, "hooks-self-test-failed");
   assert.equal(mute[0].severity, "WARNING");
 
   // The CLI defaults to the plugin it ships in: the clean-project test above already proves the
-  // real registry and the real Wait Guard deny from a project with hooks on.
+  // real registry and the real Wait Guard deny from a project with hooks on — for both hosts.
   assert.deepEqual(runDoctor(createProject(CLEAN)).json.findings.filter((f) => f.group === "hooks"), []);
+});
+
+// v2.11.0 — Antigravity loads the root `hooks.json` (named groups → PreToolUse → hooks[].command)
+// and runs the hook from the plugin directory with the project only in `workspacePaths`.
+test("hooks-antigravity-registry: the root hooks.json agy loads — missing, with a top-level version, or without commands", () => {
+  const { agyRegistryProblem } = require("../lib/doctor/checks/hooks");
+  const claudeRegistry = fs.readFileSync(path.join(root, "hooks", "hooks.json"), "utf8");
+  const plugin = createProject({ "hooks/hooks.json": claudeRegistry });
+
+  assert.match(agyRegistryProblem(plugin), /no root hooks\.json/);
+
+  write(plugin, "hooks.json", JSON.stringify({ version: 1, hooks: { PreToolUse: [] } }));
+  assert.match(agyRegistryProblem(plugin), /top-level "version"/);
+
+  write(plugin, "hooks.json", JSON.stringify({ specture: { PreToolUse: [{ matcher: "run_command", bash: "node x.js" }] } }));
+  assert.match(agyRegistryProblem(plugin), /no "hooks" array/);
+
+  write(plugin, "hooks.json", JSON.stringify({ specture: { PreToolUse: [{ matcher: "run_command", hooks: [{ type: "command", command: "node \"${PLUGIN_ROOT}/hooks/missing.js\"", timeout: 10 }] }] } }));
+  assert.match(agyRegistryProblem(plugin), /missing\.js is registered but does not exist/);
+
+  // the real plugin is sound
+  assert.equal(agyRegistryProblem(root), null);
+
+  // through run(): INFO without agy, WARNING with it; silent when hooks are off
+  const { runCheck } = require("../lib/doctor");
+  const found = (opts) => runCheck(createProject(CLEAN), { pluginVersion, pluginRoot: plugin, ...opts }).findings.filter((f) => f.check === "hooks-antigravity-registry");
+  assert.equal(found({ agyInstalled: false })[0].severity, "INFO");
+  assert.equal(found({ agyInstalled: true })[0].severity, "WARNING");
+  const off = createProject({ ...CLEAN, ".specture/settings.yml": `schema_version: ${pluginVersion}\nprofile: custom\nhooks.enabled: false\n` });
+  assert.deepEqual(runCheck(off, { pluginVersion, pluginRoot: plugin }).findings.filter((f) => f.group === "hooks"), []);
+});
+
+test("hooks-antigravity-self-test: the universal Wait Guard run from the plugin directory finds the project in workspacePaths", () => {
+  const { agySelfTestProblem } = require("../lib/doctor/checks/hooks");
+  // the real plugin, a project with hooks on → denies
+  assert.equal(agySelfTestProblem(root, createProject(CLEAN)), null);
+  // a project with hooks off → the guard sees it as disabled and allows
+  const off = createProject({ ...CLEAN, ".specture/settings.yml": `schema_version: ${pluginVersion}\nprofile: custom\nhooks.enabled: false\n` });
+  assert.match(agySelfTestProblem(root, off), /allowed a polling loop/);
 });

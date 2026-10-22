@@ -21,7 +21,7 @@ Run these checks **in order**. Stop at the first match and invoke the indicated 
 
 ### Step 0 — Schema drift (one script call, read-only)
 
-Run `node "${CLAUDE_PLUGIN_ROOT}/scripts/doctor.js" check --brief` (Copilot / Antigravity: `${PLUGIN_ROOT}`; manual `@import` setups: `$SPECTURE_ROOT`). It prints one line and loads no document into your context. Skip it only when `.specture/stack.yml` does not exist (Step 1 will route to `setup`).
+Run `node "${CLAUDE_PLUGIN_ROOT}/scripts/doctor.js" check --brief` (Antigravity: `${PLUGIN_ROOT}`; manual `@import` setups: `$SPECTURE_ROOT`). It prints one line and loads no document into your context. Skip it only when `.specture/stack.yml` does not exist (Step 1 will route to `setup`).
 
 - **Pending migrations** → announce in Spanish **before** routing: *"Hay N migraciones pendientes (M mecánicas, K asistidas, C de contenido). ¿Corro `/specture:doctor migrate` antes de enrutar?"* Do **not** block: if the user declines or does not answer, continue to Step 1 — the warning stays in the transcript.
 - **ERROR findings** (stale seal, duplicate ADR, broken paths) → one line naming them; they do not change the routing.

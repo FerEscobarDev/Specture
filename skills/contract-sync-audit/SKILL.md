@@ -13,6 +13,8 @@ You are an **integration auditor**. The project already has both a backend and a
 - An existing project is adopting Specture (`setup` Adopt) and needs its back/front interface reconciled before building further.
 - Before bringing external design material into a codebase whose API is already drifting — audit first so the new UI is wired to a coherent contract.
 
+> **Antigravity:** if the session exposes `define_subagent`, register the agents this skill dispatches from `agents/<name>/AGENT.md` before the first dispatch — `architecture-validator` read-only (all flags `false`), any agent that writes with `enable_write_tools: true` (the flag defaults to `false`). In Claude Code they are registered by the plugin. The table of flags is in `build/SKILL.md` § "Cross-Platform Subagent Initialization".
+
 ## Required Inputs
 
 - `.specture/stack.yml` — `backend.framework`, `frontend.framework`, languages. Drives how routes/calls are extracted.
