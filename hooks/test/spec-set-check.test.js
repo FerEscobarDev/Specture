@@ -753,3 +753,24 @@ test("--draft --batch: hyphenated epic ids (HC-IHCE.5) are matched whole, never 
   const prefixOnly = runCheck(project, ["--draft", "--batch", "HC"], { epic: "HC-IHCE.6" });
   assert.equal(prefixOnly.status, 1, "HC is not HC-IHCE.5");
 });
+
+
+// v3.0.0 — the design-system epic's _planning.md is deleted when its milestone closes; the
+// approval survives in design_system.md and C-design accepts either record.
+test("C-design: a page epic passes when design_system.md records the visual approval and the design-system epic's _planning.md is gone", () => {
+  const project = pageProject({ providerPlanning: null });
+  fs.rmSync(path.join(project.root, "docs", "05-specs", "epic-1.0-ds"), { recursive: true, force: true });
+  write(project.root, "docs/03-ux-ui/design_system.md", "# Design System\n\n## 1. Dirección\n\n- **Procedencia de la marca:** usuario\n- **Aprobación visual:** abc123def456 — 2026-09-09T10:00:00Z — epic 1.0\n");
+  const { lines } = runCheck(project);
+  assert.equal(lines.filter((l) => l.startsWith("C-design") && / BLOCKER /.test(l)).length, 0, lines.join("\n"));
+
+  const unapproved = pageProject({ providerPlanning: null });
+  fs.rmSync(path.join(unapproved.root, "docs", "05-specs", "epic-1.0-ds"), { recursive: true, force: true });
+  write(unapproved.root, "docs/03-ux-ui/design_system.md", "# Design System\n\n- **Aprobación visual:** sin aprobar\n");
+  const blocked = runCheck(unapproved).lines.find((l) => l.startsWith("C-design"));
+  assert.match(blocked, /BLOCKER/, "sin aprobar is not an approval");
+
+  const { designSystemVisualApproval } = require("../lib/planning");
+  assert.deepEqual(designSystemVisualApproval("- **Aprobación visual:** abc123def456 — 2026-09-09 — epic 1.0"), { sha: "abc123def456", line: "- **Aprobación visual:** abc123def456 — 2026-09-09 — epic 1.0" });
+  assert.equal(designSystemVisualApproval("- **Aprobación visual:** sin aprobar"), null);
+});

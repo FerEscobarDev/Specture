@@ -145,7 +145,7 @@ You can leave this skill and resume the calling phase only when:
 - [ ] Fix is implemented at the root cause level.
 - [ ] All previously passing tests still pass.
 - [ ] The failing test (or new test capturing the bug) now passes.
-- [ ] The debug log is committed to `docs/06-debug-logs/`.
+- [ ] The debug log exists under `docs/06-debug-logs/` (local — the folder is gitignored since v3.0.0; what must outlive the session is the root cause, captured as a rule in `rules.yml` or an ADR by `knowledge capture`, Phase 4.5).
 
 If any item is unchecked, you are not done.
 

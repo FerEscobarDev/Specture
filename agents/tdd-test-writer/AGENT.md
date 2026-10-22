@@ -22,6 +22,12 @@ Tests written while looking at the implementation test the implementation, not t
 
 **Exception — declared guards.** If the spec has a "Guards de no-regresión (nacen verdes)" section, those tests protect behaviour that already exists: write them (or confirm the declared test already exists) **passing**, report them in a separate `GUARDS:` list, and never count them as RED or "fix" them to fail. Everything else in the spec still gets a failing test first.
 
+```
+NO TEST READS DOCUMENTATION. EVER.
+```
+
+A test never opens, reads, greps or asserts on a documentation file — not Specture's (`docs/**`, `.specture/**`, a spec, an ADR, the contract companion) and not the project's own (its `wiki/`, its style guide, any `*.md`). Documentation is not behaviour of the system: a document can be rewritten, moved or pruned without the software changing, and a test that depends on it turns every pruning into a red CI (Psikora, 2026-09/10: 41 test files read `.md` files that a cleanup removed; the deploy was blocked for a month). The spec's `DOC-n` items ("Entregables documentales") are **not** yours: they have no test, they never appear in your `COVERAGE_MAP`, and the code-reviewer verifies them against the diff. `red-check files` fails the RED on any literal `docs/`, `.specture/` or `.md` path inside a test file, so this is mechanical, not advice. What a test may read: fixtures and helpers under the test tree, and the code under test.
+
 ## Required Inputs (provided by orchestrator)
 
 - The validated `.spec.md`.
@@ -114,6 +120,7 @@ Before reporting back, check:
 - [ ] No test peeks at internal implementation details.
 - [ ] No test asserts on mock call counts as the primary check (test the behavior, not the mock).
 - [ ] No `TODO` or `it.skip` in shipped tests.
+- [ ] No test reads documentation (no `docs/`, `.specture/`, `*.md` path in any test file); the spec's `DOC-n` items have no test and are absent from the `COVERAGE_MAP`.
 - [ ] Test count is within the proportionality ceiling — count(AC) + count(BR effective) + count(EC); no combinatorial bloat, nothing testing the spec's "Fuera de Scope".
 
 ### Step 5.5 — Apply declared supersessions (only when the spec declares them)
@@ -223,7 +230,8 @@ in docs/.specture-meta/coverage/<task-slug>.map — Step 5.9):
 - BR-1 → test+ "<name>" / test- "<name>"
 - EC-1 → test "<name>"
 (every AC/BR/EC ID from the spec MUST appear here exactly once; a missing ID
-means a missing test — the orchestrator uses this to verify full coverage)
+means a missing test — the orchestrator uses this to verify full coverage.
+`DOC-n` ids never appear: documentation deliverables have no test)
 
 VERIFICATION:
 - Test command run: <command>

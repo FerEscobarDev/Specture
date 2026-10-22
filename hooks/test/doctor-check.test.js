@@ -35,7 +35,7 @@ const TEMPLATE_RULES = fs.readFileSync(path.join(__dirname, "..", "..", "templat
 
 // A project exactly as `setup` leaves it at the installed plugin version: no migration pending.
 const CLEAN = {
-  ".gitignore": ".specture/state/\ndocs/.specture-meta/*\n!docs/.specture-meta/build-metrics.jsonl\n!docs/.specture-meta/design-metrics.jsonl\n",
+  ".gitignore": ".specture/state/\ndocs/.specture-meta/*\n!docs/.specture-meta/build-metrics.jsonl\n!docs/.specture-meta/design-metrics.jsonl\ndocs/07-reviews/review-*.md\ndocs/07-reviews/cumplimiento-pr-*.md\ndocs/07-reviews/cumplimiento-rama-*.md\ndocs/06-debug-logs/\n",
   ".specture/stack.yml": 'project:\n  name: "Demo"\n  slug: "demo"\napi:\n  style: "rest"\n  contract_file: "docs/02-architecture/api-contract.openapi.yaml"\nstructure:\n  root_layout: custom\n',
   ".specture/settings.yml": `schema_version: ${pluginVersion}\nprofile: custom\nhooks.enabled: true\n`,
   ".specture/conventions.md": "# Convenciones\n\n## 10. Specture\n\n> ver settings.yml\n\n## 12. Invariantes del Proyecto (R-*)\n\n> ver .specture/rules.yml\n\n## 13. Workflow / Proceso (W-*)\n\n- W-3: Conventional Commits\n",
@@ -85,7 +85,7 @@ test("handoff-residue: reported once the spine exists, silent before the migrati
   assert.ok(!/design_specs_for_ai/.test(found.action), "only what is actually on disk is named");
 });
 
-test("reports broken paths, placeholders, duplicate ADRs, missing statuses, stale seal and missing _current", () => {
+test("reports broken paths, placeholders, duplicate ADRs, missing statuses and a stale seal", () => {
   const projectRoot = createProject({
     ...CLEAN,
     ".specture/decisions/012-http-conventions.md": "# ADR-012\n\n## Status\n\nAccepted\n",
@@ -108,7 +108,7 @@ test("reports broken paths, placeholders, duplicate ADRs, missing statuses, stal
   assert.ok(checks.includes("review-status"), "review-status");
   assert.ok(checks.includes("spec-ids"), "spec-ids");
   assert.ok(checks.includes("seal-stale"), "seal-stale");
-  assert.ok(checks.includes("current-state-missing"), "current-state-missing");
+  assert.ok(!checks.some((c) => c.startsWith("current-state")), "no living-behaviour checks since v3.0.0");
   assert.ok(checks.includes("worktree-residue"), "worktree-residue");
 
   const broken = json.findings.filter((f) => f.check === "broken-path").map((f) => f.detail);
@@ -147,14 +147,14 @@ test("a milestone whose title merely contains 'archivador' is not a tombstone; '
   const open = parseRoadmap("### Milestone 1: Núcleo del archivador\n\n- [ ] **Epic 1.1:** Archivos\n");
   assert.equal(open.milestones[0].tombstone, false);
   assert.equal(open.milestones[0].closed, false);
-  const tomb = parseRoadmap("### Milestone 3: Billing  ✅ archivado 2026-08-01 · verdad viva → docs/05-specs/_current/billing.md\n- [x] Epic 3.1, Epic 3.2\n");
+  const tomb = parseRoadmap("### Milestone 3: Billing  ✅ archivado 2026-08-01 · verdad: el código, sus tests y las ADRs\n- [x] Epic 3.1, Epic 3.2\n");
   assert.equal(tomb.milestones[0].tombstone, true);
   const plain = parseRoadmap("### Milestone 2: Reportes archivados\n- [ ] **Epic 2.1:** A\n");
   assert.equal(plain.milestones[0].tombstone, true, "the word form still counts (heading text is the marker the template prescribes)");
 
   const projectRoot = createProject({ ...CLEAN, "docs/04-roadmap/ROADMAP.md": "# ROADMAP\n\n### Milestone 1: Núcleo del archivador\n\n- [ ] **Epic 1.1:** Archivos\n  - **Dependencias:** Ninguna\n" });
   const { json } = runDoctor(projectRoot);
-  assert.ok(!json.findings.some((f) => f.check === "current-state-missing"), JSON.stringify(json.findings));
+  assert.ok(!json.findings.some((f) => f.group === "state" && f.check.startsWith("roadmap")), JSON.stringify(json.findings));
 });
 
 test("a v3 seal (spec_sha/spec_paths/allowed_paths, no specs[]) is accepted while its epic is [/] and reported stale afterwards", () => {
@@ -588,31 +588,18 @@ test("a business_requirements.md following the template produces no requirements
   assert.deepEqual(json.findings.filter((f) => f.group === "requirements"), []);
 });
 
-test("current-state-partial: a component with [x] specs and no _current/<slug>.md is reported with the reconcile command", () => {
+test("v3.0.0: closed milestones without a living-behaviour directory are not a finding; a leftover _current/ is offered for deletion by the migration, not by a check", () => {
   const files = {
     ...CLEAN,
     "docs/02-architecture/architecture.md": "# Arquitectura\n\n## Componentes\n\n### Archivos\n- **Carpeta raíz:** `demo_api/`\n\n### Notas\n- **Carpeta raíz:** `demo_api/`\n",
-    "docs/04-roadmap/ROADMAP.md": "# ROADMAP\n\n### Milestone 1: Foundation\n\n- [x] **Epic 1.1:** Archivos\n  - **Dependencias:** Ninguna\n  - **Componentes de arquitectura involucrados:** Archivos\n- [x] **Epic 1.2:** Notas\n  - **Dependencias:** Ninguna\n  - **Componentes de arquitectura involucrados:** Notas\n",
-    "docs/05-specs/epic-1.1-archivos/01-subir.spec.md": "# SPEC: Subir\n\n**Epic:** Epic 1.1 Archivos   **Módulo:** Archivos (`demo_api/src/archivos/`)\n\n## Criterios de Aceptación (≥1 test por ID)\n- **AC-1:** sube\n",
-    "docs/05-specs/epic-1.2-notas/01-crear.spec.md": "# SPEC: Crear\n\n**Epic:** Epic 1.2 Notas   **Módulo:** Notas (`demo_api/src/notas/`)\n\n## Criterios de Aceptación (≥1 test por ID)\n- **AC-1:** crea\n"
+    "docs/04-roadmap/ROADMAP.md": "# ROADMAP\n\n### Milestone 1: Foundation\n\n- [x] **Epic 1.1:** Archivos\n  - **Dependencias:** Ninguna\n  - **Componentes de arquitectura involucrados:** Archivos\n- [x] **Epic 1.2:** Notas\n  - **Dependencias:** Ninguna\n  - **Componentes de arquitectura involucrados:** Notas\n"
   };
-  const withoutDir = createProject(files);
-  const missing = runDoctor(withoutDir).json.findings.find((f) => f.check === "current-state-missing");
-  assert.ok(missing, "closed milestone without the directory");
-  assert.match(missing.action, /knowledge reconcile --component archivos, notas/);
+  const closed = runDoctor(createProject(files)).json;
+  assert.ok(!closed.findings.some((f) => f.check.startsWith("current-state")), JSON.stringify(closed.findings));
 
-  const partial = createProject({ ...files, "docs/05-specs/_current/notas.md": "# Estado actual — Notas\n\n> - **Confianza:** spec_reconciled\n" });
-  const { json } = runDoctor(partial);
-  assert.ok(!json.findings.some((f) => f.check === "current-state-missing"));
-  const partials = json.findings.filter((f) => f.check === "current-state-partial");
-  assert.equal(partials.length, 1, JSON.stringify(json.findings));
-  assert.equal(partials[0].file, "docs/05-specs/_current/archivos.md");
-  assert.equal(partials[0].severity, "WARNING");
-  assert.match(partials[0].detail, /"Archivos" has 1 \[x\] spec\(s\)/);
-  assert.match(partials[0].action, /knowledge reconcile --component archivos/);
-
-  const complete = createProject({ ...files, "docs/05-specs/_current/notas.md": "# Notas\n", "docs/05-specs/_current/archivos.md": "# Archivos\n" });
-  assert.ok(!runDoctor(complete).json.findings.some((f) => f.check.startsWith("current-state")));
+  const leftover = runDoctor(createProject({ ...files, "docs/05-specs/_current/notas.md": "# Estado actual — Notas\n" })).json;
+  assert.ok(!leftover.findings.some((f) => f.check.startsWith("current-state")));
+  assert.ok(leftover.drift.migrations.some((m) => m.id === "3.0-retire-current-state" && m.status === "pending"), JSON.stringify(leftover.drift.migrations));
 });
 
 test("rules lint: schema errors and over-long rules in rules.yml, over-long deny-list items in conventions §4", () => {
@@ -915,4 +902,63 @@ test("hooks-antigravity-self-test: the universal Wait Guard run from the plugin 
   // a project with hooks off → the guard sees it as disabled and allows
   const off = createProject({ ...CLEAN, ".specture/settings.yml": `schema_version: ${pluginVersion}\nprofile: custom\nhooks.enabled: false\n` });
   assert.match(agySelfTestProblem(root, off), /allowed a polling loop/);
+});
+
+// v3.0.0 — no test of the project depends on documentation.
+test("doc-reading-test: WARNING for a test that reads documentation, ERROR when the document is gone, silent for comments and non-tests", () => {
+  const { runCheck } = require("../lib/doctor");
+  const findings = (files) => runCheck(createProject({ ...CLEAN, ...files }), { pluginVersion }).findings.filter((f) => f.group === "tests");
+
+  assert.deepEqual(findings({}), [], "a project without tests has nothing to report");
+
+  const existing = findings({
+    "docs/02-architecture/architecture.md": "# Arquitectura\n",
+    "tests/arch.test.js": "const t = require('fs').readFileSync('docs/02-architecture/architecture.md', 'utf8');\n"
+  });
+  assert.equal(existing.length, 1, JSON.stringify(existing));
+  assert.equal(existing[0].check, "doc-reading-test");
+  assert.equal(existing[0].severity, "WARNING");
+  assert.equal(existing[0].file, "tests/arch.test.js");
+  assert.match(existing[0].detail, /:1 `docs\/02-architecture\/architecture\.md`/);
+  assert.match(existing[0].action, /DOC-n/);
+
+  const gone = findings({
+    "src/Api.Tests/RunbookGuardTests.cs": "var text = File.ReadAllText(\"docs/06-runbooks/reset.md\");\n",
+    "wiki/guia.md": "# Guía\n",
+    ".specture/docs-index.yml": "schema_version: 1\nsource_of_truth_dir: \"wiki/\"\n",
+    "tests/guia.spec.ts": "import { readFileSync } from 'fs';\nconst g = readFileSync('wiki/guia.md', 'utf8');\n"
+  });
+  const byFile = Object.fromEntries(gone.map((f) => [f.file, f]));
+  assert.equal(byFile["src/Api.Tests/RunbookGuardTests.cs"].severity, "ERROR", "the runbook no longer exists → ENOENT today");
+  assert.match(byFile["src/Api.Tests/RunbookGuardTests.cs"].detail, /no longer exist/);
+  assert.equal(byFile["tests/guia.spec.ts"].severity, "WARNING", "the project's own wiki counts as documentation too");
+
+  const quiet = findings({
+    "tests/clean.test.js": "// see docs/02-architecture/architecture.md for the rationale\nconst x = 1;\n",
+    "src/notes/service.js": "const t = require('fs').readFileSync('docs/x.md');\n"
+  });
+  assert.deepEqual(quiet, [], "a comment and a non-test file are not findings");
+});
+
+
+// v3.0.0 — the project must build with Specture's folders gone.
+test("build-reads-docs: a build manifest that names docs/ or .specture/ is a WARNING; description fields and comments are not", () => {
+  const { runCheck } = require("../lib/doctor");
+  const findings = (files) => runCheck(createProject({ ...CLEAN, ...files }), { pluginVersion }).findings.filter((f) => f.check === "build-reads-docs");
+
+  assert.deepEqual(findings({ "package.json": JSON.stringify({ name: "demo", description: "see docs/ for details", scripts: { build: "tsc -p ." } }) }), [], "a description is not a build step");
+
+  const npm = findings({ "package.json": JSON.stringify({ name: "demo", scripts: { "gen:client": "openapi-typescript docs/02-architecture/api-contract.openapi.yaml -o src/api/client.ts", build: "npm run gen:client && tsc" } }) });
+  assert.equal(npm.length, 1, JSON.stringify(npm));
+  assert.equal(npm[0].severity, "WARNING");
+  assert.equal(npm[0].file, "package.json");
+  assert.match(npm[0].detail, /gen:client/);
+  assert.match(npm[0].action, /commit the generated output/);
+
+  const csproj = findings({ "src/Api/Api.csproj": "<Project>\n  <!-- docs/ in a comment is fine -->\n  <Target Name=\"Gen\"><Exec Command=\"nswag run ../../docs/02-architecture/api-contract.openapi.yaml\" /></Target>\n</Project>\n" });
+  assert.equal(csproj.length, 1, JSON.stringify(csproj));
+  assert.equal(csproj[0].file, "src/Api/Api.csproj");
+  assert.match(csproj[0].detail, /:3 /);
+
+  assert.deepEqual(findings({ "Makefile": "build:\n\tgo build ./...\n" }), []);
 });

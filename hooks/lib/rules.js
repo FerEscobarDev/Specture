@@ -149,7 +149,7 @@ function moduleTag(module) {
 }
 
 function reachableTags(projectRoot) {
-  const { parseComponents, loadSpecs } = require("./current-state");
+  const { parseComponents, loadSpecs, epicComponents } = require("./components");
   const tags = new Set([ALL_TAG, ...LAYER_TAGS]);
   let architecture = null;
   try {
@@ -165,6 +165,17 @@ function reachableTags(projectRoot) {
     }
   } catch {
     // no specs yet — the fixed vocabulary and the components are enough
+  }
+  // The components the ROADMAP epics declare: closed milestones delete their specs (v3.0.0), so a
+  // module tag must stay reachable through the epic block that named it, not only through a spec.
+  try {
+    const roadmap = fs.readFileSync(path.join(projectRoot, "docs/04-roadmap/ROADMAP.md"), "utf8");
+    for (const names of Object.values(epicComponents(roadmap))) for (const name of names) {
+      const tag = moduleTag(name);
+      if (tag) tags.add(tag);
+    }
+  } catch {
+    // no ROADMAP yet
   }
   return tags;
 }

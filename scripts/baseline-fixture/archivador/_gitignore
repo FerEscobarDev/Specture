@@ -3,3 +3,7 @@ node_modules/
 docs/.specture-meta/*
 !docs/.specture-meta/build-metrics.jsonl
 !docs/.specture-meta/design-metrics.jsonl
+docs/07-reviews/review-*.md
+docs/07-reviews/cumplimiento-pr-*.md
+docs/07-reviews/cumplimiento-rama-*.md
+docs/06-debug-logs/

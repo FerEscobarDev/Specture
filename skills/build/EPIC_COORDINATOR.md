@@ -237,9 +237,7 @@ Step 5 with your own result as the report. Record `coordinator_mode: subagent` a
   checkbox — never the report's word). **Release the seal**: `node
   "${CLAUDE_PLUGIN_ROOT}/hooks/lib/seal-cli.js" release` and confirm
   `.specture/state/build-locked.json` is gone. **Supersessions**: if the report lists any, fill
-  the `commit:` of each line of `## SUPERSESIONES` in `_planning.md` with its `SUPERSEDE_SHA` and
-  append one line to `docs/05-specs/_supersessions.md` (create it lazily; an index, one line per
-  epic): `- <epic-slug> (<fecha>) — N tests supersedidos — ver docs/05-specs/<epic-slug>/_planning.md § SUPERSESIONES`.
+  the `commit:` of each line of `## SUPERSESIONES` in `_planning.md` with its `SUPERSEDE_SHA`.
   Mark `- <X.Y>: [x] <ISO-8601>` under `## EJECUCIÓN` of the register. Step 6, then
   `EPIC_REPORT: DONE`.
 - **BLOCKED: supersesiones (<capa>) <task-slug>** → the **supersession loop** — no `git revert`,

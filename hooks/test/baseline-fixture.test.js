@@ -108,7 +108,7 @@ test("stage 1: only Epics 1.1/1.2, 4-operation contract, RN-001 ambiguous, no sp
   assert.equal(doc.status, 0, doc.stderr || doc.stdout);
 });
 
-test("stage 3: Milestone 1 closed, Epic 1.4 supersedes the 10 MB limit, Auditoría has code and no specs; the doctor asks for the backfill", () => {
+test("stage 3: Milestone 1 closed, Epic 1.4 supersedes the 10 MB limit, Auditoría has code and no specs; the doctor is clean", () => {
   const dir = tmp();
   const result = generate(dir, "--stage", "3");
   assert.equal(result.status, 0, result.stderr);
@@ -132,11 +132,11 @@ test("stage 3: Milestone 1 closed, Epic 1.4 supersedes the 10 MB limit, Auditor�
   assert.equal(doc.status, 0, doc.stderr || doc.stdout);
   const findings = JSON.parse(doc.stdout).findings;
   assert.deepEqual(findings.filter((f) => f.severity === "ERROR"), [], JSON.stringify(findings));
-  const missing = findings.find((f) => f.check === "current-state-missing");
-  assert.ok(missing, JSON.stringify(findings));
-  assert.match(missing.action, /knowledge reconcile --component archivos, notas, etiquetas/);
-  assert.ok(findings.some((f) => f.check === "content-migration-deferred" && /1\.9-current-state-init/.test(f.file)), "the backfill migration is reported as deferred");
-  assert.ok(!findings.some((f) => f.check === "migrations-pending" && /1\.19|1\.18/.test(f.detail)), JSON.stringify(findings));
+  // v3.0.0: a closed milestone without a living-behaviour directory is the normal state — nothing
+  // to backfill, nothing deferred, nothing pending.
+  assert.ok(!findings.some((f) => f.check.startsWith("current-state")), JSON.stringify(findings));
+  assert.ok(!findings.some((f) => f.check === "content-migration-deferred" && /1\.9-current-state-init/.test(f.file)), "the retired migration is never deferred");
+  assert.ok(!findings.some((f) => f.check === "migrations-pending"), JSON.stringify(findings));
 
   const stage2 = tmp();
   assert.equal(generate(stage2).status, 0);
@@ -454,9 +454,9 @@ test("stage 5: Milestone 1 closed and green, the batch 2.1-2.3 pending with its 
   const findings = JSON.parse(doc.stdout).findings;
   assert.deepEqual(findings.filter((f) => f.severity === "ERROR"), [], doc.stdout);
   assert.ok(!findings.some((f) => /^review-|parked/.test(f.check)), JSON.stringify(findings));
-  // Milestone 1 closed without docs/05-specs/_current/ (as in stage 3): only the deferred backfill is pending.
-  assert.ok(findings.some((f) => f.check === "current-state-missing"), JSON.stringify(findings));
-  for (const f of findings.filter((x) => x.check === "migrations-pending")) assert.match(f.detail, /0 mechanical, 0 assisted, 1 content: 1\.9-current-state-init$/);
+  // Milestone 1 closed without a living-behaviour directory (v3.0.0: the normal state) — nothing pending.
+  assert.ok(!findings.some((f) => f.check.startsWith("current-state")), JSON.stringify(findings));
+  assert.ok(!findings.some((f) => f.check === "migrations-pending"), JSON.stringify(findings));
 });
 
 test("stage 5: the baits (a)-(f) are in place and nothing gives them away", () => {

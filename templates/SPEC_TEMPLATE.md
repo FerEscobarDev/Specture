@@ -42,12 +42,22 @@
 > los excluyen por declaración. El tdd-test-writer los escribe (o confirma que existen) pasando.
 - **GUARD-1:** [comportamiento existente protegido] → test: `<path>::<nombre del test>`
 
+## Entregables documentales (sin test — omitir si no aplica)
+> Lo que este spec obliga a **escribir o actualizar en la documentación** del proyecto
+> (`architecture.md`, el contrato, `conventions.md`, una ADR, un runbook). Van aquí con ID `DOC-n`,
+> **nunca** como BR/AC/EC: un BR nace de una `RN-nnn`, un AC es comportamiento observable del
+> software, y la documentación no es comportamiento del sistema. `red-check coverage` no exige
+> test para un `DOC-n`; el `code-reviewer` lo verifica contra el diff (Dimensión 1). **Ningún test
+> del proyecto lee documentación** — ni de Specture ni del propio proyecto: una poda del corpus
+> no puede tumbar el CI (Psikora, 2026-09/10: 41 archivos de test leyendo `.md`).
+- **DOC-1:** `<archivo § sección>` — [qué debe decir después de este spec]
+
 ## Supersesiones de tests sellados (omitir si no aplica)
 > Un test de un epic **CERRADO** que este spec contradice por diseño (una regla cambió — cítala
 > por `BR-n`). Nunca un test de un spec hermano de este epic (eso es el loop de corrección).
 > Hay **dos caminos**, y la lista **no** tiene que estar completa:
 > - **En la planificación:** el `spec-planner` declara solo los comportamientos que las fuentes
->   dejan ver (RN, ADR, spec viejo, `_current/`). El `tdd-test-writer` los aplica en un commit
+>   dejan ver (RN, ADR, el contrato). El `tdd-test-writer` los aplica en un commit
 >   `test(supersede)` **previo** al RED, que el TDD Honesty Gate excluye por declaración.
 > - **En la ejecución:** los tests viejos que la suite descubre rotos se juzgan uno por uno (J9:
 >   ¿una regla de este spec vuelve falsa la expectativa vieja?) y los que sí se agregan aquí sin

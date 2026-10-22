@@ -133,9 +133,9 @@ protocol makes that visible and mechanical instead of a ledger of exceptions:
    / `--clear`). The RED range `<RED_SHA>..<HEAD_SHA>` therefore never contains the
    supersession: the gate excludes it **by declaration**, not by manual exception.
 4. **Recorded** — the coordinator fills the `commit:` of each `## SUPERSESIONES` line at
-   `DONE` and appends one line per epic to `docs/05-specs/_supersessions.md` (the global
-   index: `- <epic-slug> (<fecha>) — N tests supersedidos — ver <epic>/_planning.md
-   § SUPERSESIONES`). The per-epic register is the truth; the global file is an index of
+   `DONE`. The per-epic register is the truth while the milestone is open (it is deleted with
+   the epic's specs when the milestone closes — v3.0.0; the rewritten tests and their commits
+   are the durable record). The former global index `_supersessions.md` was an index of
    one line per epic, never a narrative.
 
 ## Supersessions discovered in execution (v2.2.0)

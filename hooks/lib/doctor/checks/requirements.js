@@ -75,7 +75,7 @@ function ruleIds(text) {
     if (section === null) continue;
     const missing = bulletBlocks(section).filter((b) => !isEmptyMarker(b) && !id.test(b)).length;
     if (missing > 0) {
-      out.push(finding("WARNING", "req-rule-ids", `${missing} item(s) in "${name}" without a stable ${label} ID`, `give every item a sequential ${label} ID (domain prefix allowed) — specs, ROADMAP and _current/ cite by ID, never by section`));
+      out.push(finding("WARNING", "req-rule-ids", `${missing} item(s) in "${name}" without a stable ${label} ID`, `give every item a sequential ${label} ID (domain prefix allowed) — specs and ROADMAP cite by ID, never by section`));
     }
   }
   return out;

@@ -145,7 +145,6 @@ function isLivingDoc(rel) {
   if (rel.startsWith("docs/.specture-meta/")) return false;
   if (rel.startsWith("docs/05-specs/")) {
     const rest = rel.slice("docs/05-specs/".length);
-    if (rest.startsWith("_current/")) return true;
     if (rest.endsWith("/_planning.md")) return true;
     return !rest.includes("/"); // root-level planning docs (impact analyses, open questions)
   }

@@ -28,7 +28,7 @@
 # matches what the coordinator derives from the spec. Only these do:
 #   all                        → every dispatch (style, structure, naming that apply everywhere)
 #   backend | frontend | mobile → every spec of that layer
-#   <component-slug>           → the slug of a component in architecture.md (`current-state.js
+#   <component-slug>           → the slug of a component in architecture.md (`components.js
 #                                components` prints them) — domain rules of that component
 #   <module>                   → a module name the specs declare in their `Módulo` header
 # A conceptual tag (`dto`, `naming`, `seguridad`) matches nothing: the rule is never injected

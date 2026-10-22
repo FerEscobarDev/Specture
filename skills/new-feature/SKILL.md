@@ -13,7 +13,7 @@ The project already exists (or has parts implemented). The user wants to add a f
 - `docs/01-requirements/business_requirements.md` — to align with existing rules.
 - `docs/02-architecture/architecture.md` — to know the boundaries.
 - `docs/04-roadmap/ROADMAP.md` — to know what's done and what's pending.
-- `docs/05-specs/_current/` — **living behavior per component** (primary input for impact analysis: reconciled, present-tense truth — not historical snapshots). Drill into the immutable `docs/05-specs/<epic>/` specs only when deep history is needed.
+- The code and its tests of the components the feature touches — **the built behaviour** (closed milestones delete their specs since v3.0.0: the code is the truth, the ADRs are the decisions). The specs of the open milestone, when any.
 
 ## Step 1 — Mini-Discovery for the New Feature
 
@@ -61,12 +61,12 @@ Output a list:
 
 ### Behavior impact (the ripple)
 
-Read `docs/05-specs/_current/<component>.md` for each component the feature touches — this is the **current behavior**, consolidated and present-tense, so you don't replay historical specs. For each touched component:
+For each component the feature touches, read its code and its tests under the component's root folder (`architecture.md` "Carpeta raíz"; `node "${CLAUDE_PLUGIN_ROOT}/hooks/lib/components.js" components --project .` lists them) — the tests are the built behaviour in present tense. For each touched component:
 - Does the feature change a business rule (BR) that is vigente there?
 - Does it conflict with a current acceptance criterion (AC) or the consolidated contract behavior?
 - Does it touch the same operations the component already implements?
 
-Cross-reference entities mentioned in the feature against the vigente behavior in `_current/`. List the affected components and the specific BR/AC explicitly. If `_current/<component>.md` does not exist yet, fall back to scanning `docs/05-specs/<epic>/` directly — and, when that component already has `[x]` specs (`node "${CLAUDE_PLUGIN_ROOT}/hooks/lib/current-state.js" specs --project . --component <slug>`), print once: *⚠ Specture: `docs/05-specs/_current/<slug>.md` ausente — el impacto se deriva de specs históricos; corré `/specture:knowledge reconcile --component <slug>`*. In an Adopt project the component has **no** specs at all, so the fallback finds nothing: say so and offer `/specture:knowledge characterize --component <slug>` (read-only, from the code) before analysing the ripple. The fallback re-derives truth from history on every feature; the living-behaviour file is the fix, not more analysis.
+Cross-reference the entities the feature mentions against what the tests assert today. List the affected components and the specific behaviours (test names, operations) explicitly. The specs of the **open** milestone, if any, add the planned behaviour not yet built.
 
 ### ADR impact
 
@@ -78,7 +78,7 @@ Does this feature contradict any `Accepted` ADR? If yes, you must:
 
 A document `docs/05-specs/_impact-analysis-<feature-slug>.md` with:
 - Affected components.
-- Affected components (the vigente behavior in `_current/` that ripples) + the immutable specs behind them.
+- Affected behaviours (the tests and operations that ripple) + the open-milestone specs behind them, when any.
 - Affected ADRs.
 - Migration risks (data shape changes, breaking API changes, breaking UI changes).
 

@@ -51,7 +51,6 @@ reach them**, not before — each one says at its top when it applies:
 
 | Artifact | If missing |
 |---|---|
-| `docs/05-specs/_current/` (once ≥ 1 milestone is closed) | Current-State Resolution passes `[]` — validator and reviewer never see the component's current behaviour; Step 8.7 has nothing to merge into. Backfill: `/specture:knowledge reconcile --component <slug>` (lazy, one component at a time; `characterize` for a component without specs) — `hooks/lib/current-state.js components` names the components that have `[x]` specs and no file. |
 | `.specture/docs-index.yml` with `docs_index.enabled` | Docs Index Resolution passes `[]`. |
 | `.specture/rules.yml` | Rules Resolution passes `RULES_RESOLVED: []` — implementer and reviewer see no project invariants (Dimension 7 no-op). A project whose `conventions.md` §12 still holds the old table is not migrated: the resolver injects those rules whole (unfiltered, as before v1.19.0) and warns; `/specture:doctor migrate` (`1.19-rules-file`) moves them and turns the tag filter on. |
 | `.specture/review-rules.md` (opt-in) | Custom Rules Resolution passes `CUSTOM_RULES: []` and the compliance review checks Specture's rules only. Opt-in, so its absence prints **no** warning. A file with errors stops the dispatch (resolver exit 1) — `/specture:doctor check` names the line. |

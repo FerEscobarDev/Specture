@@ -1879,7 +1879,7 @@ function scenarioHints(dir, stage, shas = null, files = null) {
     return [
       "Stage-3 scenarios (docs/knowledge-reconcile-baseline.md): Milestone 1 closed, no docs/05-specs/_current/.",
       `  doctor:      node "${root}/scripts/doctor.js" check --project "${d}"                                   # current-state-missing → knowledge reconcile`,
-      `  components:  node "${root}/hooks/lib/current-state.js" components --project "${d}"`,
+      `  components:  node "${root}/hooks/lib/components.js" components --project "${d}"`,
       `  sc.1  /specture:knowledge reconcile --component archivos      # 3 specs [x]; spec 1.4/01 supersedes the 10 MB limit of 1.1/01 (último gana → Historial)`,
       `  sc.2  /specture:knowledge reconcile --component archiv        # ambiguous/unknown slug → the helper exits 2 and the skill asks`,
       `  sc.3  /specture:knowledge characterize --component auditoria  # no specs: read-only from archivador_api/src/auditoria/ → Confianza: ai_characterized`,

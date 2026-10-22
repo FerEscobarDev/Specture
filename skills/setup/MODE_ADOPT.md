@@ -79,7 +79,7 @@ The user has an existing codebase. You will **detect** the stack from files and 
    - Any technical debt or inconsistency observed (e.g. "mix of camelCase and snake_case in test files — recommend standardizing on camelCase").
    - Status: `Accepted`.
 
-8. **Write all files** — including `.specture/settings.yml` with `schema_version` = plugin version (same as Bootstrap step 4) — and generate the project `CLAUDE.md` (same as Bootstrap step 5). Also ensure `.specture/state/`, `docs/.specture-meta/*`, `!docs/.specture-meta/build-metrics.jsonl` and `!docs/.specture-meta/design-metrics.jsonl` are listed in `.gitignore` (same rule as Bootstrap step 4.5; `.specture-meta/` holds local telemetry that must not be committed, except the tracked build metrics).
+8. **Write all files** — including `.specture/settings.yml` with `schema_version` = plugin version (same as Bootstrap step 4) — and generate the project `CLAUDE.md` (same as Bootstrap step 5). Also ensure `.specture/state/`, `docs/.specture-meta/*`, `docs/07-reviews/review-*.md`, `docs/07-reviews/cumplimiento-pr-*.md`, `docs/07-reviews/cumplimiento-rama-*.md`, `docs/06-debug-logs/`, `!docs/.specture-meta/build-metrics.jsonl` and `!docs/.specture-meta/design-metrics.jsonl` are listed in `.gitignore` (same rule as Bootstrap step 4.5; `.specture-meta/` holds local telemetry that must not be committed, except the tracked build metrics).
 
 8.5. **Existing documentation detection (mandatory in Adopt mode)**.
 

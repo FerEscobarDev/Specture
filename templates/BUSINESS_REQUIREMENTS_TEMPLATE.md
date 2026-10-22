@@ -3,7 +3,7 @@
 > Producido por la Fase 1 (`discover`). Lenguaje de negocio, sin tecnología.
 > **IDs estables:** toda regla (`RN-nnn`), caso límite (`CL-nnn`) y exclusión (`FA-nnn`)
 > lleva un ID secuencial de 3 dígitos. Se admite un prefijo de dominio (`RN-SEG-007`).
-> Los IDs nunca se renumeran ni se reutilizan: specs, ROADMAP y `_current/` citan por ID.
+> Los IDs nunca se renumeran ni se reutilizan: specs y ROADMAP citan por ID.
 > **Fusión de features:** las adiciones posteriores (fase `new-feature`) se fusionan en su
 > sección con el marcador `(añadido por feature <slug>, <fecha>)` — prohibidas las "Adendas"
 > apendizadas al final; los `RN/CL/FA` nuevos continúan la numeración existente.

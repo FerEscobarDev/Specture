@@ -90,17 +90,46 @@ test("1.9-dependencies-syntax accepts the grammar and flags prose", () => {
   assert.equal(m.detect(contextFor(makeProject({}))), "n/a");
 });
 
-test("1.9-current-state-init is content-only: pending with closed milestones, never writes", () => {
+test("1.9-current-state-init is retired: never pending, never writes, still a known id", () => {
   const m = byId["1.9-current-state-init"];
-  const closed = makeProject({ "docs/04-roadmap/ROADMAP.md": "### Milestone 1: F\n\n- [x] **Epic 1.1:** A\n" });
-  const ctx = contextFor(closed);
-  assert.equal(m.detect(ctx), "pending");
-  assert.deepEqual(ctx.writes, []);
+  assert.equal(m.kind, "content");
   assert.equal(m.apply, undefined);
-  const open = makeProject({ "docs/04-roadmap/ROADMAP.md": "### Milestone 1: F\n\n- [ ] **Epic 1.1:** A\n" });
-  assert.equal(m.detect(contextFor(open)), "n/a");
-  const withCurrent = makeProject({ "docs/04-roadmap/ROADMAP.md": "### Milestone 1: F\n\n- [x] **Epic 1.1:** A\n", "docs/05-specs/_current/.keep": "" });
+  for (const files of [
+    { "docs/04-roadmap/ROADMAP.md": "### Milestone 1: F\n\n- [x] **Epic 1.1:** A\n" },
+    { "docs/04-roadmap/ROADMAP.md": "### Milestone 1: F\n\n- [ ] **Epic 1.1:** A\n" },
+    {}
+  ]) {
+    const ctx = contextFor(makeProject(files));
+    assert.equal(m.detect(ctx), "n/a");
+    assert.deepEqual(ctx.writes, []);
+  }
+});
+
+// v3.0.0 — the living-behaviour directory is offered for deletion, never deleted by the doctor.
+test("3.0-retire-current-state: pending only while docs/05-specs/_current/ exists, declinable, verify accepts deletion or the recorded no", () => {
+  const m = byId["3.0-retire-current-state"];
+  assert.equal(m.kind, "assisted");
+  assert.equal(m.declinable, true);
+  assert.equal(m.detect(contextFor(makeProject({}))), "n/a", "no stack.yml → not a Specture project");
+  assert.equal(m.detect(contextFor(makeProject({ ".specture/stack.yml": STACK }))), "done", "nothing to retire");
+
+  const withCurrent = makeProject({ ".specture/stack.yml": STACK, "docs/05-specs/_current/archivos.md": "# Archivos\n", "docs/05-specs/_current/notas.md": "# Notas\n" });
+  const ctx = contextFor(withCurrent);
+  assert.equal(m.detect(ctx), "pending");
+  const inputs = m.planInputs(ctx);
+  assert.equal(inputs.directory, "docs/05-specs/_current");
+  assert.deepEqual(inputs.files.sort(), ["docs/05-specs/_current/archivos.md", "docs/05-specs/_current/notas.md"]);
+  assert.match(inputs.guidance, /Never delete it without the user's explicit answer/);
+  assert.equal(m.verify(ctx), false, "still there, not declined");
+  assert.deepEqual(ctx.writes, [], "planInputs never writes");
+
+  fs.rmSync(path.join(withCurrent, "docs", "05-specs", "_current"), { recursive: true });
+  assert.equal(m.verify(contextFor(withCurrent)), true);
   assert.equal(m.detect(contextFor(withCurrent)), "done");
+
+  const kept = makeProject({ ".specture/stack.yml": STACK, "docs/05-specs/_current/archivos.md": "# Archivos\n", ".specture/migrations.log": "2026-10-22T00:00:00Z 3.0-retire-current-state assisted declined skill\n" });
+  assert.equal(m.detect(contextFor(kept)), "done", "a recorded no is done");
+  assert.equal(m.verify(contextFor(kept)), true);
 });
 
 test("1.9-tombstones collapses all but the two most recent closed milestones, preserving every epic ID", () => {
@@ -108,7 +137,7 @@ test("1.9-tombstones collapses all but the two most recent closed milestones, pr
   const roadmap = "# ROADMAP\n\n## Hitos\n\n" + milestone(1, "x") + milestone(2, "x") + milestone(3, "x") + milestone(4, "x") + milestone(5, " ") + "---\n\n## Reglas\n\nno tocar\n";
   mechanicalLifecycle("1.9-tombstones", { "docs/04-roadmap/ROADMAP.md": roadmap }, (root) => {
     const text = fs.readFileSync(path.join(root, "docs", "04-roadmap", "ROADMAP.md"), "utf8");
-    assert.match(text, /^### Milestone 1: Hito 1  ✅ archivado \d{4}-\d{2}-\d{2} · verdad viva → docs\/05-specs\/ \(pending:_current\)/m);
+    assert.match(text, /^### Milestone 1: Hito 1  ✅ archivado \d{4}-\d{2}-\d{2} · verdad: el código, sus tests y las ADRs/m);
     assert.match(text, /^- \[x\] Epic 1\.1, Epic 1\.2/m);
     assert.match(text, /^- \[x\] Epic 2\.1, Epic 2\.2/m);
     assert.match(text, /^### Milestone 3: Hito 3\n/m, "the two most recent closed milestones stay expanded");
@@ -279,7 +308,7 @@ test("1.15-schema-version records the plugin version when nothing is pending, el
     ".specture/settings.yml": "profile: custom\nhooks.enabled: true\n",
     ".specture/conventions.md": "## 12. Invariantes\n\n## 13. Workflow\n",
     ".specture/rules.yml": TEMPLATE_RULES,   // the template ships the `framework-core` rules: nothing pending
-    ".gitignore": ".specture/state/\ndocs/.specture-meta/*\n!docs/.specture-meta/build-metrics.jsonl\n!docs/.specture-meta/design-metrics.jsonl\n"
+    ".gitignore": ".specture/state/\ndocs/.specture-meta/*\n!docs/.specture-meta/build-metrics.jsonl\n!docs/.specture-meta/design-metrics.jsonl\ndocs/07-reviews/review-*.md\ndocs/07-reviews/cumplimiento-pr-*.md\ndocs/07-reviews/cumplimiento-rama-*.md\ndocs/06-debug-logs/\n"
   });
   assert.equal(m.detect(contextFor(clean)), "pending");
   m.apply(contextFor(clean));

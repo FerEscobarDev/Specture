@@ -127,30 +127,34 @@ function loadEpic(opts) {
 }
 
 // Does the design-system epic `providerId` record a VISUAL_APPROVAL?
-// null = its spec directory or `_planning.md` could not be read (not verifiable);
-// true / false = the line is present / absent.
+// Two durable records, either one counts: the `_planning.md` of the design-system epic (while
+// it exists — a closed milestone deletes it, v3.0.0) and the `**Aprobación visual:**` line of
+// `docs/03-ux-ui/design_system.md`, which the coordinator writes at the same moment and which
+// outlives the epic. null = neither could be read (not verifiable); true / false = present / absent.
 function visualApprovalOf(epicDir, providerId) {
   const specsRoot = path.dirname(path.resolve(epicDir));
   const wanted = String(providerId || "").trim();
-  let entries;
+  let fromPlanning = null;
   try {
-    entries = fs.readdirSync(specsRoot, { withFileTypes: true });
+    const dir = fs.readdirSync(specsRoot, { withFileTypes: true }).find((e) => {
+      if (!e.isDirectory()) return false;
+      const m = e.name.match(/^epic[-\s]*(\d+\.\d+)/i);
+      return m ? m[1] === wanted : false;
+    });
+    if (dir) fromPlanning = planning.lastVisualApproval(fs.readFileSync(path.join(specsRoot, dir.name, "_planning.md"), "utf8")) !== null;
   } catch {
-    return null;
+    fromPlanning = null;
   }
-  const dir = entries.find((e) => {
-    if (!e.isDirectory()) return false;
-    const m = e.name.match(/^epic[-\s]*(\d+\.\d+)/i);
-    return m ? m[1] === wanted : false;
-  });
-  if (!dir) return null;
-  let text;
+  if (fromPlanning === true) return true;
+  let fromDesignSystem = null;
   try {
-    text = fs.readFileSync(path.join(specsRoot, dir.name, "_planning.md"), "utf8");
+    const designSystem = fs.readFileSync(path.join(path.dirname(specsRoot), "03-ux-ui", "design_system.md"), "utf8");
+    fromDesignSystem = planning.designSystemVisualApproval(designSystem) !== null;
   } catch {
-    return null;
+    fromDesignSystem = null;
   }
-  return planning.lastVisualApproval(text) !== null;
+  if (fromDesignSystem === true) return true;
+  return fromPlanning === null && fromDesignSystem === null ? null : false;
 }
 
 // A parameterised test name (`test.each` `%s`, `$x` / `{x}` templates, `[x]` case labels) is
