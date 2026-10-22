@@ -218,3 +218,29 @@ test("honesty-check red-fix-kind: ADDITIVE when the red-fix only adds tests, REW
   assert.match(cli(honestyPath, root, "red-fix-kind", "--slug", "otro").lines[0], /UNVERIFIABLE el sello no tiene specs\[otro\]/);
   assert.ok(redSha);
 });
+
+// v3.0.0 — a test never reads documentation: Specture's, the project's own, any `.md`.
+test("red-check files: a RED file that reads documentation FAILS with the line and the path; comments do not count", () => {
+  const docGuard = [
+    "const fs = require(\"node:fs\");",
+    "// the architecture doc is docs/02-architecture/architecture.md — a comment is not a dependency",
+    "const text = fs.readFileSync(\"docs/02-architecture/architecture.md\", \"utf8\");",
+    "const rules = fs.readFileSync(\".specture/rules.yml\", \"utf8\");",
+    "const guide = fs.readFileSync(\"SGD.Docs/estandares/guia.md\", \"utf8\");",
+    "test(\"architecture mentions notas\", () => { if (!text.includes(\"notas\")) throw new Error(\"RED\"); });",
+    ""
+  ].join("\n");
+  const { root, redSha } = project({ extraRedFiles: { "tests/docs-guard.test.js": docGuard } });
+  write(root, ".specture/docs-index.yml", "schema_version: 1\nsource_of_truth_dir: \"SGD.Docs/\"\n");
+  const r = cli(cliPath, root, "files", "--red-sha", redSha, "--slug", "demo", "--epic-dir", "docs/05-specs/epic-1.1-notas");
+  assert.equal(r.status, 1, r.stdout + r.stderr);
+  assert.match(r.lines[0], /^RED-CHECK files: FAIL 3$/, r.stdout);
+  assert.ok(r.lines.some((l) => /tests\/docs-guard\.test\.js:3 — lee documentación \(`docs\/02-architecture\/architecture\.md`\)/.test(l)), r.stdout);
+  assert.ok(r.lines.some((l) => /:4 — lee documentación \(`\.specture\/rules\.yml`\)/.test(l)), r.stdout);
+  assert.ok(r.lines.some((l) => /:5 — lee documentación \(`SGD\.Docs\/estandares\/guia\.md`\)/.test(l)), r.stdout);
+  assert.ok(!r.lines.some((l) => /:2 — /.test(l)), "a comment line is not a finding");
+
+  // the clean RED of the shared fixture still passes
+  const clean = project();
+  assert.match(cli(cliPath, clean.root, "files", "--red-sha", clean.redSha, "--slug", "demo", "--epic-dir", "docs/05-specs/epic-1.1-notas").lines[0], /^RED-CHECK files: PASS .*sin lecturas de documentación$/);
+});

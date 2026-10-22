@@ -48,7 +48,7 @@ Checks added in v2.4.0 for the compliance review — the custom review rules (`.
 | `1.7-meta-gitignore` | mechanical | `docs/.specture-meta/` in `.gitignore` (suggests `git rm --cached` if tracked) |
 | `1.8-drop-parallel-toggle` | mechanical | removes `build.max_parallel_epics` |
 | `1.9-dependencies-syntax` | assisted | `Dependencias:` lines rewritten in the parseable grammar |
-| `1.9-current-state-init` | content | `_current/` backfill — owned by `knowledge reconcile --component <slug>`, lazy, one component per run; `check` lists the components with `[x]` specs and no file |
+| `1.9-current-state-init` | content | **retirada en v3.0.0** — `_current/` ya no existe; nunca está pendiente |
 | `1.9-tombstones` | mechanical | collapses older closed milestones to tombstones, IDs preserved, bodies archived |
 | `1.10-rules-sections` | mechanical | §12 / §13 stubs in `conventions.md` |
 | `1.11-profile-and-knowledge` | mechanical | `learn.enabled` → `knowledge.enabled`; explicit profile |

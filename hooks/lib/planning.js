@@ -145,6 +145,18 @@ function lastVisualApproval(text) {
   return last;
 }
 
+// The `**Aprobación visual:** <sha> — <ISO> — epic <X.Y>` line of `docs/03-ux-ui/design_system.md`
+// (§ 1 Dirección), or null. Written by the coordinator together with the `_planning.md` record at
+// the visual approval (build/QUEUE.md § Processing the EPIC_REPORT, VISUAL_PENDING); it outlives
+// the epic's `_planning.md`, which a closed milestone deletes (v3.0.0). `sin aprobar` = null.
+function designSystemVisualApproval(text) {
+  for (const line of lines(text)) {
+    const m = line.match(/\*\*Aprobaci[oó]n visual:\*\*\s*([0-9a-f]{7,40})\b/i);
+    if (m) return { sha: m[1], line: collapse(line) };
+  }
+  return null;
+}
+
 // The last `- LOCK_SHA: <sha> — <ISO>` line of `_planning.md` (`## SPEC_SHA`, written by the
 // coordinator at queue step 5.1), or null. The last one wins: an epic parked and locked again
 // starts its work at the newer lock. Used to compute a milestone's per-epic windows.
@@ -554,6 +566,7 @@ module.exports = {
   coverageHash,
   lastMechCheck,
   lastVisualApproval,
+  designSystemVisualApproval,
   parseLockSha,
   parseOperations,
   parseEpicBlock,

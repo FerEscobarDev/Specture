@@ -1,16 +1,15 @@
 ---
 name: knowledge
-description: 'Use to keep the project''s knowledge healthy. Four modes: `capture` (alias `/specture:learn`) — after an epic closes, a root cause is confirmed or on demand, turn session discoveries into durable artifacts (docs-index entries, ADR drafts, rules.yml entries, conventions patches), max 3 drafts with granular approval; `audit` (alias `/specture:audit-knowledge`) — detect docs-index drift (orphans, stale, duplicates, uncovered), read-only; `stats` — read the per-epic build metrics and apply the gate reading, read-only; `reconcile --component <slug>` / `characterize` — the living-behaviour file of one component from its [x] specs or from the code, Plan-mode approval. Never writes Claude''s personal memory.'
+description: 'Use to keep the project''s knowledge healthy. Three modes: `capture` (alias `/specture:learn`) — after an epic closes, a root cause is confirmed or on demand, turn session discoveries into durable artifacts (docs-index entries, ADR drafts, rules.yml entries, conventions patches), max 3 drafts with granular approval; `audit` (alias `/specture:audit-knowledge`) — detect docs-index drift (orphans, stale, duplicates, uncovered), read-only; `stats` — read the per-epic build metrics and apply the gate reading, read-only. Never writes Claude''s personal memory.'
 ---
 
-# Transversal — Knowledge Hygiene (capture + audit + stats + reconcile)
+# Transversal — Knowledge Hygiene (capture + audit + stats)
 
-You manage the project's durable knowledge. Four modes, one domain (the `docs-index`, the repo's documentation truth, the living behaviour in `docs/05-specs/_current/`, and the evidence the build leaves behind):
+You manage the project's durable knowledge. Three modes, one domain (the `docs-index`, the repo's documentation truth, and the evidence the build leaves behind):
 
 - **`capture`** — convert ephemeral session knowledge into durable artifacts without polluting the repo with low-signal noise. (Was `/specture:learn`.)
 - **`audit`** — detect and report the drift the index accumulates as docs are added/renamed/deleted. (Was `/specture:audit-knowledge`.)
 - **`stats`** — read `docs/.specture-meta/build-metrics.jsonl` (one line per epic, tracked) and turn it into the gate's §6.5 reading.
-- **`reconcile --component <slug>`** — build the living-behaviour file of **one** component from its `[x]` specs (lazy backfill of `_current/`, roadmap item 38); its variant **`characterize`** does it from the code when the component has no specs.
 
 ## Shared Iron Rules (all modes)
 
@@ -34,9 +33,8 @@ You manage the project's durable knowledge. Four modes, one domain (the `docs-in
 | `/specture:knowledge capture`, alias `/specture:learn`, "capturemos aprendizajes", build Step 8.5, debug Phase 4.5 exit, `--teach <concept>` | **capture** |
 | `/specture:knowledge audit`, alias `/specture:audit-knowledge`, "audita el índice" | **audit** |
 | `/specture:knowledge stats`, "¿cómo viene el gate?", "métricas del build" | **stats** |
-| `/specture:knowledge reconcile --component <slug>`, "reconciliá el componente X", the warning `build` (Current-State Resolution) or `new-feature` prints, doctor `current-state-missing` / `current-state-partial` | **reconcile** |
-| `/specture:knowledge characterize --component <slug>`, "caracterizá X desde el código" (Adopt / inherited code, no specs) | **reconcile** (variant `characterize`) |
-| `/specture:knowledge` with no mode | Ask: *"¿capture (guardar lo aprendido), audit (revisar la salud del índice), stats (métricas del build) o reconcile (verdad viva de un componente)?"* |
+| `/specture:knowledge reconcile …` / `characterize …` (retired in v3.0.0) | Say so in one line: the living-behaviour files no longer exist — the truth of built behaviour is the code and its tests; `/specture:doctor migrate` offers to delete a leftover `docs/05-specs/_current/` |
+| `/specture:knowledge` with no mode | Ask: *"¿capture (guardar lo aprendido), audit (revisar la salud del índice) o stats (métricas del build)?"* |
 
 ---
 
@@ -47,7 +45,6 @@ You manage the project's durable knowledge. Four modes, one domain (the `docs-in
 | `capture` | `knowledge/CAPTURE.md` | The selection above resolved to capture |
 | `audit` | this file, § "Mode: audit" | — |
 | `stats` | this file, § "Mode: stats" | — |
-| `reconcile` / `characterize` | `knowledge/RECONCILE.md` | The selection above resolved to reconcile |
 
 The Shared Iron Rules and the Tone below apply to every mode, wherever its procedure lives.
 ---
@@ -198,5 +195,5 @@ the Spec Planning Gate was designed to be judged by (`docs/spec-planning-gate-de
 
 ## Tone (all modes)
 
-Direct, concrete, file-path/numeric-citing. No fluff. In capture, make the Plan-mode preview crisp; in audit, surface drift and let the user act; in reconcile, the proposed file **is** the preview — show it whole, then the supersessions.
+Direct, concrete, file-path/numeric-citing. No fluff. In capture, make the Plan-mode preview crisp; in audit, surface drift and let the user act.
 

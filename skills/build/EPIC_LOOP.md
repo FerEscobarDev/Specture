@@ -7,7 +7,7 @@
 | Step 0 — Nesting check · Iron rules | First thing, before any dispatch |
 | Frontend Epics — execution | The spec is a design-system or page epic |
 | Dispatch Manifest | Before Step 4 and Step 5 — what every worker dispatch must carry |
-| Resolvers (Docs Index · Current-State · Design Surface · Rules · Custom Rules) | Assembling a manifest |
+| Resolvers (Docs Index · Design Surface · Rules · Custom Rules) | Assembling a manifest |
 | Step 3.9 — Failure baseline | Once per epic, before the first RED |
 | Step 4 — Write Tests (RED) | Writer dispatch, post-checks, `red-check`, the seal |
 | Step 5 — Implement (GREEN) · 5.2 supersede · 5.3 red-fix | Implementer dispatch and the two resume points |
@@ -197,21 +197,6 @@ When `.specture/docs-index.yml` exists, the orchestrator MUST resolve relevant e
 - For `architecture-validator` and `code-reviewer`: dispatch normally. The agents already work correctly without docs-index input — it's strictly additive context.
 - The Dispatch Manifest item is satisfied by **"empty list — no matching entries"** (explicitly state this in the dispatch payload so the agent knows the resolver ran and found nothing, vs being silently dropped).
 
-## Current-State Resolution (pre-flight, reusable)
-
-When `docs/05-specs/_current/` exists, the orchestrator resolves the living-behavior file(s) for the component(s) the current spec touches and passes them to `code-reviewer` (Step 6) — the coordinator's Spec Planning Gate runs the same resolution for its dispatches — so those agents see the **current behavior** of the component and can flag regressions or conflicts with what is already built.
-
-> **Doctrine — same as Docs Index Resolution**: the agents NEVER read the `_current/` directory themselves. The orchestrator resolves the relevant files and hands them over in the dispatch. Restricted context preserved.
-
-### Resolution algorithm
-
-1. **Check existence**: if `docs/05-specs/_current/` does not exist (no milestone has reconciled yet), the resolved list is **empty**. Continue; do NOT block dispatch. If the ROADMAP already has closed milestones, this is a missing initialisation, not a young project — print once: *⚠ Specture: `docs/05-specs/_current/` no inicializado — corré `/specture:knowledge reconcile --component <slug>` (un componente por vez; `/specture:doctor check` lista cuáles)* (migration `1.9-current-state-init`, owned by that mode).
-2. **Identify component(s)**: from the spec header's `Módulo` ref and the epic's "Componentes de arquitectura involucrados" — these are the `<component-slug>`s (`node "${CLAUDE_PLUGIN_ROOT}/hooks/lib/current-state.js" components --project .` prints the slugs `architecture.md` declares).
-3. **Resolve files**: for each component, read `docs/05-specs/_current/<component-slug>.md` if it exists. A missing file means that component has no reconciled behavior yet — skip it, not an error — **unless** `node "${CLAUDE_PLUGIN_ROOT}/hooks/lib/current-state.js" specs --project . --component <slug>` lists ≥ 1 `[x]` spec: then the truth exists and nobody consolidated it. Print once per session *⚠ Specture: `_current/<slug>.md` ausente con N specs cerrados — corré `/specture:knowledge reconcile --component <slug>`* and continue: never block, never reconcile inline (that is a Plan-mode job of `knowledge`, not of the build).
-4. **Cap**: pass only the files for the components the spec actually touches (usually 1-2), never the whole `_current/` directory. A file whose header says `Confianza: ai_characterized` was written from code, not from specs — pass it flagged as informational.
-
-When empty, dispatch normally and pass `current_state_resolved: []` so the agent knows the resolver ran — it is strictly additive context.
-
 ## Design Surface Resolution (pre-flight, reusable)
 
 For a frontend spec, the orchestrator resolves the component reference files of the components that spec touches and passes them to `ux-implementer` (Step 5) and `code-reviewer` (Step 6). The coordinator's Spec Planning Gate runs the same resolution for the `spec-planner` — **that is the dispatch that needs it most**: the planner must fill the `Crea:` surface of the Code Surface seal for every component the epic creates, it is forbidden to read code, and its frontend conditionals are a closed list. Without this resolution the inventory exists and no agent ever reads it.
@@ -306,7 +291,7 @@ Dispatch the `tdd-test-writer` agent (`agents/tdd-test-writer/AGENT.md`).
    node "${CLAUDE_PLUGIN_ROOT}/hooks/lib/red-check.js" all --red-sha <RED_SHA> --slug <task-slug> --epic-dir docs/05-specs/<epic-slug> --map docs/.specture-meta/coverage/<task-slug>.map
    ```
    Three facts, one token each (`RED-CHECK <check>: PASS | FAIL <n> | SKIPPED <motivo> | UNVERIFIABLE <motivo>`), stopping at the first FAIL:
-   - `files` — every file of the RED is a test (the seal's `test_globs`) or a path the spec declares (`Crea:` / `Fixtures disponibles:`). A helper or fixture outside → the spec is incomplete: **`BLOCKED: spec <ID>` naming the file** (the planner adds it), exactly as the Allowed Paths gate would mid-GREEN — only now it costs nothing.
+   - `files` — every file of the RED is a test (the seal's `test_globs`) or a path the spec declares (`Crea:` / `Fixtures disponibles:`). A helper or fixture outside → the spec is incomplete: **`BLOCKED: spec <ID>` naming the file** (the planner adds it), exactly as the Allowed Paths gate would mid-GREEN — only now it costs nothing. **Also: no file of the RED contains a literal documentation path** (`docs/`, `.specture/`, a `*.md`, the project's `docs-index.yml` `source_of_truth_dir`) — a test never reads documentation, Specture's or the project's (the spec's `DOC-n` items have no test; the reviewer checks them). FAIL → re-dispatch the writer once with the finding lines verbatim.
    - `coverage` — every AC/BR/EC of the spec appears once in the writer's `COVERAGE_MAP` file and every quoted test name exists in the RED. FAIL → re-dispatch the `tdd-test-writer` **once** with the findings verbatim (it amends its RED: `git commit --amend` is allowed here because nothing is sealed yet; a new `RED_SHA` replaces the old one). Counts toward the Iteration Cap. A second FAIL → `BLOCKED: red-fix <task-slug>` with the findings as the `RED_FIX:` block.
    - `commands` — `stack.yml` `quality.commands` `type_check` / `lint` / `format_check` over the RED files (`{files}`). FAIL → same single re-dispatch to the writer with the output tail (its tests must compile, type-check and be formatted like any code — the reviewer and the compliance review would flag them later, as red-fix loops). `SKIPPED` (slot `sin definir` / `none`) is not a failure: note it once per epic in `GATE_NOTES` and go on.
    - `UNVERIFIABLE` (no seal, no map, unknown commit) is **your** omission, not the writer's: fix the input and run again. Never seal on UNVERIFIABLE.
@@ -419,8 +404,6 @@ Dispatch the `code-reviewer` agent (`agents/code-reviewer/AGENT.md`).
 
 **Pre-flight**: run "Docs Index Resolution" (see section above) for this spec. Capture the resolved entries list (may be empty).
 
-**Pre-flight 2**: run "Current-State Resolution" (see section above) for this spec's component(s). Capture the resolved `_current/` file(s) (may be empty).
-
 **Pre-flight 3**: run "Rules Resolution" (see section above) with this spec's tags. Capture the `RULES_RESOLVED` block (may be `[]`).
 
 **Pre-flight 4** (frontend specs only): run "Design Surface Resolution" (see section above). Capture the `design_surface_resolved` block (may be `[]`), with the channel fence applied to any file whose `Procedencia` is `traído por canal`.
@@ -435,7 +418,6 @@ Dispatch the `code-reviewer` agent (`agents/code-reviewer/AGENT.md`).
 - **Only the ADRs relevant to the module(s) the spec touches.** Safety rule: if you are unsure whether an ADR applies, include it — err toward inclusion, never toward omission. (Passing every ADR of a mature project is the bulk of this dispatch's cost and most are irrelevant to a given spec.)
 - The architecture sections relevant to the touched modules.
 - **Resolved docs from `docs-index.yml`** (the list from pre-flight, including each entry's `concept`, `file`, `read_when`, `tags`, `confidence`, and the file's content). If the list is empty, pass `docs_index_resolved: []`. When an entry has `confidence: ai_categorized`, the reviewer should treat its content as informational and prefer findings rooted in `Accepted` ADRs / `conventions.md`; if a finding depends ONLY on an `ai_categorized` entry, note that in the review report.
-- **Resolved `_current/` behavior** (from Current-State Resolution): the living-behavior file(s) for the component(s) this spec touches, so the reviewer can flag regressions against already-built behavior. If empty, pass `current_state_resolved: []`. A file whose header says `Confianza: ai_characterized` (written from code, not from specs) is informational, like an `ai_categorized` index entry.
 - **The `RULES_RESOLVED` block** (from Rules Resolution): the project invariants in scope for this spec. Dimension 7 reads only this block — it never opens `rules.yml` or `conventions.md` §12. If empty, pass `RULES_RESOLVED: []` (Dimension 7 is skipped).
 - **`LINT_REPORT`** and **`MUTATION_REPORT`** (see "Tools first" below) — the output of the project's declared `quality.commands` over the diff; `(none …)` when a slot is undefined or the mutation toggle is off.
 - **The `design_surface_resolved` block** (frontend specs, from Design Surface Resolution): the `components/<Nombre>.md` of the components this spec touches, so the frontend dimension can check anatomy and token adherence against what the design system actually specifies instead of against its own taste. If empty, pass `design_surface_resolved: []`.

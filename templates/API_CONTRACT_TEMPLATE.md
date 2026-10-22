@@ -64,7 +64,7 @@
 
 - **Aditivo es seguro:** agregar una operación nueva o un campo opcional no rompe consumidores.
 - **Breaking changes requieren ADR:** renombrar/eliminar un `operationId`, cambiar un método/path, quitar un campo, o cambiar el tipo de un campo existente. Registrar en `.specture/decisions/` y notificar a los epics afectados (impacto en back y front simultáneo).
-- **El cliente tipado del frontend se regenera desde el `.openapi.yaml`** tras cualquier cambio — nunca se editan URLs a mano.
+- **El cliente tipado del frontend se regenera desde el `.openapi.yaml`** tras cualquier cambio — nunca se editan URLs a mano. La regeneración es un paso del epic que toca el contrato y **su salida se comitea**: ningún comando de build o de CI del proyecto lee `docs/` (el proyecto debe compilar con `docs/` y `.specture/` borrados).
 
 ---
 

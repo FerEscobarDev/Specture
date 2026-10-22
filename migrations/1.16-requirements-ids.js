@@ -25,7 +25,7 @@ module.exports = {
       edgeCases: extractSection(text, /^#{2,4}\s.*Casos L[ií]mite/i),
       outOfScope: extractSection(text, /^#{2,4}\s.*Fuera de Alcance/i),
       guidance:
-        "Assign sequential 3-digit IDs in place: `- **RN-nnn:** …` for every business rule, `- **CL-nnn:** …` for every edge case, `- **FA-nnn:** …` for every out-of-scope item (a domain prefix like RN-SEG-007 is allowed). Never renumber or reuse an ID. Then update citations that point at these items by section (`business_requirements.md §X`) in specs, ROADMAP and _current/ to cite the ID instead."
+        "Assign sequential 3-digit IDs in place: `- **RN-nnn:** …` for every business rule, `- **CL-nnn:** …` for every edge case, `- **FA-nnn:** …` for every out-of-scope item (a domain prefix like RN-SEG-007 is allowed). Never renumber or reuse an ID. Then update citations that point at these items by section (`business_requirements.md §X`) in specs and ROADMAP to cite the ID instead."
     };
   },
   verify(ctx) {

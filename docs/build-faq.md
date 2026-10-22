@@ -291,7 +291,9 @@ Desde v2.8.0, antes de sellar el RED de cada spec el epic-agent corre `hooks/lib
 tres hechos mecánicos que en Psikora y CEAgenda explicaban la mayoría de los `test(red-fix)`
 posteriores. `files`: todo archivo del commit RED es un test o está declarado en la Superficie
 del spec (`Crea:` / `Fixtures disponibles:`) — un helper fuera de eso es un hueco del spec y sale
-como `BLOCKED: spec` ahora, no como un hook denegando a mitad del GREEN. `coverage`: cada
+como `BLOCKED: spec` ahora, no como un hook denegando a mitad del GREEN; y desde v3.0.0 ningún
+archivo del RED puede nombrar una ruta de documentación (`docs/`, `.specture/`, un `*.md`): ver
+la pregunta siguiente. `coverage`: cada
 `AC/BR/EC` del spec aparece una vez en el `COVERAGE_MAP` del test-writer (que ahora también lo
 escribe en `docs/.specture-meta/coverage/<slug>.map`) y cada test citado existe. `commands`: los
 comandos `type_check` / `lint` / `format_check` que declaraste en `stack.yml` →
@@ -375,3 +377,41 @@ final de `migrate --apply` imprimen `config pendiente: quality-commands-undefine
 y `build` lo repite una vez por tanda antes del primer epic. La respuesta es la misma de
 siempre: `/specture:setup` (reconfigure) pregunta los seis comandos, o los completás a mano con
 `docs/quality-catalog.md` como ejemplo.
+
+## El red-check falló porque un test "lee documentación". ¿Por qué no puedo leer un .md en un test?
+
+Porque la documentación no es comportamiento del sistema. Un documento se reescribe, se mueve o se
+poda sin que el software cambie, y un test atado a él convierte cada poda en un CI rojo: en Psikora
+(septiembre-octubre de 2026) 41 archivos de test leían `.md` — specs, el handoff mapping, secciones
+de `design_system.md`, una ADR — y una limpieza del corpus los dejó en `ENOENT` durante un mes, con
+el deploy bloqueado y cero fallos de producto. Desde v3.0.0 la regla es mecánica y no tiene
+excepciones: `red-check files` da FAIL sobre cualquier archivo del RED que nombre `docs/`,
+`.specture/`, un `*.md` o la carpeta de documentación del equipo (`docs-index.yml` →
+`source_of_truth_dir`); los comentarios no cuentan. Da igual que la documentación sea de Specture
+o del propio proyecto.
+
+Lo que el spec obliga a documentar va en su sección **Entregables documentales** con un ID `DOC-n`:
+no lleva test, `coverage` no lo exige, y el `code-reviewer` comprueba contra el diff que el
+documento quedó como el spec dice. Si tu proyecto ya tiene tests así, `/specture:doctor check` los
+lista (`doc-reading-test`: WARNING, y ERROR cuando la ruta ya no existe); los borrás o los
+reescribís contra el comportamiento del código — el doctor nunca edita tests.
+
+## Se cerró un milestone y desaparecieron sus specs, reviews y debug logs. ¿Es normal?
+
+Sí, desde v3.0.0. Specture es un framework de trabajo, no una dependencia del proyecto: si borrás
+`docs/` y `.specture/` el proyecto compila y su suite pasa igual. Al cerrar una milestone se queda
+lo que es **decisión** — ADRs, `rules.yml`, `conventions.md`, requerimientos, contrato, ROADMAP,
+los registros de la sentada en `docs/05-specs/_reviews/` y el reporte de cumplimiento de la
+milestone — y se borra lo que fue **proceso**: los specs y `_planning.md` de sus epics, sus
+`review-*`, los debug logs que los citan y los coverage maps. La verdad de lo construido es el
+código y sus tests; no hay un resumen intermedio (el `_current/` de versiones anteriores se retiró).
+
+Lo hace `hooks/lib/milestone-close.js --milestone <N>`, que el coordinador corre primero en
+dry-run y después con `--apply`, **por ruta exacta** y solo bajo cuatro familias
+(`docs/05-specs/epic-<id>-*/`, `docs/07-reviews/review-<epic>-*`, los debug logs que citan el
+epic, `docs/.specture-meta/coverage/`) — nunca un glob sobre `docs/`, donde suele vivir la
+documentación del equipo. Antes de borrar, `guards.js promote` convierte los `GUARD-n` de los
+specs en reglas `R-G-<n>` de `rules.yml`, así los tests que protegían siguen protegidos. La
+aprobación visual del design system queda registrada en `design_system.md`, por eso los epics de
+página de la milestone siguiente no se bloquean. Las milestones que ya estaban cerradas al
+actualizar no se borran solas: corré el script cuando quieras.

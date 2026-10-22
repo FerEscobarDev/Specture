@@ -9,6 +9,10 @@
 //                 fixture outside that surface is the spec telling you it is incomplete — the
 //                 Allowed Paths gate would deny it mid-GREEN, as a red-fix loop; here it costs a
 //                 re-dispatch of the writer or a `BLOCKED: spec` before anyone implements.
+//             (1b) no file of the RED names a documentation path (`docs/`, `.specture/`, a
+//                 `*.md`, the docs-index `source_of_truth_dir`): a test never reads documentation,
+//                 Specture's or the project's (lib/doc-paths.js — v3.0.0, after Psikora's CI
+//                 went red when a pruning removed the `.md` files 41 tests read).
 //   coverage  --red-sha <sha> --slug <s> --epic-dir <dir> --map <file>
 //             (2) every AC/BR/EC id of the spec appears exactly once in the writer's COVERAGE_MAP
 //                 and every test name the map cites exists literally in a file of the RED commit.
@@ -33,6 +37,7 @@ const { spawnSync } = require("child_process");
 const { STATE_FILE, readSeal, pathMatchesAnyGlob } = require("./seal");
 const { parseSpec, parseSpecIds } = require("./planning");
 const { readQualityCommands, runCommand, tailOf } = require("./quality");
+const { scanDocumentationReads, sourceOfTruthDir } = require("./doc-paths");
 
 const COMMAND_FLAGS = {
   files: ["red-sha", "slug", "epic-dir", "test-globs"],
@@ -128,6 +133,17 @@ function redFiles(cmd, root, rev) {
   return { sha, files };
 }
 
+// A RED file's contents: the working tree first (the RED is HEAD when the check runs), else
+// the committed blob.
+function readRedFile(root, sha, file) {
+  try {
+    return fs.readFileSync(path.join(root, file), "utf8");
+  } catch {
+    const show = git(root, ["show", `${sha}:${file}`]);
+    return show.ok ? show.stdout : "";
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Results
 // ---------------------------------------------------------------------------
@@ -178,7 +194,14 @@ function filesCheck(opts, root) {
   const findings = red.files
     .filter((file) => !pathMatchesAnyGlob(file, globs) && !inDeclared(file))
     .map((file) => `${file} — fuera de los test globs y no declarado en la Superficie (Crea: / Fixtures disponibles:) de ${spec.rel}`);
-  return verdict(cmd, findings, `${red.files.length} archivo(s) del RED ${short(red.sha)} dentro de los test globs o de la Superficie`, { files: red.files });
+  // (1b) no test reads documentation — Specture's or the project's.
+  const extraDirs = [sourceOfTruthDir(root)].filter(Boolean);
+  for (const file of red.files) {
+    for (const read of scanDocumentationReads(readRedFile(root, red.sha, file), { extraDirs })) {
+      findings.push(`${file}:${read.line} — lee documentación (\`${read.match}\`): ningún test del proyecto depende de documentación; un entregable documental es un DOC-n del spec, sin test`);
+    }
+  }
+  return verdict(cmd, findings, `${red.files.length} archivo(s) del RED ${short(red.sha)} dentro de los test globs o de la Superficie, sin lecturas de documentación`, { files: red.files });
 }
 
 // `- AC-1 → test "name"` · `- BR-1 → test+ "a" / test- "b"` · `- EC-2 → test "x"`
@@ -217,16 +240,7 @@ function coverageCheck(opts, root) {
   }
   for (const id of seen.keys()) if (!ids.includes(id)) findings.push(`${id} — está en el COVERAGE_MAP pero no en ${spec.rel}`);
 
-  const contents = red.files
-    .map((file) => {
-      try {
-        return fs.readFileSync(path.join(root, file), "utf8");
-      } catch {
-        const show = git(root, ["show", `${red.sha}:${file}`]);
-        return show.ok ? show.stdout : "";
-      }
-    })
-    .join("\n");
+  const contents = red.files.map((file) => readRedFile(root, red.sha, file)).join("\n");
   for (const e of entries) {
     if (e.names.length === 0) {
       findings.push(`${e.id} — la línea no cita ningún nombre de test entre comillas: ${e.raw}`);

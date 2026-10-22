@@ -77,8 +77,8 @@ module.exports = {
       notes.push(`tombstone(s) without epic IDs cannot be repaired automatically: ${brokenTombstones.map((b) => b.heading.trim()).join(" | ")} — restore the IDs from git history or docs/04-roadmap/archive/`);
     }
     const date = new Date().toISOString().slice(0, 10);
-    const hasCurrent = ctx.exists("docs/05-specs/_current");
-    const pointer = hasCurrent ? "docs/05-specs/_current/" : "docs/05-specs/ (pending:_current)";
+    // v3.0.0: a closed milestone deletes its specs; what remains is the code, its tests and the ADRs.
+    const pointer = "el código, sus tests y las ADRs";
     // replace from the bottom so indexes stay valid
     for (const block of [...toCollapse].reverse()) {
       if (block.ids.length !== block.epics.length) {
@@ -92,7 +92,7 @@ module.exports = {
       ctx.write(archiveRel, (existing ? existing.replace(/\s*$/, "") + eol + eol : "") + body + eol);
       const title = block.heading.replace(/\s*$/, "");
       const tombstone = [
-        `${title}  ✅ archivado ${date} · verdad viva → ${pointer} · cuerpos → ${archiveRel}`,
+        `${title}  ✅ archivado ${date} · verdad: ${pointer} · cuerpos → ${archiveRel}`,
         `- [x] ${block.ids.map((id) => `Epic ${id}`).join(", ")}   — detalle en el archivo y en los specs de docs/05-specs/`,
         ""
       ];

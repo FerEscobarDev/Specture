@@ -18,6 +18,7 @@
 - **Qué sacrifica deliberadamente:** [a qué renuncia esta dirección. Sin esto no es una dirección, es un promedio.]
 - **Direcciones descartadas:** [nombres] — registradas en `.specture/decisions/<ADR>.md`
 - **Procedencia de la marca:** `usuario` | `PROPUESTO_POR_EL_AGENTE` *(si es lo segundo, el gate visual de la Fase 4 debe confirmarlo explícitamente antes de construir páginas)*
+- **Aprobación visual:** sin aprobar *(la escribe el coordinador de `build` cuando el usuario aprueba el showcase: `<sha12> — <ISO-8601> — epic <X.Y>`. Es el registro durable del gate visual — el `_planning.md` del epic se borra al cerrar su milestone — y `spec-set-check` C-design lo lee para permitir los epics de página)*
 - **Voz y tono:** [MK-005]
 - **Audiencia:** [de `business_requirements.md` §Actores]
 - **Anti-referencias:** [MK-004 — a qué NO debe parecerse, y por qué]

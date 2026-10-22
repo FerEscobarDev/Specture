@@ -39,7 +39,9 @@ const catalog = [
   require("./2.6-review-rules-adopt"),
   require("./2.8-rules-core-scope"),
   require("./2.8-quality-commands"),
-  require("./2.9-test-scoped-command")
+  require("./2.9-test-scoped-command"),
+  require("./3.0-retire-current-state"),
+  require("./3.0-ephemeral-gitignore")
 ];
 
 // Stable sort by `since` only: entries that share a version keep their declared

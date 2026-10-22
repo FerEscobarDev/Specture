@@ -6,15 +6,14 @@
     "skills/contract-sync-audit/SKILL.md#required-inputs": "8e0e5960283a11cc8b6f8d271777a105f3951a004876c9df72c1ee5c6ea45592",
     "skills/discover/SKILL.md#required-inputs": "891bbe500e062f890fbee530e7ce3cdb3eeb2893b5b73647aac69562b0c163f6",
     "skills/knowledge/SKILL.md#required-inputs": "8ec2c30d9f67b10c9924a8e9a9192556e6e668bec90f58a7f467c50b5e8de58b",
-    "skills/new-feature/SKILL.md#required-inputs": "1348774715d0d2e30222bc1592b0092e20287a546107dc40f60a2f0124bf4119",
+    "skills/new-feature/SKILL.md#required-inputs": "f911c0909cfd95f2b4eb5b5beefca892abe039c6dc4fbc6c78bed7ff28d52ce4",
     "skills/setup-docs-bridge/SKILL.md#required-inputs": "253dca0930481e265cd541fa60292a417b39a2f74303c418ee0ec3d1acb425e9",
     "skills/ux-design/SKILL.md#required-inputs": "981343f0fac80094904064d4a1a34e0e2cda4b7cdf7901a28d2445ea5bb6cb37",
     "templates/BATCH_REVIEW_TEMPLATE.md": "28ea3f49fff1601444cffa2dea5026cef7ed4916b08d1dc5c97ea3621746b015",
     "templates/BRAND_BRIEF_TEMPLATE.md": "e62a57a57a875c863bbf827c57d625b9eae48fb97671b14dd8789af947a6358e",
-    "templates/BUSINESS_REQUIREMENTS_TEMPLATE.md": "bf79c9b7400e6714a56133c5322ecaf6bfea9bb058836653f6e417d174f2eedb",
+    "templates/BUSINESS_REQUIREMENTS_TEMPLATE.md": "d75076764e23f1bb64245e476c9c152287eb078b9b109b06c2c1ff52fe37d3da",
     "templates/COMPONENT_REFERENCE_TEMPLATE.md": "2ba836cfcf41d83e34636a630e8dd6452ed37a59dce4cd812e01f0e2e98e6095",
-    "templates/CURRENT_CAPABILITY_TEMPLATE.md": "cc5b0774f78caa1ec94a79a8f43b38ead8bd954a4430fa26ea298114c495392c",
-    "templates/DESIGN_SYSTEM_TEMPLATE.md": "5784792272e46c5d2baf7fb849f87814ae620f501e2cbfc8f68c11315081f4fd",
+    "templates/DESIGN_SYSTEM_TEMPLATE.md": "79eb0f3b93dc60e5a2157bebfcba3c73afe439a0b7a821013718d5cf36f27db9",
     "templates/MIGRATION_SPEC_TEMPLATE.md": "a4cf0fe20cfa1e4b4a3c59df498ae00c651f9993b92ec2a263f611a21f54b5a3",
     "templates/NAVIGATION_MAP_TEMPLATE.md": "3944e4af7201f8a9bd0af87b422cc9bdf52fbef9034f612c4e60ea4cf150337f",
     "templates/PLANNING_TEMPLATE.md": "0f990cec63711af4385c74b10575581bee1576237ac3ddac9e84df50f0aeaa9e",
@@ -22,10 +21,10 @@
     "templates/project-config/decisions/000-template.md": "1a39576f4a0e7b4f69ba3bbe9ac4aa4b438ab6091c26a53dac58d4b425f11972",
     "templates/project-config/docs-index.template.yml": "a7dcdefb59a1589cb6a3b0d400952039a9fbebcce41b637b256bca7cacd25419",
     "templates/project-config/review-rules.template.md": "d2ee7952de5bbd0e3356b60ecebc8fb0560e9a36db3361a4211550ab44f282e7",
-    "templates/project-config/rules.template.yml": "ebebe8592b0fc2d5938f711ed4d48c9b76daf811dd7d5e2eb70f858eaf05b9ba",
+    "templates/project-config/rules.template.yml": "835aaecdbdef8615fa0d97abd47e7d2f51f9bbd965d07987ebdcfa638f1e78b0",
     "templates/project-config/settings.template.yml": "59ee813531e9f9a0564d0b2261717f62ae64e2bc7a2004790d741d41aea6b39d",
     "templates/project-config/stack.template.yml": "8a597803201b8d36715a902f23be44dac4b562892e4dc57040db5dfe77974b82",
-    "templates/ROADMAP_TEMPLATE.md": "51b0fbc8e0ddeaa104b2b07b0b2a7e9a59d30c6c4961df67e4f2dab616271112",
-    "templates/SPEC_TEMPLATE.md": "f05512fd658becd472f38270775e682d508e774fbaf5313a39e0469052bebb2f"
+    "templates/ROADMAP_TEMPLATE.md": "6de47b966b5849c15f4cb674ae557e6b1b285d034bcaacc7bffc39bf4297fb05",
+    "templates/SPEC_TEMPLATE.md": "1c7abcdae3943499f4578f24d3e3c9a8eb5a029ef7725e41228338dc54123218"
   }
 }

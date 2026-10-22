@@ -1,23 +1,22 @@
 #!/usr/bin/env node
-// Current-state helper — the mechanical half of `knowledge reconcile` / `characterize`
-// (framework roadmap item 38, v1.19.0) and of the build coordinator's Current-State
-// Resolution trigger.
+// Components helper — the architecture components of a project and the specs that cite them.
+// Shared by rules.js (reachable tags), rules-resolve.js (a spec's component tags), compliance.js
+// (the components a milestone touched) and the doctor.
 //
-//   node hooks/lib/current-state.js components --project <root> [--json]
-//   node hooks/lib/current-state.js specs --project <root> --component <slug> [--all-states] [--json]
+//   node hooks/lib/components.js components --project <root> [--json]
+//   node hooks/lib/components.js specs --project <root> --component <slug> [--all-states] [--json]
 //
-// `components` lists the architecture components (architecture.md § Componentes — the
-// template's numbered `### 2.1 Nombre` headings or plain `### Nombre` ones) with their slug,
-// root folder, how many [x] specs cite them and whether `docs/05-specs/_current/<slug>.md`
-// exists. `specs` lists the specs that cite one component — by the spec header's `Módulo:`
-// (inline `**Módulo:** …` or the migration template's bullet) or by the epic's "Componentes
-// de arquitectura involucrados" line — in ROADMAP order, [x] only unless `--all-states`.
+// `components` lists the architecture components (architecture.md § Componentes — the template's
+// numbered `### 2.1 Nombre` headings or plain `### Nombre` ones) with their slug, root folder and
+// how many specs cite them. `specs` lists the specs that cite one component — by the spec header's
+// `Módulo:` (inline `**Módulo:** …` or the migration template's bullet) or by the epic's
+// "Componentes de arquitectura involucrados" line — in ROADMAP order, [x] only unless
+// `--all-states`.
 //
-// The judgment (último gana, Historial, Plan-mode approval) stays in the skill; this script
-// only answers "which specs, in which order" so the skill never scans docs/05-specs/ blind.
+// Specs of a closed milestone are deleted when the milestone closes (v3.0.0), so the counts here
+// describe what is on disk, not history: the truth of built behaviour is the code and its tests.
 // Exit 0 = ok, 1 = no architecture.md (UNAVAILABLE), 2 = usage / unknown component.
 
-const fs = require("fs");
 const path = require("path");
 const { findProjectRoot } = require("./specture-guard");
 const { lines, walk, readText, parseRoadmap, epicIdFrom } = require("./doctor/project");
@@ -25,7 +24,6 @@ const { lines, walk, readText, parseRoadmap, epicIdFrom } = require("./doctor/pr
 const ARCHITECTURE = "docs/02-architecture/architecture.md";
 const ROADMAP = "docs/04-roadmap/ROADMAP.md";
 const SPECS_DIR = "docs/05-specs";
-const CURRENT_DIR = "docs/05-specs/_current";
 const COMPONENTS_HEADING = /^##\s*(?:\d+\.\s*)?Componentes\b/i;
 const COMPONENT_HEADING = /^###\s*(?:\d+(?:\.\d+)*\.?\s+)?(.+?)\s*$/;
 const MODULE_LINE = /\*\*M[oó]dulo:\*\*\s*(.+?)(?:\s{2,}\*\*|$)/;
@@ -162,48 +160,33 @@ function specsFor(specs, component) {
   return out;
 }
 
-function confidenceOf(currentText) {
-  const match = currentText && currentText.match(/\*\*Confianza:\*\*\s*([a-z_]+)/i);
-  return match ? match[1].toLowerCase() : null;
-}
-
-function loadState(root) {
+// Every component with the specs that cite it. null when architecture.md is absent.
+function loadComponents(root) {
   const architecture = readText(root, ARCHITECTURE);
   if (architecture === null) return null;
   const components = parseComponents(architecture);
   const specs = loadSpecs(root);
   return components.map((c) => {
     const cited = specsFor(specs, c);
-    const currentRel = `${CURRENT_DIR}/${c.slug}.md`;
-    const currentText = readText(root, currentRel);
     return {
       ...c,
       specsDone: cited.filter((s) => s.state === "done").length,
       specsOther: cited.filter((s) => s.state !== "done").length,
-      current: currentText !== null ? currentRel : null,
-      confidence: confidenceOf(currentText),
       specs: cited
     };
   });
 }
 
-// Components with [x] specs and no _current/<slug>.md — what the coordinator / doctor warn about.
-function missingCurrent(root) {
-  const state = loadState(root);
-  if (!state) return [];
-  return state.filter((c) => c.specsDone > 0 && !c.current);
-}
-
-function findComponent(state, query) {
+function findComponent(components, query) {
   const wanted = slugify(query);
-  const exact = state.find((c) => c.slug === wanted || slugify(c.name) === wanted);
+  const exact = components.find((c) => c.slug === wanted || slugify(c.name) === wanted);
   if (exact) return { component: exact, candidates: [] };
-  return { component: null, candidates: state.filter((c) => c.slug.includes(wanted) || wanted.includes(c.slug)) };
+  return { component: null, candidates: components.filter((c) => c.slug.includes(wanted) || wanted.includes(c.slug)) };
 }
 
 function usage(message) {
-  if (message) process.stderr.write(`current-state: ${message}\n`);
-  process.stderr.write("usage: node hooks/lib/current-state.js components|specs --project <root> [--component <slug>] [--all-states] [--json]\n");
+  if (message) process.stderr.write(`components: ${message}\n`);
+  process.stderr.write("usage: node hooks/lib/components.js components|specs --project <root> [--component <slug>] [--all-states] [--json]\n");
   return 2;
 }
 
@@ -230,30 +213,28 @@ function main(argv) {
   const start = path.resolve(args.project || ".");
   const root = findProjectRoot(start);
   if (!root) return usage(`not a Specture project (no .specture/stack.yml found from ${start})`);
-  const state = loadState(root);
-  if (!state) {
+  const components = loadComponents(root);
+  if (!components) {
     process.stdout.write("UNAVAILABLE: docs/02-architecture/architecture.md not found — components are declared there\n");
     return 1;
   }
-  const strip = (c) => ({ name: c.name, slug: c.slug, root: c.root, location: c.location, specsDone: c.specsDone, specsOther: c.specsOther, current: c.current, confidence: c.confidence });
+  const strip = (c) => ({ name: c.name, slug: c.slug, root: c.root, location: c.location, specsDone: c.specsDone, specsOther: c.specsOther });
 
   if (args.mode === "components") {
     if (args.json) {
-      process.stdout.write(JSON.stringify({ components: state.map(strip), currentDir: fs.existsSync(path.join(root, CURRENT_DIR)) }) + "\n");
+      process.stdout.write(JSON.stringify({ components: components.map(strip) }) + "\n");
       return 0;
     }
-    process.stdout.write("SLUG | NAME | ROOT | SPECS_DONE | SPECS_OTHER | CURRENT\n");
-    for (const c of state) {
-      process.stdout.write(`${c.slug} | ${c.name} | ${c.root || "n/a"} | ${c.specsDone} | ${c.specsOther} | ${c.current ? `yes (${c.confidence || "sin Confianza"})` : "no"}\n`);
+    process.stdout.write("SLUG | NAME | ROOT | SPECS_DONE | SPECS_OTHER\n");
+    for (const c of components) {
+      process.stdout.write(`${c.slug} | ${c.name} | ${c.root || "n/a"} | ${c.specsDone} | ${c.specsOther}\n`);
     }
-    const missing = state.filter((c) => c.specsDone > 0 && !c.current);
-    if (missing.length > 0) process.stdout.write(`MISSING: ${missing.map((c) => `${c.slug} (${c.specsDone} spec[x])`).join(", ")} → /specture:knowledge reconcile --component <slug>\n`);
     return 0;
   }
 
-  const { component, candidates } = findComponent(state, args.component);
+  const { component, candidates } = findComponent(components, args.component);
   if (!component) {
-    process.stderr.write(`current-state: unknown component "${args.component}"${candidates.length ? ` — did you mean: ${candidates.map((c) => c.slug).join(", ")}` : ` — components: ${state.map((c) => c.slug).join(", ")}`}\n`);
+    process.stderr.write(`components: unknown component "${args.component}"${candidates.length ? ` — did you mean: ${candidates.map((c) => c.slug).join(", ")}` : ` — components: ${components.map((c) => c.slug).join(", ")}`}\n`);
     return 2;
   }
   const rows = component.specs.filter((s) => args.allStates || s.state === "done");
@@ -261,13 +242,13 @@ function main(argv) {
     process.stdout.write(JSON.stringify({ component: strip(component), specs: rows.map((s) => ({ path: s.path, epic: s.epicId, state: s.state, match: s.match, module: s.module })) }) + "\n");
     return 0;
   }
-  process.stdout.write(`COMPONENT: ${component.slug} (${component.name}) · root: ${component.root || "n/a"} · specs [x]: ${component.specsDone} · other: ${component.specsOther} · current: ${component.current || "none"}\n`);
+  process.stdout.write(`COMPONENT: ${component.slug} (${component.name}) · root: ${component.root || "n/a"} · specs [x]: ${component.specsDone} · other: ${component.specsOther}\n`);
   process.stdout.write("SPEC | EPIC | STATE | MATCH\n");
   for (const s of rows) process.stdout.write(`${s.path} | ${s.epicId || "?"} | ${s.state} | ${s.match}\n`);
   if (rows.length === 0) {
     process.stdout.write(component.specsOther > 0 && !args.allStates
-      ? `NONE_DONE: ${component.specsOther} spec(s) not yet [x] (--all-states to list) — nothing to reconcile yet\n`
-      : `NONE: no specs cite this component — use /specture:knowledge characterize --component ${component.slug} (read-only, from code under ${component.location || component.root || "its root folder"})\n`);
+      ? `NONE_DONE: ${component.specsOther} spec(s) not yet [x] (--all-states to list)\n`
+      : `NONE: no spec on disk cites this component (closed milestones delete their specs — the code under ${component.location || component.root || "its root folder"} is the truth)\n`);
   }
   return 0;
 }
@@ -276,4 +257,4 @@ if (require.main === module) {
   process.exit(main(process.argv.slice(2)));
 }
 
-module.exports = { slugify, parseComponents, specModule, epicComponents, loadSpecs, specsFor, loadState, missingCurrent, findComponent, CURRENT_DIR };
+module.exports = { slugify, parseComponents, specModule, epicComponents, loadSpecs, specsFor, loadComponents, findComponent };

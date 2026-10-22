@@ -138,7 +138,10 @@ $SPECTURE_ROOT/
 │   ├── lib/review-rules-resolve.js    # Custom Rules Resolution: --spec | --paths | --paths-file | --all → bloque CUSTOM_RULES (v2.4.0)
 │   ├── lib/compliance.js              # Revisión de cumplimiento: range (--milestone · --pr · --branch) · lint · assemble · stub · triage · correction · status · record (v2.4.0)
 │   ├── lib/pr.js                      # Lectura de PRs de GitHub (gh pr view) y Azure DevOps (az repos pr show) y de ramas locales — solo lectura (v2.5.0)
-│   ├── lib/current-state.js           # Componentes de architecture.md y specs [x] por componente — knowledge reconcile (v1.19.0)
+│   ├── lib/components.js              # Componentes de architecture.md y specs que los citan — rules, rules-resolve, compliance, doctor
+│   ├── lib/doc-paths.js               # Detector de rutas de documentación en tests — red-check files y doctor doc-reading-test (v3.0.0)
+│   ├── lib/guards.js                  # Promueve los GUARD-n de los specs a reglas R-G-n de rules.yml antes de borrarlos (v3.0.0)
+│   ├── lib/milestone-close.js         # Cierre de milestone: borra specs, reviews, debug logs y coverage maps de sus epics por ruta exacta (v3.0.0)
 │   ├── lib/seal.js                    # Sello del build (schema v3: spec_sha/spec_paths/allowed_paths + specs[]; v2/v1 legacy; clasificación de denies)
 │   ├── lib/seal-cli.js                # Único escritor del sello: write · merge-spec · unseal-spec · lift-spec · supersede · release · show
 │   ├── lib/honesty-check.js           # Salvaguardas del loop de supersesiones y del Step 5.5: clean-tree · range · red-lines · spec-delta · protected · base-worktree (v2.2.0) · fix-range (v2.4.0)
@@ -173,7 +176,6 @@ $SPECTURE_ROOT/
 │   ├── compliance-review/CORRECTION_LOOP.md  # Procedimiento del agente de corrección (solo refactors elegidos, sin tests)
 │   ├── knowledge/SKILL.md             # Higiene de conocimiento — selección de modo + audit (ex-audit-knowledge) + stats (métricas del build)
 │   ├── knowledge/CAPTURE.md           # Modo capture (ex-learn): captura de aprendizajes con aprobación en Plan mode
-│   ├── knowledge/RECONCILE.md         # Modo reconcile / characterize: verdad viva de un componente
 │   ├── doctor/CATALOG.md              # Referencia del doctor: checks por release y catálogo de migraciones
 │   ├── learn/SKILL.md                 # Alias → knowledge (capture), backward-compat
 │   ├── audit-knowledge/SKILL.md       # Alias → knowledge (audit), backward-compat
@@ -206,7 +208,6 @@ $SPECTURE_ROOT/
 │   ├── PLANNING_TEMPLATE.md           # Gramática de docs/05-specs/<epic>/_planning.md (COVERAGE_TABLE, MECH_CHECK, veredictos, SPEC_SHA)
 │   ├── BATCH_REVIEW_TEMPLATE.md       # Registro de la revisión por tanda en docs/05-specs/_reviews/ (políticas, agenda, filtradas, premisas, SCOPE, aparcados)
 │   ├── COMPLIANCE_REPORT_TEMPLATE.md  # Gramáticas de la revisión de cumplimiento: parte del revisor y reporte en docs/07-reviews/ (v2.4.0)
-│   ├── CURRENT_CAPABILITY_TEMPLATE.md # Verdad viva por componente en docs/05-specs/_current/ (Confianza: spec_reconciled | ai_reconciled | ai_characterized | user_confirmed)
 │   ├── BUSINESS_REQUIREMENTS_TEMPLATE.md
 │   ├── DESIGN_SYSTEM_TEMPLATE.md
 │   ├── DEBUG_LOG_TEMPLATE.md
@@ -244,7 +245,6 @@ $SPECTURE_ROOT/
 | `knowledge` (capture) | `/specture:knowledge` · alias `/specture:learn` | Captura post-sesión opt-in (post-epic, post-debug, manual). Propone drafts de ADRs/índice/conventions con aprobación granular |
 | `knowledge` (audit) | `/specture:knowledge audit` · alias `/specture:audit-knowledge` | Auditoría periódica (1-3 meses) del `docs-index.yml`: detecta orphans, duplicates, stale, uncovered. Read-only |
 | `knowledge` (stats) | `/specture:knowledge stats` | Lee `docs/.specture-meta/build-metrics.jsonl` (una línea por epic, trackeada) y aplica la lectura del gate: ¿bajan los defectos aguas abajo? ¿pregunta el planner? ¿sube `spec_defect`? Ofrece reconstruir el baseline de los epics previos al gate. Read-only |
-| `knowledge` (reconcile) | `/specture:knowledge reconcile --component <slug>` · `characterize --component <slug>` | Backfill lazy de la verdad viva `docs/05-specs/_current/<slug>.md` desde los specs `[x]` del componente (último gana; lo superseded baja a Historial) — un componente por vez, aprobación en Plan mode, `Confianza: ai_reconciled`. `characterize` la deriva del código (read-only) cuando el componente no tiene specs (Adopt), `Confianza: ai_characterized`. Lo piden el doctor, `build` y `new-feature` cuando falta el archivo |
 | `compliance-review` | `/specture:compliance-review` · `milestone <N>` \| `triage` \| `pr <número\|url>` \| `rama <rama>` | Sobre un PR de GitHub o Azure DevOps o una rama local, a pedido y solo lectura (v2.5.0). Al cerrar un milestone (lo llama `build`, sin preguntar) revisa todo su código contra **todas** las reglas del proyecto y las del equipo (`.specture/review-rules.md`); deja un reporte con comentarios sugeridos en lenguaje claro en `docs/07-reviews/` y, al vaciarse la cola, te pregunta qué abordar. Nunca publica en GitHub ni Azure DevOps (v2.4.0) |
 | `doctor` | `/specture:doctor` · `check` \| `migrate` \| `sync` | Después de actualizar el plugin, cuando `start` avisa migraciones pendientes, o para lintear el corpus (rutas rotas, ADRs duplicados, reviews sin veredicto, sello huérfano). `check` es solo lectura; `migrate` aplica las migraciones mecánicas y lleva las asistidas a Plan mode |
 
@@ -407,8 +407,8 @@ Output: `.specture/docs-index.yml` + bridges en `docs/0X-*/` + ADRs Proposed en 
 
 ---
 
-#### `/specture:knowledge` (modos `capture` | `audit` | `stats` | `reconcile`)
-**Higiene de conocimiento del proyecto, unificada en una skill con cuatro modos** (v1.11.0; `stats` desde v1.18.0; `reconcile` desde v1.19.0). Los aliases `/specture:learn` → `capture` y `/specture:audit-knowledge` → `audit` siguen funcionando.
+#### `/specture:knowledge` (modos `capture` | `audit` | `stats`)
+**Higiene de conocimiento del proyecto, unificada en una skill con tres modos** (v1.11.0; `stats` desde v1.18.0; el modo `reconcile` existió de v1.19.0 a v2.11.0 y se retiró en v3.0.0 junto con `docs/05-specs/_current/`). Los aliases `/specture:learn` → `capture` y `/specture:audit-knowledge` → `audit` siguen funcionando.
 
 **Modo `capture`** (ex-`/specture:learn`): captura post-sesión opt-in del conocimiento descubierto. Se activa al final de un epic (build Step 8.5), tras confirmar una causa raíz (debug Phase 4.5), manualmente, o con `--teach <concepto>`. Filtra relevancia, recolecta evidencia, cross-referencia el `docs-index.yml`, y genera hasta **3 drafts** por invocación (entrada de índice `ai_categorized`, ADR `Status: Proposed`, patch a `conventions.md`/bridge, o test de characterization pendiente). El usuario **aprueba en bloque vía Plan mode**. Hard token budget ~30K. **Nunca escribe a la memoria personal de Claude.** Gate: `knowledge.enabled` en `.specture/settings.yml`. Output: drafts + log en `docs/.specture-meta/learn-history.jsonl`.
 
@@ -416,9 +416,7 @@ Output: `.specture/docs-index.yml` + bridges en `docs/0X-*/` + ADRs Proposed en 
 
 **Modo `stats`** (v1.18.0): lee `docs/.specture-meta/build-metrics.jsonl` — la línea por epic que el coordinador de `build` anexa y commitea (`planner_dispatches`, `open_questions`, `c7_rejections`, `mech_check_failures`, `needs_context_spec`, `iteration_cap_spec`, `blocked_spec`, `reviewer_rejected_major_spec_defect`, `review_rejections`, `supersessions`, `outcome`, `tokens` opcional) — vía `hooks/lib/metrics-report.js`, y aplica la lectura del diseño del gate: bajan los defectos aguas abajo → el gate atrapa ambigüedad real; no bajan y `open_questions ≈ 0` → el planner no pregunta; sube `spec_defect` → mantener la validación por spec (decisión A6). Desde v2.2.0 lee además el gate convergente: `gate_rounds` (≥3 sostenido → revisar el criterio del validador), `planner_redispatch_after_approved` (debe ser 0: si no, el coordinador está reabriendo APROBADOS), despachos de gate vs de loop, `supersede_loops` / `supersede_tests`, `j9_regressions`, `baseline_failures` y contactos humanos del gate vs de la ejecución. Desde v2.7.0 la línea la escribe el coordinador del epic y lleva además `coordinator_mode` (`subagent` | `inline`) y `epic_coordinator_dispatches`: la tabla suma la columna `mode` y la lectura cuenta los epics por modo. Si no hay archivo, ofrece `--baseline --write`: reconstruye una línea por epic cerrado desde los veredictos de `docs/07-reviews/`, los contadores de `_planning.md` y el `git log`. Read-only.
 
-**Modo `reconcile`** (v1.19.0, ítem 38 del roadmap): backfill **lazy, por componente**, de la verdad viva `docs/05-specs/_current/<slug>.md`. `hooks/lib/current-state.js` lista los componentes de `architecture.md` y los specs `[x]` que citan a cada uno (por `Módulo:` del spec o por el bloque del epic), en orden de ROADMAP; el modo lee **solo** esos specs, aplica "último gana" por `operationId` / sujeto de regla (lo superseded baja a "Historial"), hace merge incremental si el archivo ya existe y escribe con **aprobación en Plan mode** y `Confianza: ai_reconciled`. Un slug ambiguo se pregunta, nunca se adivina. **`characterize --component <slug>`** es la variante para proyectos Adopt o código heredado sin specs: un subagente read-only (haiku) extrae del código de la "Carpeta raíz" filas `KIND | STATEMENT | path::símbolo` y el archivo nace con `Confianza: ai_characterized` (informativo para el reviewer). El doctor (`current-state-missing` / `current-state-partial`), `build` (Current-State Resolution) y `new-feature` nombran el comando cuando un componente con specs cerrados no tiene archivo; `build` Step 8.7 sigue reconciliando al cerrar cada milestone (`Confianza: spec_reconciled`). Un proyecto maduro obtiene verdad viva sin consolidar cientos de specs de golpe.
-
-> Úsalo (capture) cuando termine un epic / se confirme un root cause / quieras formalizar lo descubierto; (audit) cada 1-3 meses o cuando el índice parezca desfasado; (stats) cada ~10 epics con gate para decidir sobre él con datos; (reconcile) cuando el doctor o el build avisen de un componente con specs cerrados y sin `_current/`, o (characterize) antes de la primera feature sobre código heredado.
+> Úsalo (capture) cuando termine un epic / se confirme un root cause / quieras formalizar lo descubierto; (audit) cada 1-3 meses o cuando el índice parezca desfasado; (stats) cada ~10 epics con gate para decidir sobre él con datos. La verdad del comportamiento construido es el código y sus tests; las decisiones, las ADRs y `rules.yml` — no hay un resumen intermedio que mantener.
 
 ---
 
@@ -538,9 +536,9 @@ Cada proyecto que use Specture tiene una carpeta `.specture/`:
     ├── 02-architecture/
     ├── 03-ux-ui/
     ├── 04-roadmap/
-    ├── 05-specs/              # <epic>/*.spec.md + <epic>/_planning.md (evidencia del gate) + _supersessions.md (índice)
-    ├── 06-debug-logs/
-    └── 07-reviews/            # review-<epic>-<spec>-<fecha>.md (por spec) · cumplimiento-milestone-<N>-<fecha>.md (v2.4.0)
+    ├── 05-specs/              # <epic>/*.spec.md + <epic>/_planning.md (evidencia del gate) — se borran al cerrar su milestone (v3.0.0); _reviews/ (registros de la sentada) se queda
+    ├── 06-debug-logs/         # Locales (gitignoreados desde v3.0.0): la causa raíz se vuelve regla o ADR
+    └── 07-reviews/            # review-<epic>-<spec>-<fecha>.md (local, se borra al cerrar el milestone) · cumplimiento-milestone-<N>-<fecha>.md (trackeado hasta el triage)
 ```
 
 `stack.yml` es **leído por todos los skills y agentes** antes de generar nada. Cambia el stack → cambian las decisiones, sin tocar el framework.
@@ -651,6 +649,23 @@ Specture está en desarrollo activo. Para decisiones arquitectónicas internas, 
 ---
 
 ## Changelog
+
+### v3.0.0 — Specture independiente
+
+**Motivación:** el CI de Psikora estuvo en rojo del 22 de septiembre al 19 de octubre y el deploy bloqueado: 41 archivos de test leían documentación `.md` que una poda del corpus había borrado (`ENOENT` sobre `handoff-mapping-*.md`, secciones de `design_system.md`, specs retiradas, una ADR renombrada). Ninguna regla de Specture lo pedía; salía de juntar tres piezas: la plantilla de spec no tenía dónde poner una tarea documental (el `spec-planner` la escribía como BR/AC), `red-check coverage` exige un test por ID, y nadie retira esos tests después. Detrás había un principio que no estaba escrito: **Specture es un framework de trabajo, no una dependencia del proyecto**. Si se borran `docs/` y `.specture/`, la suite y el build del proyecto quedan iguales. Y lo que no es una decisión no se guarda: Psikora acumulaba un ledger de 9.4k líneas, specs cerradas con "notas de corrección" y `_current/` nunca construido — y funcionaba igual sin él.
+
+**Cambios:**
+- **Entregables documentales `DOC-n`.** `SPEC_TEMPLATE.md` tiene una sección propia para lo que un spec obliga a escribir en la documentación (`architecture.md`, el contrato, `conventions.md`, una ADR). Un `DOC-n` no lleva test — `red-check coverage` solo cuenta `AC/BR/EC` — y lo verifica el `code-reviewer` contra el diff (Dimensión 1). El `spec-planner` nunca escribe un BR/AC cuyo sujeto sea un documento; el `tdd-test-writer` nunca los pone en el `COVERAGE_MAP`.
+- **Ningún test del proyecto depende de documentación, de ningún tipo.** Ni de Specture (`docs/**`, `.specture/**`) ni del propio proyecto (cualquier `*.md`, la carpeta `source_of_truth_dir` de `docs-index.yml`). `red-check files` da **FAIL** antes del sello sobre cualquier archivo del RED que nombre una de esas rutas (los comentarios no cuentan) → re-despacho del writer. El doctor estrena `doc-reading-test` para los tests que ya existen: WARNING, y **ERROR** cuando la ruta ya no existe (el ENOENT de Psikora). `tdd-test-writer` y `code-reviewer` (BLOCKER) llevan la regla con su porqué. `hooks/lib/doc-paths.js` es el detector común.
+- **El proyecto compila sin Specture.** El cliente tipado del frontend se genera dentro del epic y **se comitea**; ningún paso de build o de CI lee `docs/` (`architecture`, `ux-implementer`, `API_CONTRACT_TEMPLATE`; BLOCKER del reviewer en Dimensión 6; doctor `build-reads-docs` sobre `package.json scripts`, `*.csproj`, `Makefile`, `pyproject.toml`, `build.gradle`…).
+- **Dos cubos al cerrar una milestone.** *Decisión* se queda: ADRs, `rules.yml`, `conventions.md`, requerimientos, contrato, ROADMAP, `docs/05-specs/_reviews/`, `cumplimiento-milestone-*`. *Proceso* se borra: los specs y `_planning.md` de sus epics, sus `review-*`, los debug logs que los citan y los coverage maps. `hooks/lib/milestone-close.js --milestone <N>` lista (dry-run) y aplica (`--apply`) **por ruta exacta** bajo cuatro familias — nunca un glob `docs/**`: la documentación del equipo convive ahí (`docs/estandares/` en Psikora) y no se toca. Antes de borrar, `hooks/lib/guards.js promote` convierte cada `GUARD-n` de los specs en una regla `R-G-<n>` de `rules.yml` con su `verify:`, así `honesty-check protected` sigue protegiendo esos tests. Step 8.7 de `build/QUEUE.md` reescrito: compliance review → dry-run → apply → lápida → un commit `docs: archive milestone <N>`. Sin resúmenes: el usuario clona en bordes completos y el framework no lo valida.
+- **Lo efímero no se versiona.** `setup` escribe en `.gitignore` `docs/07-reviews/review-*.md`, `cumplimiento-pr-*.md`, `cumplimiento-rama-*.md` y `docs/06-debug-logs/`; migración mecánica `3.0-ephemeral-gitignore` para proyectos existentes. `debug` ya no pide commitear el log: la causa raíz se vuelve regla o ADR vía `knowledge capture`.
+- **La aprobación visual sobrevive al borrado.** El coordinador la escribe también en `docs/03-ux-ui/design_system.md` (`- **Aprobación visual:** <sha12> — <ISO-8601> — epic <X.Y>`, § 1 Dirección); `spec-set-check` C-design acepta ese registro o el `_planning.md`, así que un epic de página de la milestone siguiente no se bloquea cuando el `_planning.md` del design system ya no existe.
+- **Se retiran `docs/05-specs/_current/`, `knowledge reconcile` / `characterize`, `_supersessions.md` y la rama de supersesión que leía specs viejas.** `knowledge` queda con `capture | audit | stats`; `build` ya no corre Current-State Resolution; el `spec-planner` declara supersesiones solo desde RN, ADR y contrato (la ejecución encuentra el resto, como siempre); `new-feature` analiza el impacto sobre el código y sus tests. `hooks/lib/current-state.js` → `hooks/lib/components.js` (lo que `rules`, `rules-resolve`, `compliance` y el doctor sí usaban; los tags de módulo de `rules.yml` ahora también se alcanzan desde las líneas `Componentes de arquitectura involucrados` del ROADMAP, porque los specs cerrados ya no están). Migración `1.9-current-state-init` retirada (nunca pendiente); nueva `3.0-retire-current-state`, asistida y declinable: ofrece borrar un `_current/` heredado, nunca lo borra sola. Checks `current-state-missing` / `current-state-partial` eliminados. `CURRENT_CAPABILITY_TEMPLATE.md` y `knowledge/RECONCILE.md` eliminados.
+- **Lo que Specture lee no cambia:** `docs-index.yml` y sus entradas, `review-rules.md` y los documentos que incluye, los puentes de `docs/01-03`, ADRs, `rules.yml`, requerimientos, contrato y ROADMAP son dependencias de Specture, no del proyecto, y siguen igual.
+- Tests: 375 → 384. `agy plugin validate`: 18 skills, 1 hook, 0 avisos.
+
+**Backward-compat:** es un cambio de comportamiento visible, por eso cambia el mayor. Al actualizar: `/specture:doctor migrate` aplica `3.0-ephemeral-gitignore` y ofrece `3.0-retire-current-state`; `/specture:doctor check` lista con `doc-reading-test` los tests que leen documentación (el usuario los borra o reescribe — el doctor nunca edita tests) y con `build-reads-docs` los pasos de build que leen `docs/`. Las milestones ya cerradas no se borran solas: `node hooks/lib/milestone-close.js --milestone <N>` (dry-run primero) lo hace cuando el usuario quiera. Claude Code intacto: `.claude-plugin/` (solo versión), `hooks/hooks.json` y `pre-tool-use-*.js` sin cambios; los `AGENT.md` cambian en texto de reglas, nunca en `model`/`effort`/`tools`.
 
 ### v2.11.0 — Antigravity de verdad, y adiós a Copilot CLI
 

@@ -25,7 +25,7 @@ const fs = require("fs");
 const path = require("path");
 const { findProjectRoot } = require("./specture-guard");
 const { readRules, resolveRules, formatBlock, legacyRules, normalizeTag, moduleTag, LAYER_TAGS, RULES_FILE } = require("./rules");
-const { loadSpecs, epicComponents } = require("./current-state");
+const { loadSpecs, epicComponents } = require("./components");
 const { readText } = require("./doctor/project");
 
 function usage(message) {

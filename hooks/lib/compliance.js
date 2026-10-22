@@ -44,7 +44,7 @@ const path = require("path");
 const { spawnSync } = require("child_process");
 const { findProjectRoot } = require("./specture-guard");
 const { parseLockSha } = require("./planning");
-const { parseComponents } = require("./current-state");
+const { parseComponents } = require("./components");
 const { FRAMEWORK_PREFIXES } = require("./seal");
 const reviewRules = require("./review-rules");
 

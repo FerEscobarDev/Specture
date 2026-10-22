@@ -115,9 +115,10 @@ test("verify refuses an incomplete migration and content migrations are deferred
 
   write(projectRoot, "docs/04-roadmap/ROADMAP.md", "### Milestone 1: F\n\n- [x] **Epic 1.1:** A\n  - **Dependencias:** Ninguna\n");
   const result = runMigrate(projectRoot, { pluginVersion: PLUGIN, catalog, apply: true });
-  assert.deepEqual(result.deferred.map((m) => m.id), ["1.9-current-state-init"]);
-  assert.ok(result.deferred[0].ownerSkill.includes("knowledge reconcile"));
-  assert.ok(readLog(projectRoot).some((l) => / 1\.9-current-state-init content deferred /.test(l)));
+  // v3.0.0 retired 1.9-current-state-init: a closed milestone defers nothing any more.
+  assert.ok(!result.deferred.some((m) => m.id === "1.9-current-state-init"), JSON.stringify(result.deferred));
+  for (const m of result.deferred) assert.ok(m.ownerSkill, `${m.id} names its owner`);
+  assert.ok(!readLog(projectRoot).some((l) => / 1\.9-current-state-init /.test(l)));
   assert.ok(!fs.existsSync(path.join(projectRoot, "docs", "05-specs", "_current")), "content migrations never write");
 });
 

@@ -6,13 +6,13 @@ const { afterEach, test } = require("node:test");
 const { spawnSync } = require("node:child_process");
 
 const root = path.resolve(__dirname, "..", "..");
-const cli = path.join(root, "hooks", "lib", "current-state.js");
+const cli = path.join(root, "hooks", "lib", "components.js");
 const generator = path.join(root, "scripts", "baseline-fixture.js");
-const { slugify, parseComponents, specModule, epicComponents, missingCurrent } = require("../lib/current-state");
+const { slugify, parseComponents, specModule, epicComponents } = require("../lib/components");
 const temporaryDirectories = [];
 
 function tmp() {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "specture-current-"));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "specture-components-"));
   temporaryDirectories.push(dir);
   return dir;
 }
@@ -79,25 +79,25 @@ test("specModule reads the inline header and the migration template's bullet; ep
   assert.deepEqual(epicComponents(null), {});
 });
 
-test("stage 3: components, [x] specs per component in ROADMAP order, characterize hint, unknown slug", () => {
+test("stage 3: components with their spec counts, [x] specs per component in ROADMAP order, unknown slug", () => {
   const dir = fixture(3);
   const components = run(dir, "components");
   assert.equal(components.status, 0, components.stderr);
   const rows = components.stdout.trim().split("\n");
-  assert.equal(rows[0], "SLUG | NAME | ROOT | SPECS_DONE | SPECS_OTHER | CURRENT");
+  assert.equal(rows[0], "SLUG | NAME | ROOT | SPECS_DONE | SPECS_OTHER");
   assert.deepEqual(rows.slice(1, 6), [
-    "archivos | Archivos | archivador_api/ | 4 | 0 | no",
-    "notas | Notas | archivador_api/ | 2 | 0 | no",
-    "etiquetas | Etiquetas | archivador_api/ | 1 | 0 | no",
-    "app-web | App web | archivador_app/ | 0 | 1 | no",
-    "auditoria | Auditoría | archivador_api/ | 0 | 0 | no"
+    "archivos | Archivos | archivador_api/ | 4 | 0",
+    "notas | Notas | archivador_api/ | 2 | 0",
+    "etiquetas | Etiquetas | archivador_api/ | 1 | 0",
+    "app-web | App web | archivador_app/ | 0 | 1",
+    "auditoria | Auditoría | archivador_api/ | 0 | 0"
   ]);
-  assert.match(rows[6], /^MISSING: archivos \(4 spec\[x\]\), notas \(2 spec\[x\]\), etiquetas \(1 spec\[x\]\) → \/specture:knowledge reconcile --component <slug>$/);
+  assert.equal(rows.length, 6, "no MISSING line: there is no living-behaviour directory to miss");
 
   const archivos = run(dir, "specs", "--component", "archivos");
   assert.equal(archivos.status, 0, archivos.stderr);
   const lines = archivos.stdout.trim().split("\n");
-  assert.match(lines[0], /^COMPONENT: archivos \(Archivos\) · root: archivador_api\/ · specs \[x\]: 4 · other: 0 · current: none$/);
+  assert.match(lines[0], /^COMPONENT: archivos \(Archivos\) · root: archivador_api\/ · specs \[x\]: 4 · other: 0$/);
   assert.deepEqual(lines.slice(2), [
     "docs/05-specs/epic-1.1-archivos/01-subir-archivo.spec.md | 1.1 | done | modulo",
     "docs/05-specs/epic-1.1-archivos/02-listar-archivos.spec.md | 1.1 | done | modulo",
@@ -111,16 +111,11 @@ test("stage 3: components, [x] specs per component in ROADMAP order, characteriz
 
   const auditoria = run(dir, "specs", "--component", "auditoria");
   assert.equal(auditoria.status, 0);
-  assert.match(auditoria.stdout, /^NONE: no specs cite this component — use \/specture:knowledge characterize --component auditoria \(read-only, from code under archivador_api\/src\/auditoria\/\)$/m);
+  assert.match(auditoria.stdout, /^NONE: no spec on disk cites this component .*archivador_api\/src\/auditoria\//m);
 
   const unknown = run(dir, "specs", "--component", "archiv");
   assert.equal(unknown.status, 2);
   assert.match(unknown.stderr, /unknown component "archiv" — did you mean: archivos/);
-
-  fs.mkdirSync(path.join(dir, "docs", "05-specs", "_current"), { recursive: true });
-  fs.writeFileSync(path.join(dir, "docs", "05-specs", "_current", "archivos.md"), "# Estado actual — Archivos\n\n> - **Confianza:** ai_reconciled\n");
-  assert.deepEqual(missingCurrent(dir).map((c) => c.slug), ["notas", "etiquetas"]);
-  assert.match(run(dir, "components").stdout, /^archivos \| Archivos \| archivador_api\/ \| 4 \| 0 \| yes \(ai_reconciled\)$/m);
 });
 
 test("stage 2: pending epics are hidden unless --all-states; no architecture.md → UNAVAILABLE", () => {

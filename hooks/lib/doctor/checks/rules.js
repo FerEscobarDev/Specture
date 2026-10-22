@@ -59,7 +59,7 @@ function unreachable(project, rules) {
       "rules-tag-unreachable",
       RULES,
       `${rule.id}: tags [${rule.tags.map(normalizeTag).join(", ")}] match no layer, no \`all\`, no component of architecture.md and no spec \`Módulo\` — the rule is never injected into the implementer or the per-spec reviewer${rule._line ? ` (line ${rule._line})` : ""}`,
-      "retag it: `all` for style/structure/naming that apply everywhere, `backend`/`frontend`/`mobile` for a layer, the component slug for a domain rule (`node hooks/lib/current-state.js components` lists them); if the tag is a module your next specs will declare, ignore this warning"
+      "retag it: `all` for style/structure/naming that apply everywhere, `backend`/`frontend`/`mobile` for a layer, the component slug for a domain rule (`node hooks/lib/components.js components` lists them); if the tag is a module your next specs will declare, ignore this warning"
     ));
 }
 

@@ -49,7 +49,7 @@ rationalizations this agent exists to eliminate.
   **`RULES_RESOLVED` block** (the `R-*` invariants of `.specture/rules.yml` whose tags match
   the epic — cite the ones a spec must honor; `RULES_RESOLVED: []` is valid); the `Accepted`
   ADRs.
-- Resolved `docs/05-specs/_current/<component>.md` files and resolved docs-index entries
+- Resolved docs-index entries
   (capped, as for the validator; `[]` is valid and explicit).
 - The spec template: `templates/SPEC_TEMPLATE.md`, or `templates/MIGRATION_SPEC_TEMPLATE.md`
   if the epic declares `Template:`; plus `templates/PLANNING_TEMPLATE.md` — the grammar of
@@ -97,8 +97,16 @@ rationalizations this agent exists to eliminate.
         constant files where `conventions.md` §2 says. Omitting them does not save work: the
         implementer answers `BLOCKED: spec` naming the path and the epic comes back to you.
   - [ ] "Fuera de Scope" explicit (the test-writer uses it to bound test generation).
+  - [ ] **Documentation duties are `DOC-n`, never BR/AC/EC.** Anything the spec obliges someone
+        to write or update in `architecture.md`, the contract companion, `conventions.md`, an
+        ADR, a runbook or any other `.md` goes under "Entregables documentales" with a `DOC-n`
+        id. A `BR` is born from an `RN-nnn`; an `AC` is observable behaviour of the software;
+        documentation is neither. Why it matters: `red-check coverage` demands one test per
+        AC/BR/EC, so a documentation duty written as a BR forces the test-writer to write a test
+        that reads the `.md` — Psikora shipped 41 such files, and the next pruning of the corpus
+        turned the CI red for a month. The code-reviewer checks `DOC-n` against the diff instead.
   - [ ] A **behaviour** of a **closed** epic that a rule of this spec makes false, and that the
-        sources let you see (an RN, an ADR, the old spec, `_current/`), is **declared** under
+        sources let you see (an RN, an ADR, the contract), is **declared** under
         "Supersesiones de tests sellados" (`Supersede: <path>::<test> — motivo: <BR-n | AC-n |
         GAP-nnn> — epic origen: <epic>`, the source quoted in `RESOLVED_ALONE`) and mirrored as
         a `sup:` row — never a sibling spec's test (that is the correction loop). The list is
@@ -120,7 +128,8 @@ rationalizations this agent exists to eliminate.
   is yours to know): lists of compile or fixture breaks; an "impacto en tests descartado"
   inventory; "Decisiones de implementación" invented to predict breaks; a default `epic
   origen`; prose in the Superficie; an "Aclaraciones" section that only repeats
-  `RESOLVED_ALONE`.
+  `RESOLVED_ALONE`; a BR, AC or EC whose subject is a document ("`architecture.md` §4
+  reflects…", "`conventions.md` includes…") — that is a `DOC-n`.
 - **Step 4 — Ambiguity pass** over every AC / BR / EC / contract-table cell / Fuera de
   Scope item, classifying with the escalation criteria below: **resolved with a source**
   (→ `RESOLVED_ALONE`, with the verbatim quote) or **open** (→ `OPEN_QUESTIONS`). The third
@@ -187,7 +196,7 @@ You stay blind to code in all three.
   IDs, Fuera de Scope. Where a doubt is open, write the recommended option into the text marked
   `sujeto a Q-n` and put the question in `OPEN_QUESTIONS` with `derivadas:`. Write every
   statement you make about the **current** system as a statement the validator can check ("hoy
-  `X` rechaza `Y` — fuente: _current/… o RN-nnn"), never as an unsourced "como hoy". The gate's
+  `X` rechaza `Y` — fuente: RN-nnn, ADR-nnn o el contrato"), never as an unsourced "como hoy". The gate's
   question cap does not apply here: list **every** open doubt — the sitting has no per-round cap.
   A shape the epic needs and the contract does not declare is an `OPEN_QUESTIONS` item of class
   `contrato` (the text it touches marked `sujeto a Q-n`), not `BLOCKED: contrato`: the sitting is

@@ -29,8 +29,8 @@ validated specs — never the job of writing them. The evidence lives on disk in
 locked `[/]`:
 
 **Pre-flight — Code Surface Resolution** (roadmap item 33; third application of the doctrine
-"the orchestrator resolves, the agent never reads" — see Docs Index Resolution and
-Current-State Resolution in `build/EPIC_LOOP.md`). The planner **does not open source
+"the orchestrator resolves, the agent never reads" — see Docs Index Resolution in
+`build/EPIC_LOOP.md`). The planner **does not open source
 files**: you hand it a table `SYMBOL | PATH | SIGNATURE` of the component's existing code.
 - **Roots**: the "Carpeta raíz" of every involved component in `architecture.md`, backed by
   `stack.yml.structure`; "n/a" → the dirs of `structure.apps`; no code yet (greenfield) →
@@ -66,9 +66,9 @@ files**: you hand it a table `SYMBOL | PATH | SIGNATURE` of the component's exis
    epic's `operationId`s; `stack.yml`, `conventions.md` (§8, file-org), `Accepted`
    ADRs; the `RULES_RESOLVED` block (run "Rules Resolution" of `build/EPIC_LOOP.md` with
    the epic's component slugs + `backend`/`frontend`/`mobile` as tags — the planner cites
-   the rules a spec must honor, never the whole registry); resolved docs-index and
-   `_current/` files (run "Docs Index Resolution" and "Current-State Resolution" as
-   defined in `build/EPIC_LOOP.md` — same algorithms, you have the file); **for a frontend
+   the rules a spec must honor, never the whole registry); resolved docs-index
+   entries (run "Docs Index Resolution" as defined in `build/EPIC_LOOP.md` — same algorithm,
+   you have the file); **for a frontend
    epic, the `design_surface_resolved` block** (run "Design Surface Resolution" —
    without it the planner has to fill the `Crea:` surface of the Code Surface seal for
    components it is forbidden to read and whose inventory nobody hands it, which is exactly

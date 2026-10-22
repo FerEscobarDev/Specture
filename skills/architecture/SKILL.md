@@ -38,7 +38,7 @@ If any of those are missing, stop and route back to the appropriate phase via `.
 ### Sections to Produce (use `templates/ARCHITECTURE_TEMPLATE.md`)
 
 1. **Stack of Reference** — copied/linked from `stack.yml`.
-2. **High-Level Components** — what major pieces exist (modules, services, layers) and their responsibilities. Give each a **stable slug** (kebab-case, e.g. `billing`, `auth`) — these slugs key the living-behavior files `docs/05-specs/_current/<component-slug>.md` that the build phase reconciles per milestone (`build/SKILL.md` Step 8.7). Treat a slug like an `operationId`: don't churn it once epics reference it.
+2. **High-Level Components** — what major pieces exist (modules, services, layers) and their responsibilities. Give each a **stable slug** (kebab-case, e.g. `billing`, `auth`) — these slugs key the `Componentes de arquitectura involucrados` lines of the ROADMAP epics, the rule tags of `rules.yml` and the component folders the build phase works in per milestone (`build/SKILL.md` Step 8.7). Treat a slug like an `operationId`: don't churn it once epics reference it.
    - **Carpeta raíz por componente.** Si `stack.yml.structure.root_layout` es `by-app-suffix`, asigna a cada componente que sea una **app desplegable** su carpeta raíz resolviendo la entrada correspondiente de `structure.apps` y sustituyendo `{slug}` por `project.slug` (ej. backend → `{slug}_api` → `mi_app_api`). Regístrala en el campo "Carpeta raíz" del template. Mapea por rol: backend/API → `api`, web público → `web`, SPA/app/móvil → `app`, landing → `landing`. Componentes lógicos internos (no desplegables) llevan "n/a". Si `root_layout` es `flat`/`custom`, todos llevan "n/a" (la convención no aplica).
 3. **Communication Patterns** — how components talk (HTTP, events, function calls). Be explicit about sync vs async.
 4. **Data Model (Initial)** — main entities and relationships (Mermaid ER diagram or text). No SQL.
@@ -117,7 +117,7 @@ Most projects follow roughly this order. Deviate only if requirements demand it:
 4. **Authentication & Authorization** — if the system has users.
 5. **Primary API** — endpoints for the main use cases.
 6. **Secondary Capabilities** — non-critical features.
-7. **Frontend Foundation** (if frontend in stack) — routing, layout, **design system as code** (tokens + base components), and the **`/dev/design-system` showcase route** that the user approves before any page is built (see `skills/build/SKILL.md` "Modo: Frontend"). Also the generated typed API client from the contract file (`stack.yml.api.contract_file`).
+7. **Frontend Foundation** (if frontend in stack) — routing, layout, **design system as code** (tokens + base components), and the **`/dev/design-system` showcase route** that the user approves before any page is built (see `skills/build/SKILL.md` "Modo: Frontend"). Also the generated typed API client from the contract file (`stack.yml.api.contract_file`): generated **inside the epic** and **committed** — never a build or CI step that reads `docs/`, because the project must build with `docs/` and `.specture/` gone (they are Specture's working files, not a dependency of the project).
 8. **Frontend Features** — page by page, ordered so each page comes *after* the backend epic that implements the `operationId`s it consumes. The design-system approval gate precedes all of them.
 9. **Operational concerns** — observability, deploy pipeline.
 
