@@ -40,7 +40,7 @@ The mechanical half lives in `hooks/lib/compliance.js` (range, lint, assemble, t
 
 ## Cross-Platform Subagent Initialization
 
-If the session exposes `define_subagent` (Antigravity CLI), register `compliance-reviewer`, `implementer` and `ux-implementer` from `agents/<name>/AGENT.md` before dispatching. In Claude Code they are registered statically. Script paths: `${CLAUDE_PLUGIN_ROOT}` (Claude Code), `${PLUGIN_ROOT}` (Copilot / Antigravity), `$SPECTURE_ROOT` (manual setups).
+If the session exposes `define_subagent` (Antigravity), register `compliance-reviewer`, `implementer` and `ux-implementer` from `agents/<name>/AGENT.md` before dispatching, each with `enable_write_tools: true` (they write their part file or correct code; the flag defaults to `false` and a reviewer without it cannot write). In Claude Code they are registered by the plugin. Script paths: `${CLAUDE_PLUGIN_ROOT}` (Claude Code), `${PLUGIN_ROOT}` (Antigravity), `$SPECTURE_ROOT` (manual setups).
 
 ## Mode `milestone <N>` — the review
 
@@ -74,7 +74,7 @@ If the session exposes `define_subagent` (Antigravity CLI), register `compliance
 1. **What is pending.** `compliance.js status` lists reports with `TRIAGE PENDIENTE` and corrections still open, oldest first. Nothing pending → say so and stop. With a `<report>` argument, take only that one.
 2. **Precondition: no epic `[/]`.** The correction loop runs without a seal; with an epic in progress its seal would deny the fixes and the two would collide. If an epic is `[/]`, leave the triage `PENDIENTE` and say when it will be asked (the next queue drain).
 3. **Show the findings** of the report as a table — `F-n`, severity, Tipo, title, location, and the suggested comment — with a **proposed decision** per finding: `refactor` + `BLOCKER`/`IMPORTANT` → corregir; everything else → diferir. List the conflicts and what was not evaluated under the flexible level.
-4. **Ask one closed question** (`AskUserQuestion`; on Copilot / Antigravity a chat turn with the same closed options):
+4. **Ask one closed question** (`AskUserQuestion`; on Antigravity a chat turn with the same closed options):
    - *Aplicar la propuesta (Recomendada)*
    - *Decidir hallazgo por hallazgo* — then up to 4 findings per call, options `corregir` (only for `refactor`) / `diferir` / `no aplica`; reasons go in "Other".
    - *Diferir todo*

@@ -61,14 +61,40 @@ test("Claude Code wait gate is opt-in: silent when hooks are off, outside Spectu
   assert.equal(run(claudeHook, createProject(), {}).stdout, "");
 });
 
-test("CLI wait gate reads command, CommandLine or cmd and answers with the flat decision shape", () => {
+test("CLI wait gate reads command, CommandLine or cmd and answers with both decision shapes", () => {
   const projectRoot = createProject();
   for (const toolInput of [{ command: "sleep 90; echo tick" }, { CommandLine: "Start-Sleep -Seconds 300" }, { cmd: "until grep -q DONE out.txt; do sleep 20; done" }]) {
     const { status, json } = run(cliHook, projectRoot, toolInput);
     assert.equal(status, 0);
+    assert.deepEqual(Object.keys(json), ["decision", "reason", "permissionDecision", "permissionDecisionReason"], JSON.stringify(toolInput));
+    assert.equal(json.decision, "deny", JSON.stringify(toolInput));
     assert.equal(json.permissionDecision, "deny", JSON.stringify(toolInput));
-    assert.match(json.permissionDecisionReason, /Specture wait guard/);
+    assert.match(json.reason, /Specture wait guard/);
   }
   assert.equal(run(cliHook, projectRoot, { command: "dotnet test --filter FullyQualifiedName~FooTests" }).stdout, "");
   assert.equal(run(cliHook, createProject({ enabled: false }), { command: "sleep 3060" }).stdout, "");
+});
+
+// Antigravity runs the hook from the plugin directory and sends `toolCall.args.CommandLine` plus
+// the project in `workspacePaths` — the cwd never is the project.
+test("CLI wait gate under the Antigravity envelope: denies from a foreign cwd via workspacePaths", () => {
+  const projectRoot = createProject();
+  const pluginDir = createProject({ specture: false });
+  const spawn = (payload) => spawnSync(process.execPath, [cliHook], { cwd: pluginDir, encoding: "utf8", input: JSON.stringify(payload) });
+
+  const denied = spawn({
+    conversationId: "ec33ebf9-0cba-4100-8142-c61503f6c587",
+    stepIdx: 7,
+    toolCall: { name: "run_command", args: { CommandLine: "while true; do sleep 15; done", Cwd: projectRoot } },
+    workspacePaths: [projectRoot]
+  });
+  assert.equal(denied.status, 0);
+  const json = JSON.parse(denied.stdout);
+  assert.equal(json.decision, "deny");
+  assert.match(json.reason, /Specture wait guard/);
+
+  // real work passes; a project without the opt-in stays silent; no workspace at all → silent
+  assert.equal(spawn({ toolCall: { name: "run_command", args: { CommandLine: "npm test" } }, workspacePaths: [projectRoot] }).stdout, "");
+  assert.equal(spawn({ toolCall: { name: "run_command", args: { CommandLine: "sleep 3060" } }, workspacePaths: [createProject({ enabled: false })] }).stdout, "");
+  assert.equal(spawn({ toolCall: { name: "run_command", args: { CommandLine: "sleep 3060" } } }).stdout, "");
 });

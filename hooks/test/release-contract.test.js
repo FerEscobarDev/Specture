@@ -24,16 +24,28 @@ function readText(relativePath) {
 }
 
 test("every manifest carries the same plugin version", () => {
-  const version = readJson("plugin.json").version;
+  const rootPlugin = readJson("plugin.json");
+  const version = rootPlugin.version;
   const claudePlugin = readJson(".claude-plugin/plugin.json");
-  const marketplace = readJson(".github/plugin/marketplace.json");
-  const matrix = readJson("copilot/compatibility-matrix.json");
 
   assert.match(version, /^\d+\.\d+\.\d+$/, "plugin.json version must be X.Y.Z");
   assert.equal(claudePlugin.version, version, ".claude-plugin/plugin.json");
-  assert.equal(marketplace.metadata.version, version, ".github/plugin/marketplace.json metadata");
-  assert.equal(marketplace.plugins[0].version, version, ".github/plugin/marketplace.json plugins[0]");
-  assert.equal(matrix.claudeSource, version, "copilot/compatibility-matrix.json claudeSource");
+  assert.equal(rootPlugin.name, claudePlugin.name, "both manifests name the same plugin");
+});
+
+// The root plugin.json is Antigravity's manifest. agy's loader rejects a manifest whose
+// `skills` / `agents` / `hooks` keys are strings (`agy plugin validate`: "unexpected token
+// \"skills/\". The loader skips this plugin") and discovers skills/ and hooks.json by convention.
+// A `.antigravity-plugin/plugin.json` would only duplicate it (agy then warns that the root one
+// is ignored), so there is none.
+test("the root manifest is Antigravity's: no string component keys, no duplicate manifest", () => {
+  const manifest = readJson("plugin.json");
+  for (const key of ["skills", "agents", "hooks"]) {
+    assert.ok(!(key in manifest), `plugin.json must not declare "${key}" — agy skips the plugin`);
+  }
+  assert.ok(!fs.existsSync(path.join(root, ".antigravity-plugin")), "one Antigravity manifest: the root plugin.json");
+  assert.ok(!fs.existsSync(path.join(root, "copilot")), "Copilot CLI support was removed in v2.11.0 — no copilot/ directory");
+  assert.ok(!fs.existsSync(path.join(root, ".github", "plugin")), "no Copilot marketplace manifest");
 });
 
 test("README changelog has an entry for the current version", () => {
@@ -70,6 +82,36 @@ test("hooks/hooks.json registers the Claude Code gates in the shape Claude Code 
   assert.ok(!fs.existsSync(path.join(root, "settings.json")), "a plugin settings.json does not register hooks — do not bring it back");
 });
 
+// Antigravity loads a plugin's hooks from the root `hooks.json`: every top-level key is the NAME
+// of a hook group whose value maps events to matcher groups, each with a `hooks` array of
+// `{ type: "command", command, timeout }`. A top-level `"version": 1` (the old Copilot shape) is
+// not an object and makes agy drop the whole file; a handler without `command` never runs.
+test("hooks.json registers the Antigravity gates in the shape agy loads", () => {
+  const registry = readJson("hooks.json");
+  assert.ok(!("version" in registry), "a top-level \"version\" key makes agy skip hooks.json");
+  const groups = Object.entries(registry);
+  assert.ok(groups.length >= 1, "at least one named hook group");
+  const preToolUse = groups.flatMap(([, spec]) => spec.PreToolUse || []);
+  assert.ok(preToolUse.length >= 2, "PreToolUse must register the seal gate and the wait guard");
+
+  const byScript = (name) => preToolUse.find((g) => (g.hooks || []).some((h) => (h.command || "").includes(name)));
+  const seal = byScript("specture-pre-tool-use-tdd-gate.js");
+  const wait = byScript("specture-pre-tool-use-wait-gate.js");
+  assert.ok(seal, "seal gate not registered");
+  assert.ok(wait, "wait guard not registered");
+  for (const tool of ["write_to_file", "replace_file_content", "multi_replace_file_content"]) {
+    assert.ok(seal.matcher.split("|").includes(tool), `seal matcher must cover ${tool}`);
+  }
+  assert.ok(wait.matcher.split("|").includes("run_command"), "wait matcher must cover run_command");
+  for (const group of preToolUse) {
+    for (const hook of group.hooks) {
+      assert.equal(hook.type || "command", "command");
+      assert.match(hook.command, /^node "\$\{PLUGIN_ROOT\}\/hooks\/[^"]+"$/, `quote the plugin path (${hook.command})`);
+      assert.ok(Number.isInteger(hook.timeout) && hook.timeout > 0, "timeout in seconds");
+    }
+  }
+});
+
 test("every registered hook command points to an existing script", () => {
   const commands = [];
 
@@ -81,10 +123,12 @@ test("every registered hook command points to an existing script", () => {
   }
 
   const hooksJson = readJson("hooks.json");
-  for (const entries of Object.values(hooksJson.hooks || {})) {
-    for (const entry of entries) {
-      if (entry.bash) commands.push(entry.bash);
-      if (entry.powershell) commands.push(entry.powershell);
+  for (const spec of Object.values(hooksJson)) {
+    for (const entries of Object.values(spec)) {
+      if (!Array.isArray(entries)) continue;
+      for (const entry of entries) {
+        for (const hook of entry.hooks || []) commands.push(hook.command);
+      }
     }
   }
 

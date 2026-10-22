@@ -70,9 +70,18 @@ reach them**, not before — each one says at its top when it applies:
 ## Cross-Platform Subagent Initialization (Mandatory)
 
 Before proceeding, you must ensure specialized agents are registered in your environment. Check your available tools:
-- **If you have the `define_subagent` tool (Antigravity CLI):** You MUST dynamically register the subagents before doing anything else. Read the `name`, `description`, and content (`system_prompt`) of the `AGENT.md` files located in the `agents/` directory (for `spec-planner`, `architecture-validator`, `tdd-test-writer`, `implementer`, `ux-implementer`, `code-reviewer`, and `compliance-reviewer`), and call `define_subagent` for each one to make them available to this session.
-- **If you do NOT have the `define_subagent` tool (Claude Code):** The agents are already statically registered by the system. You may proceed directly.
-- **Script paths:** every `node "${CLAUDE_PLUGIN_ROOT}/…"` in this file and in `build/EPIC_LOOP.md` (`hooks/lib/spec-set-check.js`, `hooks/lib/seal-cli.js`, `hooks/lib/metrics-report.js`, `scripts/doctor.js`) is `${PLUGIN_ROOT}` on Copilot / Antigravity and `$SPECTURE_ROOT` in manual `@import` setups — the same rule as `start` Step 0.
+- **If you have the `define_subagent` tool (Antigravity):** register the subagents before doing anything else. For each of `spec-planner`, `architecture-validator`, `tdd-test-writer`, `implementer`, `ux-implementer`, `code-reviewer` and `compliance-reviewer`, read `name`, `description` and the body (`system_prompt`) of `agents/<name>/AGENT.md` and call `define_subagent` with the flags below — they default to `false`, and a writer without `enable_write_tools` cannot create a test file or run a suite:
+
+  | Agent | `enable_write_tools` | `enable_mcp_tools` | `enable_subagent_tools` |
+  |---|---|---|---|
+  | `architecture-validator`, `specture-router` | false | false | false |
+  | `spec-planner`, `tdd-test-writer`, `implementer`, `code-reviewer`, `compliance-reviewer` | true | false | false |
+  | `ux-implementer` | true | true (only if the project uses a design canvas or Playwright MCP) | false |
+  | the epic coordinator (a general-purpose agent running `build/EPIC_COORDINATOR.md`) | true | false | true — it dispatches the epic-agent, which dispatches the workers |
+
+  The frontmatter `tools` and `effort` do not travel with `define_subagent`: the validator is held to read-only by the rule in its body, and nobody runs at `effort: medium` unless the session sets it.
+- **If you do NOT have `define_subagent` (Claude Code):** the agents are registered by the plugin. Proceed.
+- **Script paths:** every `node "${CLAUDE_PLUGIN_ROOT}/…"` in this file and in `build/EPIC_LOOP.md` (`hooks/lib/spec-set-check.js`, `hooks/lib/seal-cli.js`, `hooks/lib/metrics-report.js`, `scripts/doctor.js`) is `${PLUGIN_ROOT}` on Antigravity and `$SPECTURE_ROOT` in manual `@import` setups — the same rule as `start` Step 0. (On Antigravity the variable exists inside hook processes only: in `run_command` resolve the plugin root from the path of the `SKILL.md` you just read — two directories up — or from `~/.gemini/config/plugins/specture`.)
 
 ## Execution Model — Sequential Queue
 
@@ -159,7 +168,7 @@ Proportional to the real damage: a new endpoint nobody renders must not stop the
 
 ## Step 9 — Context Reset Between Epics
 
-Execution resets by construction: each epic runs in a fresh epic coordinator (and its epic-agent) whose context is discarded when it finishes. This chat grows with the review sitting, the per-epic gates and one `EPIC_REPORT` per epic; in inline mode (Copilot, Antigravity, `NESTING_UNAVAILABLE`) it grows with every epic's whole run, so for a long batch the reset is the declared checkpoint of the Execution Model: after an epic closes, the user may end the session and continue with `/specture:start` — the queue, the review register, the gate state and the seal are all on disk.
+Execution resets by construction: each epic runs in a fresh epic coordinator (and its epic-agent) whose context is discarded when it finishes. This chat grows with the review sitting, the per-epic gates and one `EPIC_REPORT` per epic; in inline mode (Antigravity without `invoke_subagent`, `NESTING_UNAVAILABLE`) it grows with every epic's whole run, so for a long batch the reset is the declared checkpoint of the Execution Model: after an epic closes, the user may end the session and continue with `/specture:start` — the queue, the review register, the gate state and the seal are all on disk.
 
 ## Anti-Patterns
 
@@ -167,7 +176,7 @@ The full Anti-Patterns table travels with the epic-agent in `build/EPIC_LOOP.md`
 coordinator's in `build/EPIC_COORDINATOR.md`. Rows that bind **this coordinator**: never
 hand-edit `.specture/state/build-locked.json` (`seal-cli.js` is the only writer — `write` /
 `merge-spec` / `lift-spec` / `unseal-spec` / `supersede` / `release`). The epic coordinator adds four: never run its steps here while nested subagents work — refresh, loops and
-report processing belong to it (inline only on Copilot, Antigravity or `NESTING_UNAVAILABLE`);
+report processing belong to it (inline only without nested subagents or on `NESTING_UNAVAILABLE`);
 never resume one of its loops yourself after a cut (dispatch it with `ENTRY: resume`); never
 poll a dispatch ("sigo esperando") — wait for its notification; never let it ask the user (what
 needs the user comes back as an `EPIC_REPORT`). The review stage adds three: never apply a recommended option the user did not choose; never ask during the refresh of a non-regulatory epic (a new decision parks it); never drop a filtered question silently. The compliance review adds two: never fix a compliance finding by dispatching the implementer yourself (its correction agent does, after the user's triage), and never let it ask or stop the queue before the drain. The gate adds three: never resume the planner with `SendMessage` (always a fresh

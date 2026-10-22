@@ -62,7 +62,7 @@ HUMAN_CONTACTS: <n> · BASE_CONTEXT: <paths>
 
 Launch it as a **foreground** `Agent` call when you can (one turn, the `EPIC_REPORT` in its reply) or in the background and **wait for its notification — never poll, never `sleep`, and never give it a time budget**: a dispatch has no time limit, and a coordinator told to "cut at ~55 min" re-dispatched itself ten times for one epic (Psikora HC-IHCE.14), each time re-reading the planning file. One epic coordinator at a time, and nothing else writes while it runs. If the user writes meanwhile, answer them (a read-only look at `git log` is fine). A dispatch that never comes back — the user says it stalled, or the session was cut — is resumed with `ENTRY: resume`, never by running its steps here.
 
-**Inline mode.** On Copilot and Antigravity (no nested subagents), or when the epic coordinator
+**Inline mode.** When the session has no nested subagents (Antigravity without `invoke_subagent`), or when the epic coordinator
 answers `NESTING_UNAVAILABLE`, run `build/EPIC_COORDINATOR.md` yourself, here, exactly as written
 (skip its Step 0; `coordinator_mode: inline`). It is the v2.6 behaviour with the procedure in its
 own file: one source of truth, two possible runners. Say it once per batch: *"sin subagentes

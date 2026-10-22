@@ -10,19 +10,18 @@
 
 | Archivo | Campo | Plataforma |
 |---|---|---|
-| `plugin.json` | `version` | Copilot CLI / Antigravity CLI (fuente que lee la CI) |
+| `plugin.json` | `version` | Raíz del repositorio: el manifiesto de Antigravity (`agy`, solo metadatos — sin claves `skills`/`agents`/`hooks`) y la versión que leen la CI, `scripts/doctor.js`, `compliance.js` y `metrics-report.js` |
 | `.claude-plugin/plugin.json` | `version` | Claude Code |
-| `.github/plugin/marketplace.json` | `metadata.version` y `plugins[0].version` | Marketplace de Copilot |
-| `copilot/compatibility-matrix.json` | `claudeSource` | Versión del plugin que siguen los espejos Copilot |
 
-`package.json` **no** lleva `version` a propósito: sería un quinto manifiesto.
+`package.json` **no** lleva `version` a propósito: sería un tercer manifiesto.
 
 ## Paso a paso
 
 1. `npm test` en verde local (Node ≥ 22; `node --test` auto-descubre `hooks/test/*.test.js`).
-   Si la release tocó `agents/*/AGENT.md`, antes `npm run mirrors:sync`: los espejos Copilot
-   se generan desde ahí y el test de contrato falla si están desactualizados. Si tocó los
-   agentes del gate, además corré los **probes de release** (sección de abajo) antes del bump.
+   Si la release tocó los agentes del gate, corré además los **probes de release** (sección de
+   abajo) antes del bump. Si tocó un `SKILL.md`, `hooks/test/skill-size.test.js` ya vigila el
+   límite de 24 000 bytes; con `agy` instalado, `agy plugin validate <repo> --json` debe dar cero
+   avisos.
 2. `npm run bump -- X.Y.Z` — escribe la versión en los cuatro manifiestos (idempotente,
    conserva el formato de cada archivo).
 3. Agregar al `README.md`, al inicio de `## Changelog`, la entrada
@@ -66,8 +65,11 @@
   editar.
 - **`migrations/test/*.test.js`**: catálogo (pending → apply → done, idempotente), invariante
   setup ↔ migraciones, manifest de esquema sincronizado.
-- **`hooks/test/copilot-plugin-contract.test.js`**: cada `copilot/agents/*.agent.md` es la
-  salida exacta de `scripts/copilot-mirrors.js` sobre su `AGENT.md` (`mirrors:check`).
+- **`hooks/test/specture-pre-tool-use-tdd-gate.test.js`** y el bloque Antigravity de
+  `pre-tool-use-wait-gate.test.js`: los hooks universales deniegan lo mismo con el sobre de
+  Antigravity (`toolCall.args`, `workspacePaths`, cwd ajeno) y responden `decision` / `reason`.
+- **`hooks/test/skill-size.test.js`**: cuerpo de cada `SKILL.md` < 24 000 bytes, `description`
+  ≤ 1 024, índice en los compañeros largos.
 
 ## Probes de release (desde v2.2.0)
 
@@ -191,7 +193,6 @@ GitHub (de solo lectura: un repositorio público alcanza) y, cuando se pueda, un
 ```
 npm test                                   # todos los tests
 npm run check:release                      # contrato de release, sin escribir
-npm run mirrors:sync                       # regenera los espejos Copilot tras editar agents/*/AGENT.md
 node scripts/bump-version.js --title 1.14.1   # "v1.14.1 — <título>"
 node scripts/bump-version.js --notes 1.14.1   # cuerpo de la entrada del changelog
 gh run watch                               # seguir el run de CI del último push

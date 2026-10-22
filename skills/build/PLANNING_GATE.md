@@ -88,7 +88,7 @@ files**: you hand it a table `SYMBOL | PATH | SIGNATURE` of the component's exis
    exception to the "never restore after a mutation" anti-pattern); a new file outside it is
    reported, never deleted without asking.
 3. **Questions — one human budget per gate.** At most **2 rounds** of `AskUserQuestion`
-   (Copilot / Antigravity: closed questions in chat, same rules) **whatever their origin** —
+   (Antigravity: closed questions in chat, same rules) **whatever their origin** —
    the planner's `OPEN_QUESTIONS`, C7 conversions, a validator warning routed to `pregunta`,
    sizing — at most **4 questions per round**, 2-4 options each, one `(recomendada)`. The
    resumption question and the single closed question of the cap (step 5) do not count.

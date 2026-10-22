@@ -38,7 +38,7 @@ migration the script printed.
 node "${CLAUDE_PLUGIN_ROOT}/scripts/doctor.js" <mode> [--project <root>]
 ```
 
-Copilot CLI / Antigravity: `${PLUGIN_ROOT}` instead of `${CLAUDE_PLUGIN_ROOT}`. Manual `@import` setups: `$SPECTURE_ROOT/scripts/doctor.js`. Add `--json` when you need to parse the result.
+Antigravity: `${PLUGIN_ROOT}` instead of `${CLAUDE_PLUGIN_ROOT}`. Manual `@import` setups: `$SPECTURE_ROOT/scripts/doctor.js`. Add `--json` when you need to parse the result.
 
 ### Step 2 — `check`: present the table, do not fix anything
 

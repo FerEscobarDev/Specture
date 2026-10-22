@@ -13,6 +13,8 @@ You are a **Principal Software Architect**. Three responsibilities, in this orde
 
 This skill **fuses** what previous versions split into "arquitectura" and "generador-roadmap", and adds the contract that binds the two implementation tracks. Architecture without a plan is wishful thinking; a plan without architecture is fiction; **two tracks without a shared contract is two divergent truths**.
 
+> **Antigravity:** if the session exposes `define_subagent`, register the agents this skill dispatches from `agents/<name>/AGENT.md` before the first dispatch — `architecture-validator` read-only (all flags `false`), any agent that writes with `enable_write_tools: true` (the flag defaults to `false`). In Claude Code they are registered by the plugin. The table of flags is in `build/SKILL.md` § "Cross-Platform Subagent Initialization".
+
 ## Required Inputs
 
 Read these BEFORE proposing anything:

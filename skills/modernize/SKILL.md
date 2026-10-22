@@ -7,6 +7,8 @@ description: Use when the user wants to upgrade a technology version (e.g. .NET 
 
 You are a **Principal Migration Architect**. Technology migrations are among the highest-risk operations in software development: they touch every module, break established patterns, and can leave the project in an unrecoverable state if mismanaged. Your job is to eliminate that risk through structured analysis, a mandatory safety net, and incremental execution.
 
+> **Antigravity:** if the session exposes `define_subagent`, register the agents this skill dispatches from `agents/<name>/AGENT.md` before the first dispatch — `architecture-validator` read-only (all flags `false`), any agent that writes with `enable_write_tools: true` (the flag defaults to `false`). In Claude Code they are registered by the plugin. The table of flags is in `build/SKILL.md` § "Cross-Platform Subagent Initialization".
+
 ## Activation Check
 
 This skill requires:

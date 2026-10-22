@@ -220,7 +220,7 @@ No. Todo lo que importa vive en disco: el ROADMAP, el registro de la revisión d
 
 Desde v2.7.0 en Claude Code crece mucho menos: cada epic corre en su propio subagente y aquí
 solo vuelve un reporte corto por epic. Lo que sigue pesando en el chat principal es la sentada
-de revisión (unos 400k tokens en una tanda de tres epics regulatorios). En Copilot y Antigravity
+de revisión (unos 400k tokens en una tanda de tres epics regulatorios). En Antigravity
 el epic sigue corriendo en el chat principal, así que ahí el consejo de cerrar entre epics vale
 igual que antes.
 
@@ -244,8 +244,7 @@ casi nada cambia: el coordinador del epic **nunca te pregunta**. Lo que necesita
 mini-revisión de un epic regulatorio, un problema que solo tú puedes decidir, la aprobación
 visual del design system) vuelve al chat principal, que te pregunta igual que antes y lo
 despacha de nuevo con tu respuesta. Mientras un epic corre puedes escribir en el chat y se te
-responde; el chat espera el aviso de que el epic terminó, sin consultar a cada rato. En Copilot y
-Antigravity, que no tienen subagentes anidados, el mismo procedimiento corre en el chat
+responde; el chat espera el aviso de que el epic terminó, sin consultar a cada rato. En Antigravity, que no tienen subagentes anidados, el mismo procedimiento corre en el chat
 principal, como en v2.6.
 
 ## ¿Qué pasa si la sesión se corta a mitad de un epic?
@@ -333,8 +332,7 @@ herramientas (el coordinador del epic) pagara `high` en cada turno, y que un re-
 `SUPERSEDE-HEAD`), `implementer` / `ux-implementer` sonnet `medium`, `code-reviewer` opus `high`
 (`medium` en `RE-REVIEW`), `architecture-validator` opus `medium` (sonnet `medium` en `DELTA` y
 `J9`), coordinador del epic opus `medium`. La métrica `effort` de `build-metrics.jsonl` registra
-lo efectivamente despachado para que `knowledge stats` pueda leer el efecto. En Copilot y
-Antigravity el frontmatter no viaja (brecha documentada en `docs/copilot-cli-plugin.md`).
+lo efectivamente despachado para que `knowledge stats` pueda leer el efecto. En Antigravity el frontmatter no viaja (brecha documentada en `docs/antigravity-cli-plugin.md`).
 
 ## El hook me denegó un `sleep`. ¿Por qué?
 

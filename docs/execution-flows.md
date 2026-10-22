@@ -449,7 +449,7 @@ flowchart TD
 
 En el turno de cada epic de un registro cerrado las decisiones ya están tomadas: el chat
 principal bloquea el epic y despacha su **coordinador del epic** con `ENTRY: refresh` (v2.7.0,
-`build/EPIC_COORDINATOR.md` Steps 2-3; en Copilot y Antigravity lo corre en línea, 3.9), que solo
+`build/EPIC_COORDINATOR.md` Steps 2-3; en Antigravity lo corre en línea, 3.9), que solo
 convierte los borradores en specs sellables contra el código **de ese momento** (los epics
 anteriores de la tanda lo cambiaron), sin preguntar. Hay dos contactos previstos, y los dos
 pasan por el chat principal porque el coordinador del epic **nunca pregunta**: si el bloque del
@@ -539,7 +539,7 @@ flowchart LR
     P -.->|"tras tu respuesta: el ENTRY que corresponde"| R
 ```
 
-**Modo en línea.** Copilot y Antigravity no tienen subagentes anidados: el chat principal corre
+**Modo en línea.** Antigravity no tienen subagentes anidados: el chat principal corre
 `build/EPIC_COORDINATOR.md` él mismo, tal cual (`coordinator_mode: inline`), y lo avisa una vez
 por tanda. Es el comportamiento de v2.6 con el procedimiento en su propio archivo; el chat crece
 con cada epic, así que en una tanda larga el checkpoint declarado sigue siendo el uso previsto.
@@ -549,7 +549,7 @@ tocar nada:
 ```mermaid
 flowchart TD
     T(["Turno del epic"]) --> PL{"¿Subagentes anidados?"}
-    PL -->|"no: Copilot · Antigravity"| IN["modo en línea: el chat principal corre<br/>EPIC_COORDINATOR.md tal cual (sin su Step 0)<br/>coordinator_mode: inline · aviso una vez por tanda"]
+    PL -->|"no: Antigravity"| IN["modo en línea: el chat principal corre<br/>EPIC_COORDINATOR.md tal cual (sin su Step 0)<br/>coordinator_mode: inline · aviso una vez por tanda"]
     PL -->|"sí: Claude Code"| D["despachar el coordinador del epic (en segundo plano)"]
     D --> S0{"Step 0 · ¿tiene la herramienta Agent?"}
     S0 -->|"no"| NU(["EPIC_REPORT: NESTING_UNAVAILABLE<br/>sin tocar nada"])

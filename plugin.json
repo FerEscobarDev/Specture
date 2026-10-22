@@ -1,7 +1,7 @@
 {
   "name": "specture",
   "description": "Spec-Driven Development framework for AI-assisted software development",
-  "version": "2.10.0",
+  "version": "2.11.0",
   "author": {
     "name": "Fernando Escobar",
     "email": "keishmen17@gmail.com"
@@ -9,8 +9,5 @@
   "homepage": "https://github.com/FerEscobarDev/Specture",
   "repository": "https://github.com/FerEscobarDev/Specture",
   "license": "MIT",
-  "keywords": ["sdd", "spec-driven", "tdd", "methodology", "ai-assisted"],
-  "agents": "agents/",
-  "skills": "skills/",
-  "hooks": "hooks.json"
+  "keywords": ["sdd", "spec-driven", "tdd", "methodology", "ai-assisted"]
 }

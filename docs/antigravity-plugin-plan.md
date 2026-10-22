@@ -1,5 +1,7 @@
 # Plan de Integración de Plugin para Antigravity CLI
 
+> **Superado (v2.11.0).** Este plan es de la época v1.12 y describe una convivencia triple con Copilot CLI que ya no existe. Lo que Antigravity necesita de verdad, verificado contra `agy plugin validate` y la documentación oficial de hooks, está en [`antigravity-cli-plugin.md`](antigravity-cli-plugin.md). Se conserva como historia.
+
 > **Objetivo**: Lograr que Specture funcione como un plugin instalable para **Google Antigravity CLI (`agy`)**, manteniendo total compatibilidad y convivencia sin fricciones con **Claude Code** y **GitHub Copilot CLI**.
 
 ---
