@@ -588,9 +588,22 @@ En `.specture/settings.yml` (v1.15.0+; `/specture:setup` lo crea):
 profile: custom              # o lean | full, que fijan los toggles de abajo
 hooks.enabled: true          # activa el TDD Honesty Gate (PreToolUse)
 context7.enabled: true       # activa Context7 en code-reviewer y modernize
+tdd.level: strict            # strict | essential | none — rigor del TDD por proyecto (v3.1.0)
 ```
 
-Sin esos toggles, los hooks shippean pero no actúan, y Context7 nunca se consulta. Proyectos anteriores a v1.15.0 los tienen en `conventions.md` §10 (`- **hooks.enabled**: true`); el framework los sigue leyendo ahí hasta que `/specture:doctor migrate` los mueva a `settings.yml`.
+Sin esos toggles, los hooks shippean pero no actúan, y Context7 nunca se consulta.
+
+#### Niveles de TDD (`tdd.level`, v3.1.0)
+
+No todo proyecto necesita la disciplina completa: un experimento, una herramienta interna o una cuenta chica que se gasta los tokens en tests no la necesitan, y fingir lo contrario solo lleva a saltarse la metodología a mano. `tdd.level` hace explícita la elección, **por proyecto**, en cualquier perfil:
+
+| Nivel | Qué corre | Qué se salta | Para qué |
+|---|---|---|---|
+| `strict` (default) | El loop completo: RED por cada AC/BR/EC, sello, gate de honestidad, suite completa en la línea base y en Step 7, mutación si está activa | Nada | Producción |
+| `essential` | El mismo loop con menos tests: un test por AC, sin `test+/test-` por BR, sin test por EC salvo guard declarado; `red-check coverage --level essential` solo exige los AC | Variantes, mutación | Proyectos chicos o internos |
+| `none` | spec → implementar → revisar → verificar. El sello sigue protegiendo el spec y los `allowed_paths`; Step 7 corre `type_check` / `lint` / `format_check` sobre el diff y la suite existente como regresión | RED, gate de honestidad, Dimensión 4 del reviewer | Experimentos. **No es TDD**: el `code-reviewer` es el único verificador |
+
+El coordinador del epic lee el nivel al abrir el epic y lo congela en `_planning.md` (`TDD_LEVEL`): cambiar el setting a mitad de un epic aplica al siguiente, nunca al que está corriendo — así nadie baja el rigor para escapar de un rojo. Cada línea de métricas lleva `tdd_level`, y `knowledge stats` compara defectos aguas abajo y rechazos del reviewer por nivel antes de que un proyecto baje el rigor para siempre. El doctor avisa con `tdd-level-invalid` (valor desconocido → corre `strict`) y `tdd-level-none-no-quality` (`none` sin `type_check` ni `lint`: Step 7 no tendría nada mecánico que verificar). Proyectos anteriores a v1.15.0 los tienen en `conventions.md` §10 (`- **hooks.enabled**: true`); el framework los sigue leyendo ahí hasta que `/specture:doctor migrate` los mueva a `settings.yml`.
 
 > **Requiere plugin ≥ 2.9.1.** Hasta v2.9.0 el plugin registraba los hooks en su `settings.json`, un archivo del que Claude Code solo lee `agent`: los gates nunca se cargaron y ninguna edición fue denegada (lo descubrió Psikora el 2026-10-18 al ver pasar un `sleep` en bucle). Desde v2.9.1 viven en `hooks/hooks.json`, el registro que Claude Code carga de un plugin. Después de actualizar, corré `/reload-plugins` (o abrí una sesión nueva) y verificá con `/hooks` que los dos `PreToolUse` nombran a `specture` como origen; `/specture:doctor check` falla con `hooks-registry-missing` si el plugin instalado no trae el registro.
 
@@ -649,6 +662,21 @@ Specture está en desarrollo activo. Para decisiones arquitectónicas internas, 
 ---
 
 ## Changelog
+
+### v3.1.0 — Niveles de TDD: `strict`, `essential`, `none`
+
+**Motivación:** el loop de `build` tenía un solo nivel de rigor, el de producción. Para un experimento, una herramienta interna o un proyecto pequeño en una cuenta chica, eso significaba gastar la mayor parte de los tokens en tests que nadie iba a necesitar — o saltarse la metodología a mano, que es peor. El rigor del TDD debe ser una decisión explícita del proyecto, no una imposición del framework ni un atajo improvisado.
+
+**Cambios:**
+- **`tdd.level: strict | essential | none`** en `.specture/settings.yml` (`hooks/lib/settings.js`: `TDD_LEVELS`, default `strict`, válido en cualquier perfil; un valor desconocido corre `strict`, nunca baja el rigor). `setup` lo pregunta en una línea con default `strict`; migración mecánica `3.1-tdd-level` lo hace visible en proyectos existentes sin cambiar nada hasta que el equipo escriba otro valor.
+- **Congelado por epic.** El coordinador del epic lee el setting al abrir el epic y escribe `- TDD_LEVEL: <nivel>` en `_planning.md` (`## SPEC_SHA`); todo lo demás lee esa línea. Un cambio del setting aplica al epic siguiente — nadie escapa de un rojo bajando el nivel. La línea de métricas lleva `tdd_level`; `metrics-report` suma por nivel (`tdd_levels`, columna `tdd`) y `knowledge stats` lo lee de forma comparativa.
+- **`essential`**: `red-check coverage --level essential` exige test solo para los `AC-n` (una entrada BR/EC presente se sigue verificando); el `tdd-test-writer` tiene techo `count(AC)` — un test por AC, sin `test+/test-`, sin tests por EC salvo guard declarado; sin mutación. Sello, gate de honestidad, línea base y Step 7 igual que en `strict`.
+- **`none`**: `EPIC_LOOP.md` § "What changes with `TDD_LEVEL`" — se saltan Step 3.9, 4, 5.2, 5.3 y 5.5; el implementer corre en `MODE: SIN_TESTS` con `RED_SHA = LOCK_SHA` como base del diff; el `code-reviewer` salta la Dimensión 4 y verifica cada AC/BR/EC contra el código; Step 7 corre `type_check` / `lint` / `format_check` sobre el diff y la suite existente como regresión, o `BLOCKED: entorno` si no hay ningún comando definido. El sello se escribe igual y sigue protegiendo el spec y los `allowed_paths`.
+- **Doctor:** `tdd-level-invalid` (ERROR) y `tdd-level-none-no-quality` (WARNING). `verify` y los manifests de despacho conocen el nivel.
+- Docs: README § Niveles de TDD, `docs/build-faq.md`, plantilla de `settings.yml`, `PLANNING_TEMPLATE` (`TDD_LEVEL`), catálogo del doctor.
+- Tests: 384 → 389.
+
+**Backward-compat:** sin `tdd.level` el loop es exactamente el de v3.0.0 (`strict`). Claude Code intacto: `.claude-plugin/` (solo versión), `hooks/hooks.json` y `pre-tool-use-*.js` sin cambios; los `AGENT.md` cambian en texto de reglas, nunca en `model`/`effort`/`tools`.
 
 ### v3.0.0 — Specture independiente
 

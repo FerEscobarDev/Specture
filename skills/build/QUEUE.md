@@ -210,7 +210,7 @@ epic-agent report's `METRICS` values (`needs_context_spec`, `iteration_cap_spec`
 `exec_blocked_compile`, `exec_blocked_runtime`, `baseline_failures`, `red_check_failures`), `specs`, `outcome`
 (`DONE` | `BLOCKED` | `REJECTED_MAJOR` | `ESCALATED` | `PARKED`),
 `source: "gate"`, `plugin`, `batch_id` (an epic of a review register), `parked` (`0`|`1`),
-`coordinator_mode` (`subagent` | `inline`), `epic_coordinator_dispatches`, `ts` (ISO-8601 **with
+`coordinator_mode` (`subagent` | `inline`), `tdd_level` (`strict` | `essential` | `none` — the level the epic ran under, frozen at its opening), `epic_coordinator_dispatches`, `ts` (ISO-8601 **with
 time**), and `tokens: null` unless the user handed you a figure (`{input, output, source}`). For
 an epic that went through the per-epic gate (`build/PLANNING_GATE.md`), you pass your gate counters to the epic
 coordinator as `GATE_METRICS`. Line schema and reader: `hooks/lib/metrics-report.js`

@@ -5,3 +5,4 @@ context7.enabled: false
 docs_index.enabled: false
 docs_index.max_entries_per_dispatch: 3
 knowledge.enabled: false
+tdd.level: strict

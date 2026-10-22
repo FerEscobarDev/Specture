@@ -5,6 +5,7 @@
 | Section | When you need it |
 |---|---|
 | Step 0 — Nesting check · Iron rules | First thing, before any dispatch |
+| What changes with `TDD_LEVEL` | First thing: `strict` is this file as written; `essential` and `none` are the two deltas listed there |
 | Frontend Epics — execution | The spec is a design-system or page epic |
 | Dispatch Manifest | Before Step 4 and Step 5 — what every worker dispatch must carry |
 | Resolvers (Docs Index · Design Surface · Rules · Custom Rules) | Assembling a manifest |
@@ -77,6 +78,39 @@ Ground rules:
 - You fill the `commit:` field of your spec's pending lines in `## SUPERSESIONES` of
   `_planning.md` (the spec files stay sealed; `_planning.md` does not).
 
+## What changes with `TDD_LEVEL` (read first — the rest of this file is `strict`)
+
+The dispatch prompt carries `TDD_LEVEL: strict | essential | none` — the project's `tdd.level`
+(`.specture/settings.yml`), frozen by the epic coordinator in `_planning.md` when it opened the
+epic. You never read `settings.yml` yourself: a value changed mid-epic applies to the next epic.
+Everything below is written for `strict`. The other two levels change exactly this:
+
+**`essential`** — the same loop with fewer tests. The writer's ceiling is one test per `AC-n`
+(no `test+/test-` per BR, no test per EC unless the spec declares a guard); `red-check` runs with
+`--level essential` (only the AC need a test; a BR/EC entry in the map is still checked when
+present); Step 6 passes `MUTATION_REPORT: (none — tdd.level essential)` and never runs the
+mutation command. Seal, honesty gate, baseline and the Step 7 suite are unchanged.
+
+**`none`** — spec → implement → review → verify. No RED exists, so: skip Step 3.9, Step 4, Step 5.2,
+Step 5.3 and Step 5.5 entirely; the implementer's manifest carries `TESTS: none (TDD_LEVEL none)`,
+`TEST_COMMAND: SKIPPED (tdd.level none)` and `RED_SHA: <LOCK_SHA>` (the base of every diff —
+review, `LINT_REPORT` — is the lock commit); dispatch it in `MODE: SIN_TESTS`. The seal is still
+written and still protects the spec and the `allowed_paths`: a write outside the declared surface
+is a `BLOCKED: spec <ID>` exactly as in `strict`. Step 6 passes `TDD_LEVEL: none` and no gate
+result (the reviewer skips Dimension 4 and verifies every AC by reading the code). Step 7 runs the
+project's `type_check`, `lint` and `format_check` over the diff (`quality.js expand <slot>
+--files <diff files>`) and, when `quality.commands.test` is defined, the existing suite as a
+regression check (`BASELINE_FALLOS` taken then, not at 3.9). If none of the three slots and
+`test` are defined → `BLOCKED: entorno` with the reason `tdd.level none sin comandos de calidad`
+(the doctor warns about it: `tdd-level-none-no-quality`). The implementer may still write tests of
+its own; `red-check files`'s documentation rule applies to them like to any test.
+
+Why a level at all: a production project needs the whole discipline; a two-week experiment, an
+internal tool or a small account burning its tokens on tests does not, and pretending otherwise
+just makes people skip the methodology by hand. The level makes the choice explicit, per project,
+and recorded per epic (`tdd_level` in the metrics line) so `knowledge stats` can compare defects by
+level before anyone lowers it for good.
+
 ## Frontend Epics — execution (design-system epic and page epics)
 
 Applies when the epic touches UI and `stack.yml.frontend.framework` is set and not `none`.
@@ -112,7 +146,8 @@ For each page/screen epic (after the design-system gate passed):
 
 Before Step 4 (tdd-test-writer) and Step 5 (implementer), the orchestrator MUST assemble and pass this manifest. The dispatched agent validates it as its first action (its Step 0) and returns `NEEDS_CONTEXT` immediately if any item is missing — a cheap turn-1 failure instead of an expensive partial-work round-trip.
 
-**For tdd-test-writer:**
+**For tdd-test-writer** (never dispatched under `TDD_LEVEL: none`):
+- [ ] `TDD_LEVEL` (`strict` | `essential`) — the writer's ceiling depends on it
 - [ ] Spec with every slot filled (no `[placeholder]`, no `TBD`)
 - [ ] Every AC / BR / EC has a stable ID
 - [ ] `stack.yml`: testing_framework + language present
@@ -122,8 +157,9 @@ Before Step 4 (tdd-test-writer) and Step 5 (implementer), the orchestrator MUST 
 - [ ] Relevant docs from `docs-index.yml` resolved (see "Docs Index Resolution" below) — empty list is valid if the index does not exist or no entries match the spec
 
 **For implementer:**
+- [ ] `TDD_LEVEL`; under `none`: `MODE: SIN_TESTS`, `TESTS: none (TDD_LEVEL none)` and `RED_SHA: <LOCK_SHA>`
 - [ ] Spec (same completeness as above)
-- [ ] RED test file contents + test path globs + `RED_SHA`
+- [ ] RED test file contents + test path globs + `RED_SHA` (`strict` / `essential`)
 - [ ] `TEST_COMMAND` — `test_scoped` already expanded over the RED test paths (`node "${CLAUDE_PLUGIN_ROOT}/hooks/lib/quality.js" expand test_scoped --files <RED test paths>`; on a resumed `supersede` / `red-fix`, the superseded or red-fixed files too), or `SKIPPED (<motivo>)` — the implementer never runs the whole suite; Step 7 does, once
 - [ ] Spec's "Superficie de Código Existente" section carries the **exact signatures** of every existing symbol the implementation will call — for symbols marked `(planeada — re-anclar)`, verified by the **signature re-read** below
 - [ ] `stack.yml` + `conventions.md` + all ADRs
@@ -253,7 +289,7 @@ node "${CLAUDE_PLUGIN_ROOT}/hooks/lib/review-rules-resolve.js" --project . --spe
 
 It prints the block — `CUSTOM_RULES: …` + severities, flexible paths, precedence and the fenced team criteria — or exactly `CUSTOM_RULES: []` (no file, or nothing applies). Exit 1 = the file has errors or the selection exceeds its cap: **stop and report it** (`/specture:doctor check` names the line) — never dispatch with a silently empty block. Pass the block verbatim. Agents never open `review-rules.md` nor the files it includes.
 
-## Step 3.9 — Failure baseline (once per epic, before the first RED)
+## Step 3.9 — Failure baseline (once per epic, before the first RED — skipped under `TDD_LEVEL: none`, where Step 7 takes it)
 
 Run the **full** test suite once — `quality.commands.test` (`node "${CLAUDE_PLUGIN_ROOT}/hooks/lib/quality.js" expand test`; `sin definir` → the suite command `conventions.md` names) — before any RED commit of the epic. **This and Step 7 are the only two full runs per spec**: everything in between runs `test_scoped` over the files under work. Re-run each failing
 test twice; the ones that still fail are the epic's **`BASELINE_FALLOS`** — they failed
@@ -263,13 +299,14 @@ to every implementer dispatch and include them in your report. They are excluded
 classification below and never block the `[x]` — but they are reported, never hidden. A
 suite that cannot run at all is `BLOCKED: entorno`.
 
-## Step 4 — Write Tests (TDD RED phase)
+## Step 4 — Write Tests (TDD RED phase — skipped under `TDD_LEVEL: none`)
 
 Dispatch the `tdd-test-writer` agent (`agents/tdd-test-writer/AGENT.md`).
 
 **First assemble the Dispatch Manifest** (see "Dispatch Manifest" section above). Do not dispatch until every tdd-test-writer item is checked.
 
 **Context to pass (restricted)**:
+- `TDD_LEVEL` (`strict` | `essential`).
 - The validated `.spec.md`.
 - `.specture/stack.yml` (specifically `testing_framework` for backend or frontend, depending on what the spec covers).
 - `.specture/conventions.md` testing section.
@@ -288,7 +325,7 @@ Dispatch the `tdd-test-writer` agent (`agents/tdd-test-writer/AGENT.md`).
    The commit MUST contain only test files (paths matching `conventions.md` test globs). If the commit touches any production code, abort — re-dispatch `tdd-test-writer` with a clear instruction to commit tests in isolation.
 2b. **Mechanical RED check — before the seal, never after**:
    ```
-   node "${CLAUDE_PLUGIN_ROOT}/hooks/lib/red-check.js" all --red-sha <RED_SHA> --slug <task-slug> --epic-dir docs/05-specs/<epic-slug> --map docs/.specture-meta/coverage/<task-slug>.map
+   node "${CLAUDE_PLUGIN_ROOT}/hooks/lib/red-check.js" all --red-sha <RED_SHA> --slug <task-slug> --epic-dir docs/05-specs/<epic-slug> --map docs/.specture-meta/coverage/<task-slug>.map --level <TDD_LEVEL>
    ```
    Three facts, one token each (`RED-CHECK <check>: PASS | FAIL <n> | SKIPPED <motivo> | UNVERIFIABLE <motivo>`), stopping at the first FAIL:
    - `files` — every file of the RED is a test (the seal's `test_globs`) or a path the spec declares (`Crea:` / `Fixtures disponibles:`). A helper or fixture outside → the spec is incomplete: **`BLOCKED: spec <ID>` naming the file** (the planner adds it), exactly as the Allowed Paths gate would mid-GREEN — only now it costs nothing. **Also: no file of the RED contains a literal documentation path** (`docs/`, `.specture/`, a `*.md`, the project's `docs-index.yml` `source_of_truth_dir`) — a test never reads documentation, Specture's or the project's (the spec's `DOC-n` items have no test; the reviewer checks them). FAIL → re-dispatch the writer once with the finding lines verbatim.
@@ -324,6 +361,7 @@ Dispatch the `implementer` agent (`agents/implementer/AGENT.md`).
 **First assemble the Dispatch Manifest** (see "Dispatch Manifest" section above). Do not dispatch until every implementer item is checked.
 
 **Context to pass**:
+- `TDD_LEVEL`. Under `none`: `MODE: SIN_TESTS`, `TESTS: none (TDD_LEVEL none)`, `TEST_COMMAND: SKIPPED (tdd.level none)`, `RED_SHA: <LOCK_SHA>` — and nothing of the two test bullets below.
 - The `.spec.md`.
 - The test files just written (as content reference — the implementer must NOT edit them).
 - The `RED_SHA` value, with an explicit instruction: *"The tests committed at `<RED_SHA>` are the sealed contract. You must NOT modify, delete, skip, rename, or move any of those test files. The TDD Honesty Gate will run `git diff <RED_SHA>..HEAD -- <test-globs>` after your work and any change will abort the spec."*
@@ -376,7 +414,7 @@ sealed again and right; only some of its RED tests must change. Nothing is rever
 7b. **Mechanical RED check on the red-fix** (Step 4 post-check 2b, with the red-fix commit as `--red-sha` and the writer's updated `COVERAGE_MAP` file): same outcomes; the `files` check also accepts the spec's original `test_paths`.
 8. Continue at Step 5: the implementer makes the corrected tests pass (production only), then Step 5.5.
 
-## Step 5.5 — TDD Honesty Gate (mandatory, automated)
+## Step 5.5 — TDD Honesty Gate (mandatory, automated — skipped under `TDD_LEVEL: none`: there is no RED to protect)
 
 Before dispatching the code-reviewer, the orchestrator runs the gate itself — mechanical checks, no agent involved, in this order:
 
@@ -409,6 +447,7 @@ Dispatch the `code-reviewer` agent (`agents/code-reviewer/AGENT.md`).
 **Pre-flight 4** (frontend specs only): run "Design Surface Resolution" (see section above). Capture the `design_surface_resolved` block (may be `[]`), with the channel fence applied to any file whose `Procedencia` is `traído por canal`.
 
 **Context to pass**:
+- `TDD_LEVEL`. Under `none`: `RED_SHA` is the `LOCK_SHA`, there is no gate result (`HONESTY: n/a — tdd.level none`) and the reviewer skips Dimension 4; under `essential`: `MUTATION_REPORT: (none — tdd.level essential)`.
 - `RED_SHA` and `HEAD_SHA` (for citing the reviewed range).
 - **The Step 5.5 gate result** (clean | violation + details). The reviewer's Dimension 4 consumes this instead of re-running the diff.
 - **The declared supersessions** (the spec's `Supersede:` lines) + `SUPERSEDE_SHA`, or "none" — Dimension 4 checks the range never touches them and that nothing undeclared touched a closed epic's test. After a loop, also the loop's `SUPERSEDE_SHA`s, its `J9` lines and the `base-worktree` result (`PASS | REVIEW`), so Dimension 4 can judge each rewrite against its rule.
@@ -451,6 +490,8 @@ Old tests of closed epics that fail are **not** this cap's business: they go thr
 Do NOT do a 4th naive retry.
 
 ## Step 7 — Verification (mandatory)
+
+> **`TDD_LEVEL: none`:** there is no RED and no baseline from Step 3.9. Run `type_check`, `lint` and `format_check` over the diff files (`quality.js expand <slot> --files …`; a `sin definir` slot is `SKIPPED` and said) and, when `quality.commands.test` is defined, the existing suite once — its failures are either pre-existing (take `BASELINE_FALLOS` from a run at `LOCK_SHA`, `base-worktree`) or this spec's regressions → the implementer in `MODE: REGRESIONES` as below. Nothing defined at all → `BLOCKED: entorno (tdd.level none sin comandos de calidad)`.
 
 Before declaring the spec done:
 

@@ -96,6 +96,26 @@ test("mutation.enabled defaults to false, is honoured under every profile and is
   assert.ok(settings.TOGGLE_KEYS.includes("mutation.enabled"));
 });
 
+// v3.1.0 — tdd.level: strict by default, honoured under every profile, a typo never lowers it.
+test("tdd.level defaults to strict, accepts the three levels under every profile, falls back on garbage and is serialized", () => {
+  assert.deepEqual(settings.TDD_LEVELS, ["strict", "essential", "none"]);
+  assert.equal(settings.readSettings(createProject({ settingsYaml: "profile: custom\n" })).values["tdd.level"], "strict");
+  assert.equal(settings.readSettings(createProject({ settingsYaml: "profile: full\n" })).values["tdd.level"], "strict", "full does not lower the discipline");
+  for (const profile of ["lean", "full", "custom"]) {
+    for (const level of ["strict", "essential", "none"]) {
+      const project = createProject({ settingsYaml: `profile: ${profile}\ntdd.level: ${level}\n` });
+      assert.equal(settings.readSettings(project).values["tdd.level"], level, `${profile} / ${level}`);
+    }
+  }
+  assert.equal(settings.readSettings(createProject({ settingsYaml: "tdd.level: Essential\n" })).values["tdd.level"], "essential", "case-insensitive");
+  const garbage = settings.readSettings(createProject({ settingsYaml: "tdd.level: relaxed\n" }));
+  assert.equal(garbage.values["tdd.level"], "strict", "an unknown level is strict — the doctor reports the raw value");
+  assert.equal(garbage.raw["tdd.level"], "relaxed");
+  assert.match(settings.serializeSettings({ "tdd.level": "none" }), /^tdd\.level: none/m);
+  assert.ok(settings.TOGGLE_KEYS.includes("tdd.level"));
+  assert.ok(settings.PROFILE_INDEPENDENT_KEYS.includes("tdd.level"));
+});
+
 test("falls back to conventions.md §10 (bold and plain forms, legacy aliases) when settings.yml is absent", () => {
   const root = createProject({
     conventions:

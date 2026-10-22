@@ -13,9 +13,10 @@
 //                 `*.md`, the docs-index `source_of_truth_dir`): a test never reads documentation,
 //                 Specture's or the project's (lib/doc-paths.js — v3.0.0, after Psikora's CI
 //                 went red when a pruning removed the `.md` files 41 tests read).
-//   coverage  --red-sha <sha> --slug <s> --epic-dir <dir> --map <file>
+//   coverage  --red-sha <sha> --slug <s> --epic-dir <dir> --map <file> [--level strict|essential]
 //             (2) every AC/BR/EC id of the spec appears exactly once in the writer's COVERAGE_MAP
 //                 and every test name the map cites exists literally in a file of the RED commit.
+//                 `--level essential` (the project's `tdd.level`, v3.1.0) demands only the AC-n.
 //   commands  --red-sha <sha>
 //             (3) runs stack.yml `quality.commands` type_check / lint / format_check with
 //                 {files} = the RED commit's files. A slot `sin definir` or `none` is SKIPPED.
@@ -41,10 +42,14 @@ const { scanDocumentationReads, sourceOfTruthDir } = require("./doc-paths");
 
 const COMMAND_FLAGS = {
   files: ["red-sha", "slug", "epic-dir", "test-globs"],
-  coverage: ["red-sha", "slug", "epic-dir", "map"],
+  coverage: ["red-sha", "slug", "epic-dir", "map", "level"],
   commands: ["red-sha"],
-  all: ["red-sha", "slug", "epic-dir", "test-globs", "map"]
+  all: ["red-sha", "slug", "epic-dir", "test-globs", "map", "level"]
 };
+// `--level` (v3.1.0, the project's `tdd.level`): which ids a test is mandatory for. `strict`
+// (default) = every AC/BR/EC; `essential` = the AC-n only — a BR/EC entry in the map is still
+// checked when present, never demanded. `none` never reaches this check (no RED exists).
+const COVERAGE_LEVELS = { strict: /^(?:AC|BR|EC)-\d+$/, essential: /^AC-\d+$/ };
 const LIST_FLAGS = ["test-globs"];
 const CHECK_COMMANDS = ["type_check", "lint", "format_check"];
 const SHA = /^[0-9a-f]{7,40}$/i;
@@ -56,9 +61,9 @@ function usage() {
   return [
     "usage: red-check.js <command> [options] [--project <root>] [--json]",
     "  files     --red-sha <sha> --slug <task-slug> --epic-dir <dir> [--test-globs a,b]",
-    "  coverage  --red-sha <sha> --slug <task-slug> --epic-dir <dir> --map <coverage-map file>",
+    "  coverage  --red-sha <sha> --slug <task-slug> --epic-dir <dir> --map <coverage-map file> [--level strict|essential]",
     "  commands  --red-sha <sha>",
-    "  all       --red-sha <sha> --slug <task-slug> --epic-dir <dir> --map <file> [--test-globs a,b]"
+    "  all       --red-sha <sha> --slug <task-slug> --epic-dir <dir> --map <file> [--test-globs a,b] [--level strict|essential]"
   ].join("\n");
 }
 
@@ -223,8 +228,12 @@ function coverageCheck(opts, root) {
   if (!fs.existsSync(mapFile)) return unverifiable(cmd, `no existe el COVERAGE_MAP ${posix(path.relative(root, mapFile))}`);
   const spec = loadSpec(cmd, root, opts);
   if (spec.error) return spec.error;
-  const ids = parseSpecIds(spec.text);
-  if (ids.length === 0) return unverifiable(cmd, `${spec.rel} no declara ningún AC/BR/EC`);
+  const allIds = parseSpecIds(spec.text);
+  if (allIds.length === 0) return unverifiable(cmd, `${spec.rel} no declara ningún AC/BR/EC`);
+  const level = String(opts.flags.level || "strict").toLowerCase();
+  if (!COVERAGE_LEVELS[level]) throw new UsageError(`--level must be strict or essential (got ${level}); under none there is no RED to check`);
+  const ids = allIds.filter((id) => COVERAGE_LEVELS[level].test(id));
+  if (ids.length === 0) return unverifiable(cmd, `${spec.rel} no declara ningún ${level === "essential" ? "AC" : "AC/BR/EC"}`);
   const red = redFiles(cmd, root, opts.flags["red-sha"]);
   if (red.error) return red.error;
   const entries = parseCoverageMap(fs.readFileSync(mapFile, "utf8"));
@@ -238,7 +247,10 @@ function coverageCheck(opts, root) {
     if (n === 0) findings.push(`${id} — sin test en el COVERAGE_MAP`);
     else if (n > 1) findings.push(`${id} — aparece ${n} veces en el COVERAGE_MAP (una por ID)`);
   }
-  for (const id of seen.keys()) if (!ids.includes(id)) findings.push(`${id} — está en el COVERAGE_MAP pero no en ${spec.rel}`);
+  for (const id of seen.keys()) {
+    if (!allIds.includes(id)) findings.push(`${id} — está en el COVERAGE_MAP pero no en ${spec.rel}`);
+    else if (!ids.includes(id) && seen.get(id) > 1) findings.push(`${id} — aparece ${seen.get(id)} veces en el COVERAGE_MAP (una por ID)`);
+  }
 
   const contents = red.files.map((file) => readRedFile(root, red.sha, file)).join("\n");
   for (const e of entries) {
@@ -250,7 +262,7 @@ function coverageCheck(opts, root) {
       if (!contents.includes(name)) findings.push(`${e.id} — el test "${name}" no aparece en ningún archivo del RED ${short(red.sha)}`);
     }
   }
-  return verdict(cmd, findings, `${ids.length} ID(s) cubiertos por ${entries.length} línea(s) del COVERAGE_MAP; ${entries.reduce((n, e) => n + e.names.length, 0)} test(s) presentes en el RED ${short(red.sha)}`, { ids, files: red.files });
+  return verdict(cmd, findings, `${ids.length} ID(s) cubiertos por ${entries.length} línea(s) del COVERAGE_MAP; ${entries.reduce((n, e) => n + e.names.length, 0)} test(s) presentes en el RED ${short(red.sha)}${level === "essential" ? " (nivel essential: solo los AC son obligatorios)" : ""}`, { ids, level, files: red.files });
 }
 
 function commandsCheck(opts, root) {

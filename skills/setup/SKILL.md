@@ -51,7 +51,7 @@ The user already has `.specture/`. They want to update something.
    - **Reglas de revisión del equipo (`.specture/review-rules.md`):** crear el archivo, enlazar otra sección o archivo del equipo, ajustar un `cuando:`, las severidades o el nivel flexible. Mismas reglas que Adopt paso 8.6: rutas y encabezados reales, un solo nivel de inclusión, y validar con `review-rules-resolve.js --all` (o `/specture:doctor check`).
    - Estructura de carpetas raíz (`structure` en `stack.yml`): cambiar `root_layout`, añadir/quitar apps en `structure.apps`. Si el `stack.yml` existente no tiene el bloque `structure` (proyecto previo a esta convención), ofrécelo: deriva `project.slug` y agrega `structure` con las apps que el usuario confirme.
    - Recording a new architectural decision (ADR)?
-   - Perfil o toggles de Specture (`.specture/settings.yml`: `profile`, `hooks.enabled`, `context7.enabled`, `docs_index.*`, `knowledge.enabled`, `compliance_review.enabled`)? Si el proyecto aún tiene los toggles en `conventions.md` §10 (creado antes de v1.15.0), no los edites ahí: corré `/specture:doctor migrate`, que los mueve a `settings.yml`.
+   - Perfil o toggles de Specture (`.specture/settings.yml`: `profile`, `hooks.enabled`, `context7.enabled`, `docs_index.*`, `knowledge.enabled`, `compliance_review.enabled`, `tdd.level` — `strict | essential | none`; un cambio aplica al próximo epic, nunca al que está corriendo)? Si el proyecto aún tiene los toggles en `conventions.md` §10 (creado antes de v1.15.0), no los edites ahí: corré `/specture:doctor migrate`, que los mueve a `settings.yml`.
 
 3. **Critical rule — never silently break ADRs**: if the change supersedes an existing ADR, you MUST:
    - Create a new ADR file `NNN-...md` with `Status: Supersedes ADR-NNN`.

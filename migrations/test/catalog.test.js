@@ -305,7 +305,7 @@ test("1.15-schema-version records the plugin version when nothing is pending, el
   const m = byId["1.15-schema-version"];
   const clean = makeProject({
     ".specture/stack.yml": STACK,
-    ".specture/settings.yml": "profile: custom\nhooks.enabled: true\n",
+    ".specture/settings.yml": "profile: custom\nhooks.enabled: true\ntdd.level: strict\n",
     ".specture/conventions.md": "## 12. Invariantes\n\n## 13. Workflow\n",
     ".specture/rules.yml": TEMPLATE_RULES,   // the template ships the `framework-core` rules: nothing pending
     ".gitignore": ".specture/state/\ndocs/.specture-meta/*\n!docs/.specture-meta/build-metrics.jsonl\n!docs/.specture-meta/design-metrics.jsonl\ndocs/07-reviews/review-*.md\ndocs/07-reviews/cumplimiento-pr-*.md\ndocs/07-reviews/cumplimiento-rama-*.md\ndocs/06-debug-logs/\n"
@@ -428,4 +428,17 @@ test("2.6-review-rules-adopt: pending only with a team review agent or skill; do
   assert.ok(!migrated.assisted.some((a) => a.id === m.id));
 
   assert.equal(declineMigration(declinedRoot, { catalog, id: "2.0-file-org-conventions" }).ok, false, "a required assisted migration cannot be declined");
+});
+
+
+// v3.1.0 — tdd.level knob made visible in settings.yml; the default keeps the loop strict.
+test("3.1-tdd-level adds tdd.level: strict after mutation.enabled, once; n/a without settings.yml", () => {
+  mechanicalLifecycle("3.1-tdd-level", { ".specture/stack.yml": STACK, ".specture/settings.yml": "schema_version: 3.0.0\nprofile: custom\nhooks.enabled: true\nmutation.enabled: false\n" }, (root) => {
+    const text = fs.readFileSync(path.join(root, ".specture", "settings.yml"), "utf8");
+    assert.match(text, /^mutation\.enabled: false\ntdd\.level: strict/m);
+    assert.equal((text.match(/^tdd\.level:/gm) || []).length, 1);
+  });
+  assert.equal(byId["3.1-tdd-level"].detect(contextFor(makeProject({ ".specture/stack.yml": STACK }))), "n/a");
+  const already = makeProject({ ".specture/stack.yml": STACK, ".specture/settings.yml": "profile: custom\ntdd.level: none\n" });
+  assert.equal(byId["3.1-tdd-level"].detect(contextFor(already)), "done", "an explicit level is never overwritten");
 });

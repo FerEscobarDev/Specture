@@ -37,7 +37,7 @@ const TEMPLATE_RULES = fs.readFileSync(path.join(__dirname, "..", "..", "templat
 const CLEAN = {
   ".gitignore": ".specture/state/\ndocs/.specture-meta/*\n!docs/.specture-meta/build-metrics.jsonl\n!docs/.specture-meta/design-metrics.jsonl\ndocs/07-reviews/review-*.md\ndocs/07-reviews/cumplimiento-pr-*.md\ndocs/07-reviews/cumplimiento-rama-*.md\ndocs/06-debug-logs/\n",
   ".specture/stack.yml": 'project:\n  name: "Demo"\n  slug: "demo"\napi:\n  style: "rest"\n  contract_file: "docs/02-architecture/api-contract.openapi.yaml"\nstructure:\n  root_layout: custom\n',
-  ".specture/settings.yml": `schema_version: ${pluginVersion}\nprofile: custom\nhooks.enabled: true\n`,
+  ".specture/settings.yml": `schema_version: ${pluginVersion}\nprofile: custom\nhooks.enabled: true\ntdd.level: strict\n`,
   ".specture/conventions.md": "# Convenciones\n\n## 10. Specture\n\n> ver settings.yml\n\n## 12. Invariantes del Proyecto (R-*)\n\n> ver .specture/rules.yml\n\n## 13. Workflow / Proceso (W-*)\n\n- W-3: Conventional Commits\n",
   ".specture/rules.yml": TEMPLATE_RULES,
   ".specture/decisions/001-initial-stack.md": "# ADR-001\n\n## Status\n\nAccepted\n",
@@ -961,4 +961,29 @@ test("build-reads-docs: a build manifest that names docs/ or .specture/ is a WAR
   assert.match(csproj[0].detail, /:3 /);
 
   assert.deepEqual(findings({ "Makefile": "build:\n\tgo build ./...\n" }), []);
+});
+
+
+// v3.1.0 — tdd.level findings.
+test("tdd-level-invalid is an ERROR; tdd-level-none-no-quality warns when none has no type_check nor lint; valid levels are silent", () => {
+  const { runCheck } = require("../lib/doctor");
+  const findings = (settings, stack) => runCheck(createProject({ ...CLEAN, ".specture/settings.yml": `schema_version: ${pluginVersion}\nprofile: custom\nhooks.enabled: true\n${settings}`, ...(stack ? { ".specture/stack.yml": stack } : {}) }), { pluginVersion }).findings.filter((f) => f.check.startsWith("tdd-level"));
+
+  assert.deepEqual(findings("tdd.level: strict\n"), []);
+  assert.deepEqual(findings("tdd.level: essential\n"), []);
+  assert.deepEqual(findings(""), [], "absent = strict, nothing to say");
+
+  const invalid = findings("tdd.level: relaxed\n");
+  assert.equal(invalid.length, 1, JSON.stringify(invalid));
+  assert.equal(invalid[0].check, "tdd-level-invalid");
+  assert.equal(invalid[0].severity, "ERROR");
+  assert.match(invalid[0].detail, /relaxed/);
+
+  const none = findings("tdd.level: none\n");
+  assert.equal(none.length, 1, JSON.stringify(none));
+  assert.equal(none[0].check, "tdd-level-none-no-quality");
+  assert.equal(none[0].severity, "WARNING");
+
+  const withLint = findings("tdd.level: none\n", CLEAN[".specture/stack.yml"] + 'quality:\n  commands:\n    lint: "eslint {files}"\n    type_check: "sin definir"\n');
+  assert.deepEqual(withLint.filter((f) => f.check === "tdd-level-none-no-quality"), [], "lint defined is enough");
 });

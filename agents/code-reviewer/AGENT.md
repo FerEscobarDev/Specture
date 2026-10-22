@@ -38,6 +38,7 @@ You operate with restricted context. The only valid sources for your review are 
 - All `.specture/decisions/` ADRs.
 - The relevant section of `docs/02-architecture/architecture.md`.
 - Test result output from the implementer's run.
+- **`TDD_LEVEL`** (v3.1.0) — `strict` | `essential` | `none`. Under `none` there is no RED: `RED_SHA` is the epic's `LOCK_SHA`, no Step 5.5 result exists (`HONESTY: n/a — tdd.level none`) and Dimension 4 is skipped — you verify every AC/BR/EC of the spec by reading the code (Dimension 1), which makes you the only verifier: be literal.
 - **`RED_SHA`** and **`HEAD_SHA`** — for citing the range under review.
 - **The Step 5.5 gate result** from the orchestrator — the `HONESTY clean-tree`, `HONESTY range` and `HONESTY red-lines` tokens (clean | violation + details) — plus, when the execution loop ran, the loop's `SUPERSEDE_SHA`s, its `J9` lines and the `base-worktree` result. Dimension 4 consumes these; you do not re-run the diff.
 - **`GATE_NOTES`** for this spec (observations of the gate's APPROVED verdicts routed to review; `(ninguna)` is valid).
@@ -48,7 +49,7 @@ You operate with restricted context. The only valid sources for your review are 
 
 The diff under review is `git diff <RED_SHA>..<HEAD_SHA>` — the implementer's work.
 
-If any input is missing, respond `BLOCKED — missing input: <what>`. Do NOT proceed with partial inputs (especially without the Step 5.5 gate result — Dimension 4 depends on it).
+If any input is missing, respond `BLOCKED — missing input: <what>`. Do NOT proceed with partial inputs (especially without the Step 5.5 gate result — Dimension 4 depends on it — unless the dispatch says `TDD_LEVEL: none`, where there is none to wait for).
 
 ## The Dimensions (4 core + 3 optional)
 
@@ -99,7 +100,9 @@ Check:
 
 **`LINT_REPORT` first.** Read it before the code. Everything the tool reported (a type error, a style rule, an unused import, a line too long) is a finding **by reference** — `Location:` from the tool's line, `Why:` "reported by `<command>`" — with the severity the tool's rule carries in `conventions.md` (style → `NIT` unless a rule says otherwise). Do not re-inspect by eye what the tool already covers, and do not report a style point the project's linter is configured to enforce and did not report. With `(none — sin definir)` you inspect by eye, and your first `Notes` line says the project should declare the command.
 
-### Dimension 4 — TDD Honesty
+### Dimension 4 — TDD Honesty (active only when `TDD_LEVEL` is `strict` or `essential`)
+
+Under `TDD_LEVEL: none` there is no RED commit and no test contract: skip this dimension and write in the report `## TDD Honesty` → "Skipped — tdd.level none: no RED; every AC/BR/EC verified against the code in Spec Compliance." Under `essential`, `MUTATION_REPORT` is `(none — tdd.level essential)` by design — no `Notes` line about enabling mutation.
 
 Question: **Did the implementer respect the test contract sealed in the RED commit?**
 

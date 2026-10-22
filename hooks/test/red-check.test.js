@@ -244,3 +244,26 @@ test("red-check files: a RED file that reads documentation FAILS with the line a
   const clean = project();
   assert.match(cli(cliPath, clean.root, "files", "--red-sha", clean.redSha, "--slug", "demo", "--epic-dir", "docs/05-specs/epic-1.1-notas").lines[0], /^RED-CHECK files: PASS .*sin lecturas de documentación$/);
 });
+
+
+// v3.1.0 — tdd.level essential: only the AC need a test; a BR/EC line in the map is still checked.
+test("red-check coverage --level essential demands the AC only, still rejects a bad BR line, and refuses an unknown level", () => {
+  const essentialMap = ['- AC-1 → test "rejects an empty title"', '- AC-2 → test "stores the note"', ""].join("\n");
+  const { root, redSha } = project({ map: essentialMap });
+  const strict = cli(cliPath, root, "coverage", ...common(redSha));
+  assert.equal(strict.status, 1, "strict still demands BR-1 and EC-1");
+  assert.ok(strict.lines.some((l) => /^- BR-1 — sin test en el COVERAGE_MAP/.test(l)), strict.stdout);
+  const essential = cli(cliPath, root, "coverage", ...common(redSha), "--level", "essential");
+  assert.equal(essential.status, 0, essential.stdout + essential.stderr);
+  assert.match(essential.lines[0], /^RED-CHECK coverage: PASS 2 ID\(s\) cubiertos por 2 línea\(s\).*nivel essential/);
+
+  // a BR entry present in the map is checked when its test name is missing from the RED
+  const withBadBr = project({ map: essentialMap + '- BR-1 → test+ "no such test" / test- "rejects a duplicate title"\n' });
+  const checked = cli(cliPath, withBadBr.root, "coverage", ...common(withBadBr.redSha), "--level", "essential");
+  assert.equal(checked.status, 1, checked.stdout);
+  assert.ok(checked.lines.some((l) => /BR-1 — el test "no such test" no aparece/.test(l)), checked.stdout);
+
+  const unknown = cli(cliPath, root, "coverage", ...common(redSha), "--level", "none");
+  assert.equal(unknown.status, 2);
+  assert.match(unknown.stderr + unknown.stdout, /--level must be strict or essential/);
+});
