@@ -57,12 +57,33 @@ Specture skills live in `$SPECTURE_ROOT/skills/`. Each skill is a directory:
 ```
 skills/
 └── <semantic-name>/
-    └── SKILL.md          # main skill file
+    ├── SKILL.md          # main skill file — what every invocation needs
+    └── <COMPANION>.md    # optional — a procedure or reference read only when reached
 ```
 
 Examples:
 - Phase skills: `discover/SKILL.md`, `architecture/SKILL.md`, `build/SKILL.md`
 - Transversal skills: `debug/SKILL.md`, `verify/SKILL.md`, `new-feature/SKILL.md`
+- Companions: `build/QUEUE.md`, `build/PLANNING_GATE.md`, `knowledge/CAPTURE.md`, `setup/MODE_ADOPT.md`, `doctor/CATALOG.md`
+
+### Size limits (mechanical — `hooks/test/skill-size.test.js` enforces them)
+
+- **`SKILL.md` body under 24,000 bytes.** Antigravity loads only the first 24,000 bytes of a
+  skill body and silently drops the rest; Anthropic's guidance is "under 500 lines" for the same
+  reason (progressive disclosure: the body is read on every trigger). When a skill grows past it,
+  move a self-contained procedure or a reference table into a companion file and leave a pointer
+  that says **when** to open it — never a bare link.
+- **`description` ≤ 1,024 characters** (the Agent Skills spec limit; Claude Code truncates the
+  listing at 1,536). State what the skill does and when to use it, key use case first.
+- **Any `.md` over 100 lines under `skills/` starts with a `## Contents` table** (section ·
+  when you need it): readers that preview a file with `head` never see what is below.
+- Companions sit **one level deep** from `SKILL.md`: a companion never points to a second
+  companion for its own procedure.
+- Versions are not content: no "(since vX.Y)" in a skill — the changelog in `README.md` holds
+  history. A version is kept only where it is part of an executable rule (e.g. "a register from
+  before v2.3.0").
+- With Antigravity installed, `agy plugin validate <repo> --json` reports the truncation
+  warnings and the skill count: run it before a release.
 
 ### Mandatory frontmatter
 
@@ -159,8 +180,10 @@ Even without a formal test harness, you can manually pressure-test a skill:
 
 1. Test it (manually if not automated).
 2. Add a pointer in `skills/start/SKILL.md` if it's a transversal that needs routing.
-3. Commit with a message describing what behavior the skill enforces.
-4. Update `README.md` if it changes the framework's surface area.
+3. `npm test` — `hooks/test/skill-size.test.js` checks the body size, the description length and
+   the `## Contents` table of long files; `npm run schema:check` if you touched a `## Required Inputs` section.
+4. Commit with a message describing what behavior the skill enforces.
+5. Update `README.md` if it changes the framework's surface area.
 
 ## Modifying an Existing Skill
 

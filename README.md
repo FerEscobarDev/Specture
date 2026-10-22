@@ -196,15 +196,19 @@ $SPECTURE_ROOT/
 │   └── compatibility-matrix.json      # Paridad skills/agentes/gates por plataforma
 ├── skills/
 │   ├── start/SKILL.md                 # Router: detecta el estado y enruta
-│   ├── setup/SKILL.md                 # Setup en 3 modos (bootstrap/adopt/reconfigure)
+│   ├── setup/SKILL.md                 # Setup en 3 modos: detección + Reconfigure; Bootstrap y Adopt en sus compañeros
+│   ├── setup/MODE_BOOTSTRAP.md        # Modo A — asistente interactivo para un proyecto vacío
+│   ├── setup/MODE_ADOPT.md            # Modo B — detectar, proponer y confirmar sobre un código existente
 │   ├── setup-docs-bridge/SKILL.md     # Sub-skill: integra docs preexistentes en proyectos Adopt (genera docs-index.yml + bridges + ADRs Proposed)
 │   ├── discover/SKILL.md              # Levantamiento socrático de negocio
 │   ├── architecture/SKILL.md          # Arquitectura + contrato de API + ROADMAP
 │   ├── ux-design/SKILL.md             # UX/UI: nav map + design system (siempre)
-│   ├── build/SKILL.md                 # Coordinador de la cola de epics + gates de sesión
+│   ├── build/SKILL.md                 # Coordinador: inputs, precondiciones, modelo de ejecución, política de frontend, anti-patrones
+│   ├── build/QUEUE.md                 # La cola: lock, despacho del coordinador del epic, EPIC_REPORT, recuperación de un [/], Steps 8.5/8.7, métricas
+│   ├── build/PLANNING_GATE.md         # Spec Planning Gate por epic (planner → preguntas → validación → commit → sello)
 │   ├── build/EPIC_LOOP.md             # Procedimiento del epic-agent (Steps 4-8: RED → GREEN → review → verify → [x])
-│   ├── build/EPIC_COORDINATOR.md      # Procedimiento del coordinador del epic: refresco, sello, epic-agent, loops, métricas → EPIC_REPORT (subagente; en línea sin anidamiento) (v2.7.0)
-│   ├── build/REVIEW_STAGE.md          # Etapa de revisión por tanda (R0-R5 + mini-revisión de epics regulatorios) — solo el coordinador (v2.3.0)
+│   ├── build/EPIC_COORDINATOR.md      # Procedimiento del coordinador del epic: refresco, sello, epic-agent, loops, métricas → EPIC_REPORT (subagente; en línea sin anidamiento)
+│   ├── build/REVIEW_STAGE.md          # Etapa de revisión por tanda (R0-R5 + mini-revisión de epics regulatorios) — solo el coordinador
 │   ├── ux-design/CHANNELS.md          # Mecánica de los 3 niveles de diseño (Claude Design · canvas nativo · sin externa)
 │   ├── contract-sync-audit/SKILL.md   # Audita sync back/front en proyectos existentes
 │   ├── debug/SKILL.md
@@ -213,7 +217,10 @@ $SPECTURE_ROOT/
 │   ├── write-skill/SKILL.md
 │   ├── compliance-review/SKILL.md     # Revisión de cumplimiento al cerrar un milestone + triage (v2.4.0)
 │   ├── compliance-review/CORRECTION_LOOP.md  # Procedimiento del agente de corrección (solo refactors elegidos, sin tests)
-│   ├── knowledge/SKILL.md             # Higiene de conocimiento — modos capture (ex-learn) + audit (ex-audit-knowledge) + stats (métricas del build)
+│   ├── knowledge/SKILL.md             # Higiene de conocimiento — selección de modo + audit (ex-audit-knowledge) + stats (métricas del build)
+│   ├── knowledge/CAPTURE.md           # Modo capture (ex-learn): captura de aprendizajes con aprobación en Plan mode
+│   ├── knowledge/RECONCILE.md         # Modo reconcile / characterize: verdad viva de un componente
+│   ├── doctor/CATALOG.md              # Referencia del doctor: checks por release y catálogo de migraciones
 │   ├── learn/SKILL.md                 # Alias → knowledge (capture), backward-compat
 │   ├── audit-knowledge/SKILL.md       # Alias → knowledge (audit), backward-compat
 │   ├── modernize/SKILL.md
@@ -690,6 +697,22 @@ Specture está en desarrollo activo. Para decisiones arquitectónicas internas, 
 ---
 
 ## Changelog
+
+### v2.10.0 — Skills bajo 24 KB: lo que cada invocación necesita, y el resto cuando se llega
+
+**Motivación:** Anthropic recomienda que un `SKILL.md` quede bajo ~500 líneas y mueva el detalle a archivos de referencia que se leen solo cuando hacen falta, y fija dos límites duros del spec de Agent Skills: `description` ≤ 1.024 caracteres y `name` ≤ 64. Antigravity, además, carga solo los primeros **24.000 bytes** del cuerpo de un skill y descarta el resto sin avisar. `build/SKILL.md` pesaba 61 KB (en Antigravity perdía desde la mitad del gate hasta los anti-patrones), `knowledge` 33 KB, `setup` 28 KB, `doctor` 24,2 KB, y la descripción de `knowledge` tenía 1.036 caracteres. Las líneas de 100-180 caracteres de Specture hacían que el conteo de líneas ocultara el peso real.
+
+**Cambios:**
+- **`build`** queda en tres archivos: `SKILL.md` (21 KB — inputs, precondiciones, modelo de ejecución, política de frontend, anti-patrones) con una tabla «qué archivo abrir cuándo»; `build/QUEUE.md` (la cola, el despacho del coordinador del epic, el `EPIC_REPORT`, la recuperación de un `[/]`, Steps 8.5 y 8.7, métricas); `build/PLANNING_GATE.md` (el Spec Planning Gate completo). Nada cambia de procedimiento: es el mismo texto, en el archivo que se lee cuando se llega a él.
+- **`knowledge`**: `CAPTURE.md` y `RECONCILE.md` por modo; `SKILL.md` conserva la selección de modo, las reglas compartidas, `audit` y `stats`. Descripción recortada a 640 caracteres.
+- **`setup`**: `MODE_BOOTSTRAP.md` y `MODE_ADOPT.md`; `SKILL.md` conserva la detección, Reconfigure y la verificación de salida.
+- **`doctor`**: la lista de checks por release y el catálogo de migraciones pasan a `doctor/CATALOG.md` (referencia); `SKILL.md` queda con el proceso `check | migrate | sync`.
+- **Índices** (`## Contents`, sección · cuándo leerla) al inicio de `EPIC_LOOP.md`, `EPIC_COORDINATOR.md`, `REVIEW_STAGE.md`, `ux-design/CHANNELS.md` y de cada compañero nuevo: la guía oficial los pide para toda referencia de más de 100 líneas porque un lector que previsualiza con `head` no ve el resto.
+- **Sin anotaciones de versión** «(since vX.Y)» en los skills de `build`, `setup`, `knowledge`, `doctor`, `start`, `compliance-review` (~90 ocurrencias): eran historia, no instrucción, y cada una se pagaba en cada invocación. Se conservan solo donde la versión es parte de una regla ejecutable («un registro anterior a v2.3.0») y en `doctor/CATALOG.md`, que es un catálogo por release.
+- **Guarda mecánica:** `hooks/test/skill-size.test.js` — cuerpo de cada `SKILL.md` < 24.000 bytes, `description` ≤ 1.024, y todo compañero de más de 100 líneas abre con `## Contents`. `skills/write-skill/SKILL.md` documenta el patrón de compañeros, los límites y `agy plugin validate` como verificación.
+- Referencias actualizadas (`EPIC_COORDINATOR.md`, `REVIEW_STAGE.md`, `hooks/README.md`, `doctor/checks/review.js`, `templates/LEARN_OUTPUT_TEMPLATE.md`, `setup-docs-bridge`, `docs/build-faq.md`); manifest de esquema resincronizado (las `Required Inputs` de `knowledge` ahora son las de `audit`, que es el primer modo que queda en el archivo).
+- **Backward-compat:** ningún cambio para el usuario de Claude Code: `/specture:*` enruta igual y los agentes, hooks y manifiesto de Claude Code no se tocan. Verificado con `agy plugin validate`: 18 skills, 0 avisos de truncamiento sobre una copia con manifiesto limpio (el manifiesto raíz sigue siendo el de Copilot hasta v2.11.0).
+- Tests: 377 → 380.
 
 ### v2.9.1 — Los hooks se registran donde Claude Code los carga
 

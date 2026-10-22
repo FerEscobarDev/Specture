@@ -1,7 +1,23 @@
 # 04b — Epic Loop (the epic-agent's procedure)
 
+## Contents
+
+| Section | When you need it |
+|---|---|
+| Step 0 — Nesting check · Iron rules | First thing, before any dispatch |
+| Frontend Epics — execution | The spec is a design-system or page epic |
+| Dispatch Manifest | Before Step 4 and Step 5 — what every worker dispatch must carry |
+| Resolvers (Docs Index · Current-State · Design Surface · Rules · Custom Rules) | Assembling a manifest |
+| Step 3.9 — Failure baseline | Once per epic, before the first RED |
+| Step 4 — Write Tests (RED) | Writer dispatch, post-checks, `red-check`, the seal |
+| Step 5 — Implement (GREEN) · 5.2 supersede · 5.3 red-fix | Implementer dispatch and the two resume points |
+| Step 5.5 — TDD Honesty Gate | `honesty-check` before the review |
+| Step 6 — Code Review | Reviewer dispatch, RE-REVIEW, Iteration Cap |
+| Step 7 — Verification · Step 8 — Mark complete | Full suite once, then `[x]` and release |
+| Anti-Patterns | Read once |
+
 You are the **epic-agent** for exactly ONE epic of a Specture project. The coordinator — the
-epic coordinator of `build/EPIC_COORDINATOR.md` (v2.7.0), or the build coordinator running it
+epic coordinator of `build/EPIC_COORDINATOR.md`, or the build coordinator running it
 inline — locked the epic (it is already `[/]` in `ROADMAP.md`), assembled your base context, and
 dispatched you with this file as your **complete procedure**. You never see the coordinator's
 queue, and your context is discarded when you finish.
@@ -10,7 +26,7 @@ queue, and your context is discarded when you finish.
 `ux-implementer`, `code-reviewer`). If you do not have the Agent tool (the nested-subagent depth
 limit is below three levels), report `BLOCKED: nesting` **immediately, touching nothing**: the
 epic coordinator then runs this procedure itself. Every dispatch of yours returns by itself —
-wait for its result; never poll. **How to wait (v2.9.0):** dispatch a worker as a **foreground**
+wait for its result; never poll. **How to wait:** dispatch a worker as a **foreground**
 `Agent` call (one turn; it returns when the worker finishes) or, when it must run in the
 background, wait for its notification or the `Monitor` tool. **Never `sleep`**, never loop on a
 flag, never set yourself a clock budget: no Specture dispatch has a time limit, and every waiting
@@ -101,13 +117,13 @@ Before Step 4 (tdd-test-writer) and Step 5 (implementer), the orchestrator MUST 
 - [ ] `stack.yml`: testing_framework + language present
 - [ ] `conventions.md`: testing + naming + file-org + §8 (identifier language) present
 - [ ] Existing fixtures/helpers paths listed (so tests don't duplicate them)
-- [ ] `TEST_COMMAND` (v2.9.0) — the project's `quality.commands.test_scoped` slot as `node "${CLAUDE_PLUGIN_ROOT}/hooks/lib/quality.js" show` prints it (the writer expands it over its own files with `quality.js expand test_scoped --files …`), or `SKIPPED (<motivo>)` when the slot is `sin definir` / `none` — passed verbatim, never replaced by the whole suite
+- [ ] `TEST_COMMAND` — the project's `quality.commands.test_scoped` slot as `node "${CLAUDE_PLUGIN_ROOT}/hooks/lib/quality.js" show` prints it (the writer expands it over its own files with `quality.js expand test_scoped --files …`), or `SKIPPED (<motivo>)` when the slot is `sin definir` / `none` — passed verbatim, never replaced by the whole suite
 - [ ] Relevant docs from `docs-index.yml` resolved (see "Docs Index Resolution" below) — empty list is valid if the index does not exist or no entries match the spec
 
 **For implementer:**
 - [ ] Spec (same completeness as above)
 - [ ] RED test file contents + test path globs + `RED_SHA`
-- [ ] `TEST_COMMAND` (v2.9.0) — `test_scoped` already expanded over the RED test paths (`node "${CLAUDE_PLUGIN_ROOT}/hooks/lib/quality.js" expand test_scoped --files <RED test paths>`; on a resumed `supersede` / `red-fix`, the superseded or red-fixed files too), or `SKIPPED (<motivo>)` — the implementer never runs the whole suite; Step 7 does, once
+- [ ] `TEST_COMMAND` — `test_scoped` already expanded over the RED test paths (`node "${CLAUDE_PLUGIN_ROOT}/hooks/lib/quality.js" expand test_scoped --files <RED test paths>`; on a resumed `supersede` / `red-fix`, the superseded or red-fixed files too), or `SKIPPED (<motivo>)` — the implementer never runs the whole suite; Step 7 does, once
 - [ ] Spec's "Superficie de Código Existente" section carries the **exact signatures** of every existing symbol the implementation will call — for symbols marked `(planeada — re-anclar)`, verified by the **signature re-read** below
 - [ ] `stack.yml` + `conventions.md` + all ADRs
 - [ ] The `RULES_RESOLVED` block (see "Rules Resolution" below — `RULES_RESOLVED: []` is valid and explicit)
@@ -188,7 +204,7 @@ When `docs/05-specs/_current/` exists, the orchestrator resolves the living-beha
 
 ### Resolution algorithm
 
-1. **Check existence**: if `docs/05-specs/_current/` does not exist (no milestone has reconciled yet), the resolved list is **empty**. Continue; do NOT block dispatch. If the ROADMAP already has closed milestones, this is a missing initialisation, not a young project — print once: *⚠ Specture: `docs/05-specs/_current/` no inicializado — corré `/specture:knowledge reconcile --component <slug>` (un componente por vez; `/specture:doctor check` lista cuáles)* (migration `1.9-current-state-init`, owned by that mode since v1.19.0).
+1. **Check existence**: if `docs/05-specs/_current/` does not exist (no milestone has reconciled yet), the resolved list is **empty**. Continue; do NOT block dispatch. If the ROADMAP already has closed milestones, this is a missing initialisation, not a young project — print once: *⚠ Specture: `docs/05-specs/_current/` no inicializado — corré `/specture:knowledge reconcile --component <slug>` (un componente por vez; `/specture:doctor check` lista cuáles)* (migration `1.9-current-state-init`, owned by that mode).
 2. **Identify component(s)**: from the spec header's `Módulo` ref and the epic's "Componentes de arquitectura involucrados" — these are the `<component-slug>`s (`node "${CLAUDE_PLUGIN_ROOT}/hooks/lib/current-state.js" components --project .` prints the slugs `architecture.md` declares).
 3. **Resolve files**: for each component, read `docs/05-specs/_current/<component-slug>.md` if it exists. A missing file means that component has no reconciled behavior yet — skip it, not an error — **unless** `node "${CLAUDE_PLUGIN_ROOT}/hooks/lib/current-state.js" specs --project . --component <slug>` lists ≥ 1 `[x]` spec: then the truth exists and nobody consolidated it. Print once per session *⚠ Specture: `_current/<slug>.md` ausente con N specs cerrados — corré `/specture:knowledge reconcile --component <slug>`* and continue: never block, never reconcile inline (that is a Plan-mode job of `knowledge`, not of the build).
 4. **Cap**: pass only the files for the components the spec actually touches (usually 1-2), never the whole `_current/` directory. A file whose header says `Confianza: ai_characterized` was written from code, not from specs — pass it flagged as informational.
@@ -224,13 +240,13 @@ When empty, dispatch normally and pass `design_surface_resolved: []` so the agen
 
 ## Rules Resolution (pre-flight, reusable)
 
-Since v1.19.0 the project's invariants `R-*` live in `.specture/rules.yml` (one line per rule, tags, severity, a `source` link to the story). The orchestrator resolves the rules whose tags intersect the current spec and passes them as a `RULES_RESOLVED` block to the `implementer` / `ux-implementer` (Step 5) and the `code-reviewer` (Step 6 — its Dimension 7 reads **only** this block); the coordinator's Spec Planning Gate runs the same resolution for `spec-planner` and `architecture-validator`. The `tdd-test-writer` does not receive it (tests come from the spec, not from code invariants).
+The project's invariants `R-*` live in `.specture/rules.yml` (one line per rule, tags, severity, a `source` link to the story). The orchestrator resolves the rules whose tags intersect the current spec and passes them as a `RULES_RESOLVED` block to the `implementer` / `ux-implementer` (Step 5) and the `code-reviewer` (Step 6 — its Dimension 7 reads **only** this block); the coordinator's Spec Planning Gate runs the same resolution for `spec-planner` and `architecture-validator`. The `tdd-test-writer` does not receive it (tests come from the spec, not from code invariants).
 
 > **Doctrine — same as Docs Index Resolution**: the agents NEVER open `rules.yml`; the orchestrator injects the subset. A 500-line `conventions.md` no longer travels whole to four workers per spec — only the rules that apply.
 
 ### Resolution algorithm
 
-1. **Tags of the spec** — derived by the resolver (v2.8.0), not by hand: the spec's `Módulo:` header, the component slugs of its epic's "Componentes de arquitectura involucrados" block in `ROADMAP.md`, and `backend` (the spec **Implementa** operations) / `frontend` (it **Consumes** them). Add `--tags` only for a signal the spec does not carry (e.g. `mobile`); it is merged, never replaced.
+1. **Tags of the spec** — derived by the resolver, not by hand: the spec's `Módulo:` header, the component slugs of its epic's "Componentes de arquitectura involucrados" block in `ROADMAP.md`, and `backend` (the spec **Implementa** operations) / `frontend` (it **Consumes** them). Add `--tags` only for a signal the spec does not carry (e.g. `mobile`); it is merged, never replaced.
 2. **Run the resolver** (Node ≥ 22):
    ```
    node "${CLAUDE_PLUGIN_ROOT}/hooks/lib/rules-resolve.js" --project . --spec docs/05-specs/<epic-slug>/<task-slug>.spec.md [--tags <extra,…>]
@@ -243,7 +259,7 @@ Since v1.19.0 the project's invariants `R-*` live in `.specture/rules.yml` (one 
 
 ## Custom Rules Resolution (pre-flight, reusable)
 
-Since v2.4.0 a project may link the review criteria its team already maintains in `.specture/review-rules.md` (opt-in: included files or sections, the team's severity words, a flexible level for legacy paths, its own `RV-n` rules). The implementer and the ux-implementer receive the subset that applies to the spec's declared surface, so the compliance review at milestone close confirms rather than discovers. The tdd-test-writer does not receive it (tests come from the spec), nor does the code-reviewer (its dimensions stay as they are; the compliance review checks these criteria over the whole milestone).
+A project may link the review criteria its team already maintains in `.specture/review-rules.md` (opt-in: included files or sections, the team's severity words, a flexible level for legacy paths, its own `RV-n` rules). The implementer and the ux-implementer receive the subset that applies to the spec's declared surface, so the compliance review at milestone close confirms rather than discovers. The tdd-test-writer does not receive it (tests come from the spec), nor does the code-reviewer (its dimensions stay as they are; the compliance review checks these criteria over the whole milestone).
 
 ```
 node "${CLAUDE_PLUGIN_ROOT}/hooks/lib/review-rules-resolve.js" --project . --spec docs/05-specs/<epic-slug>/<task-slug>.spec.md
@@ -253,7 +269,7 @@ It prints the block — `CUSTOM_RULES: …` + severities, flexible paths, preced
 
 ## Step 3.9 — Failure baseline (once per epic, before the first RED)
 
-Run the **full** test suite once — `quality.commands.test` (`node "${CLAUDE_PLUGIN_ROOT}/hooks/lib/quality.js" expand test`; `sin definir` → the suite command `conventions.md` names) — before any RED commit of the epic. **This and Step 7 are the only two full runs per spec** (v2.9.0): everything in between runs `test_scoped` over the files under work. Re-run each failing
+Run the **full** test suite once — `quality.commands.test` (`node "${CLAUDE_PLUGIN_ROOT}/hooks/lib/quality.js" expand test`; `sin definir` → the suite command `conventions.md` names) — before any RED commit of the epic. **This and Step 7 are the only two full runs per spec**: everything in between runs `test_scoped` over the files under work. Re-run each failing
 test twice; the ones that still fail are the epic's **`BASELINE_FALLOS`** — they failed
 before this epic touched anything. Write them to `## BASELINE_FALLOS` of `_planning.md`
 (`- <path>::<test> — <first line of the failure> — <ISO-8601>`, or `- (ninguno)`), pass them
@@ -278,13 +294,13 @@ Dispatch the `tdd-test-writer` agent (`agents/tdd-test-writer/AGENT.md`).
 
 **Orchestrator post-checks (all mandatory)**:
 
-1. **Verify failure reason**: run **only the RED files** yourself (`node "${CLAUDE_PLUGIN_ROOT}/hooks/lib/quality.js" expand test_scoped --files <RED test paths>`; `SKIPPED` → the narrowest run your runner offers over those files, noted once per epic in `GATE_NOTES` — never the whole suite, v2.9.0) and confirm they fail for the right reason ("function not defined" / "wrong return value"), not because of syntax errors or missing dependencies. **Exception — guards**: tests declared in the spec's "Guards de no-regresión (nacen verdes)" section are born green by definition — verify they PASS, and that they don't count toward the RED tally.
+1. **Verify failure reason**: run **only the RED files** yourself (`node "${CLAUDE_PLUGIN_ROOT}/hooks/lib/quality.js" expand test_scoped --files <RED test paths>`; `SKIPPED` → the narrowest run your runner offers over those files, noted once per epic in `GATE_NOTES` — never the whole suite) and confirm they fail for the right reason ("function not defined" / "wrong return value"), not because of syntax errors or missing dependencies. **Exception — guards**: tests declared in the spec's "Guards de no-regresión (nacen verdes)" section are born green by definition — verify they PASS, and that they don't count toward the RED tally.
 2. **Verify the RED commit exists and is clean**:
    ```
    git show --stat <RED_SHA>
    ```
    The commit MUST contain only test files (paths matching `conventions.md` test globs). If the commit touches any production code, abort — re-dispatch `tdd-test-writer` with a clear instruction to commit tests in isolation.
-2b. **Mechanical RED check (v2.8.0) — before the seal, never after**:
+2b. **Mechanical RED check — before the seal, never after**:
    ```
    node "${CLAUDE_PLUGIN_ROOT}/hooks/lib/red-check.js" all --red-sha <RED_SHA> --slug <task-slug> --epic-dir docs/05-specs/<epic-slug> --map docs/.specture-meta/coverage/<task-slug>.map
    ```
@@ -300,7 +316,7 @@ Dispatch the `tdd-test-writer` agent (`agents/tdd-test-writer/AGENT.md`).
    ```
    node "${CLAUDE_PLUGIN_ROOT}/hooks/lib/seal-cli.js" merge-spec --slug <task-slug> --red-sha <RED_SHA> --test-paths "<file1>,<file2>" --epic <epic-slug>
    ```
-   `--test-paths` is the **explicit list of test files of the RED commit** (`git show --stat <RED_SHA>`, project-relative) — not the conventions-wide globs: a glob would seal the next spec's tests before they exist (and, from v1.18.0, would sweep a closed epic's tests into this seal). The resulting file (schema v3, `hooks/README.md`):
+   `--test-paths` is the **explicit list of test files of the RED commit** (`git show --stat <RED_SHA>`, project-relative) — not the conventions-wide globs: a glob would seal the next spec's tests before they exist (and would sweep a closed epic's tests into this seal). The resulting file (schema v3, `hooks/README.md`):
    ```json
    {
      "epic": "<epic-slug>", "sealed_at": "<ISO-8601 of the first seal>",
@@ -325,7 +341,7 @@ Dispatch the `implementer` agent (`agents/implementer/AGENT.md`).
 - The `.spec.md`.
 - The test files just written (as content reference — the implementer must NOT edit them).
 - The `RED_SHA` value, with an explicit instruction: *"The tests committed at `<RED_SHA>` are the sealed contract. You must NOT modify, delete, skip, rename, or move any of those test files. The TDD Honesty Gate will run `git diff <RED_SHA>..HEAD -- <test-globs>` after your work and any change will abort the spec."*
-- **`TEST_COMMAND`** (v2.9.0): `test_scoped` expanded over this spec's RED test paths (plus the superseded / red-fixed files on a resume), or `SKIPPED (<motivo>)`. The implementer runs **that** at its Steps 1 and 3 — never the whole suite; the full run is Step 7, once, yours.
+- **`TEST_COMMAND`**: `test_scoped` expanded over this spec's RED test paths (plus the superseded / red-fixed files on a resume), or `SKIPPED (<motivo>)`. The implementer runs **that** at its Steps 1 and 3 — never the whole suite; the full run is Step 7, once, yours.
 - `.specture/stack.yml`, `.specture/conventions.md`, all ADRs.
 - **The `RULES_RESOLVED` block** from "Rules Resolution" (the project invariants whose tags match this spec, with their declared severity — the implementer honors them; the reviewer's Dimension 7 enforces them by ID). Pass `RULES_RESOLVED: []` when nothing matches.
 - **The `CUSTOM_RULES` block** from "Custom Rules Resolution" (the team criteria that apply to this spec's surface — criteria only, never procedure; Specture's rules prevail on a conflict). Pass `CUSTOM_RULES: []` when nothing applies.
@@ -336,10 +352,10 @@ Dispatch the `implementer` agent (`agents/implementer/AGENT.md`).
 
 **Expected output**: minimal code to make tests pass; agent commits implementation in commits **separate from the RED commit**; reports status `DONE` / `DONE_WITH_CONCERNS` / `NEEDS_CONTEXT` / `BLOCKED`, plus the `HEAD_SHA` after the last implementation commit.
 
-Handle each status per the implementer's protocol. **Execution runs in two layers** (the implementer's Step 3, and Step 7 of this loop — v2.9.0):
+Handle each status per the implementer's protocol. **Execution runs in two layers** (the implementer's Step 3, and Step 7 of this loop):
 
 - **Compile layer (before GREEN).** `BLOCKED: supersesiones (compilación)` with a WIP commit and the full log → report it upward **as is**, one BLOCKED for the spec, without touching any test.
-- **Runtime layer (Step 7 — the full suite runs once per spec, after the review; v2.9.0).** The implementer in `MODE: REGRESIONES` reports `BLOCKED: supersesiones (runtime)` → check each `FAILURES:` line is outside this spec's RED tests and outside `BASELINE_FALLOS`, and cites a rule of this spec; a line without a rule goes back to the implementer as its regression (it counts toward the Iteration Cap). Then report `BLOCKED: supersesiones (runtime) <task-slug>` upward with every remaining line — **one** report per spec and layer, not one per test. The class only raises scrutiny: `aserción` and `producción` reach you only after the implementer tried them as regressions.
+- **Runtime layer (Step 7 — the full suite runs once per spec, after the review).** The implementer in `MODE: REGRESIONES` reports `BLOCKED: supersesiones (runtime)` → check each `FAILURES:` line is outside this spec's RED tests and outside `BASELINE_FALLOS`, and cites a rule of this spec; a line without a rule goes back to the implementer as its regression (it counts toward the Iteration Cap). Then report `BLOCKED: supersesiones (runtime) <task-slug>` upward with every remaining line — **one** report per spec and layer, not one per test. The class only raises scrutiny: `aserción` and `producción` reach you only after the implementer tried them as regressions.
 - **`BLOCKED: entorno`** → report upward with the log. No retries.
 
 The coordinator judges each test (J9), amends the spec's Supersesiones section and re-dispatches you with `RESUME_AT: supersede <task-slug>` (Step 5.2). At most one loop per spec and per layer.
@@ -358,7 +374,7 @@ The spec now declares the tests the loop judged superseded (`commit: pendiente �
 8. **Retroactive RED** for the `aserción` class: `honesty-check.js base-worktree --lock <LOCK_SHA> --files "<rewritten test files>" --dir <tmp>`, run only the rewritten tests there, then `--remove <tmp>`. They must **fail** at the lock and **pass** at HEAD. Passing in both → they do not express the rule: re-dispatch the writer once with that fact; a second time → `BLOCKED: spec <rule>`. Not compiling at the lock → `REVIEW`, handed to the reviewer.
 9. `REGRESIONES:` non-empty → Step 5 for them. Compile layer → continue Step 5 from the WIP to GREEN. Then Step 5.5.
 
-## Step 5.3 — Red-fix of the spec's own RED (`RESUME_AT: red-fix <task-slug>`, v2.2.2)
+## Step 5.3 — Red-fix of the spec's own RED (`RESUME_AT: red-fix <task-slug>`)
 
 The coordinator sends you here after a spec correction (the `RED_FIX:` block names the changed
 `AC/BR/EC`) or after your own `BLOCKED: red-fix` (it names the defective tests). The spec is
@@ -370,7 +386,7 @@ sealed again and right; only some of its RED tests must change. Nothing is rever
 4. `seal-cli.js supersede --clear`, then `seal-cli.js merge-spec --slug <task-slug> --red-sha <RED_SHA> --add-test-paths "<files the red-fix added>"` (`red_sha_orig` stays).
 5. Register one line per file in `## SUPERSESIONES`: `- red-fix: <path> — spec: <task-slug> — commit: <sha>`.
 6. `honesty-check.js red-lines --slug <task-slug> --epic-dir docs/05-specs/<epic-slug>` — the rest of the original RED survives; the red-fix's own lines are now the contract.
-7. **Retroactive RED — only when the red-fix rewrote something** (v2.8.0): `honesty-check.js red-fix-kind --slug <task-slug>` answers `ADDITIVE` (the red-fix only added tests: the new tests fail at HEAD by construction and the surviving RED lines are already proven — skip this step and write `- red-fix: … — kind: ADDITIVE` in the register line) or `REWRITE` (a line of the RED changed: an assertion may have been weakened). On `REWRITE`: `honesty-check.js base-worktree --lock <red_sha_orig>^ --files "<red-fix files>" --dir <tmp>`, run only the red-fixed tests there, then `--remove <tmp>`. They must **fail** at the commit before the spec's RED (the code without this spec) and — once GREEN — **pass** at HEAD. Passing in both → they do not discriminate: send them back to the writer once with that fact; a second time → `BLOCKED: spec`. Not compiling at that base → `REVIEW`, handed to the reviewer.
+7. **Retroactive RED — only when the red-fix rewrote something**: `honesty-check.js red-fix-kind --slug <task-slug>` answers `ADDITIVE` (the red-fix only added tests: the new tests fail at HEAD by construction and the surviving RED lines are already proven — skip this step and write `- red-fix: … — kind: ADDITIVE` in the register line) or `REWRITE` (a line of the RED changed: an assertion may have been weakened). On `REWRITE`: `honesty-check.js base-worktree --lock <red_sha_orig>^ --files "<red-fix files>" --dir <tmp>`, run only the red-fixed tests there, then `--remove <tmp>`. They must **fail** at the commit before the spec's RED (the code without this spec) and — once GREEN — **pass** at HEAD. Passing in both → they do not discriminate: send them back to the writer once with that fact; a second time → `BLOCKED: spec`. Not compiling at that base → `REVIEW`, handed to the reviewer.
 7b. **Mechanical RED check on the red-fix** (Step 4 post-check 2b, with the red-fix commit as `--red-sha` and the writer's updated `COVERAGE_MAP` file): same outcomes; the `files` check also accepts the spec's original `test_paths`.
 8. Continue at Step 5: the implementer makes the corrected tests pass (production only), then Step 5.5.
 
@@ -420,11 +436,11 @@ Dispatch the `code-reviewer` agent (`agents/code-reviewer/AGENT.md`).
 - **Resolved docs from `docs-index.yml`** (the list from pre-flight, including each entry's `concept`, `file`, `read_when`, `tags`, `confidence`, and the file's content). If the list is empty, pass `docs_index_resolved: []`. When an entry has `confidence: ai_categorized`, the reviewer should treat its content as informational and prefer findings rooted in `Accepted` ADRs / `conventions.md`; if a finding depends ONLY on an `ai_categorized` entry, note that in the review report.
 - **Resolved `_current/` behavior** (from Current-State Resolution): the living-behavior file(s) for the component(s) this spec touches, so the reviewer can flag regressions against already-built behavior. If empty, pass `current_state_resolved: []`. A file whose header says `Confianza: ai_characterized` (written from code, not from specs) is informational, like an `ai_categorized` index entry.
 - **The `RULES_RESOLVED` block** (from Rules Resolution): the project invariants in scope for this spec. Dimension 7 reads only this block — it never opens `rules.yml` or `conventions.md` §12. If empty, pass `RULES_RESOLVED: []` (Dimension 7 is skipped).
-- **`LINT_REPORT`** and **`MUTATION_REPORT`** (v2.8.0, see "Tools first" below) — the output of the project's declared `quality.commands` over the diff; `(none …)` when a slot is undefined or the mutation toggle is off.
+- **`LINT_REPORT`** and **`MUTATION_REPORT`** (see "Tools first" below) — the output of the project's declared `quality.commands` over the diff; `(none …)` when a slot is undefined or the mutation toggle is off.
 - **The `design_surface_resolved` block** (frontend specs, from Design Surface Resolution): the `components/<Nombre>.md` of the components this spec touches, so the frontend dimension can check anatomy and token adherence against what the design system actually specifies instead of against its own taste. If empty, pass `design_surface_resolved: []`.
 - **Frontend epics:** also pass `docs/03-ux-ui/design_system.md`, the relevant slice of `api-contract.md` (the `operationId`s the page consumes), and — if the design surface was ingested — the fidelity checklist. This activates the code-reviewer's **Dimension 6 (Frontend Fidelity)**: token adherence, accessibility, contract adherence, brand-rule fidelity.
 
-**Tools first, then the reviewer (v2.8.0)**: what a tool reports in seconds the reviewer must not rediscover by reading. Before dispatching the `code-reviewer`, launch in background (`Bash` with `run_in_background: true`, all at once — they only read the tree) the commands `stack.yml` → `quality.commands` declares, with `{files}` = the files of `git diff --name-only <RED_SHA>..<HEAD_SHA>` for `lint` / `type_check`, and = the spec's `Crea:` / `Modifica:` production paths for `mutation`:
+**Tools first, then the reviewer**: what a tool reports in seconds the reviewer must not rediscover by reading. Before dispatching the `code-reviewer`, launch in background (`Bash` with `run_in_background: true`, all at once — they only read the tree) the commands `stack.yml` → `quality.commands` declares, with `{files}` = the files of `git diff --name-only <RED_SHA>..<HEAD_SHA>` for `lint` / `type_check`, and = the spec's `Crea:` / `Modifica:` production paths for `mutation`:
 
 - `type_check` and `lint` → their combined output (tail, ≤ 80 lines each) is the **`LINT_REPORT`** block. A slot `sin definir` / `none` → `LINT_REPORT: (none — <slot> sin definir)`.
 - `mutation` → **only** when `.specture/settings.yml` → `mutation.enabled: true` **and** the slot is defined; its raw output (tail, ≤ 200 lines — keep the survivors, drop the progress bars) is the **`MUTATION_REPORT`** block. Otherwise `MUTATION_REPORT: (none)`. The mutation run may take minutes: start it first; it never touches the working tree beyond its own temp folder (if your tool writes reports inside the repo, point it to `docs/.specture-meta/` — gitignored).
@@ -436,7 +452,7 @@ This is safe only because none of the background commands writes to the working 
 **Expected output**: a structured review at `docs/07-reviews/review-<epic>-<spec>-<date>.md` with status:
 
 - `APPROVED` → proceed to Step 7 (verification).
-- `REJECTED_MINOR` → loop back to Step 5 with the issues; implementer fixes; **re-review in `MODE: RE-REVIEW`** (v2.8.0): dispatch the `code-reviewer` with `effort: medium`, the previous report path, the list of its `BLOCKER`/`IMPORTANT` findings, the previous and the new `HEAD_SHA`, a fresh `LINT_REPORT` over `git diff <HEAD_prev>..<HEAD_SHA>` (and the same `MUTATION_REPORT` unless production files changed again) — it verifies each finding (`RESUELTO` / `PERSISTE` / `REGRESIÓN`) and does not reopen the approved dimensions. A `REJECTED_MAJOR`, or a third round, is a full review again. **Exception — a test rewrite weaker than its rule** (Dimension 4 on a `test(supersede): … — loop …` or `test(red-fix)` commit, e.g. a mutation the rewritten test does not catch): the fix belongs to the **tdd-test-writer**, never the implementer. Lift exactly those files (`seal-cli.js supersede --slug <task-slug> --paths … [--shared-with-red]`), re-dispatch the writer in the same mode (`SUPERSEDE-HEAD` or `RED-FIX`) with the reviewer's finding verbatim, register the new commit like the first, re-run `red-lines` and the retroactive RED, then re-review. It counts toward the Iteration Cap — it is **not** a new supersession loop, and it asks nothing of the user.
+- `REJECTED_MINOR` → loop back to Step 5 with the issues; implementer fixes; **re-review in `MODE: RE-REVIEW`**: dispatch the `code-reviewer` with `effort: medium`, the previous report path, the list of its `BLOCKER`/`IMPORTANT` findings, the previous and the new `HEAD_SHA`, a fresh `LINT_REPORT` over `git diff <HEAD_prev>..<HEAD_SHA>` (and the same `MUTATION_REPORT` unless production files changed again) — it verifies each finding (`RESUELTO` / `PERSISTE` / `REGRESIÓN`) and does not reopen the approved dimensions. A `REJECTED_MAJOR`, or a third round, is a full review again. **Exception — a test rewrite weaker than its rule** (Dimension 4 on a `test(supersede): … — loop …` or `test(red-fix)` commit, e.g. a mutation the rewritten test does not catch): the fix belongs to the **tdd-test-writer**, never the implementer. Lift exactly those files (`seal-cli.js supersede --slug <task-slug> --paths … [--shared-with-red]`), re-dispatch the writer in the same mode (`SUPERSEDE-HEAD` or `RED-FIX`) with the reviewer's finding verbatim, register the new commit like the first, re-run `red-lines` and the retroactive RED, then re-review. It counts toward the Iteration Cap — it is **not** a new supersession loop, and it asks nothing of the user.
 - `REJECTED_MAJOR` → either large fix needed (loop with fresh context) or architectural issue (escalate to user). With `CAUSE: spec_defect` the problem is the sealed spec, not the code: report `BLOCKED: spec <ID>` (the coordinator runs the correction loop) instead of re-dispatching the implementer.
 - **Tally every review's `STATUS` + `CAUSE`** (`none | implementation | spec_defect | architecture`): the `METRICS` block of your final report sums `review_rejections` minor/major and `spec_defect` per epic — a review without a parseable `CAUSE:` line is incomplete, ask the reviewer for it.
 
@@ -462,7 +478,7 @@ Before declaring the spec done:
 [Run linter / type-checker if conventions.md requires]
 ```
 
-**This is the one full run of the spec (v2.9.0).** The writer, the implementer and your own post-checks ran `test_scoped` over the files under work; the old tests of other epics meet this spec's production here, for the first time. Failures **outside this spec's RED tests and outside `BASELINE_FALLOS`**:
+**This is the one full run of the spec.** The writer, the implementer and your own post-checks ran `test_scoped` over the files under work; the old tests of other epics meet this spec's production here, for the first time. Failures **outside this spec's RED tests and outside `BASELINE_FALLOS`**:
 
 1. Re-run each failing test twice; a test that passes is a flake — note it in the report.
 2. Dispatch the `implementer` (or `ux-implementer`) **once** in **`MODE: REGRESIONES`** with the `REGRESIONES:` list (`<path>::<test> — <first failure line>`), the spec, `RULES_RESOLVED`, `BASELINE_FALLOS`, a `TEST_COMMAND` expanded over the failing files plus the spec's RED, and the same sealed-tests instruction — never the whole suite output. It classifies each one (`aserción` / `producción` are its regressions: production fixed, never the test; a test a rule of the spec makes false goes to `FAILURES:` citing the `BR-n`).
@@ -502,8 +518,8 @@ After all specs in the epic are APPROVED + verified:
 | Omitir el review porque "el implementer ya hizo self-review" | Self-review ≠ review independiente. Ambos son necesarios. |
 | Usar `git add -A` o `git commit --amend` durante un epic | `git add <paths explícitos>` y commits nuevos. Un `add -A` captura trabajo en vuelo de otro agente; un `--amend` puede reescribir el commit de un tercero. |
 | Restaurar un archivo con `git checkout -- <archivo>` después de mutarlo (p. ej. para comprobar que un test detecta el cambio) | `git checkout` restaura a HEAD, no al árbol previo: destruye arreglos sin commitear. Snapshot a scratch **antes** de mutar, restaurar desde el snapshot y verificar con `git hash-object`. Y commitear todo arreglo de producción antes de abrir un bucle de mutación. |
-| Sondear un despacho en curso ("sigo esperando", `sleep 90; echo tick`, `until grep -q DONE …; do sleep 20; done`) o ponerse un reloj (`sleep 3060; date`) | Esperá el resultado: llamada al Agent en primer plano, o la notificación / `Monitor` de un background. Cada turno de espera relee todo tu contexto y, pasados 5 minutos, reescribe la caché entera. Ningún despacho tiene límite de tiempo. Con hooks, el Wait Guard deniega el `sleep` (v2.9.0). |
-| Correr la suite completa en cada paso (writer, implementer, post-checks) | Solo dos corridas completas por spec: la línea base (Step 3.9) y el Step 7. Todo lo demás corre `test_scoped` sobre los archivos en obra; `sin definir` se reporta como SKIPPED y se corre lo más acotado que ofrezca el runner, nunca la suite (v2.9.0). |
+| Sondear un despacho en curso ("sigo esperando", `sleep 90; echo tick`, `until grep -q DONE …; do sleep 20; done`) o ponerse un reloj (`sleep 3060; date`) | Esperá el resultado: llamada al Agent en primer plano, o la notificación / `Monitor` de un background. Cada turno de espera relee todo tu contexto y, pasados 5 minutos, reescribe la caché entera. Ningún despacho tiene límite de tiempo. Con hooks, el Wait Guard deniega el `sleep`. |
+| Correr la suite completa en cada paso (writer, implementer, post-checks) | Solo dos corridas completas por spec: la línea base (Step 3.9) y el Step 7. Todo lo demás corre `test_scoped` sobre los archivos en obra; `sin definir` se reporta como SKIPPED y se corre lo más acotado que ofrezca el runner, nunca la suite. |
 | Despachar dos agentes que escriban al mismo checkout | Uno a la vez. La concurrencia de Step 6 es válida solo porque linter y type-checker no escriben, y el reviewer escribe únicamente su archivo en `docs/07-reviews/`. |
 
 > Comportamiento observable con hooks/Context7 activos: ver `docs/native-integration-guide.md` ("Comportamiento observable por skill").

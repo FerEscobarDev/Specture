@@ -69,7 +69,7 @@ Check whether `docs/04-roadmap/ROADMAP.md` exists.
 
 Read **only the `frontend.framework` field** of `.specture/stack.yml` (not the whole file). If it is set and not `none`/`null`:
 
-Check whether **both** `docs/03-ux-ui/navigation_map.md` **and** `docs/03-ux-ui/design_system.md` exist (both are universal deliverables since v1.6.0).
+Check whether **both** `docs/03-ux-ui/navigation_map.md` **and** `docs/03-ux-ui/design_system.md` exist (both are universal deliverables).
 
 - **Either missing** → invoke `./skills/ux-design/SKILL.md`. Stop.
 - **Both present (or no frontend)** → continue to Step 5.

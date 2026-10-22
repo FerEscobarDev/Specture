@@ -13,7 +13,7 @@ Two modes:
 |---|---|---|
 | `milestone <N>` | `build` Step 8.7 when a milestone closes (unattended), or on demand to re-run | nobody when called from `build`; on demand it continues straight into `triage` |
 | `triage [<report>]` | `build` queue step 6 when the queue drains, `start` when a report is pending, or on demand | this skill — the only point where the user decides |
-| `pr <número\|url>` · `rama <rama> [--base <rama>]` | on demand (v2.5.0): a GitHub or Azure DevOps pull request, or a local branch against its base | nobody — it leaves a report to read; no triage, no correction, nothing committed, nothing posted |
+| `pr <número\|url>` · `rama <rama> [--base <rama>]` | on demand: a GitHub or Azure DevOps pull request, or a local branch against its base | nobody — it leaves a report to read; no triage, no correction, nothing committed, nothing posted |
 
 The mechanical half lives in `hooks/lib/compliance.js` (range, lint, assemble, triage, correction, status, record); the grammars of the part and the report are in `templates/COMPLIANCE_REPORT_TEMPLATE.md`. You never write the report by hand.
 
@@ -36,7 +36,7 @@ The mechanical half lives in `hooks/lib/compliance.js` (range, lint, assemble, t
 - `docs/04-roadmap/ROADMAP.md`, `docs/05-specs/<epic>/_planning.md` (`LOCK_SHA`), `docs/02-architecture/architecture.md` ("Carpeta raíz") — read by `compliance.js range`, not by you.
 - `docs/07-reviews/review-<epic-slug>-*.md` of the milestone's epics — the `IMPORTANT`/`NIT` findings their `APPROVED` reviews accepted (`ACCEPTED_FINDINGS`).
 - `templates/COMPLIANCE_REPORT_TEMPLATE.md` — the grammars.
-- `pr` / `rama` (v2.5.0): `hooks/lib/pr.js`, read through `compliance.js range` — the GitHub CLI (`gh`, signed in with `gh auth login`) or the Azure CLI (`az` with the `azure-devops` extension, `az login`), used **read-only**; `conventions.md` §13 `W-4` for the default base of `rama`.
+- `pr` / `rama`: `hooks/lib/pr.js`, read through `compliance.js range` — the GitHub CLI (`gh`, signed in with `gh auth login`) or the Azure CLI (`az` with the `azure-devops` extension, `az login`), used **read-only**; `conventions.md` §13 `W-4` for the default base of `rama`.
 
 ## Cross-Platform Subagent Initialization
 
@@ -55,7 +55,7 @@ If the session exposes `define_subagent` (Antigravity CLI), register `compliance
 3. **Review, one chunk at a time.** For each chunk of `range.json`:
    - `rules-resolve.js --project . --all` → `RULES_RESOLVED`.
    - `review-rules-resolve.js --project . --paths-file .specture/state/compliance/<id>/<chunk>.files` → `CUSTOM_RULES` (exit 1 → stub with the resolver's message).
-   - **`LINT_REPORT`** (v2.8.0): run `stack.yml` → `quality.commands` `lint` and `format_check` with `{files}` = the chunk's files (in `pr` / `rama`, from `FILES_ROOT`), in background while you prepare the dispatch; their combined output (tail, ≤ 120 lines each) is the block. A slot `sin definir` / `none` → `LINT_REPORT: (none — <slot> sin definir)`. Never fix what they report: this review only suggests comments.
+   - **`LINT_REPORT`**: run `stack.yml` → `quality.commands` `lint` and `format_check` with `{files}` = the chunk's files (in `pr` / `rama`, from `FILES_ROOT`), in background while you prepare the dispatch; their combined output (tail, ≤ 120 lines each) is the block. A slot `sin definir` / `none` → `LINT_REPORT: (none — <slot> sin definir)`. Never fix what they report: this review only suggests comments.
    - Dispatch **`compliance-reviewer`** with `MODE: REVIEW`, `ID`, `CHUNK` + label, `HEAD`, `FILES`, `DIFF_FILE` (`<chunk>.diff`), `COMMITS_FILE` (`commits.txt`), `RULES_RESOLVED`, the content of `conventions.md`, the relevant Accepted ADRs, `CUSTOM_RULES`, `ACCEPTED_FINDINGS`, `LINT_REPORT` and `PART_FILE` = `.specture/state/compliance/<id>/part-<chunk>.md`.
    - After it returns: `git status --porcelain` — any tracked change → stop and escalate (Iron Rule 5).
 4. **Lint, then assemble.**
@@ -92,7 +92,7 @@ If the session exposes `define_subagent` (Antigravity CLI), register `compliance
 7. **Deferred.** Each `diferir` is a `dueño: sin epic` line under `## DIFERIDOS`: offer them once, together, as possible `/specture:new-feature` items (behaviour) or a follow-up refactor — never create anything without the user's yes.
 8. **Metrics.** `compliance.js record --report <report>` appends the `kind: "compliance"` line to `docs/.specture-meta/build-metrics.jsonl`; commit it with the report: `docs(cumplimiento): corrección milestone <N>` (or with the triage commit when nothing was corrected).
 
-## Modes `pr` and `rama` — a pull request or a branch (v2.5.0)
+## Modes `pr` and `rama` — a pull request or a branch
 
 The same review over code that may never have gone through the build: a teammate's pull request on GitHub or Azure DevOps, or a local branch before opening one. **Read-only on the platform, nothing committed, no triage, no correction** — the report is for the user to read and, if they want, copy the suggested comments.
 

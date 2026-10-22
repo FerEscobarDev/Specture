@@ -3,7 +3,7 @@
 > Desde v2.2.0 (la etapa de revisión, desde v2.3.0; el coordinador por epic, desde v2.7.0).
 > Responde a lo que más se pregunta cuando un epic tarda en arrancar, cuando la ejecución toca
 > tests de epics anteriores o cuando la tanda empieza por una sentada de decisiones. El detalle
-> técnico está en `skills/build/SKILL.md`, `skills/build/EPIC_COORDINATOR.md`,
+> técnico está en `skills/build/SKILL.md`, `skills/build/QUEUE.md`, `skills/build/PLANNING_GATE.md`, `skills/build/EPIC_COORDINATOR.md`,
 > `skills/build/EPIC_LOOP.md`, `skills/build/REVIEW_STAGE.md` y `docs/tdd-honesty-reference.md`;
 > la guía de la revisión, en [`docs/review-stage-guide.md`](review-stage-guide.md); la evidencia
 > que motivó los cambios, en `docs/spec-gate-convergence-design.md` y

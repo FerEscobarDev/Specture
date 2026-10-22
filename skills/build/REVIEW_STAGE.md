@@ -1,5 +1,16 @@
 # 04c — Review Stage (one sitting of decisions per batch, then execution without questions)
 
+## Contents
+
+| Section | When you need it |
+|---|---|
+| R0 — Open or resume | Start of the sitting |
+| R1 — Unattended preparation | No questions yet |
+| R2 — Round 1 · R3 — Rewrite and re-validate · R4 — Round 2 | The sitting itself |
+| R5 — Close | The register becomes `CERRADA` |
+| The announced mini-review (B2) | Regulatory epics |
+| What never happens · Metrics | Read once |
+
 Read **only by the coordinator** of `build`, when the queue step 4.5 opens a batch. The
 epic-agent never sees this file. Grammar of the register:
 `templates/BATCH_REVIEW_TEMPLATE.md`; parser and CLI: `hooks/lib/review.js`.
@@ -40,7 +51,7 @@ simulation.
 
 For each epic of `EPICS`, in order:
 
-1. **Code Surface Resolution** (the gate pre-flight of build/SKILL.md).
+1. **Code Surface Resolution** (the pre-flight of `build/PLANNING_GATE.md`).
 2. **Fresh `spec-planner` in `MODE: DRAFT`** — blind to code, as always: drafts with Objetivo,
    Contrato, BR/AC/EC with stable IDs and Fuera de Scope, **no Superficie**; an open doubt is
    written with its recommended option marked `sujeto a Q-n`, and its question goes to
@@ -100,7 +111,7 @@ For each epic of `EPICS`, in order:
 
 1. Fresh planner per epic (`MODE: DRAFT`, minimal edit) with the answers as `ANSWERS` and the
    register as the source of decisions (`fuente: revisión <id> A-n`).
-2. `spec-set-check --draft --batch` → validator in `MODE: DELTA` (`model: sonnet`, `effort: medium`, v2.8.0) over the diff, **plus `MODE:
+2. `spec-set-check --draft --batch` → validator in `MODE: DELTA` (`model: sonnet`, `effort: medium`) over the diff, **plus `MODE:
    REVIEW` for what the answers opened**: only questions **born of the answers** (derived) or
    **LATE** (an answer that contradicts an Accepted ADR, a BLOCKER rule or the contract) pass.
    The validator may read code again to verify the premises the answers created. An answer
@@ -141,7 +152,7 @@ register); then persist and commit the answers, a fresh planner in `MODE: REFRES
 `ANSWERS`, the real 4a and the validator in `MODE: DELTA`, and seal. A decision still open after
 that sitting parks the epic. It is the only planned contact during execution.
 
-Who does what (v2.7.0): the **epic coordinator** (`build/EPIC_COORDINATOR.md` Step 3) runs the
+Who does what: the **epic coordinator** (`build/EPIC_COORDINATOR.md` Step 3) runs the
 validator and, with new decisions, the planner in `MODE: QUESTIONS`, commits the refresh unsealed
 and returns `EPIC_REPORT: MINI_REVIEW` with the questions verbatim — it never asks. The **build
 coordinator** holds the sitting with the rules of R2, persists the answers and dispatches the
