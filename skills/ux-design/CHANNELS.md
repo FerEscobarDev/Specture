@@ -1,5 +1,15 @@
 # 03b — Design channels (how each level draws)
 
+## Contents
+
+| Section | When you need it |
+|---|---|
+| The capability probe | Before anything, at every level |
+| Level A — claude.ai/design | The design lives in the channel |
+| Level B — the native canvas | Pencil / local canvas |
+| Level C — no external tool | Text-only spine |
+| What is deliberately not a channel | Read once |
+
 Companion to `ux-design/SKILL.md`. The skill decides **what** gets produced and holds the gates; this file holds the mechanics of each level. The spine is identical in all three: **a channel decides who draws, never whether the system is good.** Everything that raises quality — the brand brief, the direction decision, the ADR, the three token layers, the contrast arithmetic, the inventory verification, the signature element, the human visual gate — is local, deterministic, and runs with no account and no network.
 
 > **Degradation rule, non-negotiable.** A user with zero access to any external tool loses **one step of one station**: the visual refinement round-trip. Nothing that fixes a generic design system may live behind an external capability.

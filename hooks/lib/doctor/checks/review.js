@@ -109,7 +109,7 @@ function parked(roadmapEpics, registers) {
     else if (!registers.some((r) => r.review.id === p.tanda || r.name === `${p.tanda}.md`)) reasons.push(`la línea \`**Aparcado:**\` nombra la tanda ${p.tanda}, que no tiene registro en ${REVIEWS_DIR}/`);
     if (reasons.length === 0) continue;
     const action = epic.state !== "pending"
-      ? "si la decisión ya se tomó, quitar la línea `**Aparcado:**`; si no, volver el epic a [ ] (build/SKILL.md «Parked epics»)"
+      ? "si la decisión ya se tomó, quitar la línea `**Aparcado:**`; si no, volver el epic a [ ] (build/QUEUE.md «Processing the EPIC_REPORT» → PARKED)"
       : "completar la línea con la tanda cuyo registro anota el aparcamiento (`## APARCADOS`), o quitarla si la decisión ya se tomó";
     out.push(finding("WARNING", "parked-orphan", ROADMAP, `epic ${epic.id}: ${reasons.join("; ")}`, action));
   }

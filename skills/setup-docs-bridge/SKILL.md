@@ -7,7 +7,7 @@ description: Use when the user has an existing project (mode Adopt) that already
 
 You are a **Documentation Architect** integrating preexisting team documentation into Specture without duplicating, displacing, or reformatting it.
 
-This skill is invoked from `skills/setup/SKILL.md` (mode Adopt, Step 8.5) when the project has ≥10 .md files in a documentation folder. It is also invokable standalone to **refresh** the index later when docs change.
+This skill is invoked from `skills/setup/MODE_ADOPT.md` (Step 8.5) when the project has ≥10 .md files in a documentation folder. It is also invokable standalone to **refresh** the index later when docs change.
 
 ## Iron Rules
 
@@ -22,7 +22,7 @@ This skill is invoked from `skills/setup/SKILL.md` (mode Adopt, Step 8.5) when t
 
 ## When to Activate
 
-Auto-invoked from `setup/SKILL.md` (Adopt) when one or more of these match:
+Auto-invoked from `setup/MODE_ADOPT.md` when one or more of these match:
 
 - `docs/`, `Documentation/`, `documentation/`, `documents/`, `wiki/` with ≥10 `.md` files.
 - `*.Docs/` (.NET convention: `SGD.Docs/`, `MyProject.Docs/`) with ≥10 `.md` files.
@@ -45,7 +45,7 @@ If `stack.yml` does not exist, route back to `skills/setup/SKILL.md` first. Do N
 
 ## Phase 1 — Detection Scan (standalone-only)
 
-> Skip this phase when invoked from `setup/SKILL.md` — the caller passes the detected path.
+> Skip this phase when invoked from `setup/MODE_ADOPT.md` — the caller passes the detected path.
 
 1. Glob for candidate folders matching the patterns above.
 2. For each candidate, count `.md` files (recursive).

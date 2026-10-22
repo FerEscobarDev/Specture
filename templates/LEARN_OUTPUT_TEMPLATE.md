@@ -78,7 +78,7 @@ Files in commit:
 
 ## Cross-references
 
-- Skill que disparó la captura: `[skills/build/SKILL.md Step 8.5 | skills/debug/SKILL.md Phase 4 Exit | manual | --teach]`
+- Skill que disparó la captura: `[skills/build/QUEUE.md Step 8.5 | skills/debug/SKILL.md Phase 4 Exit | manual | --teach]`
 - Próximas auditorías sugeridas:
   - `/specture:audit-knowledge` (revisa el estado general del índice)
   - Promoción de ADRs Proposed → Accepted (manual, requiere equipo)

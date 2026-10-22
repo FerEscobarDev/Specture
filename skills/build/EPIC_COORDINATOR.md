@@ -1,7 +1,20 @@
 # 04d — Epic Coordinator (one epic, from refresh to `[x]`, without asking)
 
+## Contents
+
+| Section | When you need it |
+|---|---|
+| Step 0 — Nesting check · Dispatch inputs | First thing |
+| Step 1 — Entry · Step 2 — Refresh & seal | `ENTRY: refresh | sealed` |
+| Step 3 — The announced mini-review | Regulatory epics only |
+| Step 4 — Dispatch the epic-agent (Evidence · Gate notes · Resume · Epic · Base context · Required final report) | The epic-agent prompt, block by block |
+| Step 5 — Process each epic-agent report | Supersession loop, correction loop, red-fix, DONE |
+| Step 6 — Metrics | The JSON line at the end of the run |
+| Step R — Resume from disk | `ENTRY: resume` |
+| The EPIC_REPORT · Anti-Patterns | What goes back to the build coordinator |
+
 Read by the **epic coordinator**: the subagent the build coordinator dispatches once per epic
-(Claude Code, v2.7.0). When nesting is unavailable — Copilot, Antigravity, or an
+(Claude Code). When nesting is unavailable — Copilot, Antigravity, or an
 `EPIC_REPORT: NESTING_UNAVAILABLE` — the build coordinator runs this same file **inline**, in its
 own chat, exactly as written. The epic-agent never sees it.
 
@@ -22,8 +35,8 @@ Iron rules:
   esperando", `sleep 90; echo tick`) and **never set yourself a clock** — a `sleep 3060; date` and a
   "cut at ~55 min" nobody defined cost a real epic ten dispatches of this file and 51 cache misses
   (Psikora HC-IHCE.14). No Specture dispatch has a time limit; each waiting turn re-reads your whole
-  context. With `hooks.enabled` the Wait Guard denies the `sleep` (v2.9.0).
-- **What you read**: this file; `build/SKILL.md` § "Spec Planning Gate" — the Code Surface
+  context. With `hooks.enabled` the Wait Guard denies the `sleep`.
+- **What you read**: this file; `build/PLANNING_GATE.md` — the Code Surface
   pre-flight and steps **2, 4, 4a, 5 and 7 only** (the queue, steps 3 and 6, the review stage and
   the Visual Approval Gate belong to the build coordinator, because they talk to the user);
   `build/REVIEW_STAGE.md` § "The announced mini-review" only; `build/EPIC_LOOP.md` only to run it
@@ -83,10 +96,10 @@ against the code as it is **now** (earlier epics of the batch changed it). In or
    `CHANGED` means the epic block or one of its RN moved since the sitting: answer
    `EPIC_REPORT: STOPPED — scope-changed` (the build coordinator runs a short review of this
    epic and dispatches you again). `MISSING`/`UNVERIFIABLE` → `STOPPED` with the line.
-2. Code Surface Resolution (`build/SKILL.md` gate pre-flight) → fresh `spec-planner` in
+2. Code Surface Resolution (`build/PLANNING_GATE.md` pre-flight) → fresh `spec-planner` in
    `MODE: REFRESH` with the drafts, the register and `CODE_SURFACE`. Stage and fingerprint after
    every pass (gate step 2).
-3. Gate step 4a (**real**, not `--draft`) → validator per gate step 5, in `MODE: DELTA` (`model: sonnet`, `effort: medium`, v2.8.0) against
+3. Gate step 4a (**real**, not `--draft`) → validator per gate step 5, in `MODE: DELTA` (`model: sonnet`, `effort: medium`) against
    the review's verdicts (an epic reviewed as a draft is revalidated only on what the refresh
    changed). A finding that an answer of the register already settles is a `VIOLATION` citing
    that `A-n`, never a question. Route every WARNING/NOTE with the closed table of gate step 5.
@@ -193,7 +206,7 @@ METRICS (mandatory — the coordinator appends them to build-metrics.jsonl):
   review_rejections: minor N / major N (spec_defect N — from the reviewer's CAUSE:) ·
   supersessions: N · supersede_tests: N · exec_blocked_compile: N ·
   exec_blocked_runtime: N · baseline_failures: N · firma re-read: N verified / M corrected ·
-  red_check_failures: N (RED-CHECK FAILs that re-dispatched the writer, v2.8.0) ·
+  red_check_failures: N (RED-CHECK FAILs that re-dispatched the writer) ·
   effort: test_writer <level> / implementer <level> / reviewer <level> (as dispatched)
 SUPERSESSIONS: <none | one line per declared test: <path>::<test> → <SUPERSEDE_SHA>>
 If DONE: update ROADMAP.md to [x] for this epic and commit BEFORE reporting.
@@ -231,7 +244,7 @@ Step 5 with your own result as the report. Record `coordinator_mode: subagent` a
   no `unseal-spec`, no question. At most **one loop per spec and per layer**; a second report for
   the same spec and layer → `EPIC_REPORT: STOPPED — loop repetido`. A rewrite the code-reviewer
   asks for is **not** a new loop (the epic-agent sends it back to the test-writer itself).
-  1. **Judge first, with data.** A fresh `architecture-validator` in `MODE: J9` (dispatched with `model: sonnet`, `effort: medium` — a bounded judgement over named tests, v2.8.0) with the spec,
+  1. **Judge first, with data.** A fresh `architecture-validator` in `MODE: J9` (dispatched with `model: sonnet`, `effort: medium` — a bounded judgement over named tests) with the spec,
      the epic block, `RULES_RESOLVED`, the last `MECH_CHECK:` line of `_planning.md` and the
      report's `FAILURES:` lines verbatim. The `SÍ` tests go on; `NO`/`INDETERMINABLE` become
      **regressions** for the implementer (step 8). **Write the J9 verdict to `## VEREDICTOS`
@@ -263,7 +276,7 @@ Step 5 with your own result as the report. Record `coordinator_mode: subagent` a
      then `seal-cli.js lift-spec --slug <task-slug>`.
   2. A **fresh** `spec-planner` with `ALCANCE: [<task-slug>]` and `VIOLATIONS` naming the
      affected ID (minimal edit; its `CHANGELOG` is contrasted against `git diff`).
-  3. Gate step 4a and, on `PASS`, `MODE: DELTA` re-validation (validator dispatched with `model: sonnet`, `effort: medium` — it judges a diff, not a design; v2.8.0): the `SPEC_SET` dispatch again only
+  3. Gate step 4a and, on `PASS`, `MODE: DELTA` re-validation (validator dispatched with `model: sonnet`, `effort: medium` — it judges a diff, not a design): the `SPEC_SET` dispatch again only
      if the `CHANGELOG` touched `COVERAGE_TABLE`, `RESOLVED_ALONE`, a "Fuera de Scope" or a
      Superficie; then the per-spec dispatch of the corrected spec. A finding that needs a human
      decision (not settled by the register or the sources) → regulatory epic:
@@ -294,7 +307,7 @@ seal-diff | protected | loop repetido | entorno | debug | insufficient context |
 — never after an intermediate `BLOCKED: supersesiones`, never for `VISUAL_PENDING` (Step 5),
 `NESTING_UNAVAILABLE` or a `STOPPED` that only waits for an answer (`scope-changed`, `gate`,
 `decisión`, `reanudación`: the run continues after it) — append **one JSON line** to
-`docs/.specture-meta/build-metrics.jsonl` with the fields of `build/SKILL.md` § "Metrics" (gate
+`docs/.specture-meta/build-metrics.jsonl` with the fields of `build/QUEUE.md` § "Metrics" (gate
 counters: yours for a refresh, the dispatch's `GATE_METRICS` for `ENTRY: sealed`;
 `gate_human_contacts` = the dispatch's `HUMAN_CONTACTS`; the report's `METRICS` values) plus
 `coordinator_mode: "subagent"` (`"inline"` when the build coordinator runs this file itself),
@@ -357,7 +370,7 @@ Never paste whole verdicts, diffs or logs: the evidence stays on disk and you na
   `.specture/state/build-locked.json` (`seal-cli.js` is the only writer).
 - Resuming the planner with `SendMessage` (always a fresh dispatch per pass); re-planning because
   of a WARNING or a NOTE of an APPROVED verdict; invoking `skills/debug`.
-- Reading the review stage R0-R5 or the queue section of `build/SKILL.md`, or touching another
+- Reading the review stage R0-R5 or `build/QUEUE.md`, or touching another
   epic's checkbox.
 - An `EPIC_REPORT` longer than 40 lines, or one that pastes verdicts and diffs.
 - `git add -A`, `git commit --amend`, `git checkout -- <archivo>` after a mutation, or two writing
