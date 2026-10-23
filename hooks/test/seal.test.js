@@ -179,3 +179,19 @@ test("readSeal (v2.2): an older v3 seal without the new fields reads exactly as 
   assert.deepEqual(v1.lifted_spec_paths, []);
   assert.equal(v1.supersede_for, null);
 });
+
+test("readSeal (v3.2): phase and phase_at read as written; absent or unknown phase reads null and never arms the guard", () => {
+  const withPhase = seal.readSeal(projectWith({ ...V3, phase: "green", phase_at: "2026-10-22T10:00:00Z" }));
+  assert.equal(withPhase.phase, "green");
+  assert.equal(withPhase.phase_at, "2026-10-22T10:00:00Z");
+  assert.deepEqual(seal.PHASES, ["baseline", "red", "green", "verify", "mutation"]);
+  assert.deepEqual(seal.SUITE_PHASES, ["baseline", "verify"]);
+
+  const without = seal.readSeal(projectWith(V3));
+  assert.equal(without.phase, null);
+  assert.equal(without.phase_at, null);
+
+  const garbage = seal.readSeal(projectWith({ ...V3, phase: "review", phase_at: 42 }));
+  assert.equal(garbage.phase, null, "an unknown phase reads null");
+  assert.equal(garbage.phase_at, null);
+});

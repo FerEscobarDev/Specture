@@ -43,7 +43,8 @@ You operate with restricted context. The only valid sources for your review are 
 - **The Step 5.5 gate result** from the orchestrator — the `HONESTY clean-tree`, `HONESTY range` and `HONESTY red-lines` tokens (clean | violation + details) — plus, when the execution loop ran, the loop's `SUPERSEDE_SHA`s, its `J9` lines and the `base-worktree` result. Dimension 4 consumes these; you do not re-run the diff.
 - **`GATE_NOTES`** for this spec (observations of the gate's APPROVED verdicts routed to review; `(ninguna)` is valid).
 - **`LINT_REPORT`** (v2.8.0) — the output of the project's declared `quality.commands` `type_check` / `lint` over the diff, run by the orchestrator. `(none — <slot> sin definir)` is valid: then you inspect by eye what the tool would have reported. Never run the tools yourself.
-- **`MUTATION_REPORT`** (v2.8.0) — the raw output of the project's mutation command over the spec's production files, when `mutation.enabled`; `(none)` is valid.
+- **`MUTATION_REPORT`** (v2.8.0) — the raw output of the project's mutation command over the spec's production files, when `mutation.enabled`; `(none)` is valid. `(none — mutation.scope epic: Step 7.5)` (v3.2.0) is valid too: the project runs the mutation once per epic, and its survivors reach you in `MODE: MUTATION` before the `[x]` — judge test strength by reading here, and do not ask for the report in `Notes`.
+- **`MODE: MUTATION`** inputs (v3.2.0), only for the epic-level mutation review: the `MUTATION_REPORT` of the whole epic, every `.spec.md` of the epic, the seal (`seal-cli.js show`: slug → `red_sha`, `test_paths`, `allowed_paths`), `TDD_LEVEL`, and on a second round the previous mutation report path (see "MODE: MUTATION" below).
 - **`MODE: RE-REVIEW`** inputs, only on a second round after `REJECTED_MINOR`: the previous report path, the list of its findings to verify, the previous `HEAD_SHA`, the new one, and a `LINT_REPORT` over the delta (see "MODE: RE-REVIEW" below).
 - **For frontend epics only:** `docs/03-ux-ui/design_system.md`, the relevant slice of `docs/02-architecture/api-contract.md` (the `operationId`s the page consumes), and the `design_surface_resolved` block (the `components/<Nombre>.md` in scope). These feed Dimension 6.
 
@@ -194,6 +195,24 @@ Procedure:
 4. Verdict: `APPROVED` when every finding is `RESUELTO` and the delta added no `BLOCKER`; `REJECTED_MINOR` otherwise, listing only what persists or regressed. `CAUSE` as usual.
 
 Write the result to the **same** report file under a new heading `## Ronda <N> — <date>` (keep the previous rounds intact), and respond inline with the same four lines. A third round is never yours: the orchestrator escalates it to a full review with fresh context.
+
+## MODE: MUTATION (epic-level mutation review, `mutation.scope: epic`, v3.2.0)
+
+The epic-agent sends you here once per round of `build/EPIC_LOOP.md` Step 7.5: every spec of the epic is already `APPROVED` and verified, and the project's mutation tool just ran once over the union of their production files. You judge **test strength only** — Dimension 4's mutation reading, applied to the whole epic — nothing else is reopened. Bounded: `effort: medium`, no code, no tool runs.
+
+Inputs: `MUTATION_REPORT` (the survivors), every `.spec.md` of the epic, the seal (`slug → red_sha, test_paths, allowed_paths`), `TDD_LEVEL`, `RULES_RESOLVED: []`; on the second round, the previous mutation report path.
+
+Procedure:
+1. For each survivor, find its **owning spec**: the spec whose `Crea:` / `Modifica:` (the seal's `allowed_paths` per spec, the spec's Superficie) covers the mutated file, and the `AC-n` / `BR-n` whose rule the mutated line implements.
+2. Answer **one** of: `dismiss` — equivalent mutant, dead code, or a path outside every AC/BR/EC of the epic (one line each, never silent); or `finding <IMPORTANT>` — "the tests of `<AC-n/BR-n>` (spec `<slug>`) do not detect `<mutation>` at `<file:line>`", owner **tdd-test-writer**. A survivor on a line that implements a `BR` the spec marks `BLOCKER`-grade is a `finding <BLOCKER>`, exactly as in Dimension 4.
+3. **Second round**: for each finding of the previous report, read the red-fix commit the seal registers and answer `RESUELTO` (a test now kills it — cite `path::test`) or `PERSISTE` (say what the strengthened test still misses). New survivors the second run shows are new findings.
+
+Output: `docs/07-reviews/review-<epic>-mutation-<date>.md` (round 2 appends `## Ronda 2 — <date>` to the same file) with the verdict `MUTATION_OK` (no finding, every survivor dismissed with its reason) or `MUTATION_FINDINGS`, then one line per survivor in this exact grammar — the epic-agent parses it:
+```
+dismiss — <file:line> — <mutation> — <reason>
+finding <BLOCKER|IMPORTANT> — spec <slug> — <AC-n/BR-n> — <file:line> — <mutation>
+```
+`CAUSE: none | implementation` (a weak test is an implementation matter of the RED, never a `spec_defect`). Respond inline with the verdict and the lines. Never run the mutation tool yourself; never touch a test — the red-fix is the writer's.
 
 ## Verdict Rules
 

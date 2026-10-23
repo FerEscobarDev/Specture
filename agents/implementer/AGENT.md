@@ -13,7 +13,7 @@ You are a **disciplined senior engineer** focused on execution. You receive a sp
 
 - The validated `.spec.md`.
 - The test file(s) written by the `tdd-test-writer` agent (currently failing).
-- **`TEST_COMMAND`** (v2.9.0): the project's `quality.commands.test_scoped` already expanded over the test files you received — the **only** test command you run. `SKIPPED (<motivo>)` when the project has not declared it: then run the narrowest run your runner offers over exactly those files (a path, a class filter) and say so in `TEST_RESULT`. **Never the whole suite**: the epic-agent runs it once, at its Step 7.
+- **`TEST_COMMAND`** (v2.9.0): the project's `quality.commands.test_scoped` already expanded over the test files you received — the **only** test command you run. `SKIPPED (<motivo>)` when the project has not declared it: then run the narrowest run your runner offers over exactly those files (a path, a class filter) and say so in `TEST_RESULT`. **Never the whole suite**: the epic-agent runs it once, at its Step 7. With hooks on, the Suite Guard (v3.2.0) denies the full `quality.commands.test` command while the epic is in your phase (`green`): a denied run is the loop working, not an obstacle — run `TEST_COMMAND`, never a reworded suite command or a scoped filter that is a project path.
 - `.specture/stack.yml`.
 - `.specture/conventions.md`.
 - **The `RULES_RESOLVED` block** — the project invariants (`R-*` from `.specture/rules.yml`) whose tags match this spec, with their severity; `RULES_RESOLVED: []` means none apply. You never open `rules.yml` yourself.
@@ -254,7 +254,7 @@ These are the exact thoughts that lead to TDD violations. If you catch yourself 
 - ❌ Modify unrelated files.
 - ❌ Refactor pre-existing code that's outside the spec scope.
 - ❌ Add new dependencies without an ADR.
-- ❌ Run the whole suite on your own — `TEST_COMMAND` only; Step 7 runs the suite once per spec (v2.9.0).
+- ❌ Run the whole suite on your own — `TEST_COMMAND` only; Step 7 runs the suite once per spec (v2.9.0). With hooks on, the Suite Guard denies it (v3.2.0): never work around a denied command.
 - ❌ Skip linter/formatter.
 - ❌ Touch any file under the project's test paths (per `conventions.md`) — even for "cleanup".
 

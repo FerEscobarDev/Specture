@@ -305,7 +305,7 @@ test("1.15-schema-version records the plugin version when nothing is pending, el
   const m = byId["1.15-schema-version"];
   const clean = makeProject({
     ".specture/stack.yml": STACK,
-    ".specture/settings.yml": "profile: custom\nhooks.enabled: true\ntdd.level: strict\n",
+    ".specture/settings.yml": "profile: custom\nhooks.enabled: true\nmutation.scope: spec\ntdd.level: strict\n",
     ".specture/conventions.md": "## 12. Invariantes\n\n## 13. Workflow\n",
     ".specture/rules.yml": TEMPLATE_RULES,   // the template ships the `framework-core` rules: nothing pending
     ".gitignore": ".specture/state/\ndocs/.specture-meta/*\n!docs/.specture-meta/build-metrics.jsonl\n!docs/.specture-meta/design-metrics.jsonl\ndocs/07-reviews/review-*.md\ndocs/07-reviews/cumplimiento-pr-*.md\ndocs/07-reviews/cumplimiento-rama-*.md\ndocs/06-debug-logs/\n"
@@ -441,4 +441,19 @@ test("3.1-tdd-level adds tdd.level: strict after mutation.enabled, once; n/a wit
   assert.equal(byId["3.1-tdd-level"].detect(contextFor(makeProject({ ".specture/stack.yml": STACK }))), "n/a");
   const already = makeProject({ ".specture/stack.yml": STACK, ".specture/settings.yml": "profile: custom\ntdd.level: none\n" });
   assert.equal(byId["3.1-tdd-level"].detect(contextFor(already)), "done", "an explicit level is never overwritten");
+});
+
+// v3.2.0 — mutation.scope knob made visible in settings.yml; the default keeps the run per spec.
+test("3.2-mutation-scope adds mutation.scope: spec after mutation.enabled (else after tdd.level), once; n/a without settings.yml; an explicit value is never overwritten", () => {
+  mechanicalLifecycle("3.2-mutation-scope", { ".specture/stack.yml": STACK, ".specture/settings.yml": "schema_version: 3.1.0\nprofile: custom\nhooks.enabled: true\nmutation.enabled: false\ntdd.level: strict\n" }, (root) => {
+    const text = fs.readFileSync(path.join(root, ".specture", "settings.yml"), "utf8");
+    assert.match(text, /^mutation\.enabled: false\nmutation\.scope: spec[^\n]*\ntdd\.level: strict/m);
+    assert.equal((text.match(/^mutation\.scope:/gm) || []).length, 1);
+  });
+  mechanicalLifecycle("3.2-mutation-scope", { ".specture/stack.yml": STACK, ".specture/settings.yml": "profile: custom\ntdd.level: strict\n" }, (root) => {
+    assert.match(fs.readFileSync(path.join(root, ".specture", "settings.yml"), "utf8"), /^tdd\.level: strict\nmutation\.scope: spec/m, "without mutation.enabled it goes after tdd.level");
+  });
+  assert.equal(byId["3.2-mutation-scope"].detect(contextFor(makeProject({ ".specture/stack.yml": STACK }))), "n/a");
+  const already = makeProject({ ".specture/stack.yml": STACK, ".specture/settings.yml": "profile: custom\nmutation.scope: epic\n" });
+  assert.equal(byId["3.2-mutation-scope"].detect(contextFor(already)), "done", "an explicit scope is never overwritten");
 });

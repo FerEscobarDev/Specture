@@ -207,7 +207,7 @@ the levels **actually dispatched**: the agent's frontmatter unless the dispatch 
 `medium` for `MODE: DELTA`, `RED-FIX`, `RE-REVIEW`; `null` only when unknown) — plus the
 epic-agent report's `METRICS` values (`needs_context_spec`, `iteration_cap_spec`, `blocked_spec`,
 `reviewer_rejected_major_spec_defect`, `review_rejections`, `supersessions`, `supersede_tests`,
-`exec_blocked_compile`, `exec_blocked_runtime`, `baseline_failures`, `red_check_failures`), `specs`, `outcome`
+`exec_blocked_compile`, `exec_blocked_runtime`, `baseline_failures`, `red_check_failures`, and — v3.2.0 — `full_suite_runs`, `full_suite_minutes` (the epic's full-suite runs and their minutes, from `quality.js runs summary --since <LOCK_SHA>`; `knowledge stats` flags a suite over 10 min per run as the project's work to parallelise) and `mutation_runs`), `specs`, `outcome`
 (`DONE` | `BLOCKED` | `REJECTED_MAJOR` | `ESCALATED` | `PARKED`),
 `source: "gate"`, `plugin`, `batch_id` (an epic of a review register), `parked` (`0`|`1`),
 `coordinator_mode` (`subagent` | `inline`), `tdd_level` (`strict` | `essential` | `none` — the level the epic ran under, frozen at its opening), `epic_coordinator_dispatches`, `ts` (ISO-8601 **with

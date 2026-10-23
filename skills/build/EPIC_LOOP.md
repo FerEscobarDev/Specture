@@ -9,12 +9,13 @@
 | Frontend Epics — execution | The spec is a design-system or page epic |
 | Dispatch Manifest | Before Step 4 and Step 5 — what every worker dispatch must carry |
 | Resolvers (Docs Index · Design Surface · Rules · Custom Rules) | Assembling a manifest |
-| Step 3.9 — Failure baseline | Once per epic, before the first RED |
+| Step 3.9 — Failure baseline | Once per epic, before the first RED — reused from the previous epic's Step 7 log when the code tree is unchanged |
 | Step 4 — Write Tests (RED) | Writer dispatch, post-checks, `red-check`, the seal |
 | Step 5 — Implement (GREEN) · 5.2 supersede · 5.3 red-fix | Implementer dispatch and the two resume points |
-| Step 5.5 — TDD Honesty Gate | `honesty-check` before the review |
-| Step 6 — Code Review | Reviewer dispatch, RE-REVIEW, Iteration Cap |
-| Step 7 — Verification · Step 8 — Mark complete | Full suite once, then `[x]` and release |
+| Step 5.5 — TDD Honesty Gate | `honesty-check` before the review; phase `verify` |
+| Step 6 — Code Review | Tools + the full suite in background, reviewer dispatch, RE-REVIEW, Iteration Cap |
+| Step 7 — Verification · Step 7.5 — Epic mutation · Step 8 — Mark complete | The one full run, read from its log; mutation per epic (`mutation.scope: epic`); then `[x]` and release |
+| Phases and the Suite Guard | Which `seal-cli.js phase` you set at each step and why the hook denies the suite out of phase |
 | Anti-Patterns | Read once |
 
 You are the **epic-agent** for exactly ONE epic of a Specture project. The coordinator — the
@@ -84,6 +85,10 @@ The dispatch prompt carries `TDD_LEVEL: strict | essential | none` — the proje
 (`.specture/settings.yml`), frozen by the epic coordinator in `_planning.md` when it opened the
 epic. You never read `settings.yml` yourself: a value changed mid-epic applies to the next epic.
 Everything below is written for `strict`. The other two levels change exactly this:
+
+> **`mutation.scope`** (v3.2.0) is the one setting you DO read yourself, at Step 6, exactly like
+> `mutation.enabled`: `spec` (default) runs the mutation command once per spec in Step 6; `epic`
+> runs it once per epic in Step 7.5. It only moves *when* the mutation runs under `strict`.
 
 **`essential`** — the same loop with fewer tests. The writer's ceiling is one test per `AC-n`
 (no `test+/test-` per BR, no test per EC unless the spec declares a guard); `red-check` runs with
@@ -291,13 +296,37 @@ It prints the block — `CUSTOM_RULES: …` + severities, flexible paths, preced
 
 ## Step 3.9 — Failure baseline (once per epic, before the first RED — skipped under `TDD_LEVEL: none`, where Step 7 takes it)
 
-Run the **full** test suite once — `quality.commands.test` (`node "${CLAUDE_PLUGIN_ROOT}/hooks/lib/quality.js" expand test`; `sin definir` → the suite command `conventions.md` names) — before any RED commit of the epic. **This and Step 7 are the only two full runs per spec**: everything in between runs `test_scoped` over the files under work. Re-run each failing
-test twice; the ones that still fail are the epic's **`BASELINE_FALLOS`** — they failed
-before this epic touched anything. Write them to `## BASELINE_FALLOS` of `_planning.md`
-(`- <path>::<test> — <first line of the failure> — <ISO-8601>`, or `- (ninguno)`), pass them
-to every implementer dispatch and include them in your report. They are excluded from every
-classification below and never block the `[x]` — but they are reported, never hidden. A
-suite that cannot run at all is `BLOCKED: entorno`.
+The baseline is the full suite's result on the tree **before this epic touched anything**. The
+previous epic's Step 7 ran that very suite on that very tree, so first try to **reuse** it:
+
+1. **Reuse first.** If the dispatch carries `BASELINE_LOG: <path>` (the coordinator ran
+   `quality.js runs reusable` and found a complete `test` log, taken on a clean tree, whose
+   commit equals HEAD outside `docs/` and `.specture/`, with a recorded `.failures` sidecar) —
+   or `node "${CLAUDE_PLUGIN_ROOT}/hooks/lib/quality.js" runs reusable` prints `REUSABLE …`
+   now — copy its failure lines to `## BASELINE_FALLOS` of `_planning.md`, each with the suffix
+   `— reutilizado de <log>` (or `- (ninguno)` when it recorded none), run
+   `node "${CLAUDE_PLUGIN_ROOT}/hooks/lib/seal-cli.js" phase --set red`, say
+   `BASELINE: reutilizada <log>` in your report and go to Step 4. Nothing is lost: the list is
+   already de-flaked (Step 7 re-ran every failure twice before recording it).
+2. **Fresh baseline** (`NONE <motivo>`): `seal-cli.js phase --set baseline`, then run the
+   **full** suite once — `node "${CLAUDE_PLUGIN_ROOT}/hooks/lib/quality.js" run test --log`
+   (`Bash` with `run_in_background: true`; a suite has no time budget — wait for the
+   notification, never poll). `sin definir` → the suite command `conventions.md` names, with
+   `--log` unavailable: say so once in `GATE_NOTES`. Read the summary line; on a non-zero exit
+   **grep the log** the line names for the failing tests (your runner's own markers — never a
+   `tail`, never a second run to see them again). Re-run each failing test twice with
+   `test_scoped` over its file; the ones that still fail are the epic's **`BASELINE_FALLOS`**.
+   Record them on the log — `quality.js runs record-failures --log <path> --from-file <lista>`
+   (lines `- <path>::<test> — <first line of the failure> — <ISO-8601>`) or `--none` — so the
+   next epic can reuse this run; write the same lines to `## BASELINE_FALLOS` of
+   `_planning.md`; then `seal-cli.js phase --set red`.
+
+**This and Step 7 are the only two full runs per spec** — and with a reused baseline, Step 7's is
+the only one: everything in between runs `test_scoped` over the files under work (with hooks on,
+the Suite Guard denies the full command outside the phases `baseline` and `verify`). Pass
+`BASELINE_FALLOS` to every implementer dispatch and include them in your report. They are
+excluded from every classification below and never block the `[x]` — but they are reported, never
+hidden. A suite that cannot run at all is `BLOCKED: entorno`.
 
 ## Step 4 — Write Tests (TDD RED phase — skipped under `TDD_LEVEL: none`)
 
@@ -358,7 +387,7 @@ Dispatch the `implementer` agent (`agents/implementer/AGENT.md`).
 
 > **Frontend epics:** dispatch `agents/ux-implementer/AGENT.md` instead, and follow "Frontend Epics — Design-System-First + Visual Approval Gate" above. The design-system epic adds the visual approval gate; page epics consume the typed API client generated from the contract. Everything else in this step (manifest, sealed tests, separate commits, status protocol) applies identically.
 
-**First assemble the Dispatch Manifest** (see "Dispatch Manifest" section above). Do not dispatch until every implementer item is checked.
+**First assemble the Dispatch Manifest** (see "Dispatch Manifest" section above). Do not dispatch until every implementer item is checked. Then `node "${CLAUDE_PLUGIN_ROOT}/hooks/lib/seal-cli.js" phase --set green`: from here until Step 5.5 passes, the full suite is denied by the Suite Guard (hooks on) — the implementer runs `TEST_COMMAND` and nothing wider. The same `phase --set green` precedes every implementer re-dispatch (a `REJECTED_MINOR` fix, `MODE: REGRESIONES`).
 
 **Context to pass**:
 - `TDD_LEVEL`. Under `none`: `MODE: SIN_TESTS`, `TESTS: none (TDD_LEVEL none)`, `TEST_COMMAND: SKIPPED (tdd.level none)`, `RED_SHA: <LOCK_SHA>` — and nothing of the two test bullets below.
@@ -426,7 +455,7 @@ node "${CLAUDE_PLUGIN_ROOT}/hooks/lib/honesty-check.js" red-lines --slug <task-s
 
 `range` is an **allowlist**: every commit in `<red_sha_orig>..HEAD` that touches the test globs must be a SHA registered in `## SUPERSESIONES` (a loop supersession or a `red-fix`) and touch only the paths registered with it, and `supersede_paths` must be empty. `red_sha_orig` is the spec's first RED — it never moves.
 
-- **Three `PASS`** → ✅ Proceed to Step 6.
+- **Three `PASS`** → ✅ `node "${CLAUDE_PLUGIN_ROOT}/hooks/lib/seal-cli.js" phase --set verify` and record `VERIFY_SHA = git rev-parse HEAD` (the tree is clean: `clean-tree` just passed). Everything in Step 6 and Step 7 runs against this SHA. Proceed to Step 6.
 - **Any `FAIL`** → ❌ TDD violation. Do NOT proceed to review. You **MUST** read `$SPECTURE_ROOT/docs/tdd-honesty-reference.md` (from the plugin: `${CLAUDE_PLUGIN_ROOT}/docs/tdd-honesty-reference.md` — **never** a `docs/tdd-honesty-*.md` of the project's own cwd) and follow its classification + recovery procedure (it also covers the hook-active vs hook-inactive interpretation). Include the failing token, its lines and the `git diff <RED_SHA>..<HEAD_SHA> -- <test-path-globs>` output **verbatim in your report** — you have no channel to the user; the coordinator shows it.
 - **`UNVERIFIABLE`** (no git, no seal, no node) → fall back to `git diff <RED_SHA>..<HEAD_SHA> -- <test-path-globs>`: empty passes; any hunk is a violation unless its commit is registered in `## SUPERSESIONES` with those paths.
 
@@ -462,19 +491,20 @@ Dispatch the `code-reviewer` agent (`agents/code-reviewer/AGENT.md`).
 - **The `design_surface_resolved` block** (frontend specs, from Design Surface Resolution): the `components/<Nombre>.md` of the components this spec touches, so the frontend dimension can check anatomy and token adherence against what the design system actually specifies instead of against its own taste. If empty, pass `design_surface_resolved: []`.
 - **Frontend epics:** also pass `docs/03-ux-ui/design_system.md`, the relevant slice of `api-contract.md` (the `operationId`s the page consumes), and — if the design surface was ingested — the fidelity checklist. This activates the code-reviewer's **Dimension 6 (Frontend Fidelity)**: token adherence, accessibility, contract adherence, brand-rule fidelity.
 
-**Tools first, then the reviewer**: what a tool reports in seconds the reviewer must not rediscover by reading. Before dispatching the `code-reviewer`, launch in background (`Bash` with `run_in_background: true`, all at once — they only read the tree) the commands `stack.yml` → `quality.commands` declares, with `{files}` = the files of `git diff --name-only <RED_SHA>..<HEAD_SHA>` for `lint` / `type_check`, and = the spec's `Crea:` / `Modifica:` production paths for `mutation`:
+**Tools first, then the reviewer — and the full suite alongside (v3.2.0)**: what a tool reports in seconds the reviewer must not rediscover by reading, and what takes twenty minutes must not wait for the reviewer. Before dispatching the `code-reviewer`, launch in background (`Bash` with `run_in_background: true` — they only read the tree) the commands `stack.yml` → `quality.commands` declares, with `{files}` = the files of `git diff --name-only <RED_SHA>..<HEAD_SHA>` for `lint` / `type_check`, and = the spec's `Crea:` / `Modifica:` production paths for `mutation` — **plus the one full run of Step 7**:
 
 - `type_check` and `lint` → their combined output (tail, ≤ 80 lines each) is the **`LINT_REPORT`** block. A slot `sin definir` / `none` → `LINT_REPORT: (none — <slot> sin definir)`.
-- `mutation` → **only** when `.specture/settings.yml` → `mutation.enabled: true` **and** the slot is defined; its raw output (tail, ≤ 200 lines — keep the survivors, drop the progress bars) is the **`MUTATION_REPORT`** block. Otherwise `MUTATION_REPORT: (none)`. The mutation run may take minutes: start it first; it never touches the working tree beyond its own temp folder (if your tool writes reports inside the repo, point it to `docs/.specture-meta/` — gitignored).
+- `mutation` → **only** when `.specture/settings.yml` → `mutation.enabled: true`, the slot is defined **and `mutation.scope` is `spec`** (the default); its raw output (tail, ≤ 200 lines — keep the survivors, drop the progress bars) is the **`MUTATION_REPORT`** block. With `mutation.scope: epic` pass `MUTATION_REPORT: (none — mutation.scope epic: Step 7.5)` — the epic-level run and its review come before the `[x]`. Otherwise `MUTATION_REPORT: (none)`. The mutation run may take minutes: start it first; it never touches the working tree beyond its own temp folder (if your tool writes reports inside the repo, point it to `docs/.specture-meta/` — gitignored).
+- **The full suite** → `node "${CLAUDE_PLUGIN_ROOT}/hooks/lib/quality.js" run test --log` (phase is `verify` since Step 5.5, so the Suite Guard allows it). Its result is Step 7's, not the reviewer's: do not pass it to the reviewer, do not wait for it before dispatching. **Ordering note:** when `type_check` and `test` share build outputs (your stack's row in `docs/quality-catalog.md` § "Comandos que comparten salida de build" — .NET's `obj/`), launch `type_check` first and the rest when it reports; otherwise all at once.
 
-Gather them with the `Monitor` tool (or wait-on-completion semantics), then dispatch the `code-reviewer` **once** with both blocks among its inputs. It reads them as facts: `LINT_REPORT` findings are cited by reference (Dimensions 3 and 7 do not re-inspect what the tool already reported), `MUTATION_REPORT` survivors replace mutating by hand (Dimension 4). A tool that fails to run (exit code of the tool itself, not of the code) is not a finding: pass its output as-is and say so in the block header.
+Gather `type_check` / `lint` / `mutation` with the `Monitor` tool (or wait-on-completion semantics), then dispatch the `code-reviewer` **once** with both blocks among its inputs, while the suite keeps running. It reads them as facts: `LINT_REPORT` findings are cited by reference (Dimensions 3 and 7 do not re-inspect what the tool already reported), `MUTATION_REPORT` survivors replace mutating by hand (Dimension 4). A tool that fails to run (exit code of the tool itself, not of the code) is not a finding: pass its output as-is and say so in the block header.
 
-This is safe only because none of the background commands writes to the working tree (`format_check` is check mode by definition; a mutation tool restores its mutants) and the reviewer writes only its report under `docs/07-reviews/` — never run two writing agents against the same checkout. Do NOT proceed to Step 7 until the reviewer has reported.
+This is safe only because none of the background commands writes to the working tree (`format_check` is check mode by definition; a mutation tool restores its mutants; the suite reads) and the reviewer writes only its report under `docs/07-reviews/` — never run two writing agents against the same checkout. **Hosts without a background shell** (Antigravity): run `type_check` + `lint` (+ `mutation`) in the foreground, dispatch the reviewer, and run the suite in the foreground right after the verdict — same rigor, less overlap; say it once in `GATE_NOTES`. Do NOT proceed to Step 7 until the reviewer has reported.
 
 **Expected output**: a structured review at `docs/07-reviews/review-<epic>-<spec>-<date>.md` with status:
 
 - `APPROVED` → proceed to Step 7 (verification).
-- `REJECTED_MINOR` → loop back to Step 5 with the issues; implementer fixes; **re-review in `MODE: RE-REVIEW`**: dispatch the `code-reviewer` with `effort: medium`, the previous report path, the list of its `BLOCKER`/`IMPORTANT` findings, the previous and the new `HEAD_SHA`, a fresh `LINT_REPORT` over `git diff <HEAD_prev>..<HEAD_SHA>` (and the same `MUTATION_REPORT` unless production files changed again) — it verifies each finding (`RESUELTO` / `PERSISTE` / `REGRESIÓN`) and does not reopen the approved dimensions. A `REJECTED_MAJOR`, or a third round, is a full review again. **Exception — a test rewrite weaker than its rule** (Dimension 4 on a `test(supersede): … — loop …` or `test(red-fix)` commit, e.g. a mutation the rewritten test does not catch): the fix belongs to the **tdd-test-writer**, never the implementer. Lift exactly those files (`seal-cli.js supersede --slug <task-slug> --paths … [--shared-with-red]`), re-dispatch the writer in the same mode (`SUPERSEDE-HEAD` or `RED-FIX`) with the reviewer's finding verbatim, register the new commit like the first, re-run `red-lines` and the retroactive RED, then re-review. It counts toward the Iteration Cap — it is **not** a new supersession loop, and it asks nothing of the user.
+- `REJECTED_MINOR` → the background suite run is now **stale** (the implementer will commit): wait for it to finish or stop it (`TaskStop`) — never an implementer writing while a test process reads the tree — then `seal-cli.js phase --set green`, loop back to Step 5 with the issues; implementer fixes; Step 5.5 again (`phase --set verify`, relaunch `quality.js run test --log` with the RE-REVIEW tools); **re-review in `MODE: RE-REVIEW`**: dispatch the `code-reviewer` with `effort: medium`, the previous report path, the list of its `BLOCKER`/`IMPORTANT` findings, the previous and the new `HEAD_SHA`, a fresh `LINT_REPORT` over `git diff <HEAD_prev>..<HEAD_SHA>` (and the same `MUTATION_REPORT` unless production files changed again) — it verifies each finding (`RESUELTO` / `PERSISTE` / `REGRESIÓN`) and does not reopen the approved dimensions. A `REJECTED_MAJOR`, or a third round, is a full review again. **Exception — a test rewrite weaker than its rule** (Dimension 4 on a `test(supersede): … — loop …` or `test(red-fix)` commit, e.g. a mutation the rewritten test does not catch): the fix belongs to the **tdd-test-writer**, never the implementer. Lift exactly those files (`seal-cli.js supersede --slug <task-slug> --paths … [--shared-with-red]`), re-dispatch the writer in the same mode (`SUPERSEDE-HEAD` or `RED-FIX`) with the reviewer's finding verbatim, register the new commit like the first, re-run `red-lines` and the retroactive RED, then re-review. It counts toward the Iteration Cap — it is **not** a new supersession loop, and it asks nothing of the user.
 - `REJECTED_MAJOR` → either large fix needed (loop with fresh context) or architectural issue (escalate to user). With `CAUSE: spec_defect` the problem is the sealed spec, not the code: report `BLOCKED: spec <ID>` (the coordinator runs the correction loop) instead of re-dispatching the implementer.
 - **Tally every review's `STATUS` + `CAUSE`** (`none | implementation | spec_defect | architecture`): the `METRICS` block of your final report sums `review_rejections` minor/major and `spec_defect` per epic — a review without a parseable `CAUSE:` line is incomplete, ask the reviewer for it.
 
@@ -491,36 +521,109 @@ Do NOT do a 4th naive retry.
 
 ## Step 7 — Verification (mandatory)
 
-> **`TDD_LEVEL: none`:** there is no RED and no baseline from Step 3.9. Run `type_check`, `lint` and `format_check` over the diff files (`quality.js expand <slot> --files …`; a `sin definir` slot is `SKIPPED` and said) and, when `quality.commands.test` is defined, the existing suite once — its failures are either pre-existing (take `BASELINE_FALLOS` from a run at `LOCK_SHA`, `base-worktree`) or this spec's regressions → the implementer in `MODE: REGRESIONES` as below. Nothing defined at all → `BLOCKED: entorno (tdd.level none sin comandos de calidad)`.
+> **`TDD_LEVEL: none`:** there is no RED and no baseline from Step 3.9. Run `type_check`, `lint` and `format_check` over the diff files (`quality.js expand <slot> --files …`; a `sin definir` slot is `SKIPPED` and said) and, when `quality.commands.test` is defined, the existing suite once (`seal-cli.js phase --set verify` first, then `quality.js run test --log`) — its failures are either pre-existing (take `BASELINE_FALLOS` from a run at `LOCK_SHA`, `base-worktree`) or this spec's regressions → the implementer in `MODE: REGRESIONES` as below. Nothing defined at all → `BLOCKED: entorno (tdd.level none sin comandos de calidad)`.
 
-Before declaring the spec done:
+Before declaring the spec done, read the full run launched in Step 6 — **accept it only if all four hold**:
+
+1. its log header `sha` equals `git rev-parse HEAD` now (nothing was committed since it started);
+2. `node "${CLAUDE_PLUGIN_ROOT}/hooks/lib/honesty-check.js" clean-tree` PASSes now;
+3. its header says `tree: clean`;
+4. it has a trailer (`quality.js runs --last 1` shows `exit N`, not `incompleta`).
+
+Otherwise it is **stale**: `seal-cli.js phase --set verify` (if not already), `quality.js run test --log` again in background, wait for its notification, and check the four again. Then:
 
 ```
-[Run the FULL suite yourself — `node "${CLAUDE_PLUGIN_ROOT}/hooks/lib/quality.js" expand test` (`sin definir` → the suite command conventions.md names) — not the agents]
-[Read the full output]
+[Read the summary line the CLI printed — exit, duration, sha, log path]
+[exit ≠ 0 → grep the LOG for the failing tests (your runner's markers: `Failed `, `FAILED`, `✗`, `--- FAIL` …) — never a `tail`, never a second run to see them again]
 [Confirm: 0 failures, 0 errors, no unexpected warnings — BASELINE_FALLOS aside]
+[Record the result on the log: `quality.js runs record-failures --log <path> --from-file <lista> | --none` — the next epic's baseline reuses it]
 [Run linter / type-checker if conventions.md requires]
 ```
 
 **This is the one full run of the spec.** The writer, the implementer and your own post-checks ran `test_scoped` over the files under work; the old tests of other epics meet this spec's production here, for the first time. Failures **outside this spec's RED tests and outside `BASELINE_FALLOS`**:
 
-1. Re-run each failing test twice; a test that passes is a flake — note it in the report.
+1. Re-run each failing test twice with `test_scoped` over its file (never the suite); a test that passes is a flake — note it in the report.
 2. Dispatch the `implementer` (or `ux-implementer`) **once** in **`MODE: REGRESIONES`** with the `REGRESIONES:` list (`<path>::<test> — <first failure line>`), the spec, `RULES_RESOLVED`, `BASELINE_FALLOS`, a `TEST_COMMAND` expanded over the failing files plus the spec's RED, and the same sealed-tests instruction — never the whole suite output. It classifies each one (`aserción` / `producción` are its regressions: production fixed, never the test; a test a rule of the spec makes false goes to `FAILURES:` citing the `BR-n`).
-3. `DONE` with production commits → Step 5.5 again on the new `HEAD_SHA`, then the `code-reviewer` in `MODE: RE-REVIEW` (`effort: medium`) over `git diff <HEAD_prev>..<HEAD_SHA>` with the regression list as its findings, then this Step 7 again. A non-empty `FAILURES:` → `BLOCKED: supersesiones (runtime) <task-slug>` upward, one report per spec, as before (the loop resumes you at Step 5.2, whose GREEN continues on `test_scoped` and ends here again). `BLOCKED: entorno` → upward, no retries.
+3. `DONE` with production commits → Step 5.5 again on the new `HEAD_SHA` (`phase --set green` before the implementer, `verify` after the gate; relaunch `quality.js run test --log` together with the RE-REVIEW tools), then the `code-reviewer` in `MODE: RE-REVIEW` (`effort: medium`) over `git diff <HEAD_prev>..<HEAD_SHA>` with the regression list as its findings, then this Step 7 again. A non-empty `FAILURES:` → `BLOCKED: supersesiones (runtime) <task-slug>` upward, one report per spec, as before (the loop resumes you at Step 5.2, whose GREEN continues on `test_scoped` and ends here again). `BLOCKED: entorno` → upward, no retries.
 
-What this buys: in Psikora HC-IHCE.14 the implementer ran the full suite 38 times in one epic — 66 minutes of a 20-40 minute suite, and a cache miss on every return.
+What this buys: in Psikora HC-IHCE.14 the implementer ran the full suite 38 times in one epic — 66 minutes of a 20-40 minute suite, and a cache miss on every return. In HC-IHCE.17/01 the epic-agent ran the 21-minute suite twice in a row because it had kept only a `tail` of the first run: the log makes the second run pointless.
 
-**Parallelism**: the fresh test-suite run can be launched via `Bash` with `run_in_background: true` while the orchestrator prepares the `ROADMAP.md` update payload for Step 8. Do NOT commit the ROADMAP update until the background test run has completed and its output has been read in full. The verification gate is non-negotiable; concurrency only reduces wall-clock, never the rigor of the check.
+**Parallelism**: the suite ran during the review (Step 6), so an `APPROVED` usually finds it finished. Concurrency only reduces wall-clock, never the rigor of the check: the four acceptance conditions above are what make a background run equal to a fresh one. Do NOT commit the ROADMAP update until the run has completed and its log has been read.
 
-If anything is red, you cannot mark the spec complete. See `skills/verify/SKILL.md` — same iron law applies here. The only failures that do not block are the ones listed in `BASELINE_FALLOS` (they failed before the epic began) — list them in the report anyway. Before the run, `honesty-check.js clean-tree` must `PASS`.
+If anything is red, you cannot mark the spec complete. See `skills/verify/SKILL.md` — same iron law applies here. The only failures that do not block are the ones listed in `BASELINE_FALLOS` (they failed before the epic began) — list them in the report anyway.
+
+## Step 7.5 — Epic mutation (only `mutation.enabled: true` + `mutation.scope: epic` + `TDD_LEVEL: strict` — otherwise go to Step 8)
+
+With `mutation.scope: epic` no spec ran the mutation command in Step 6; it runs **once here**, over
+the whole epic, before the `[x]`. Preconditions: every spec of the epic is `APPROVED` with its
+Step 7 green, and `honesty-check.js clean-tree` PASSes.
+
+1. `seal-cli.js phase --set mutation`. `FILES` = the union of every spec's `Crea:` / `Modifica:`
+   production paths (the `allowed_paths` of `seal-cli.js show`, minus anything under the test
+   globs). Launch `node "${CLAUDE_PLUGIN_ROOT}/hooks/lib/quality.js" run mutation --files <FILES> --log`
+   in background and wait for its notification (a mutation tool builds in its own sandbox and
+   restores its mutants: the tree stays clean).
+2. `MUTATION_REPORT` = the survivors, grepped from the log with your tool's marker (≤ 200 lines,
+   drop the progress bars). **No survivors** → append `- ronda 1 — <log> — 0 sobrevivientes — 0
+   hallazgos — 0 descartados` under `## MUTACIÓN` of `_planning.md` and go to Step 8.
+3. Dispatch the `code-reviewer` **once** in **`MODE: MUTATION`** (`effort: medium`) with:
+   `MUTATION_REPORT`, every `.spec.md` of the epic, the output of `seal-cli.js show` (slug →
+   `red_sha`, `test_paths`, `allowed_paths`), `TDD_LEVEL` and `RULES_RESOLVED: []`. It writes
+   `docs/07-reviews/review-<epic>-mutation-<date>.md` and answers `MUTATION_OK`, or
+   `MUTATION_FINDINGS` with one line per survivor: `dismiss` (equivalent mutant, dead code, a
+   path outside every AC/BR/EC) or `finding <BLOCKER|IMPORTANT> — spec <slug> — <AC-n/BR-n> —
+   <file:line> — <mutation>`.
+4. **Findings** → group them by `spec`; for each spec run **Step 5.3 (`RED-FIX`)** with the
+   findings verbatim as the `RED_FIX:` block ("the tests of <IDs> must kill <mutation> at
+   <file:line>") — `red-lines`, `red-fix-kind` and the retroactive RED included. If the
+   strengthened tests fail at HEAD (the mutation exposed a real bug) → Step 5 for that spec
+   (`phase --set green`; the implementer in `MODE: REGRESIONES` with those tests as
+   `TEST_COMMAND`) → Step 5.5 → `RE-REVIEW` → **Step 7 for that spec** (phase `verify`, a fresh
+   `quality.js run test --log`). Every finding counts toward the owning spec's Iteration Cap.
+5. **Second round** once every red-fix landed: `phase --set mutation`, run the mutation again over
+   `FILES`, dispatch the reviewer in `MODE: MUTATION` again with the previous report path — it
+   answers `RESUELTO | PERSISTE` per finding. A `BLOCKER` that persists is the Iteration Cap's
+   exit (`BLOCKED: debug <task-slug>`); an `IMPORTANT` that persists goes under `## DIFERIDOS`
+   of `_planning.md` with the reviewer as origin. **Never a third run.**
+6. Append one line per round under `## MUTACIÓN` of `_planning.md`: `- ronda <N> — <log> — <s>
+   sobrevivientes — <f> hallazgos — <d> descartados`; `mutation_runs` in your `METRICS` is the
+   number of rounds you ran.
+
+**`[x]` never precedes the end of Step 7.5.** Under `mutation.scope: spec` this step does not
+exist (Step 6 already ran the mutation per spec); under `essential` / `none` there is no mutation
+at all.
 
 ## Step 8 — Mark Epic Complete
 
-After all specs in the epic are APPROVED + verified:
+After all specs in the epic are APPROVED + verified (and Step 7.5, when it applies, is over):
 
+- `node "${CLAUDE_PLUGIN_ROOT}/hooks/lib/quality.js" runs summary --since <LOCK_SHA>` → the
+  `FULL_SUITE: runs N · minutes M` line of your report (`full_suite_runs` / `full_suite_minutes`
+  in `METRICS`); `MUTATION_RUNS: N` from Step 6 (one per spec that ran it) or Step 7.5 (rounds).
+  Then `quality.js runs prune --keep 20` — the logs are gitignored and weigh megabytes; it prints
+  what it removed.
 - Update `ROADMAP.md`: change the epic from `[/]` to `[x]`.
 - Commit the ROADMAP update.
 - **Release the seal**: `node "${CLAUDE_PLUGIN_ROOT}/hooks/lib/seal-cli.js" release` (deletes `.specture/state/build-locked.json` — sealed tests, sealed specs and allowed paths alike). Without this, the next epic's edits to its own files could be blocked by stale rules. (The coordinator releases it again when it processes your `DONE` — belt and braces; neither side trusts the other.)
+
+## Phases and the Suite Guard (v3.2.0)
+
+The seal carries the epic's execution phase (`seal-cli.js phase --set <p>`; `seal-cli.js show`
+prints it). With hooks on, the Suite Guard in the Bash hook denies the full suite —
+`quality.commands.test`, or `quality.js run|expand test` — in every phase but `baseline` and
+`verify`; `test_scoped` is always allowed. A seal without `phase` (written by the coordinator,
+or from before v3.2.0) arms nothing. You set:
+
+| When | Phase | The suite is… |
+|---|---|---|
+| Step 3.9, fresh baseline | `baseline` | allowed — the one baseline run |
+| End of Step 3.9 (fresh or reused) → Step 4 | `red` | denied — the writer runs `test_scoped` over its files |
+| Before every implementer dispatch (Step 5, a `REJECTED_MINOR` fix, `MODE: REGRESIONES`) | `green` | denied — `TEST_COMMAND` only |
+| Step 5.5 three `PASS` | `verify` | allowed — launched with the Step 6 tools, read at Step 7 |
+| Step 7.5 | `mutation` | denied — only the mutation command runs |
+
+A denied command is never worked around (another shell, a renamed script): it is the loop telling
+you the phase is wrong. Without hooks the table is the rule you follow by hand, as before.
 
 ## Anti-Patterns
 
@@ -543,7 +646,10 @@ After all specs in the epic are APPROVED + verified:
 | Usar `git add -A` o `git commit --amend` durante un epic | `git add <paths explícitos>` y commits nuevos. Un `add -A` captura trabajo en vuelo de otro agente; un `--amend` puede reescribir el commit de un tercero. |
 | Restaurar un archivo con `git checkout -- <archivo>` después de mutarlo (p. ej. para comprobar que un test detecta el cambio) | `git checkout` restaura a HEAD, no al árbol previo: destruye arreglos sin commitear. Snapshot a scratch **antes** de mutar, restaurar desde el snapshot y verificar con `git hash-object`. Y commitear todo arreglo de producción antes de abrir un bucle de mutación. |
 | Sondear un despacho en curso ("sigo esperando", `sleep 90; echo tick`, `until grep -q DONE …; do sleep 20; done`) o ponerse un reloj (`sleep 3060; date`) | Esperá el resultado: llamada al Agent en primer plano, o la notificación / `Monitor` de un background. Cada turno de espera relee todo tu contexto y, pasados 5 minutos, reescribe la caché entera. Ningún despacho tiene límite de tiempo. Con hooks, el Wait Guard deniega el `sleep`. |
-| Correr la suite completa en cada paso (writer, implementer, post-checks) | Solo dos corridas completas por spec: la línea base (Step 3.9) y el Step 7. Todo lo demás corre `test_scoped` sobre los archivos en obra; `sin definir` se reporta como SKIPPED y se corre lo más acotado que ofrezca el runner, nunca la suite. |
+| Correr la suite completa en cada paso (writer, implementer, post-checks) | Solo dos corridas completas por spec: la línea base (Step 3.9, o reutilizada del log del epic anterior) y el Step 7, lanzado junto a las herramientas del Step 6. Todo lo demás corre `test_scoped` sobre los archivos en obra; `sin definir` se reporta como SKIPPED y se corre lo más acotado que ofrezca el runner, nunca la suite. Con hooks, la Suite Guard lo deniega fuera de las fases `baseline` / `verify`. |
+| Leer la suite con `tail` y volver a correrla para saber qué falló | `quality.js run test --log` guarda la salida entera en `docs/.specture-meta/runs/`; los fallos se leen con `grep` en el log y se registran con `runs record-failures`. La segunda corrida de Psikora HC-IHCE.17/01 (30 min) existió solo por esto. |
+| Aceptar la corrida en background del Step 6 "porque ya terminó" | Solo si su `sha` == HEAD, `clean-tree` PASS, `tree: clean` y tiene trailer. Un commit del implementer la vuelve stale: se relanza. |
+| Despachar al implementer con la suite todavía corriendo | Esperá o detené la corrida (`TaskStop`) antes: un build del implementer sobre los binarios que la suite está usando colisiona, y la corrida es stale igual. |
 | Despachar dos agentes que escriban al mismo checkout | Uno a la vez. La concurrencia de Step 6 es válida solo porque linter y type-checker no escriben, y el reviewer escribe únicamente su archivo en `docs/07-reviews/`. |
 
 > Comportamiento observable con hooks/Context7 activos: ver `docs/native-integration-guide.md` ("Comportamiento observable por skill").

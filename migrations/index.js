@@ -42,7 +42,8 @@ const catalog = [
   require("./2.9-test-scoped-command"),
   require("./3.0-retire-current-state"),
   require("./3.0-ephemeral-gitignore"),
-  require("./3.1-tdd-level")
+  require("./3.1-tdd-level"),
+  require("./3.2-mutation-scope")
 ];
 
 // Stable sort by `since` only: entries that share a version keep their declared

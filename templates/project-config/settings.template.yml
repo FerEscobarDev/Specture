@@ -18,6 +18,9 @@ docs_index.max_entries_per_dispatch: 3    # hard cap of indexed docs passed to O
 knowledge.enabled: false                  # opt-in knowledge-capture prompts (build Step 8.5, debug Phase 4.5)
 compliance_review.enabled: true           # compliance review when a milestone closes (/specture:compliance-review); honoured under every profile
 mutation.enabled: false                   # build Step 6 runs stack.yml `quality.commands.mutation` on the spec's production files and hands the raw report to the code-reviewer; needs the tool installed (any language — see docs/quality-catalog.md); honoured under every profile
+mutation.scope: spec                      # spec | epic — WHEN the mutation runs once enabled; honoured under every profile
+                                          #   spec = one run per spec in Step 6, in series with the code-reviewer (the behaviour since v2.8.0)
+                                          #   epic = one run per epic (Step 7.5) over the union of every spec's Crea:/Modifica:, with a bounded MODE: MUTATION review before the [x] — saves one run per spec on a multi-spec epic, detects a weak test one spec later
 tdd.level: strict                         # strict | essential | none — how much test discipline the build loop enforces; honoured under every profile
                                           #   strict    = RED for every AC/BR/EC, seal, honesty gate, full suite at the baseline and Step 7 (production projects)
                                           #   essential = same loop, fewer tests: one test per AC only, no test+/test- variants, no mandatory guards, no mutation (small or internal projects)

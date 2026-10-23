@@ -98,3 +98,68 @@ test("CLI wait gate under the Antigravity envelope: denies from a foreign cwd vi
   assert.equal(spawn({ toolCall: { name: "run_command", args: { CommandLine: "sleep 3060" } }, workspacePaths: [createProject({ enabled: false })] }).stdout, "");
   assert.equal(spawn({ toolCall: { name: "run_command", args: { CommandLine: "sleep 3060" } } }).stdout, "");
 });
+
+// --- Suite Guard (v3.2.0) ----------------------------------------------------------------------
+
+function sealedProject({ phase = "green", roadmapInProgress = true, enabled = true } = {}) {
+  const projectRoot = createProject({ enabled });
+  fs.writeFileSync(
+    path.join(projectRoot, ".specture", "stack.yml"),
+    ["quality:", "  commands:", '    test: "dotnet test"', '    test_scoped: "dotnet test --no-restore --filter {names}"', ""].join("\n")
+  );
+  fs.mkdirSync(path.join(projectRoot, ".specture", "state"), { recursive: true });
+  const seal = { epic: "epic-1.2-notas", sealed_at: "2026-10-22T10:00:00Z", spec_sha: "abc", spec_paths: [], test_globs: ["tests/**"], specs: [] };
+  if (phase !== null) seal.phase = phase;
+  fs.writeFileSync(path.join(projectRoot, ".specture", "state", "build-locked.json"), JSON.stringify(seal));
+  fs.mkdirSync(path.join(projectRoot, "docs", "04-roadmap"), { recursive: true });
+  fs.writeFileSync(path.join(projectRoot, "docs", "04-roadmap", "ROADMAP.md"), roadmapInProgress ? "- [/] Epic 1.2\n" : "- [x] Epic 1.2\n");
+  return projectRoot;
+}
+
+test("Claude Code suite guard denies the full suite out of phase and names the phase and the recovery path", () => {
+  const projectRoot = sealedProject({ phase: "green" });
+  for (const command of ["dotnet test", "cd api && dotnet test 2>&1 | tail -40", 'node "${CLAUDE_PLUGIN_ROOT}/hooks/lib/quality.js" run test --log']) {
+    const { status, json } = run(claudeHook, projectRoot, { command });
+    assert.equal(status, 0);
+    assert.equal(json.hookSpecificOutput.permissionDecision, "deny", command);
+    assert.match(json.hookSpecificOutput.permissionDecisionReason, /Specture suite guard/);
+    assert.match(json.hookSpecificOutput.permissionDecisionReason, /phase `green`/);
+    assert.match(json.hookSpecificOutput.permissionDecisionReason, /expand test_scoped/);
+  }
+});
+
+test("Claude Code suite guard allows the scoped run, the suite in baseline/verify, a seal without phase, no seal, and hooks off", () => {
+  assert.equal(run(claudeHook, sealedProject({ phase: "green" }), { command: "dotnet test --no-restore --filter FullyQualifiedName~FooTests" }).stdout, "");
+  assert.equal(run(claudeHook, sealedProject({ phase: "green" }), { command: 'node "${CLAUDE_PLUGIN_ROOT}/hooks/lib/quality.js" expand test_scoped --files a' }).stdout, "");
+  assert.equal(run(claudeHook, sealedProject({ phase: "baseline" }), { command: "dotnet test" }).stdout, "");
+  assert.equal(run(claudeHook, sealedProject({ phase: "verify" }), { command: 'node hooks/lib/quality.js run test --log' }).stdout, "");
+  assert.equal(run(claudeHook, sealedProject({ phase: null }), { command: "dotnet test" }).stdout, "", "a seal without phase (pre-3.2, or fresh from write) never arms the guard");
+  assert.equal(run(claudeHook, sealedProject({ phase: "green", enabled: false }), { command: "dotnet test" }).stdout, "");
+  const noSeal = sealedProject({ phase: "green" });
+  fs.rmSync(path.join(noSeal, ".specture", "state", "build-locked.json"));
+  assert.equal(run(claudeHook, noSeal, { command: "dotnet test" }).stdout, "");
+});
+
+test("Claude Code suite guard: a stale seal allows WITH a reason; the wait guard still wins when both apply", () => {
+  const stale = run(claudeHook, sealedProject({ phase: "green", roadmapInProgress: false }), { command: "dotnet test" });
+  assert.equal(stale.json.hookSpecificOutput.permissionDecision, "allow");
+  assert.match(stale.json.hookSpecificOutput.permissionDecisionReason, /stale seal for epic "epic-1.2-notas"/);
+  const both = run(claudeHook, sealedProject({ phase: "green" }), { command: "sleep 3060; dotnet test" });
+  assert.equal(both.json.hookSpecificOutput.permissionDecision, "deny");
+  assert.match(both.json.hookSpecificOutput.permissionDecisionReason, /Specture wait guard/);
+});
+
+test("CLI suite guard: denies under the Antigravity envelope via workspacePaths, allows the scoped run and a stale seal", () => {
+  const projectRoot = sealedProject({ phase: "red" });
+  const pluginDir = createProject({ specture: false });
+  const spawn = (CommandLine, root) =>
+    spawnSync(process.execPath, [cliHook], { cwd: pluginDir, encoding: "utf8", input: JSON.stringify({ toolCall: { name: "run_command", args: { CommandLine } }, workspacePaths: [root] }) });
+  const denied = spawn("dotnet test", projectRoot);
+  const json = JSON.parse(denied.stdout);
+  assert.equal(json.decision, "deny");
+  assert.match(json.reason, /Specture suite guard/);
+  assert.match(json.reason, /phase `red`/);
+  assert.equal(spawn("dotnet test --filter FullyQualifiedName~FooTests", projectRoot).stdout, "");
+  assert.equal(spawn("dotnet test", sealedProject({ phase: "red", roadmapInProgress: false })).stdout, "", "a stale seal is silent on the CLI host");
+  assert.equal(run(cliHook, projectRoot, { command: "dotnet test" }).json.permissionDecision, "deny", "the Claude envelope works on the CLI host too");
+});

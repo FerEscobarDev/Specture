@@ -131,7 +131,8 @@ files**: you hand it a table `SYMBOL | PATH | SIGNATURE` of the component's exis
    epic in exactly one spec (hole / overlap; a consumed op needs its backend epic `[x]`),
    **C2** every linked `RN-nnn` cited by ≥1 spec, **C4** every `(planeada — re-anclar)`
    symbol created by an *earlier* spec with a string-identical signature, **C5** ≤3 specs /
-   ≤15 IDs per spec (WARNING), **C6** no consumer before its creator, plus `C-path` (every
+   ≤15 IDs per spec (WARNING; **>30 IDs in one spec is a BLOCKER** — v3.2.0, after a 60-id spec
+   cost a 46-minute RED), **C6** no consumer before its creator, plus `C-path` (every
    `Crea:`/`Modifica:` carries `en <path>`), `C-gap` (migration epics) and `C-sup`
    (declared supersessions). The first stdout line is the **token**:
    - `MECH_CHECK: PASS <sha>` → append the line to `## MECH_CHECK` of `_planning.md` (date +
@@ -142,7 +143,10 @@ files**: you hand it a table `SYMBOL | PATH | SIGNATURE` of the component's exis
      **FAILs do not count toward the cap** of step 5. The same FAIL line on two passes in a
      row goes back with `CONCERNS: 4a repetido`; a third identical FAIL is `BLOCKED: gate`
      (a framework or grammar defect — escalate with the lines). A `C5 WARNING` is the
-     `BLOCKED: sizing` escalation below.
+     `BLOCKED: sizing` escalation below. A **`C5 BLOCKER`** (a spec above 30 AC/BR/EC) is an
+     ordinary FAIL: the planner must split that spec inside the epic, within ≤3 specs; when it
+     cannot, it reports `BLOCKED: sizing` and the split goes to the user as below. Never accept it
+     in the review sitting as a warning — it is not one.
    - `MECH_CHECK: UNVERIFIABLE <reason>` (exit 2) → a malformed table is a planner defect →
      `VIOLATIONS`; a missing input is yours to fix. Only if it stays unverifiable, append the
      line as-is: the validator then runs its C2 fallback.

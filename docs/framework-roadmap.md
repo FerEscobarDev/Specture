@@ -844,8 +844,35 @@ corridas de la suite completa; `quality.commands` en `sin definir` sin que el us
 ### Lo que v2.9.0 deliberadamente NO envió
 
 - **Recorte del contexto por despacho** (catálogo MCP diferido ≈ 25K tokens, listado de skills ≈ 15K, releídos en cada turno): es del arnés y de los MCP que el usuario tenga activos, no del framework.
-- **Tope duro de tamaño de spec**: `spec-size` ya avisa a 300 líneas; partir el spec sigue siendo decisión del usuario (A-221 aceptó 107 IDs).
+- **Tope duro de tamaño de spec**: `spec-size` ya avisa a 300 líneas; partir el spec sigue siendo decisión del usuario (A-221 aceptó 107 IDs). → Enviado en v3.2.0 (ítem 94): C5 BLOCKER por encima de 30 IDs.
 - **Reportes verbatim fuera de `_planning.md`** (689 KB en HC-IHCE.14): sin medición del efecto sobre el coordinador, no se mueve.
+
+## Milestone 12 — Suite completa una vez: en paralelo, con registro y en fase (v3.2.0)
+
+Medición sobre la spec 01 de Psikora HC-IHCE.17 (2026-10-22, `strict`, suite de integración de
+21 min con 2.635 tests, Stryker activo): 4 h 30 por spec sin contar esperas humanas. Los agentes
+(writer 46 min, implementer 36, reviewer 16) suman ~100 min; el resto es maquinaria de tests en
+serie: línea base ~20 min, Step 7 ~20 min, un **segundo** Step 7 de ~30 min solo para recuperar los
+nombres de los fallos perdidos en un `tail`, un filtro de integración de 15 min del implementer
+pese a `test_scoped`, Stryker ~20 min en serie con el reviewer, y una spec de 60 AC/BR/EC cuyo
+C5 WARNING se aceptó tres veces en la tanda. Diseño completo en el plan de la sesión
+(`crea-el-plan-para-zesty-matsumoto.md`, Claude plans).
+
+- [x] **90. Step 7 en paralelo con el Step 6** · hecho 2026-10-23, v3.2.0 — la suite completa arranca junto a lint/type_check/mutación en cuanto el gate de honestidad pasa (fase `verify`); el Step 7 la acepta solo si su `sha` == HEAD, `clean-tree` PASS, `tree: clean` y trailer; un commit del implementer la vuelve stale. Nota de orden para pilas que comparten salida de build (`docs/quality-catalog.md` § 2.1). Antes de un re-despacho del implementer se espera o detiene la corrida en vuelo.
+- [x] **91. Registro de corridas** · hecho 2026-10-23, v3.2.0 — `quality.js run <slot> --log` vuelca la salida entera a `docs/.specture-meta/runs/` con encabezado y trailer parseables; `runs [reusable | record-failures | summary | prune]`. Los agentes leen los fallos con `grep` en el log; el framework nunca parsea la salida del runner (sidecar `.failures` escrito por el agente).
+- [x] **92. Suite Guard** · hecho 2026-10-23, v3.2.0 — `phase` en el sello (`seal-cli.js phase --set baseline|red|green|verify|mutation`); `hooks/lib/suite-guard.js` dentro de los dos hooks de espera deniega `quality.commands.test` y `quality.js run|expand test` fuera de `baseline` / `verify`; reconoce la corrida acotada por los tokens distintivos de `test_scoped` o un argumento con ruta; fail-open sin sello / sin fase / sin `test`.
+- [x] **93. Línea base reutilizada** · hecho 2026-10-23, v3.2.0 — `quality.js runs reusable`: el coordinador del epic la consulta antes del primer despacho y pasa `BASELINE_LOG` + `BASELINE_FALLOS`; el epic-agent salta la corrida del Step 3.9 cuando el árbol fuera de `docs/` y `.specture/` es el mismo del último Step 7 registrado.
+- [x] **94. C5 BLOCKER por encima de 30 IDs** · hecho 2026-10-23, v3.2.0 — `spec-set-check` `MAX_IDS_HARD = 30` (2× el umbral); WARNING entre 16 y 30; el planner divide o reporta `BLOCKED: sizing`; aplica también en `--draft`.
+- [x] **95. `mutation.scope: spec | epic`** · hecho 2026-10-23, v3.2.0 — settings + plantilla + migración `3.2-mutation-scope` + doctor `mutation-scope-invalid`; con `epic`, Step 7.5 corre la mutación una vez sobre la unión de `Crea:`/`Modifica:` y el `code-reviewer` en `MODE: MUTATION` juzga los sobrevivientes (RED-FIX por spec dueño, máximo dos rondas, `[x]` nunca antes).
+- [x] **96. Métricas de suite** · hecho 2026-10-23, v3.2.0 — `full_suite_runs`, `full_suite_minutes`, `mutation_runs` en la línea del epic; `metrics-report` deriva minutos por corrida y la lectura "Suite lenta" por encima de 10 min; `knowledge stats` lo relata.
+
+### Lo que v3.2.0 deliberadamente NO envió
+
+- **Parsear la salida del runner** (nombres de tests que fallaron): depende del runner; el agente que leyó el log los escribe en el sidecar.
+- **`dotnet test --no-build` por defecto**: solo vale si el Step 3.9 también compila antes; queda como variante documentada.
+- **Un tercer hook**: la Suite Guard vive en el hook de espera (mismo matcher, mismo opt-in); `hooks/hooks.json` no cambia.
+- **Paralelizar la suite del proyecto** (21 min por 2.635 tests): es trabajo del proyecto; el framework solo la mide y lo dice.
+- **Medición en Psikora**: la prueba de aceptación (4 h 30 → ~2 h 45 estimado) la corre el usuario en el próximo epic con ≥ 3.2.0.
 
 ## Apéndice A — Decisiones que condicionan el orden
 

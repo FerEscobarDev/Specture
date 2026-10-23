@@ -14,13 +14,16 @@
 //   tdd-level-none-no-quality    WARNING  `tdd.level: none` without `type_check` nor `lint`
 //                                         defined — Step 7 would have nothing mechanical to
 //                                         verify an epic with and the reviewer is alone (v3.1.0)
+//   mutation-scope-invalid       WARNING  settings.yml `mutation.scope` is not spec | epic — the
+//                                         mutation runs per spec (the default) while the team
+//                                         believes it moved it to the epic (v3.2.0)
 //
 // A `stack.yml` without `commands:` is the migration's business (`2.8-quality-commands`,
 // reported as drift), not this check's. The framework never fills a slot by itself: a command it
 // guessed from a tool name would run in the user's repo without anyone having chosen it.
 
 const { readQualityCommands, COMMAND_KEYS } = require("../../quality");
-const { TDD_LEVELS } = require("../../settings");
+const { TDD_LEVELS, MUTATION_SCOPES } = require("../../settings");
 
 const STACK = ".specture/stack.yml";
 const SETTINGS = ".specture/settings.yml";
@@ -45,6 +48,16 @@ function tddLevel(project, quality) {
       SETTINGS,
       `\`tdd.level: ${String(raw)}\` is not one of ${TDD_LEVELS.join(" | ")} — the build runs \`strict\` (the default) while the team believes it set something else`,
       `write \`tdd.level: strict\` (full TDD), \`essential\` (one test per AC, no variants, no mutation) or \`none\` (no RED: spec → implement → review → verify) in ${SETTINGS}`
+    ));
+  }
+  const scope = project.settings.raw["mutation.scope"];
+  if (scope !== undefined && !(typeof scope === "string" && MUTATION_SCOPES.includes(scope.toLowerCase()))) {
+    out.push(finding(
+      "WARNING",
+      "mutation-scope-invalid",
+      SETTINGS,
+      `\`mutation.scope: ${String(scope)}\` is not one of ${MUTATION_SCOPES.join(" | ")} — the mutation runs once per spec (the default) while the team believes it set something else`,
+      `write \`mutation.scope: spec\` (one run per spec in Step 6) or \`epic\` (one run per epic in Step 7.5) in ${SETTINGS}`
     ));
   }
   const states = quality.block ? quality.states : {};

@@ -77,7 +77,12 @@ rationalizations this agent exists to eliminate.
 - **Step 1 — Map the epic's coverage targets**: every `operationId`, every linked business
   rule (`RN-nnn`), every capability in the description.
 - **Step 2 — Decompose into 1-3 specs ordered by dependency.** If it needs more than 3,
-  report `BLOCKED: sizing` with the suggested partition — do not force it.
+  report `BLOCKED: sizing` with the suggested partition — do not force it. **Size cap per
+  spec (v3.2.0):** a spec above **30** AC/BR/EC is rejected mechanically (`C5 BLOCKER` — split
+  obligatorio) and comes straight back to you as `VIOLATIONS`; 16-30 is a warning you should
+  still avoid. The writer's RED and the implementer's GREEN grow linearly with the id count (a
+  60-id spec cost a 46-minute RED in a real project): split by capability before emitting, and
+  when the split needs a fourth spec, `BLOCKED: sizing`. In `MODE: DRAFT` the same count applies.
 - **Step 3 — Fill the template per spec**, applying this self-review before moving on:
   - [ ] Every template slot filled — no `[placeholder]`, no `TBD`, no "fill in later".
   - [ ] Every AC / BR / EC has a stable ID (`AC-1`, `BR-1`, `EC-1`...).
@@ -136,7 +141,7 @@ rationalizations this agent exists to eliminate.
   state is forbidden.
 - **Step 5 — Emit the `COVERAGE_TABLE`** and pre-check it yourself: every `operationId` in
   exactly one spec, every linked `RN-nnn` cited by ≥1 spec, no `sym: … consume` pointing at
-  a later spec. Your pre-check is a pre-filter — it replaces no downstream gate: the
+  a later spec, no spec above 30 AC/BR/EC. Your pre-check is a pre-filter — it replaces no downstream gate: the
   coordinator runs `hooks/lib/spec-set-check.js` (C1/C2/C4/C5/C6) on every pass and hands
   its FAIL lines back to you as `VIOLATIONS`. A row that does not parse makes the whole
   table `UNVERIFIABLE` — never stretch the grammar (no `crea: (existente — …)`, no

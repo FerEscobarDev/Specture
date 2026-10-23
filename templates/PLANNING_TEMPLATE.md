@@ -4,7 +4,7 @@
 > el `spec-planner` escribe `COVERAGE_TABLE`, `OPEN_QUESTIONS`, `RESOLVED_ALONE` y
 > `SUPERSESIONES`; el coordinador de `build` agrega las respuestas, `CODE_SURFACE`,
 > `MECH_CHECK`, `VEREDICTOS`, `GATE_NOTES`, `DIFERIDOS` y `SPEC_SHA`; el epic-agent agrega
-> `BASELINE_FALLOS` y completa el `commit:` de las supersesiones de su spec. Escritores
+> `BASELINE_FALLOS` y `MUTACIÓN` y completa el `commit:` de las supersesiones de su spec. Escritores
 > secuenciales, nunca concurrentes. `hooks/lib/spec-set-check.js` lee `COVERAGE_TABLE`
 > (machine-readable: una fila por línea, gramática exacta); `hooks/lib/metrics-report.js`
 > lee los contadores y `hooks/lib/honesty-check.js` el registro de `SUPERSESIONES`.
@@ -71,6 +71,12 @@ PRIOR:
 
 ## BASELINE_FALLOS (epic-agent — fallos previos al primer RED; excluidos de toda clasificación)
 - <path>::<test> — <primera línea del fallo> — <ISO-8601>
+<!-- Línea base reutilizada (v3.2.0): las mismas líneas, cada una con el sufijo
+     `— reutilizado de docs/.specture-meta/runs/<log>` — vienen del `.failures` del Step 7 del
+     epic anterior cuando el árbol de código no cambió (`quality.js runs reusable`). -->
+
+## MUTACIÓN (epic-agent — Step 7.5, sólo con `mutation.enabled` y `mutation.scope: epic`; omitir si no aplica)
+- ronda <N> — <docs/.specture-meta/runs/<log>> — <s> sobrevivientes — <f> hallazgos — <d> descartados
 
 ## SPEC_SHA (coordinador)
 - LOCK_SHA: <sha> — <ISO-8601>

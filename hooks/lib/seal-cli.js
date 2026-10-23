@@ -25,6 +25,11 @@
 //                Epic-agent, around the tdd-test-writer dispatch (item 35 / F1-10). Refuses a path
 //                sealed as the RED of any spec (its own or a sibling's) unless `--shared-with-red`.
 //                Stores `supersede_paths` and `supersede_for`; `--clear` empties both.
+//   phase        --set <baseline|red|green|verify|mutation>
+//                Epic-agent, at each step boundary (v3.2.0): records the execution phase the Suite
+//                Guard reads — the full suite is allowed only in `baseline` and `verify`. Needs a
+//                seal (exit 1 without one); an unknown value is a usage error. `write` keeps it for
+//                the same epic and drops it for another.
 //   release                                  Deletes the file (no-op when absent).
 //   show                                     Prints the seal as JSON.
 //
@@ -35,7 +40,7 @@
 
 const fs = require("fs");
 const path = require("path");
-const { STATE_FILE, readSeal, globToRegExp, pathMatchesAnyGlob } = require("./seal");
+const { STATE_FILE, PHASES, readSeal, globToRegExp, pathMatchesAnyGlob } = require("./seal");
 const { findProjectRoot } = require("./specture-guard");
 
 const LIST_FLAGS = ["spec-paths", "test-globs", "allowed-paths", "test-paths", "add-test-paths", "paths"];
@@ -46,6 +51,7 @@ const COMMAND_FLAGS = {
   "unseal-spec": ["slug"],
   "lift-spec": ["slug"],
   supersede: ["slug", "paths", "shared-with-red", "clear"],
+  phase: ["set"],
   release: [],
   show: []
 };
@@ -53,12 +59,13 @@ const GLOB_CHARS = /[*?[\]{}]/;
 
 function usage() {
   return [
-    "usage: seal-cli.js <write|merge-spec|unseal-spec|lift-spec|supersede|release|show> [options] [--project <root>]",
+    "usage: seal-cli.js <write|merge-spec|unseal-spec|lift-spec|supersede|phase|release|show> [options] [--project <root>]",
     "  write       --epic <slug> --spec-sha <sha> --spec-paths a,b [--test-globs a,b] [--allowed-paths a,b] [--lock-sha <sha>]",
     "  merge-spec  --slug <task-slug> --red-sha <sha> (--test-paths a,b | --add-test-paths a,b) [--reset-orig] [--epic <slug>]",
     "  unseal-spec --slug <task-slug>",
     "  lift-spec   --slug <task-slug>",
     "  supersede   [--slug <task-slug>] --paths a,b [--shared-with-red] | --clear",
+    `  phase       --set <${PHASES.join("|")}>`,
     "  release | show"
   ].join("\n");
 }
@@ -210,9 +217,22 @@ function run(opts, projectRoot) {
         allowed_paths: lists["allowed-paths"] || (sameEpic && existing.allowed_paths) || [],
         supersede_paths: [],
         supersede_for: null,
+        phase: (sameEpic && PHASES.includes(existing.phase) && existing.phase) || null,
+        phase_at: (sameEpic && PHASES.includes(existing.phase) && existing.phase_at) || null,
         specs
       };
       return { file: save(projectRoot, state), state };
+    }
+    case "phase": {
+      require_(opts, "set");
+      const next = String(flags.set).toLowerCase();
+      if (!PHASES.includes(next)) throw new Error(`unknown phase ${flags.set} (${PHASES.join(", ")})\n${usage()}`);
+      const existing = load(projectRoot);
+      if (!existing) throw new Error("no seal to update — run `write` or `merge-spec` first");
+      const previous = PHASES.includes(existing.phase) ? existing.phase : null;
+      existing.phase = next;
+      existing.phase_at = now();
+      return { file: save(projectRoot, existing), state: existing, note: `phase ${previous || "none"} → ${next}` };
     }
     case "merge-spec": {
       require_(opts, "slug", "red-sha");
@@ -301,7 +321,7 @@ function run(opts, projectRoot) {
 // Refusals and impossible lifts are facts about the seal (exit 1); a malformed call is usage (exit 2).
 function exitCodeFor(message) {
   if (/refused|cannot expand|no sealed spec/.test(message)) return 1;
-  return /unknown option|unknown command|required|unexpected|missing value|cannot be combined/.test(message) ? 2 : 1;
+  return /unknown option|unknown command|unknown phase|required|unexpected|missing value|cannot be combined/.test(message) ? 2 : 1;
 }
 
 if (require.main === module) {

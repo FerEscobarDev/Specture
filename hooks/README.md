@@ -49,14 +49,16 @@ Después de actualizar el plugin: `/reload-plugins` (o sesión nueva), y `/hooks
 
 ---
 
-### `pre-tool-use-wait-gate.js` (Claude Code) · `specture-pre-tool-use-wait-gate.js` (Antigravity) — Wait Guard (v2.9.0)
+### `pre-tool-use-wait-gate.js` (Claude Code) · `specture-pre-tool-use-wait-gate.js` (Antigravity) — Wait Guard (v2.9.0) + Suite Guard (v3.2.0)
 
 | | |
 |---|---|
 | Evento | `PreToolUse` con matcher `Bash\|PowerShell` (Antigravity: + `bash\|shell\|run_command\|execute_command\|run_terminal_cmd`) |
 | Disparador | Antes de cualquier comando de shell |
-| Acción | Deniega un comando que **espera** en vez de trabajar: un `sleep` / `Start-Sleep` / `timeout /t` de 30 s o más, o **cualquier** `sleep` dentro de un bucle (`for` / `while` / `until`: un sondeo por construcción). Permite pausas cortas fuera de un bucle y los límites de tiempo sobre trabajo real (`timeout 590 dotnet test`). El motivo nombra la vía correcta: llamada al Agent en primer plano, o la notificación / `Monitor` de un background; ningún despacho tiene límite de tiempo. |
-| Por qué | Medido en Psikora HC-IHCE.14 (2026-10-14): un epic-agent pasó 222 de sus 510 minutos en `sleep` sondeando a sus workers, el coordinador se puso un reloj con `sleep 3060` por una regla de "55 minutos" que nadie definió, y el 97 % de los turnos tras una pausa de más de 5 minutos fueron cache miss (la caché de prompts dura 5 minutos). `lib/wait-guard.js` es la regla; opt-in por `hooks.enabled` como todo hook. |
+| Acción (Wait Guard) | Deniega un comando que **espera** en vez de trabajar: un `sleep` / `Start-Sleep` / `timeout /t` de 30 s o más, o **cualquier** `sleep` dentro de un bucle (`for` / `while` / `until`: un sondeo por construcción). Permite pausas cortas fuera de un bucle y los límites de tiempo sobre trabajo real (`timeout 590 dotnet test`). El motivo nombra la vía correcta: llamada al Agent en primer plano, o la notificación / `Monitor` de un background; ningún despacho tiene límite de tiempo. |
+| Acción (Suite Guard, v3.2.0) | Deniega la **suite completa** — el comando de `quality.commands.test`, o `quality.js run\|expand test` — mientras el sello tiene una `phase` distinta de `baseline` o `verify`. Reconoce una corrida acotada por los tokens que `test_scoped` tiene y `test` no (`--filter`, `--tests`) o, cuando `test_scoped` es `test` + `{files}`, por un argumento con ruta. Falla abierto sin sello, con sello corrupto, sin `phase`, con `test` `sin definir`/`none`; un sello huérfano (ningún epic `[/]`) permite con razón. Si `test` y `test_scoped` son idénticos deniega y pide declarar un `test_scoped` distinguible. El Wait Guard gana cuando aplican los dos. |
+| Fases | `baseline` (Step 3.9) → `red` (Step 4) → `green` (cada despacho del implementer) → `verify` (Step 5.5 PASS: la suite se lanza con las herramientas del Step 6 y se lee en el Step 7) → `mutation` (Step 7.5). Las escribe el epic-agent con `seal-cli.js phase --set <p>`; tabla completa en `skills/build/EPIC_LOOP.md` § "Phases and the Suite Guard". |
+| Por qué | Wait Guard: medido en Psikora HC-IHCE.14 (2026-10-14): un epic-agent pasó 222 de sus 510 minutos en `sleep` sondeando a sus workers, el coordinador se puso un reloj con `sleep 3060` por una regla de "55 minutos" que nadie definió, y el 97 % de los turnos tras una pausa de más de 5 minutos fueron cache miss (la caché de prompts dura 5 minutos). Suite Guard: en HC-IHCE.17/01 (2026-10-22) el implementer corrió un filtro de integración de 15 minutos pese a `test_scoped`, y el epic-agent la suite de 21 minutos dos veces. `lib/wait-guard.js` y `lib/suite-guard.js` son las reglas; opt-in por `hooks.enabled` como todo hook. |
 
 ---
 
@@ -76,6 +78,8 @@ Después de actualizar el plugin: `/reload-plugins` (o sesión nueva), y `/hooks
   "supersede_for": null,
   "lock_sha": "<SHA del commit que marcó el epic [/]>",
   "lifted_spec_paths": [],
+  "phase": "green",
+  "phase_at": "2026-10-22T14:03:11Z",
   "specs": [
     { "slug": "01-model", "red_sha": "<SHA del RED commit>", "red_sha_orig": "<SHA del PRIMER RED>", "test_paths": ["tests/model/nota.test.ts"] },
     { "slug": "02-api",   "red_sha": "<SHA del RED commit>", "test_paths": ["tests/api/notas.test.ts", "tests/api/errores.test.ts"] }
@@ -95,6 +99,8 @@ Después de actualizar el plugin: `/reload-plugins` (o sesión nueva), y `/hooks
 | `supersede_for` | string \| null | epic-agent (`supersede --slug`) | v2.2.0: el spec dueño de los `supersede_paths` vigentes; `--clear` lo vacía. |
 | `lock_sha` | string \| null | coordinador (`write --lock-sha`) | v2.2.0: el commit que marcó el epic `[/]` — la base donde el loop de supersesiones corre el RED retroactivo (`honesty-check base-worktree`). `write` lo conserva si no se pasa. |
 | `lifted_spec_paths` | string[] | coordinador (`lift-spec`) | v2.2.0, transitorio: specs liberados del sello durante un loop de supersesiones (solo su sección de supersesiones puede cambiar — `honesty-check spec-delta`). El siguiente `write` lo vacía; si sobrevive, el loop quedó interrumpido (`/specture:doctor check` → `seal-lifted`). |
+| `phase` | string \| null | epic-agent (`phase --set`) | v3.2.0: la fase de ejecución del epic — `baseline` · `red` · `green` · `verify` · `mutation`. La Suite Guard deniega la suite completa fuera de `baseline` / `verify`; ausente o desconocida = guardia inerte. `write` la conserva para el mismo epic. |
+| `phase_at` | string \| null | epic-agent (`phase --set`) | v3.2.0: cuándo se fijó la fase (ISO-8601). |
 | `specs[].slug` | string | epic-agent (`merge-spec`) | Slug del spec (`<task-slug>`). |
 | `specs[].red_sha` | string | epic-agent (`merge-spec`) | SHA del commit donde `tdd-test-writer` selló los tests de **ese** spec. |
 | `specs[].red_sha_orig` | string | epic-agent (`merge-spec`) | v2.2.0: el **primer** RED del spec. `merge-spec` nunca lo mueve (salvo `--reset-orig`, tras un re-RED del loop completo); es el inicio del rango que audita `honesty-check range`. Ausente en sellos anteriores = `red_sha`. |
@@ -113,10 +119,11 @@ node "${CLAUDE_PLUGIN_ROOT}/hooks/lib/seal-cli.js" <comando> [opciones] [--proje
   unseal-spec  --slug <task-slug>
   lift-spec    --slug <task-slug>
   supersede    [--slug <task-slug>] --paths a,b [--shared-with-red] | --clear
+  phase        --set <baseline|red|green|verify|mutation>
   release | show
 ```
 
-`write` conserva **íntegras** las entradas `specs[]` del mismo epic (con su `red_sha_orig`) y `lock_sha` si no se pasa, descarta las de otro epic avisando por stderr, y vacía `lifted_spec_paths` / `supersede_paths` / `supersede_for` (un `write` re-sella); `merge-spec` agrega o actualiza **una** entrada por slug sin tocar los campos del epic (`--test-paths` reemplaza, `--add-test-paths` une); `lift-spec` expande a lista explícita el glob que cubre el spec y quita solo ese archivo; `supersede` **rechaza** (exit 1) un path que sea el RED de cualquier spec del sello — propio o hermano — salvo `--shared-with-red` explícito (el RED agregó tests a un archivo existente); `release` es idempotente. Cada comando acepta solo sus flags (más `--project`): un flag desconocido es error de uso. Exit 1 con un archivo corrupto, una supersesión rechazada o un `lift-spec` imposible; exit 2 por uso incorrecto. En Antigravity se invoca con `${PLUGIN_ROOT}` en vez de `${CLAUDE_PLUGIN_ROOT}`.
+`write` conserva **íntegras** las entradas `specs[]` del mismo epic (con su `red_sha_orig`) y `lock_sha` si no se pasa, descarta las de otro epic avisando por stderr, y vacía `lifted_spec_paths` / `supersede_paths` / `supersede_for` (un `write` re-sella); `merge-spec` agrega o actualiza **una** entrada por slug sin tocar los campos del epic (`--test-paths` reemplaza, `--add-test-paths` une); `lift-spec` expande a lista explícita el glob que cubre el spec y quita solo ese archivo; `supersede` **rechaza** (exit 1) un path que sea el RED de cualquier spec del sello — propio o hermano — salvo `--shared-with-red` explícito (el RED agregó tests a un archivo existente); `phase --set <p>` (v3.2.0) escribe la fase que lee la Suite Guard (exit 1 sin sello, exit 2 con un valor desconocido); `release` es idempotente. Cada comando acepta solo sus flags (más `--project`): un flag desconocido es error de uso. Exit 1 con un archivo corrupto, una supersesión rechazada o un `lift-spec` imposible; exit 2 por uso incorrecto. En Antigravity se invoca con `${PLUGIN_ROOT}` en vez de `${CLAUDE_PLUGIN_ROOT}`.
 
 ### `lib/honesty-check.js` — salvaguardas mecánicas del TDD Honesty Gate (v2.2.0)
 
@@ -148,9 +155,11 @@ Un token por check: `RED-CHECK <cmd>: PASS … | FAIL <n> | SKIPPED <motivo> | U
 
 Primera línea de stdout = token `HONESTY <cmd>: PASS … | FAIL <n> | UNVERIFIABLE <motivo>`; exit 0 / 1 / 2. `clean-tree` exige nada sin commitear bajo los globs de test; `range` es la **allowlist** del Step 5.5 (todo commit que toca tests en `red_sha_orig..HEAD` está registrado en `## SUPERSESIONES` con exactamente sus paths — o es el primer RED de un spec hermano — y `supersede_paths` está vacío); `red-lines` verifica que cada línea que agregó el RED original siga en HEAD; `spec-delta` que un spec liberado solo cambió su sección de supersesiones; `protected` que ninguna supersesión toque un test de `verify:` de `rules.yml` o un GUARD de otro epic; `base-worktree` arma el worktree en `LOCK_SHA` para el RED retroactivo; `fix-range` (v2.4.0) es el chequeo posterior del loop de corrección de cumplimiento, que corre sin sello: cada commit de `BASE..HEAD` toca solo los archivos declarados para los hallazgos elegidos (el del hallazgo, los nuevos que crea un arreglo estructural y los que lo usan, nunca un test). Lo usan `skills/build/EPIC_LOOP.md` (Step 5.2 y 5.5), el loop de supersesiones de `skills/build/SKILL.md` y `skills/compliance-review/CORRECTION_LOOP.md`; el detalle y el riesgo residual están en `docs/tdd-honesty-reference.md`.
 
-### `lib/quality.js` — comandos de calidad del proyecto (v2.8.0 · CLI v2.9.0)
+### `lib/quality.js` — comandos de calidad del proyecto (v2.8.0 · CLI v2.9.0 · registro de corridas v3.2.0)
 
 `node hooks/lib/quality.js show` lista los seis slots de `stack.yml` → `quality.commands` (`test`, `test_scoped`, `type_check`, `lint`, `format_check`, `mutation`) y `expand <slot> --files a,b` imprime el comando con `{files}` / `{names}` sustituidos — o `SKIPPED <slot>: sin definir | none` (exit 3). Es lo que el epic-agent, el writer y el implementer ejecutan en vez de adivinar el runner: `test` solo en la línea base (Step 3.9) y el Step 7, `test_scoped` en todo lo demás. En Psikora HC-IHCE.14 el implementer corrió la suite completa 38 veces en un epic (66 min de una suite de 20–40 min, con un cache miss en cada vuelta).
+
+Desde v3.2.0 también ejecuta y **registra** las corridas: `run <slot> [--files a,b] --log` vuelca la salida entera a `docs/.specture-meta/runs/<inicio>-<slot>-<sha7>.log` con un encabezado parseable (`# sha`, `# tree`, `# phase`, `# command`, `# start`) y un trailer (`# end`, `# duration_s`, `# exit`) e imprime un resumen de una línea — el agente lee los fallos con `grep` en el log, nunca re-corre. `runs` lista los logs; `runs reusable` encuentra el log de `test` que describe el árbol actual (la línea base del Step 3.9 se reutiliza de ahí); `runs record-failures` escribe el sidecar `<log>.failures` con los fallos que el agente leyó (gramática de `BASELINE_FALLOS`); `runs summary --since <rev>` suma corridas y minutos (métricas `full_suite_runs` / `full_suite_minutes`); `runs prune --keep N` borra los viejos. El framework nunca parsea la salida del runner. Detalle: `docs/quality-catalog.md` § 5.
 
 ### Revisión de cumplimiento (v2.4.0; PR y rama v2.5.0) — `lib/review-rules-resolve.js`, `lib/compliance.js` y `lib/pr.js`
 

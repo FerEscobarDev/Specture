@@ -19,6 +19,8 @@
 //   C4  every `(planeada — re-anclar)` symbol is created by an EARLIER spec
 //       with a string-identical signature                                     BLOCKER
 //   C5  <= 3 specs; <= 15 AC/BR/EC per spec (proxy for "<= 3 commits")        WARNING
+//       > 30 AC/BR/EC in one spec (2× the threshold) — split obligatorio       BLOCKER
+//       (v3.2.0: a 60-id spec cost a 46-minute RED and three accepted warnings)
 //   C6  no `sym: … consume` points at an earlier (or the same) spec           BLOCKER / WARNING
 //   C-path  every `Crea:` / `Modifica:` line carries `en <path>`              BLOCKER
 //   C-gap   migration epics: every GAP-nnn of the epic in exactly one spec    BLOCKER
@@ -51,6 +53,7 @@ const { findProjectRoot } = require("./specture-guard");
 const SEVERITY_ORDER = { BLOCKER: 0, WARNING: 1, INFO: 2 };
 const MAX_SPECS = 3;
 const MAX_IDS_PER_SPEC = 15;
+const MAX_IDS_HARD = 30; // 2× the threshold: above it the planner MUST split (C5 BLOCKER, v3.2.0)
 
 // Checks that look at the Superficie / supersessions a draft does not have yet (review stage):
 // in `--draft` every finding of theirs is INFO — the refresh at the epic's turn runs them for real.
@@ -305,7 +308,9 @@ function runChecks({ table, specs, epic, roadmapEpics, epicDir, register = [], d
   // ---- C5 — sizing --------------------------------------------------------------------
   if (specs.length > MAX_SPECS) add("C5", "WARNING", null, `${specs.length} specs (> ${MAX_SPECS}) — split sugerido`);
   for (const spec of specs) {
-    if (spec.idCount > MAX_IDS_PER_SPEC) {
+    if (spec.idCount > MAX_IDS_HARD) {
+      add("C5", "BLOCKER", spec.slug, `${spec.idCount} AC/BR/EC (> ${MAX_IDS_HARD}) — split obligatorio: dividir en specs de ≤ ${MAX_IDS_PER_SPEC} ids dentro del epic (≤ ${MAX_SPECS} specs)`);
+    } else if (spec.idCount > MAX_IDS_PER_SPEC) {
       add("C5", "WARNING", spec.slug, `${spec.idCount} AC/BR/EC (> ${MAX_IDS_PER_SPEC}) — probable > 3 commits; split sugerido (proxy heurístico)`);
     }
   }
@@ -464,4 +469,4 @@ if (require.main === module) {
   process.exit(exitCode(result));
 }
 
-module.exports = { run, runChecks, render, exitCode, parseArgs, MAX_SPECS, MAX_IDS_PER_SPEC };
+module.exports = { run, runChecks, render, exitCode, parseArgs, MAX_SPECS, MAX_IDS_PER_SPEC, MAX_IDS_HARD };

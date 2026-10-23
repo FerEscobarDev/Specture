@@ -315,6 +315,24 @@ re-inspecciona formato a ojo (la revisión de cumplimiento igual). `mutation.ena
 llega al reviewer como `MUTATION_REPORT` y cada mutante sobreviviente es un hallazgo de fuerza de
 tests o se descarta con una línea — el reviewer deja de mutar a mano, que era lento y frágil.
 Necesita la herramienta instalada en tu proyecto (Stryker, Infection, mutmut, Pitest… la que sea).
+Desde v3.2.0, `mutation.scope` decide **cuándo** corre: `spec` (default) una vez por spec en el
+Step 6; `epic` una vez por epic en el Step 7.5 (ver más abajo).
+
+## ¿Qué es `mutation.scope: epic`?
+
+Stryker tardaba ~20 minutos por spec en Psikora y corría en serie con el reviewer. Con
+`mutation.scope: epic` en `settings.yml` la mutación corre **una vez por epic**, después del Step 7
+de la última spec y antes del `[x]` (Step 7.5 de `EPIC_LOOP.md`): sobre la unión de los
+`Crea:`/`Modifica:` de todos los specs, con el log en `docs/.specture-meta/runs/`. Los
+sobrevivientes los juzga el `code-reviewer` en `MODE: MUTATION` (acotado, `effort: medium`): cada
+uno se descarta con una razón o es un hallazgo con spec dueño e ID; los hallazgos vuelven al
+`tdd-test-writer` como `RED-FIX` de ese spec (nunca se debilita una aserción), y si el test
+reforzado encuentra un bug real, el implementer lo arregla y ese spec repite su Step 7. Máximo dos
+rondas; un BLOCKER que persiste es la salida del Iteration Cap, un IMPORTANT va a `DIFERIDOS`. En
+un epic de tres specs ahorra ~40 minutos; el costo es detectar un test débil una spec más tarde.
+Los reviewers de cada spec reciben `MUTATION_REPORT: (none — mutation.scope epic: Step 7.5)` y
+juzgan la fuerza de los tests leyendo. Migración mecánica `3.2-mutation-scope` deja `spec` escrito
+en proyectos existentes: nada cambia hasta que escribas `epic`.
 
 ## ¿Qué es `MODE: RE-REVIEW`?
 
@@ -365,6 +383,75 @@ gate y una `RE-REVIEW` acotada, y repite el Step 7. Es agnóstico: el proyecto d
 (`pytest -q {files}`, `npx vitest run {files}`, un `--filter` por `{names}` en .NET — ejemplos en
 `docs/quality-catalog.md`). Con `test_scoped` en `sin definir` el agente corre lo más acotado que
 ofrezca su runner sobre esos archivos y lo dice como `SKIPPED`; nunca la suite.
+
+Desde v3.2.0 la regla también es mecánica: el sello lleva la **fase** del epic (`baseline` · `red`
+· `green` · `verify` · `mutation`, `seal-cli.js phase --set`) y, con hooks, la **Suite Guard**
+deniega el comando de `test` fuera de `baseline` y `verify`. Y de las dos corridas completas suele
+quedar una: la línea base se reutiliza del Step 7 del epic anterior cuando el árbol de código no
+cambió (siguiente pregunta).
+
+## ¿Por qué este epic no corrió la línea base?
+
+Porque ya existía. El Step 7 del epic anterior corrió la suite completa sobre el mismo árbol de
+código y registró sus fallos (`quality.js runs record-failures`). Antes de despachar al
+epic-agent, el coordinador corre `quality.js runs reusable`: si hay un log de `test` completo,
+tomado con el árbol limpio, con su `.failures` registrado, y `git diff` entre su commit y HEAD no
+muestra cambios fuera de `docs/` y `.specture/` (los commits del lock y del plan solo tocan
+`docs/`), pasa `BASELINE_LOG` y `BASELINE_FALLOS` y el Step 3.9 se salta — verás *"Línea base:
+reutilizada de <log>"* en el chat y `— reutilizado de <log>` en cada línea de `BASELINE_FALLOS`.
+Cualquier cambio de código, un árbol sucio o un log sin fallos registrados la invalidan y la suite
+corre como siempre (*"Línea base: corre en Step 3.9 (<motivo>)"*). Son ~20 minutos por epic en una
+suite como la de Psikora.
+
+## ¿Por qué el Step 7 corre en paralelo con el review?
+
+Porque durante el Step 6 nadie escribe en el árbol: lint, type_check y la mutación solo leen, y el
+reviewer escribe únicamente su informe en `docs/07-reviews/`. En cuanto el gate de honestidad del
+Step 5.5 pasa, el epic-agent pone la fase `verify` y lanza la suite completa en background junto a
+las herramientas; cuando llega el `APPROVED` la corrida suele estar terminada. El Step 7 la acepta
+solo si el `sha` de su encabezado sigue siendo HEAD, `clean-tree` pasa, el árbol estaba limpio al
+correr y el log tiene trailer; un `REJECTED_MINOR` la vuelve stale (el implementer va a commitear):
+el epic-agent espera o detiene la corrida antes de despacharlo y la relanza después del nuevo gate.
+Mismo rigor, ~20 minutos menos por spec. En .NET `type_check` y `test` comparten `obj/`, así que
+`type_check` arranca primero y el resto al terminar (`docs/quality-catalog.md` § 2.1). En
+Antigravity, sin shell en background, las herramientas corren en primer plano, luego el reviewer y
+la suite después del veredicto.
+
+## ¿Dónde quedó la salida de la suite?
+
+En `docs/.specture-meta/runs/<inicio>-<slot>-<sha7>.log`, entera, con un encabezado (`# sha`,
+`# tree`, `# phase`, `# command`, `# start`) y un trailer (`# end`, `# duration_s`, `# exit`). La
+corrida se lanza con `quality.js run test --log`, que imprime una sola línea de resumen y la vía:
+**grep en el log, nunca volver a correr**. En Psikora la segunda corrida de 30 minutos del Step 7
+existió solo porque el agente había guardado un `tail` y no sabía qué tests habían fallado. Los
+fallos que el agente lee los registra con `runs record-failures --log <path> --from-file <lista> |
+--none` en el sidecar `<log>.failures` (gramática de `BASELINE_FALLOS`); el framework no parsea la
+salida de tu runner. El directorio está gitignoreado; `runs prune --keep 20` en el Step 8 borra
+los viejos. `quality.js runs` los lista; `runs summary --since <LOCK_SHA>` suma corridas y minutos
+(las métricas `full_suite_runs` / `full_suite_minutes`, que `knowledge stats` lee: una suite de más
+de 10 min por corrida es trabajo del proyecto, no del framework).
+
+## El hook me denegó `dotnet test` (o `pytest`, `npm test`). ¿Por qué?
+
+Porque el epic está en una fase donde la suite completa no corre. El mensaje lo dice: *"runs the
+full suite (`quality.commands.test`) while the epic is in phase `green`"*. En `green` (el
+implementer está trabajando) y `red` (el writer) solo corre `test_scoped` sobre los archivos en
+obra: `node "${CLAUDE_PLUGIN_ROOT}/hooks/lib/quality.js" expand test_scoped --files …`. Una corrida
+acotada pasa — la Suite Guard la reconoce por los tokens que tu `test_scoped` tiene y tu `test` no
+(`--filter`, `--tests`) o, cuando `test_scoped` es `test` + `{files}`, por un argumento con ruta
+(`pytest -q tests/a.py`). Si tu `test` y tu `test_scoped` son idénticos no puede distinguirlos:
+declará un `test_scoped` distinguible en `stack.yml`. Si sos el epic-agent en el Step 3.9 o 7,
+primero `seal-cli.js phase --set baseline|verify`. Un sello huérfano (ningún epic `[/]`) permite el
+comando y lo dice. Apagarlo es decisión del proyecto: `hooks.enabled: false`.
+
+## El gate bloqueó un spec de 31 IDs
+
+Desde v3.2.0 `spec-set-check` C5 es **BLOCKER** por encima de 30 AC/BR/EC (2× el umbral de 15 que
+sigue siendo WARNING). En Psikora la spec 01 de HC-IHCE.17 tenía 60 IDs, el aviso se aceptó tres
+veces en la tanda, y el RED costó 46 minutos: el tiempo del writer y del implementer crece lineal
+con el conteo. El FAIL vuelve al planner como `VIOLATIONS` y debe dividir la spec dentro del epic
+(≤ 3 specs); si no puede, reporta `BLOCKED: sizing` y la división te llega a vos. Aplica también a
+los borradores de la etapa de revisión: dividir temprano es el punto.
 
 ## Corrí `doctor migrate` y nadie me avisó de que `quality.commands` seguía sin definir
 

@@ -147,7 +147,10 @@ the Spec Planning Gate was designed to be judged by (`docs/spec-planning-gate-de
    `open_questions ≈ 0` → the planner does not ask (fix the planner, not the validation);
    `reviewer_rejected_major_spec_defect` rising → keep validating per spec (decision A6);
    `c7_rejections` high → harden the planner's Step 4; tokens → the user's judgment (no
-   harness; the `tokens` field is optional). It also reads the convergent gate:
+   harness; the `tokens` field is optional). **Since v3.2.0** the line also carries
+   `full_suite_runs` / `full_suite_minutes` / `mutation_runs`: the reading flags a suite over
+   10 min per full run as the project's work to parallelise or narrow — never a reason to run it
+   less often than the loop already does (the baseline, or a reused one, and Step 7). It also reads the convergent gate:
    `gate_rounds` (≥3 sustained → review the validator's criteria, not the planner),
    `planner_redispatch_after_approved > 0` (the coordinator is reopening APPROVED verdicts —
    a process defect), gate vs loop dispatches (`validator_dispatches` /

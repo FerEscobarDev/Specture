@@ -176,3 +176,23 @@ test("serializeSettings round-trips through parseSettingsYaml", () => {
   const off = settings.parseSettingsYaml(settings.serializeSettings({ "compliance_review.enabled": false }));
   assert.equal(off["compliance_review.enabled"], false);
 });
+
+// v3.2.0 — mutation.scope: spec by default, honoured under every profile, a typo never moves the run.
+test("mutation.scope defaults to spec, accepts spec | epic under every profile, falls back on garbage and is serialized", () => {
+  assert.deepEqual(settings.MUTATION_SCOPES, ["spec", "epic"]);
+  assert.equal(settings.readSettings(createProject({ settingsYaml: "profile: custom\n" })).values["mutation.scope"], "spec");
+  assert.equal(settings.readSettings(createProject({ settingsYaml: "profile: full\nmutation.enabled: true\n" })).values["mutation.scope"], "spec", "full does not move the run");
+  for (const profile of ["lean", "full", "custom"]) {
+    for (const scope of settings.MUTATION_SCOPES) {
+      const project = createProject({ settingsYaml: `profile: ${profile}\nmutation.scope: ${scope}\n` });
+      assert.equal(settings.readSettings(project).values["mutation.scope"], scope, `${profile} / ${scope}`);
+    }
+  }
+  assert.equal(settings.readSettings(createProject({ settingsYaml: "mutation.scope: Epic\n" })).values["mutation.scope"], "epic", "case-insensitive");
+  const garbage = settings.readSettings(createProject({ settingsYaml: "mutation.scope: milestone\n" }));
+  assert.equal(garbage.values["mutation.scope"], "spec", "an unknown scope is spec — the doctor reports the raw value");
+  assert.equal(garbage.raw["mutation.scope"], "milestone");
+  assert.match(settings.serializeSettings({ "mutation.scope": "epic" }), /^mutation\.enabled: false[^\n]*\nmutation\.scope: epic/m, "serialized right after mutation.enabled");
+  assert.ok(settings.TOGGLE_KEYS.includes("mutation.scope"));
+  assert.ok(settings.PROFILE_INDEPENDENT_KEYS.includes("mutation.scope"));
+});

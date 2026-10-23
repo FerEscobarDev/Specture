@@ -22,6 +22,7 @@ const TOGGLE_KEYS = [
   "knowledge.enabled",
   "compliance_review.enabled",
   "mutation.enabled",
+  "mutation.scope",
   "tdd.level"
 ];
 
@@ -38,6 +39,14 @@ const KEYS = ["schema_version", "profile", ...TOGGLE_KEYS];
 // (`- TDD_LEVEL:`): a change applies to the next epic, never to the running one.
 const TDD_LEVELS = Object.freeze(["strict", "essential", "none"]);
 
+// `mutation.scope` (v3.2.0): WHEN the mutation command runs, once `mutation.enabled` is on.
+//   spec — one run per spec in build Step 6, in series with the code-reviewer (the v2.8.0 behaviour).
+//   epic — one run per epic (Step 7.5) over the union of every spec's production surface, with a
+//          bounded `MODE: MUTATION` review before the `[x]`. Saves one mutation run per spec on a
+//          multi-spec epic; detects a weak test one spec later.
+// Read by the epic-agent when it reaches Step 6, like `mutation.enabled`; never frozen per epic.
+const MUTATION_SCOPES = Object.freeze(["spec", "epic"]);
+
 // Effective values when nothing is declared (behaviour of v1.11.0 "custom" without toggles).
 const DEFAULTS = Object.freeze({
   profile: "custom",
@@ -48,6 +57,7 @@ const DEFAULTS = Object.freeze({
   "knowledge.enabled": false,
   "compliance_review.enabled": true,
   "mutation.enabled": false,
+  "mutation.scope": "spec",
   "tdd.level": "strict"
 });
 
@@ -64,6 +74,7 @@ const PROFILE_INDEPENDENT_KEYS = Object.freeze([
   "docs_index.max_entries_per_dispatch",
   "compliance_review.enabled",
   "mutation.enabled", // needs a tool installed in the project: off under every profile unless declared (v2.8.0)
+  "mutation.scope", // when the mutation runs (spec | epic): a project decision, honoured under every profile (v3.2.0)
   "tdd.level" // a project decision, not a footprint: honoured under every profile (v3.1.0)
 ]);
 
@@ -166,6 +177,11 @@ function effectiveValues(raw) {
   if (typeof values["mutation.enabled"] !== "boolean") {
     values["mutation.enabled"] = DEFAULTS["mutation.enabled"];
   }
+  // An unknown scope is `spec` (the behaviour every project had): a typo never moves the mutation
+  // run. The doctor reports the raw value (`mutation-scope-invalid`).
+  values["mutation.scope"] = typeof values["mutation.scope"] === "string" && MUTATION_SCOPES.includes(values["mutation.scope"].toLowerCase())
+    ? values["mutation.scope"].toLowerCase()
+    : DEFAULTS["mutation.scope"];
   // An unknown level is the strict default: a typo never lowers the discipline. The doctor
   // reports the raw value (`tdd-level-invalid`).
   values["tdd.level"] = typeof values["tdd.level"] === "string" && TDD_LEVELS.includes(values["tdd.level"].toLowerCase())
@@ -225,6 +241,7 @@ function serializeSettings(values, options = {}) {
     `knowledge.enabled: ${v["knowledge.enabled"]}                  # opt-in knowledge-capture prompts (build 8.5, debug 4.5)`,
     `compliance_review.enabled: ${v["compliance_review.enabled"]}           # compliance review at milestone close (any profile)`,
     `mutation.enabled: ${v["mutation.enabled"]}                   # run stack.yml quality.commands.mutation in build Step 6 (any profile; needs the tool installed)`,
+    `mutation.scope: ${v["mutation.scope"]}                     # spec | epic — one mutation run per spec (Step 6) or one per epic over every spec's production files (Step 7.5)`,
     `tdd.level: ${v["tdd.level"]}                        # strict | essential | none — test discipline of the build loop (any profile; frozen per epic when it opens)`,
     ""
   ].join("\n");
@@ -235,6 +252,7 @@ module.exports = {
   KEYS,
   TOGGLE_KEYS,
   TDD_LEVELS,
+  MUTATION_SCOPES,
   DEFAULTS,
   PROFILES,
   PROFILE_INDEPENDENT_KEYS,

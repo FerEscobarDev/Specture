@@ -338,3 +338,49 @@ test("supersede refuses a path in the test_paths of its own spec or a sibling's 
   r = cli(root, "supersede", "--clear", "--paths", "tests/old/a.test.js");
   assert.equal(r.status, 2, "--clear takes no paths");
 });
+
+test("phase --set records the execution phase (v3.2.0): valid value, unknown value → exit 2, no seal → exit 1; write keeps it for the same epic and drops it for another", () => {
+  const root = createProject();
+  let r = cli(root, "phase", "--set", "green");
+  assert.equal(r.status, 1, "no seal to update");
+  assert.match(r.stderr, /no seal to update/);
+
+  cli(root, "write", "--epic", EPIC, "--spec-sha", "abc1234", "--spec-paths", `${SPEC_DIR}/*.spec.md`);
+  assert.equal(readState(root).phase, null, "write of a fresh epic has no phase");
+
+  r = cli(root, "phase", "--set", "baseline");
+  assert.equal(r.status, 0, r.stderr);
+  assert.match(r.stdout, /phase none → baseline/);
+  let state = readState(root);
+  assert.equal(state.phase, "baseline");
+  assert.match(state.phase_at, /^\d{4}-\d{2}-\d{2}T/);
+
+  r = cli(root, "phase", "--set", "VERIFY");
+  assert.equal(r.status, 0, r.stderr);
+  assert.match(r.stdout, /phase baseline → verify/);
+  assert.equal(readState(root).phase, "verify", "case-insensitive");
+
+  r = cli(root, "phase", "--set", "review");
+  assert.equal(r.status, 2, "unknown phase is a usage error");
+  assert.match(r.stderr, /unknown phase review \(baseline, red, green, verify, mutation\)/);
+  assert.equal(readState(root).phase, "verify", "nothing written on a refused value");
+
+  r = cli(root, "phase");
+  assert.equal(r.status, 2, "--set is required");
+
+  cli(root, "merge-spec", "--slug", "01-modelo", "--red-sha", "red111", "--test-paths", "tests/notas/modelo.test.js");
+  assert.equal(readState(root).phase, "verify", "merge-spec keeps the phase");
+
+  cli(root, "write", "--epic", EPIC, "--spec-sha", "def5678", "--spec-paths", `${SPEC_DIR}/*.spec.md`);
+  state = readState(root);
+  assert.equal(state.phase, "verify", "write of the same epic keeps the phase");
+  assert.ok(state.phase_at);
+
+  cli(root, "write", "--epic", "epic-9.9-otro", "--spec-sha", "fff0000", "--spec-paths", "docs/05-specs/epic-9.9-otro/*.spec.md");
+  state = readState(root);
+  assert.equal(state.phase, null, "write of another epic drops the phase");
+  assert.equal(state.phase_at, null);
+
+  r = cli(root, "show");
+  assert.equal(JSON.parse(r.stdout).phase, null);
+});

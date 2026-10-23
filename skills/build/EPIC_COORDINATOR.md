@@ -154,6 +154,13 @@ Dispatch a general-purpose agent **with `model: sonnet`** and the prompt below �
 **never** your own history. Read the `BASE_CONTEXT` paths and the full text of `build/EPIC_LOOP.md`
 and paste them; never this file or `build/SKILL.md`.
 
+**Baseline reuse (v3.2.0) — right before a first dispatch** (`ENTRY: refresh | sealed`, never a
+resume): run `node "${CLAUDE_PLUGIN_ROOT}/hooks/lib/quality.js" runs reusable`. Your tree is HEAD
+(the lock / plan commits touch only `docs/`) and clean. `REUSABLE <log> · sha <7> · failures <n>`
+(the lines follow) → fill `BASELINE_LOG` and `BASELINE_FALLOS` with them: the epic-agent skips the
+Step 3.9 run. `NONE <motivo>` → `BASELINE_FALLOS: pendiente — Step 3.9 (motivo: <motivo>)`. Print
+one line either way — *"Línea base: reutilizada de <log>"* or *"Línea base: corre en Step 3.9 (<motivo>)"*.
+
 ~~~
 You are the epic-agent for ONE epic of a Specture project.
 
@@ -185,7 +192,10 @@ RESUME_AT: supersede <task-slug> | regresiones <task-slug> | red-fix <task-slug>
 SUPERSEDE: [<path>::<test> — <rule> — capa, one per line — tests J9 = SÍ]
 REGRESIONES: [<path>::<test> — J9 NO/INDETERMINABLE — back to the implementer as regressions]
 RED_FIX: [<ID or path::test> — defect or changed rule, one per line — only for RESUME_AT: red-fix]
-BASELINE_FALLOS: [the epic's ## BASELINE_FALLOS lines]
+BASELINE_LOG: [docs/.specture-meta/runs/<log> (sha <7>, <start>) — when `quality.js runs reusable` printed REUSABLE
+  right before this dispatch; omit the line on NONE]
+BASELINE_FALLOS: [the epic's ## BASELINE_FALLOS lines — on a first dispatch, the REUSABLE sidecar's lines
+  (so the epic-agent skips the Step 3.9 run), or `pendiente — Step 3.9 (motivo: <NONE reason>)`]
 CHANGE_REQUEST: [the user's visual feedback verbatim — only after a visual adjustment]
 
 ## Epic
@@ -215,6 +225,8 @@ METRICS (mandatory — the coordinator appends them to build-metrics.jsonl):
   supersessions: N · supersede_tests: N · exec_blocked_compile: N ·
   exec_blocked_runtime: N · baseline_failures: N · firma re-read: N verified / M corrected ·
   red_check_failures: N (RED-CHECK FAILs that re-dispatched the writer) ·
+  full_suite_runs: N · full_suite_minutes: M (`quality.js runs summary --since <LOCK_SHA>`, Step 8) ·
+  mutation_runs: N (per spec in Step 6, or rounds of Step 7.5) ·
   effort: test_writer <level> / implementer <level> / reviewer <level> (as dispatched)
 SUPERSESSIONS: <none | one line per declared test: <path>::<test> → <SUPERSEDE_SHA>>
 If DONE: update ROADMAP.md to [x] for this epic and commit BEFORE reporting.

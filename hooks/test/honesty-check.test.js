@@ -565,3 +565,16 @@ test("fix-range: commits inside the chosen files PASS; a test or a file outside 
   assert.equal(hc(root, "fix-range", "--base", base, "--allowed", "src/a.js").status, 2, "--test-globs is required");
   assert.equal(hc(root, "fix-range", "--base", "deadbeef", "--test-globs", "tests/**", "--allowed", "src/a.js").status, 2);
 });
+
+// v3.2.0 — the epic-agent's `## MUTACIÓN` register (Step 7.5) grows during the epic like BASELINE_FALLOS: never a spec change.
+test("spec-delta: a new or grown `## MUTACIÓN` section and a `— reutilizado de <log>` BASELINE_FALLOS line in _planning.md are not a spec change", () => {
+  const { root, base } = deltaRepo();
+  write(
+    root,
+    `${EPIC_DIR}/_planning.md`,
+    PLANNING_BASE.replace("## SPEC_SHA\n", "## BASELINE_FALLOS (epic-agent)\n- tests/old.test.js::viejo — timeout — 2026-10-22T10:00:00Z — reutilizado de docs/.specture-meta/runs/2026-10-21T20-00-00Z-test-abc1234.log\n\n## MUTACIÓN (epic-agent — Step 7.5)\n- ronda 1 — docs/.specture-meta/runs/2026-10-22T12-00-00Z-mutation-abc1234.log — 2 sobrevivientes — 1 hallazgo — 1 descartado\n\n## SPEC_SHA\n")
+  );
+  const r = hc(root, "spec-delta", "--epic-dir", EPIC_DIR, "--base", base, "--slug", "01-limite");
+  assert.equal(r.status, 0, r.stdout + r.stderr);
+  assert.match(r.token, /^HONESTY spec-delta: PASS /);
+});

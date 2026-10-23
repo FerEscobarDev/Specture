@@ -175,7 +175,11 @@ No RED commit in this mode, and no test beyond the declared ones.
 Dispatched after a spec correction (the `RED_FIX:` block names the changed `AC/BR/EC`) or
 after a mechanically defective RED test (it names the test and the defect: it does not compile
 or load, or its setup contradicts a premise the spec states). You receive the spec and that
-block — never production code, never the failure values.
+block — never production code, never the failure values. Since v3.2.0 the block may also come
+from the epic-level mutation review (`mutation.scope: epic`): "the tests of `<IDs>` must kill
+`<mutation>` at `<file:line>`" — strengthen exactly those tests so the named mutation fails them,
+by asserting what the rule demands; never weaken an assertion, never add a test that mirrors the
+mutated line instead of the rule.
 
 1. Rewrite or add **only** the tests of the listed IDs / defects, so that they express the spec
    as it stands now. Every other line of the RED stays untouched (`RED-LINES` checks it).

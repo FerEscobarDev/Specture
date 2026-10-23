@@ -75,8 +75,13 @@ const NUMERIC = [
   // v2.7.0 — per epic
   "epic_coordinator_dispatches",
   // v2.8.0 — per epic: RED-CHECK FAILs that re-dispatched the test-writer (red-check.js)
-  "red_check_failures"
+  "red_check_failures",
+  // v3.2.0 — per epic: full-suite runs (`quality.js runs summary --since <LOCK_SHA>`), their
+  // minutes, and mutation runs (per spec in Step 6, or per epic in Step 7.5)
+  "full_suite_runs", "full_suite_minutes", "mutation_runs"
 ];
+// Above this many minutes per full run the reading names the suite itself as the cost (v3.2.0).
+const SLOW_SUITE_MINUTES = 10;
 // v2.3.0 — per batch (one review register), read once per `batch_id`.
 const BATCH_FIELDS = ["review_rounds", "review_questions", "review_filtered", "review_human_contacts", "late_questions", "premises_false"];
 // Rounds of validation per epic from which the reading asks to review the validator's criterion.
@@ -197,6 +202,10 @@ function aggregate(entries) {
   out.tdd_levels = { strict: 0, essential: 0, none: 0, desconocido: 0 };
   for (const e of entries) out.tdd_levels[tddLevelOf(e) || "desconocido"]++;
   out.downstream_defects = mean(entries.map((e) => sumOrNull([e.needs_context_spec, e.iteration_cap_spec, e.blocked_spec])));
+  // v3.2.0 — minutes per full run, over the lines that carry both figures with at least one run.
+  out.full_suite_minutes_per_run = mean(
+    entries.map((e) => (isNumber(e.full_suite_runs) && e.full_suite_runs > 0 && isNumber(e.full_suite_minutes) ? Math.round((e.full_suite_minutes / e.full_suite_runs) * 10) / 10 : null))
+  );
   out.tokens = mean(entries.map((e) => (e.tokens && typeof e.tokens === "object" ? (e.tokens.input || 0) + (e.tokens.output || 0) : null)));
   out.outcomes = entries.reduce((acc, e) => ({ ...acc, [e.outcome || "unknown"]: (acc[e.outcome || "unknown"] || 0) + 1 }), {});
   return out;
@@ -215,6 +224,11 @@ function reading(gate, baseline) {
     return notes;
   }
   if (baseline.count === 0) notes.push("Sin baseline: correr `metrics-report.js --baseline --write` sobre los epics previos al gate para comparar.");
+  // v3.2.0 — a slow suite multiplies every full run (baseline, Step 7, every regression round): the
+  // loop already runs it as little as the guarantee allows, so the remaining lever is the project's.
+  if (gate.full_suite_minutes_per_run !== null && gate.full_suite_minutes_per_run > SLOW_SUITE_MINUTES) {
+    notes.push(`Suite lenta: ${gate.full_suite_minutes_per_run} min por corrida completa (${gate.full_suite_runs ?? "-"} corridas/epic) — paralelizar o acotar la suite es trabajo del proyecto, no del framework; el loop ya la corre solo en la línea base (o la reutiliza) y en el Step 7.`);
+  }
   const before = baseline.downstream_defects;
   const after = gate.downstream_defects;
   if (before !== null && after !== null) {
@@ -290,7 +304,7 @@ function renderSummary(result) {
   }
   out.push("");
   for (const [label, agg] of [["gate", result.gate], ["baseline", result.baseline]]) {
-    out.push(`${label}: ${agg.count} epic(s) · defectos aguas abajo/epic ${agg.downstream_defects ?? "-"} · spec_defect/epic ${agg.reviewer_rejected_major_spec_defect ?? "-"} · open_questions=0 en ${agg.zero_question_share === null ? "-" : Math.round(agg.zero_question_share * 100) + " %"} · c7/epic ${agg.c7_rejections ?? "-"} · tokens/epic ${agg.tokens ?? "-"}`);
+    out.push(`${label}: ${agg.count} epic(s) · defectos aguas abajo/epic ${agg.downstream_defects ?? "-"} · spec_defect/epic ${agg.reviewer_rejected_major_spec_defect ?? "-"} · open_questions=0 en ${agg.zero_question_share === null ? "-" : Math.round(agg.zero_question_share * 100) + " %"} · c7/epic ${agg.c7_rejections ?? "-"} · tokens/epic ${agg.tokens ?? "-"} · suite ${agg.full_suite_minutes_per_run ?? "-"} min/corrida (${agg.full_suite_runs ?? "-"} corridas/epic) · mutación ${agg.mutation_runs ?? "-"} corridas/epic`);
     if (agg.batches > 0) {
       out.push(`${label} revisión: ${agg.batches} tanda(s) · preguntas/tanda ${agg.review_questions ?? "-"} (total ${agg.review_totals.review_questions ?? "-"}) · filtradas/tanda ${agg.review_filtered ?? "-"} · contactos/tanda ${agg.review_human_contacts ?? "-"} · late/tanda ${agg.late_questions ?? "-"} · premisas falsas/tanda ${agg.premises_false ?? "-"} · aparcados/epic ${agg.parked ?? "-"}`);
     }

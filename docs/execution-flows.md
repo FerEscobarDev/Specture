@@ -252,25 +252,27 @@ flowchart TD
     end
     SC --> S39
     subgraph EL ["epic-agent · build/EPIC_LOOP.md (Steps 3.9–8 · Sonnet)"]
-    S39["Step 3.9 · línea base: suite completa antes del primer RED<br/>fallos re-corridos 2× → BASELINE_FALLOS (no bloquean · se reportan)"]
+    S39["Step 3.9 · línea base: reutilizada del log del Step 7 anterior si el árbol no cambió fuera de docs/ (quality.js runs reusable)<br/>si no: phase baseline · quality.js run test --log · fallos leídos del log y re-corridos 2× → BASELINE_FALLOS (no bloquean · se reportan) · runs record-failures · phase red"]
     S39 --> S4
     S4["Step 4 · RED · tdd-test-writer<br/>escribe tests que FALLAN (sin ver código)<br/>(+ commit test(supersede) previo si el spec declara Supersede:)"]
     S4 --> S4c{"Post-checks: ¿fallan por la razón correcta?<br/>¿RED commit solo-tests? · capturar RED_SHA<br/>· seal-cli merge-spec (lista de archivos del RED)"}
     S4c -->|No| S4
-    S4c -->|Sí| S5["Step 5 · GREEN · implementer / ux-implementer · por capas (ver 3.5)<br/>código mínimo · tests sellados · solo paths Crea:/Modifica:<br/>(re-lectura de firmas del spec anterior antes del Manifest)"]
+    S4c -->|Sí| S5["Step 5 · GREEN · phase green · implementer / ux-implementer · por capas (ver 3.5)<br/>código mínimo · tests sellados · solo paths Crea:/Modifica: · TEST_COMMAND (la Suite Guard deniega la suite)<br/>(re-lectura de firmas del spec anterior antes del Manifest)"]
     S5 -.->|"tests viejos que una regla del spec vuelve falsos"| SUPB(["BLOCKED: supersesiones (capa)<br/>→ loop de supersesiones del coordinador del epic (ver 3.6)"])
     SUPB -.->|"RESUME_AT: supersede"| S52["Step 5.2 · reescritura SUPERSEDE-HEAD registrada por SHA<br/>· red-lines · RED retroactivo en LOCK_SHA"]
     S52 -->|"regresiones J9 NO o WIP de compilación"| S5
     S52 -->|"sin pendientes"| S55
     S5 --> S55{"Step 5.5 · TDD Honesty Gate (mecánico)<br/>honesty-check: clean-tree · range (allowlist de SHAs) · red-lines"}
     S55 -->|"algún FAIL ❌"| VIOL["Violación TDD →<br/>$SPECTURE_ROOT/docs/tdd-honesty-reference.md"]
-    S55 -->|"3 PASS ✅"| S6{"Step 6 · GATE · code-reviewer<br/>(+ linter + type-check en paralelo)<br/>Dim 1 verifica firmas Crea: en HEAD · Dim 4 juzga cada reescritura contra su regla<br/>· Dim 7 solo con RULES_RESOLVED · CAUSE: parseable"}
-    S6 -->|REJECTED_MINOR| S5
+    S55 -->|"3 PASS ✅ · phase verify"| S6{"Step 6 · GATE · code-reviewer<br/>(+ linter + type-check + mutación (scope spec) + LA SUITE COMPLETA en background — v3.2.0)<br/>Dim 1 verifica firmas Crea: en HEAD · Dim 4 juzga cada reescritura contra su regla<br/>· Dim 7 solo con RULES_RESOLVED · CAUSE: parseable"}
+    S6 -->|"REJECTED_MINOR · esperar/detener la suite en vuelo · phase green"| S5
     S6 -->|REJECTED_MAJOR| ESC["Fix grande con contexto fresco<br/>o escalar al usuario"]
     S6 -.->|"3 loops sin APPROVED"| CAP["Iteration Cap → BLOCKED: spec (ID)<br/>o BLOCKED: debug (spec) — nunca invoca debug"]
-    S6 -->|APPROVED| S7{"Step 7 · Verificación<br/>la ÚNICA suite completa del spec (v2.9.0) · leer salida completa<br/>regresiones fuera del RED → implementer MODE: REGRESIONES → gate + RE-REVIEW → Step 7<br/>(solo los BASELINE_FALLOS no bloquean)"}
+    S6 -->|APPROVED| S7{"Step 7 · Verificación<br/>la ÚNICA suite completa del spec, lanzada en Step 6 y leída del log (v3.2.0)<br/>aceptada solo si sha == HEAD · clean-tree · tree clean · trailer; stale → relanzar<br/>fallos por grep en el log (nunca tail ni segunda corrida) · runs record-failures<br/>regresiones fuera del RED → implementer MODE: REGRESIONES → gate + RE-REVIEW → Step 7<br/>(solo los BASELINE_FALLOS no bloquean)"}
     S7 -->|"rojo"| ESC
-    S7 -->|"verde"| S8["Step 8 · epic → [x] · commit<br/>· seal-cli release · reporte con METRICS + SUPERSESSIONS"]
+    S7 -->|"verde · mutation.scope epic"| S75["Step 7.5 · mutación por epic (v3.2.0)<br/>phase mutation · quality.js run mutation --files unión Crea:/Modifica: --log<br/>sobrevivientes → code-reviewer MODE: MUTATION → RED-FIX por spec dueño → Step 7 del spec<br/>máximo 2 rondas · [x] nunca antes"]
+    S75 --> S8
+    S7 -->|"verde · mutation.scope spec"| S8["Step 8 · runs summary → FULL_SUITE · runs prune<br/>· epic → [x] · commit · seal-cli release · reporte con METRICS + SUPERSESSIONS"]
     end
     S8 --> S85["Step 8.5 · Capturar aprendizajes (coordinador)<br/>(opt-in default No → knowledge)"]
     S85 --> S87["Step 8.7 · Cierre de milestone<br/>(si cierra: revisión de cumplimiento (sin preguntar) → milestone-close.js<br/>promueve GUARD-n a rules.yml, borra specs/reviews/debug logs/coverage por ruta exacta<br/>+ lápidas en ROADMAP · un commit)"]

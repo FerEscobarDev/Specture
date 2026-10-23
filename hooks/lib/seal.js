@@ -14,6 +14,9 @@
 //     "lifted_spec_paths": ["docs/05-specs/<epic>/<slug>.spec.md"], // specs freed by lift-spec/unseal-spec until the next write
 //     "supersede_for": "<task-slug>",                         // the spec whose supersede_paths are open
 //     specs[].red_sha_orig: "<sha>"                           // the FIRST RED of the spec — never moved (RED_ORIG)
+// v3.2.0 adds the execution phase, also additive (absent → the Suite Guard is inert):
+//     "phase": "baseline | red | green | verify | mutation", // set by the epic-agent at each step boundary (seal-cli phase)
+//     "phase_at": "<ISO-8601>"                               // when the phase was last set
 // Schema v2 (v1.15.0, still accepted): { "epic", "sealed_at", "specs": [ { slug, red_sha, test_paths } ] }
 // Schema v1 (still accepted): { "epic", "red_sha", "test_paths": [...], "locked_at" }
 //
@@ -31,6 +34,10 @@ const path = require("path");
 const STATE_FILE = path.join(".specture", "state", "build-locked.json");
 const ROADMAP_FILE = path.join("docs", "04-roadmap", "ROADMAP.md");
 const FRAMEWORK_PREFIXES = ["docs/", ".specture/"]; // never governed by allowed_paths
+// The execution phases of one epic (v3.2.0). The full suite (`quality.commands.test`) may run only
+// in `baseline` (Step 3.9) and `verify` (Step 6/7 — launched with the review, read at Step 7).
+const PHASES = Object.freeze(["baseline", "red", "green", "verify", "mutation"]);
+const SUITE_PHASES = Object.freeze(["baseline", "verify"]);
 
 function globToRegExp(glob, options = {}) {
   // Minimal glob translator covering the patterns used in conventions.md
@@ -89,8 +96,9 @@ function stringOrNull(value) {
 
 // Returns null (no seal), { corrupt: true }, or
 // { state, epic, spec_sha, lock_sha, spec_paths, lifted_spec_paths, test_globs, allowed_paths,
-//   supersede_paths, supersede_for, specs: [{ slug, red_sha, red_sha_orig, test_paths, legacy }] }.
+//   supersede_paths, supersede_for, phase, phase_at, specs: [{ slug, red_sha, red_sha_orig, test_paths, legacy }] }.
 // `red_sha_orig` reads null when the entry lacks it: the reader never invents the first RED.
+// `phase` reads null when absent or not one of PHASES: an unknown phase never arms the Suite Guard.
 function readSeal(projectRoot) {
   const abs = path.join(projectRoot, STATE_FILE);
   if (!fs.existsSync(abs)) return null;
@@ -129,6 +137,8 @@ function readSeal(projectRoot) {
     allowed_paths: stringList(state.allowed_paths),
     supersede_paths: stringList(state.supersede_paths),
     supersede_for: stringOrNull(state.supersede_for),
+    phase: PHASES.includes(state.phase) ? state.phase : null,
+    phase_at: stringOrNull(state.phase_at),
     specs
   };
 }
@@ -223,6 +233,8 @@ module.exports = {
   STATE_FILE,
   ROADMAP_FILE,
   FRAMEWORK_PREFIXES,
+  PHASES,
+  SUITE_PHASES,
   globToRegExp,
   pathMatchesAnyGlob,
   dirToGlob,

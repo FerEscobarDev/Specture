@@ -774,3 +774,20 @@ test("C-design: a page epic passes when design_system.md records the visual appr
   assert.deepEqual(designSystemVisualApproval("- **Aprobación visual:** abc123def456 — 2026-09-09 — epic 1.0"), { sha: "abc123def456", line: "- **Aprobación visual:** abc123def456 — 2026-09-09 — epic 1.0" });
   assert.equal(designSystemVisualApproval("- **Aprobación visual:** sin aprobar"), null);
 });
+
+test("C5: more than 30 IDs in a spec (2× the threshold) is a BLOCKER → exit 1, naming the mandatory split; 16-30 stays a WARNING; --draft does not relax it", () => {
+  const huge = createProject({ specs: { ...CLEAN_SPECS, "01-subir": spec({ slug: "01-subir", ops: ["subir"], rules: ["RN-001", "RN-002"], ids: 31, surface: ["- Crea: `Repo` en `src/a/repo.js`"] }) } });
+  const a = runCheck(huge);
+  assert.equal(a.status, 1, a.lines.join("\n"));
+  assert.ok(a.lines.some((l) => /^C5 BLOCKER 01-subir: 33 AC\/BR\/EC \(> 30\) — split obligatorio: dividir en specs de ≤ 15 ids dentro del epic \(≤ 3 specs\)/.test(l)), a.lines.join("\n"));
+  assert.ok(!a.lines.some((l) => /^C5 WARNING 01-subir/.test(l)), "one C5 line per spec, never both");
+
+  const draft = runCheck(huge, ["--draft"]);
+  assert.equal(draft.status, 1, "a draft that needs splitting fails too — dividing early is the point");
+
+  const edge = createProject({ specs: { ...CLEAN_SPECS, "01-subir": spec({ slug: "01-subir", ops: ["subir"], rules: ["RN-001", "RN-002"], ids: 28, surface: ["- Crea: `Repo` en `src/a/repo.js`"] }) } });
+  const b = runCheck(edge);
+  assert.equal(b.status, 0);
+  assert.ok(b.lines.some((l) => /^C5 WARNING 01-subir: 30 AC\/BR\/EC \(> 15\)/.test(l)), "exactly 30 is still the warning band");
+  assert.equal(require("../lib/spec-set-check").MAX_IDS_HARD, 30);
+});

@@ -464,3 +464,36 @@ test("v3.1 tdd_level: counted by level, a tdd column in the table, unknown when 
   assert.match(text, /^epic-3\.4-d \| gate \| 2 \| 1 \| - \| - \| - \| /m);
   assert.match(text, /^gate nivel de TDD: strict 1 · essential 1 · none 1 · sin dato 2/m);
 });
+
+// v3.2.0 — full-suite and mutation figures per epic; the reading names a slow suite.
+test("v3.2 full_suite_runs / full_suite_minutes / mutation_runs: averaged, minutes per run derived, the slow-suite note fires above 10 min and stays quiet below or without data", () => {
+  const root = createProject({
+    "docs/.specture-meta/build-metrics.jsonl": [
+      line("epic-0.9-old"),
+      line("epic-1.1-a", { full_suite_runs: 2, full_suite_minutes: 44, mutation_runs: 1 }),
+      line("epic-1.2-b", { full_suite_runs: 4, full_suite_minutes: 80, mutation_runs: 3 })
+    ].join("\n") + "\n"
+  });
+  const { status, json, stderr } = run(root, "--json");
+  assert.equal(status, 0, stderr);
+  assert.equal(json.gate.full_suite_runs, 3);
+  assert.equal(json.gate.full_suite_minutes, 62);
+  assert.equal(json.gate.mutation_runs, 2);
+  assert.equal(json.gate.full_suite_minutes_per_run, 21, "mean of 22 and 20; the old line without the fields does not count");
+  assert.ok(json.reading.some((n) => /^Suite lenta: 21 min por corrida completa \(3 corridas\/epic\)/.test(n)), json.reading.join("\n"));
+  const text = run(root).stdout;
+  assert.match(text, /gate: .*· suite 21 min\/corrida \(3 corridas\/epic\) · mutación 2 corridas\/epic/);
+
+  const fast = run(createProject({ "docs/.specture-meta/build-metrics.jsonl": line("epic-2.1-c", { full_suite_runs: 2, full_suite_minutes: 8, mutation_runs: 0 }) + "\n" }), "--json");
+  assert.equal(fast.json.gate.full_suite_minutes_per_run, 4);
+  assert.ok(!fast.json.reading.some((n) => /Suite lenta/.test(n)), "4 min per run is not slow");
+
+  const none = run(createProject({ "docs/.specture-meta/build-metrics.jsonl": line("epic-0.9-old") + "\n" }), "--json");
+  assert.equal(none.json.gate.full_suite_runs, null);
+  assert.equal(none.json.gate.full_suite_minutes_per_run, null);
+  assert.ok(!none.json.reading.some((n) => /Suite lenta/.test(n)));
+  assert.match(run(createProject({ "docs/.specture-meta/build-metrics.jsonl": line("epic-0.9-old") + "\n" })).stdout, /· suite - min\/corrida \(- corridas\/epic\) · mutación - corridas\/epic/);
+
+  const unit = report.reading({ ...report.aggregate([]), full_suite_minutes_per_run: 10, full_suite_runs: 2, downstream_defects: null }, report.aggregate([]));
+  assert.ok(!unit.some((n) => /Suite lenta/.test(n)), "exactly 10 is the ceiling, not above it");
+});

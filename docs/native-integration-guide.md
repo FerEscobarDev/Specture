@@ -80,6 +80,14 @@ El usuario ve el mensaje y entiende por qué el modelo no pudo hacer esa escritu
 
 El hook no ve el historial, así que lo que entra **después** del RED lo verifica `hooks/lib/honesty-check.js` en el Step 5.5 (primera línea = token `HONESTY <cmd>: PASS | FAIL | UNVERIFIABLE`): `clean-tree` (nada sin commitear bajo los globs de test), `range` (cada commit que toca tests en `red_sha_orig..HEAD` está registrado por SHA en `## SUPERSESIONES` de `_planning.md`, toca solo sus archivos registrados, y `supersede_paths` está vacío) y `red-lines` (cada línea que agregó el RED original sigue en HEAD). El loop usa además `spec-delta` (el spec cambió solo en su sección de supersesiones), `protected` (ningún test de un `verify:` de `rules.yml` ni de un GUARD de otro epic) y `base-worktree` (worktree en `LOCK_SHA` para el RED retroactivo). Detalle y riesgo residual: `$SPECTURE_ROOT/docs/tdd-honesty-reference.md` § "Supersessions discovered in execution".
 
+### 3.2b PreToolUse / Suite Guard — qué bloquea (v3.2.0)
+
+El hook de espera (`pre-tool-use-wait-gate.js`, matcher `Bash|PowerShell`) deniega también la **suite completa** fuera de fase. El sello lleva la fase de ejecución del epic (`phase`: `baseline` · `red` · `green` · `verify` · `mutation`, escrita por el epic-agent con `seal-cli.js phase --set`); el comando de `quality.commands.test` — o `quality.js run|expand test` — solo pasa en `baseline` (Step 3.9) y `verify` (Step 6/7). En `green` el implementer ve algo como:
+
+> Specture suite guard: `dotnet test` runs the full suite (`quality.commands.test`: `dotnet test`) while the epic is in phase `green`. The full run belongs to Step 3.9 (phase baseline) and Step 7 (phase verify) only … Run `TEST_COMMAND` instead …
+
+Una corrida acotada pasa: la reconoce por los tokens que `test_scoped` tiene y `test` no (`--filter`, `--tests`) o, cuando `test_scoped` es `test` + `{files}`, por un argumento con ruta. Falla abierto sin sello, sin `phase` (sellos anteriores a v3.2.0 o recién escritos por el coordinador), con `test` `sin definir`; un sello huérfano permite con razón. Si tu `test` y tu `test_scoped` son idénticos, deniega y te pide declarar un `test_scoped` distinguible.
+
 ### 3.3 Troubleshooting: hook no se dispara
 
 Ver `hooks/README.md` — tabla de síntomas y causas. Los más comunes:
@@ -189,13 +197,15 @@ Claude Code muestra el plan en un diálogo con tres opciones:
 
 ### 7.1 Qué corre en paralelo durante el review
 
-En Step 6 del build loop (`code-reviewer`), tres procesos pueden correr al mismo tiempo:
+En Step 6 del build loop (`code-reviewer`), cinco procesos pueden correr al mismo tiempo:
 
 1. El **code-reviewer agent** vía `Agent` tool.
 2. El **linter** del proyecto (eslint, ruff, golangci-lint, etc.) vía `Bash run_in_background: true`.
 3. El **type-checker** (tsc --noEmit, mypy, dotnet build, etc.) vía `Bash run_in_background: true`.
+4. La **mutación** (Stryker, Infection, mutmut…) cuando `mutation.enabled` y `mutation.scope: spec`.
+5. **La suite completa del Step 7** (v3.2.0): `quality.js run test --log`, lanzada en cuanto el gate de honestidad pasa (fase `verify`). Su resultado no va al reviewer: el Step 7 lo lee del log y lo acepta solo si el `sha` del encabezado sigue siendo HEAD, el árbol está limpio y tiene trailer; un commit del implementer tras un `REJECTED_MINOR` la vuelve stale y se relanza (y antes de despachar al implementer el epic-agent espera o detiene la corrida en vuelo: nunca un build sobre binarios que la suite está usando).
 
-El orquestador no procede al Step 7 hasta que los tres reporten. La rigurosidad de cada gate es idéntica a la del flujo secuencial — solo se ahorra wall-clock.
+Si `type_check` y `test` comparten salida de build (.NET `obj/`), el epic-agent lanza `type_check` primero y el resto al terminar (`docs/quality-catalog.md` § 2.1). El orquestador no procede al Step 7 hasta que el reviewer reporte. La rigurosidad de cada gate es idéntica a la del flujo secuencial — solo se ahorra wall-clock. En un host sin shell en background (Antigravity) las herramientas corren en primer plano, luego el reviewer, y la suite al terminar el veredicto: mismo rigor, menos solape.
 
 ### 7.2 Cómo leer los resultados cuando completan
 
@@ -257,6 +267,9 @@ Con `hooks.enabled: true` y/o `context7.enabled: true`:
 - **Chequeo mecánico del set y métricas** (con o sin hooks): `spec-set-check.js` corre tras cada pasada del planner y su token `MECH_CHECK` viaja al validator; cada epic termina con una línea en `docs/.specture-meta/build-metrics.jsonl` (trackeada) que `/specture:knowledge stats` lee.
 - **Revisión de cumplimiento al cerrar un milestone (v2.4.0)**: con `compliance_review.enabled` (activo por defecto, en cualquier perfil), Step 8.7 despacha el `compliance-reviewer` por bloque del milestone —sin preguntar y sin frenar la cola— y commitea `docs/07-reviews/cumplimiento-milestone-<N>-<fecha>.md`. Al vaciarse la cola aparece **una** `AskUserQuestion` de triage (aplicar la propuesta · hallazgo por hallazgo · diferir todo · no aplica a todo); los refactors elegidos los corrige un agente de corrección, un commit por hallazgo, sin tocar tests. Nada se publica en GitHub ni Azure DevOps. Con `.specture/review-rules.md`, el implementer recibe además un bloque `CUSTOM_RULES` con los criterios del equipo que aplican a cada spec. Guía: `docs/compliance-review-guide.md`.
 - **Review en paralelo (Step 6)**: `code-reviewer` corre concurrente con linter y type-checker. ~30-50% menos wall-clock en diffs grandes. El rigor de cada gate no cambia.
+- **Suite completa una vez, en paralelo y con registro (v3.2.0)**: la suite del Step 7 arranca junto a las herramientas del Step 6 y se lee del log en `docs/.specture-meta/runs/` (aceptada solo si su `sha` == HEAD y el árbol está limpio); la línea base del Step 3.9 se **reutiliza** del log del Step 7 del epic anterior cuando el árbol de código no cambió (`quality.js runs reusable`: verás *"Línea base: reutilizada de <log>"* o *"corre en Step 3.9 (<motivo>)"*); con hooks, la **Suite Guard** deniega la suite fuera de las fases `baseline` / `verify` (§ 3.2b). Resultado medido como objetivo: una spec como Psikora HC-IHCE.17/01 pasa de 4 h 30 a ~2 h 45 sin tocar el nivel `strict`. La línea de métricas lleva `full_suite_runs` / `full_suite_minutes`; `knowledge stats` avisa cuando la suite pasa de 10 min por corrida.
+- **Mutación por epic (v3.2.0)**: con `mutation.scope: epic` en `settings.yml`, Stryker (o tu herramienta) corre **una vez por epic** en el Step 7.5 sobre la producción de todos los specs, y el `code-reviewer` en `MODE: MUTATION` juzga los sobrevivientes antes del `[x]`; los hallazgos vuelven al `tdd-test-writer` como `RED-FIX`, máximo dos rondas. Con `spec` (default) todo sigue como en v2.8.0.
+- **Tope duro de tamaño de spec (v3.2.0)**: `spec-set-check` C5 pasa a BLOCKER por encima de 30 AC/BR/EC — el planner divide o reporta `BLOCKED: sizing`; entre 16 y 30 sigue siendo WARNING.
 - **Dimension 5 con Context7**: con `context7.enabled: true`, las reviews citan deprecaciones versionadas del framework de `stack.yml`. Sin él, el reviewer omite Dimension 5 y lo nota en el reporte.
 
 ### debug (`/specture:debug`)
