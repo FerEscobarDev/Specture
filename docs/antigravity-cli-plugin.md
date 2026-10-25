@@ -109,7 +109,7 @@ tanda larga conviene cerrar la sesión entre epics y seguir con `/specture:start
 | Matcher | Script | Qué deniega |
 |---|---|---|
 | `write_to_file\|replace_file_content\|multi_replace_file_content` | `hooks/specture-pre-tool-use-tdd-gate.js` | Con un epic en curso (`.specture/state/build-locked.json`): un **test sellado**, un **spec validado** y una escritura de código **fuera de la superficie** `Crea:`/`Modifica:`. Cada motivo nombra su vía de recuperación. |
-| `run_command` | `hooks/specture-pre-tool-use-wait-gate.js` | Un `sleep` / `Start-Sleep` / `timeout /t` de 30 s o más y cualquier `sleep` dentro de un bucle. Los agentes esperan el resultado de su despacho, nunca un reloj. |
+| `run_command` | `hooks/specture-pre-tool-use-wait-gate.js` | Un `sleep` / `Start-Sleep` / `timeout /t` / `read -t` de 30 s o más y cualquier `sleep` o `read -t` dentro de un bucle. Los agentes esperan el resultado de su despacho, nunca un reloj. |
 
 Contrato con Antigravity, tal como lo documenta `hooks.md`:
 

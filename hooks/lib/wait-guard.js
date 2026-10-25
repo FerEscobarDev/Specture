@@ -12,14 +12,17 @@
 //
 // Denied:
 //   - a plain sleep of 30 s or more: `sleep 90`, `sleep 2m`, `Start-Sleep -Seconds 300`,
-//     `Start-Sleep -Minutes 5`, cmd.exe `timeout /t 60`
+//     `Start-Sleep -Minutes 5`, cmd.exe `timeout /t 60`, bash `read -t 60 <> <(:)`
 //   - ANY sleep inside a loop (`for | while | until … sleep …`), whatever the number: that is a
-//     poll by construction
+//     poll by construction. `read -t N` counts as a sleep: Psikora HC-IHCE.17 (2026-10-23) polled
+//     its run logs with `until grep -q 'exit:' …; do read -t 20 <> <(:); done` once `sleep` was denied
 // Allowed: a sleep under 30 s outside a loop (a port that needs a second to open), and
 // coreutils `timeout 590 <cmd>` — a time LIMIT on real work is not a wait.
 
-const LOOP = /\b(for|while|until|foreach)\b[^\n]*\b(do|\{)\b[\s\S]*?\b(sleep|Start-Sleep)\b/i;
+const READ_T = String.raw`(?:^|[\s;&|(\x60"'])read\s[^;\n|&]*?-[a-zA-Z]*t\s*(\d+(?:\.\d+)?)`;
+const LOOP = new RegExp(String.raw`\b(for|while|until|foreach)\b[^\n]*\b(do|\{)\b[\s\S]*?(\b(sleep|Start-Sleep)\b|${READ_T})`, "i");
 const SLEEP = /(?:^|[\s;&|(`])sleep\s+(\d+(?:\.\d+)?)\s*([smhd])?\b/gi;
+const READ_SLEEP = new RegExp(READ_T, "gi");
 const PS_SLEEP = /\bStart-Sleep\b([^\n;|&]*)/gi;
 const CMD_TIMEOUT = /\btimeout\s+\/t\s+(\d+)/gi;
 const THRESHOLD_SECONDS = 30;
@@ -53,11 +56,12 @@ function classifyWait(command) {
   if (!text.trim()) return null;
 
   if (LOOP.test(text)) {
-    return { kind: "poll", reason: "a loop around `sleep` is polling: the command waits for something else to happen instead of doing work" };
+    return { kind: "poll", reason: "a loop around `sleep` (or `read -t`) is polling: the command waits for something else to happen instead of doing work" };
   }
 
   let longest = 0;
   for (const m of text.matchAll(SLEEP)) longest = Math.max(longest, seconds(m[1], m[2]));
+  for (const m of text.matchAll(READ_SLEEP)) longest = Math.max(longest, Number(m[1]));
   for (const m of text.matchAll(PS_SLEEP)) longest = Math.max(longest, psSeconds(m[1] || ""));
   for (const m of text.matchAll(CMD_TIMEOUT)) longest = Math.max(longest, Number(m[1]));
   if (longest >= THRESHOLD_SECONDS) {

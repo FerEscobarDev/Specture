@@ -15,7 +15,7 @@ Specture v1.2.0 delega a la plataforma seis funciones que antes vivían como con
 | Capacidad nativa | Función en Specture |
 |------------------|---------------------|
 | Hook `PreToolUse` (TDD Honesty Gate) | Bloquea mecánicamente la edición de tests durante GREEN. |
-| Hook `PreToolUse` (Wait Guard, v2.9.0) | Deniega en Bash/PowerShell los `sleep` de 30 s o más y cualquier `sleep` en bucle: los agentes esperan resultados (Agent en primer plano, notificación, `Monitor`), no relojes. |
+| Hook `PreToolUse` (Wait Guard, v2.9.0) | Deniega en Bash/PowerShell los `sleep` (o `read -t`) de 30 s o más y cualquier `sleep` o `read -t` en bucle: los agentes esperan resultados (Agent en primer plano, notificación, `Monitor`), no relojes. |
 | ~~Hook `SessionStart`~~ | **Deregistrado en v1.5.0.** El routing es opt-in: invocá `/specture:start`. |
 | `TaskCreate` | Muestra al usuario una lista en vivo de los specs del epic activo en el build loop. |
 | `Context7` MCP | Provee docs vigentes para `code-reviewer` (Dimension 5) y `modernize` (gap analysis). |

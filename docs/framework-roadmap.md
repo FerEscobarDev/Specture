@@ -874,6 +874,19 @@ C5 WARNING se aceptó tres veces en la tanda. Diseño completo en el plan de la 
 - **Paralelizar la suite del proyecto** (21 min por 2.635 tests): es trabajo del proyecto; el framework solo la mide y lo dice.
 - **Medición en Psikora**: la prueba de aceptación (4 h 30 → ~2 h 45 estimado) la corre el usuario en el próximo epic con ≥ 3.2.0.
 
+### v3.2.1 — dos fallas vistas en la primera corrida real de 3.2.0
+
+Medición de HC-IHCE.17 specs 02 y 03 en Psikora (2026-10-23, plugin 3.2.0): la spec 03 tardó ~1 h 20
+frente a las 4 h 30 de la 01 (suite 21 → ~6 min por trabajo del proyecto; 2 corridas completas en
+vez de ~4). La lectura dejó dos fallas del framework:
+
+- [x] **97. `runs summary` cuenta solo la suite** · hecho 2026-10-25, v3.2.1 — sin `--slot` suma solo el slot `test`; antes la línea de métricas de HC-IHCE.17 registró `full_suite_runs: 8 · full_suite_minutes: 21.7` cuando eran 3 suites (16,5 min) más `type_check`, `lint` y mutación, y la lectura "Suite lenta" leía mal.
+- [x] **98. Wait Guard: `read -t` es un `sleep`** · hecho 2026-10-25, v3.2.1 — con el `sleep` denegado, el epic-agent sondeó sus logs con `until tail … | grep -q 'exit:'; do read -t 20 <> <(:); done`; ahora `read -t` dentro de un bucle es sondeo y fuera de él cuenta como pausa (≥ 30 s se deniega).
+
+### Pendiente para una próxima versión
+
+- [ ] **99. Formato de los mensajes de commit sin depender del hook de git del proyecto** · reportado 2026-10-25 en una ejecución — el `commit-msg` del proyecto no estaba activo en ese clon (`core.hooksPath` vacío hasta correr su `tools/instalar.ps1`), entraron 8 commits `wip(...)` que la regla del proyecto prohíbe y los agentes hicieron `--amend` dos veces. Hoy Specture no mira el mensaje de commit ni el `--amend`: depende de que cada clon tenga instalado su hook. Por decidir: si el framework lo detecta (el doctor avisando que el hook de commits declarado por el proyecto no está activo; o un `PreToolUse` sobre `git commit` que deniegue `--amend` y prefijos prohibidos durante un epic sellado) y de dónde lee el formato permitido (las reglas W-* de `conventions.md`), sin imponer un formato propio.
+
 ## Apéndice A — Decisiones que condicionan el orden
 
 > **A1-A5 cerradas el 2026-08-28** (la recomendación fue aceptada en las cinco; ver

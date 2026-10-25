@@ -364,7 +364,8 @@ dio nadie. Cada uno de esos turnos relee el contexto entero del agente (200K–6
 la caché de prompts dura 5 minutos, el 97 % de los turnos tras una pausa larga fueron cache miss
 (la caché entera reescrita a precio completo). Desde v2.9.0 el Wait Guard (`PreToolUse` sobre
 Bash/PowerShell, opt-in por `hooks.enabled`) deniega un `sleep` de 30 s o más y cualquier
-`sleep` dentro de un bucle. La vía correcta: despachar al worker con una llamada al Agent **en
+`sleep` dentro de un bucle; `read -t N` cuenta como `sleep` (HC-IHCE.17 sondeó sus logs con
+`until …; do read -t 20 <> <(:); done` cuando el `sleep` ya estaba denegado). La vía correcta: despachar al worker con una llamada al Agent **en
 primer plano** (vuelve cuando termina) o, en background, esperar su notificación o el `Monitor`.
 Ningún despacho de Specture tiene límite de tiempo; una pausa corta fuera de un bucle y un
 `timeout 590 dotnet test` (un límite sobre trabajo real) siguen permitidos.

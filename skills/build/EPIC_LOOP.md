@@ -35,7 +35,8 @@ background, wait for its notification or the `Monitor` tool. **Never `sleep`**, 
 flag, never set yourself a clock budget: no Specture dispatch has a time limit, and every waiting
 turn re-reads your whole context (Psikora HC-IHCE.14: one epic-agent spent 222 of its 510 minutes
 in `sleep`). With `hooks.enabled`, the Wait Guard hook denies a `sleep` of 30 s or more and any
-sleep inside a loop.
+sleep inside a loop — `read -t N` is a sleep too; to wait for a run log, wait for the background
+notification, never loop on its trailer.
 
 Ground rules:
 

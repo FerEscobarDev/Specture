@@ -185,7 +185,7 @@ el sidecar `<log>.failures` en la gramática de `BASELINE_FALLOS`.
 | `runs [--slot s] [--last N]` · `runs --sha <rev>` | lista los logs, el más nuevo primero |
 | `runs reusable` | `REUSABLE <log> · sha · failures <n>` cuando un log de `test` describe el árbol actual (completo, árbol limpio, sidecar registrado, sin cambios fuera de `docs/` y `.specture/` desde su sha) — la línea base del Step 3.9 se toma de ahí; si no, `NONE <motivo>` |
 | `runs record-failures --log <path> (--from-file f \| --failure "…" \| --none)` | registra los fallos que el agente leyó |
-| `runs summary --since <ISO\|rev>` | `runs: N · minutes: M` — las métricas `full_suite_runs` / `full_suite_minutes` del epic |
+| `runs summary --since <ISO\|rev> [--slot s]` | `runs: N · minutes: M` de las corridas completas de un slot (default `test`) — sin `--slot`, las métricas `full_suite_runs` / `full_suite_minutes` del epic; `type_check`, `lint` y `mutation` no cuentan como suite |
 | `runs prune --keep N` | borra los logs viejos por slot, con sus sidecars, y nombra cada uno |
 
 La **Suite Guard** (`hooks/lib/suite-guard.js`, dentro del hook de espera) deniega `quality.commands.test`

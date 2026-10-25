@@ -186,9 +186,11 @@ test("runs lists newest first and filters by --slot / --sha; summary sums the co
   assert.equal(cli(root, "runs", "--last", "1").stdout.trim().split("\n").length, 1);
 
   r = cli(root, "runs", "summary", "--since", "2000-01-01");
-  assert.match(r.stdout, /^runs: 3 · minutes: \d+(\.\d)?\n$/);
+  assert.match(r.stdout, /^runs: 2 · minutes: \d+(\.\d)?\n$/, "summary counts only the `test` slot by default: type_check is not a full-suite run");
   r = cli(root, "runs", "summary", "--since", "HEAD", "--slot", "test");
   assert.match(r.stdout, /^runs: 2 · minutes: /);
+  r = cli(root, "runs", "summary", "--since", "2000-01-01", "--slot", "type_check");
+  assert.match(r.stdout, /^runs: 1 · minutes: /);
   assert.match(cli(root, "runs", "summary", "--since", "2999-01-01").stdout, /^runs: 0 · minutes: 0\n$/);
   assert.equal(cli(root, "runs", "summary", "--since", "nope").status, 2);
 

@@ -421,7 +421,9 @@ function recordFailures(logFile, lines) {
   return { file: target, count: clean.length };
 }
 
-// Sums the complete runs started after `since` (an ISO date, or a git rev whose committer date is used).
+// Sums the complete runs of one slot (default `test`: these are the `full_suite_runs` /
+// `full_suite_minutes` metrics, so type_check / lint / mutation logs never count as suites)
+// started after `since` (an ISO date, or a git rev whose committer date is used).
 function runsSummary(root, since, options = {}) {
   let from = null;
   if (since) {
@@ -432,7 +434,7 @@ function runsSummary(root, since, options = {}) {
       if (!from) return { error: `rev desconocido: ${since}` };
     }
   }
-  const runs = listRuns(root, { slot: options.slot }).filter((r) => r.complete && (!from || (r.start && new Date(r.start) >= from)));
+  const runs = listRuns(root, { slot: options.slot || "test" }).filter((r) => r.complete && (!from || (r.start && new Date(r.start) >= from)));
   const seconds = runs.reduce((n, r) => n + (r.duration_s || 0), 0);
   return { runs: runs.length, minutes: Math.round((seconds / 60) * 10) / 10, logs: runs.map((r) => r.name) };
 }
