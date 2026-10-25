@@ -163,7 +163,8 @@ test("runs reusable: NONE until the failures are recorded; REUSABLE afterwards; 
 
   // --none records an empty list that still counts as recorded.
   cli(root, "run", "test", "--log");
-  const newest = `docs/.specture-meta/runs/${logsIn(root).sort().reverse()[0]}`;
+  const head7 = git(root, "rev-parse", "--short=7", "HEAD");
+  const newest = `docs/.specture-meta/runs/${logsIn(root).find((n) => n.endsWith(`-test-${head7}.log`))}`;
   r = cli(root, "runs", "record-failures", "--log", newest, "--none");
   assert.equal(r.status, 0, r.stderr);
   assert.equal(fs.readFileSync(path.join(root, `${newest}.failures`), "utf8"), "- (ninguno)\n");
@@ -180,7 +181,9 @@ test("runs lists newest first and filters by --slot / --sha; summary sums the co
   const lines = r.stdout.trim().split("\n");
   assert.equal(lines.length, 3, "two runs in the same second never overwrite each other");
   for (const line of lines) assert.match(line, /^\S+\.log · (test|type_check) · sha [0-9a-f]{7} · tree clean · exit 0 · \d+ s · failures sin registrar · docs\/\.specture-meta\/runs\//);
-  assert.ok(lines[0] >= lines[1] && lines[1] >= lines[2], "newest first (the name starts with the ISO start)");
+  const starts = quality.listRuns(root).map((run) => Date.parse(run.start));
+  assert.ok(starts[0] >= starts[1] && starts[1] >= starts[2], "newest first by the header's start");
+  assert.deepEqual(lines.map((l) => l.split(" ")[0]), quality.listRuns(root).map((run) => run.name), "the CLI prints listRuns' order");
   assert.equal(cli(root, "runs", "--slot", "type_check").stdout.trim().split("\n").length, 1);
   assert.equal(cli(root, "runs", "--sha", "HEAD").stdout.trim().split("\n").length, 3);
   assert.equal(cli(root, "runs", "--last", "1").stdout.trim().split("\n").length, 1);
@@ -194,8 +197,8 @@ test("runs lists newest first and filters by --slot / --sha; summary sums the co
   assert.match(cli(root, "runs", "summary", "--since", "2999-01-01").stdout, /^runs: 0 · minutes: 0\n$/);
   assert.equal(cli(root, "runs", "summary", "--since", "nope").status, 2);
 
-  const before = logsIn(root);
-  const oldestTest = before.filter((n) => n.includes("-test-")).sort()[0];
+  // By start, not by name: a same-second second run is `…-<sha7>-2.log`, which sorts BEFORE `…-<sha7>.log`.
+  const oldestTest = quality.listRuns(root, { slot: "test" }).pop().name;
   fs.writeFileSync(path.join(root, "docs", ".specture-meta", "runs", `${oldestTest}.failures`), "- (ninguno)\n");
   r = cli(root, "runs", "prune", "--keep", "1");
   assert.equal(r.status, 0, r.stderr);
@@ -212,6 +215,26 @@ test("run --timeout-min kills a run that overruns and leaves an incomplete-but-t
   assert.equal(run.complete, true, "the trailer is written even when the process is killed");
   assert.match(fs.readFileSync(run.file, "utf8"), /# error: timeout after 300 ms/);
   assert.match(cli(root, "runs", "reusable").stdout, /^NONE/);
+});
+
+// CI v3.2.0/v3.2.1 on Linux: two runs in the same second got names that sorted by sha7, so
+// `runs reusable` judged the older log and answered NONE.
+test("listRuns orders runs started in the same second by the header's millisecond start, not by sha7", () => {
+  const root = createProject();
+  const dir = path.join(root, "docs", ".specture-meta", "runs");
+  fs.mkdirSync(dir, { recursive: true });
+  const write = (sha, start) =>
+    fs.writeFileSync(
+      path.join(dir, quality.runLogName(start, "test", sha)),
+      `# specture-run: 1\n# slot: test\n# sha: ${sha}\n# tree: clean\n# phase: (none)\n# command: x\n# cwd: y\n# start: ${start}\n# ---\nok\n\n# ---\n# end: ${start}\n# duration_s: 0\n# exit: 0\n`
+    );
+  write("f".repeat(40), "2026-10-25T18:44:39.100Z");
+  write("a".repeat(40), "2026-10-25T18:44:39.900Z");
+  assert.deepEqual(
+    quality.listRuns(root).map((r) => r.sha[0]),
+    ["a", "f"],
+    "the later start comes first even though its sha7 sorts lower"
+  );
 });
 
 test("runLogName and the exported constants", () => {

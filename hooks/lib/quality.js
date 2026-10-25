@@ -297,11 +297,12 @@ function parseRunLog(file) {
 function listRuns(root, options = {}) {
   const dir = path.join(root, RUNS_DIR);
   if (!fs.existsSync(dir)) return [];
+  // Newest first by the header's millisecond `start`: the name keeps only seconds, so two runs in
+  // the same second would otherwise sort by their sha7 instead of by time.
+  const startOf = (run) => (run.start ? Date.parse(run.start) || 0 : 0);
   return fs
     .readdirSync(dir)
     .filter((name) => name.endsWith(".log"))
-    .sort()
-    .reverse()
     .map((name) => {
       try {
         return parseRunLog(path.join(dir, name));
@@ -309,7 +310,8 @@ function listRuns(root, options = {}) {
         return null;
       }
     })
-    .filter((run) => run && (!options.slot || run.slot === options.slot));
+    .filter((run) => run && (!options.slot || run.slot === options.slot))
+    .sort((a, b) => startOf(b) - startOf(a) || (a.name < b.name ? 1 : a.name > b.name ? -1 : 0));
 }
 
 function readFailures(failuresFile) {
