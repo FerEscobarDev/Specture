@@ -663,6 +663,18 @@ Specture está en desarrollo activo. Para decisiones arquitectónicas internas, 
 
 ## Changelog
 
+### v3.2.1 — Métrica de suite y `read -t` en el Wait Guard
+
+**Motivación:** la primera corrida real de 3.2.0 (Psikora HC-IHCE.17, specs 02 y 03, 2026-10-23) dejó la spec 03 en ~1 h 20 frente a las 4 h 30 de la 01, y dos fallas del framework: la línea de métricas registró `full_suite_runs: 8 · full_suite_minutes: 21.7` cuando eran 3 suites (16,5 min) más `type_check`, `lint` y mutación; y, con el `sleep` denegado, el epic-agent sondeó sus logs con `until …; do read -t 20 <> <(:); done`.
+
+**Cambios:**
+- **`quality.js runs summary`** cuenta por defecto solo el slot `test` — lo que miden `full_suite_runs` / `full_suite_minutes` y lo que lee *"Suite lenta"*. `--slot <s>` suma otro slot (`--slot mutation`, `--slot lint`).
+- **Wait Guard:** `read -t N` cuenta como `sleep` — dentro de un `for` / `while` / `until` es sondeo (se deniega con cualquier N y flags como `-rt` o `-r -t`); fuera de un bucle se deniega desde 30 s. Siguen permitidos `read -t 5 answer`, `while read -r line` y `--read-only -t`.
+- Docs: `docs/quality-catalog.md`, `hooks/README.md`, `docs/build-faq.md`, `docs/native-integration-guide.md`, `docs/antigravity-cli-plugin.md`, `skills/build/EPIC_LOOP.md`; `docs/framework-roadmap.md` (ítems 97–98 y, pendiente, 99: formato de los mensajes de commit sin depender del hook de git del proyecto).
+- Tests: 415 → 416 (`wait-guard.test.js` con los comandos reales de Psikora; `quality.test.js` con el slot por defecto).
+
+**Backward-compat:** `runs summary --slot test` da lo mismo que antes; solo cambia el total sin `--slot`, que ya no mezcla slots. Las líneas de métricas escritas con 3.2.0 conservan su número inflado. `hooks/hooks.json` y los `AGENT.md` sin cambios.
+
 ### v3.2.0 — Suite completa una vez: en paralelo, con registro y en fase
 
 **Motivación:** la spec 01 de Psikora HC-IHCE.17 (`strict`, suite de integración de 21 min con 2.635 tests, Stryker activo) tardó 4 h 30 sin contar esperas humanas. Los agentes — writer 46 min, implementer 36, reviewer 16 — suman ~100 min; el resto era maquinaria de tests corriendo en el peor orden posible: la línea base (~20 min), el Step 7 después del reviewer (~20 min), un **segundo** Step 7 (~30 min) solo para recuperar los nombres de los fallos que un `tail` había perdido, un filtro de integración de 15 min del implementer pese a `test_scoped`, Stryker ~20 min en serie con el reviewer, y una spec de 60 AC/BR/EC cuyo C5 WARNING se aceptó tres veces. Ninguna de las seis mejoras baja la garantía de `strict`; juntas dejan una spec así en ~2 h 45 (≈ 2 h 15 con la mutación por epic).
