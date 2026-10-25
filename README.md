@@ -663,6 +663,16 @@ Specture está en desarrollo activo. Para decisiones arquitectónicas internas, 
 
 ## Changelog
 
+### v3.2.2 — Los logs de corridas se ordenan por su hora real
+
+**Motivación:** el workflow Release de v3.2.1 falló en Linux (también había fallado el CI del tag v3.2.0, cuya Release salió por suerte): el nombre de un log de corrida solo guarda segundos, y `listRuns` ordenaba por nombre. Dos corridas en el mismo segundo quedaban ordenadas por su sha7 — o por el sufijo `-2`, que ordena *antes* que `.log` —, así que `runs reusable` juzgaba el log viejo y respondía `NONE`, y `runs prune` podía borrar el más nuevo. v3.2.1 no tiene GitHub Release; sus cambios llegan con esta.
+
+**Cambios:**
+- `hooks/lib/quality.js` `listRuns`: el más nuevo primero por el `# start:` del encabezado (milisegundos); el nombre solo desempata. `runs`, `runs reusable`, `runs summary` y `runs prune` heredan el orden.
+- Tests: 416 → 417 (`quality.test.js`: dos corridas en el mismo segundo; los tests que elegían el log más viejo o más nuevo por nombre ahora usan `listRuns`).
+
+**Backward-compat:** el formato de los logs no cambia; un log sin `# start:` ordena al final. Incluye todo v3.2.1 (métrica de suite por slot `test`, `read -t` en el Wait Guard).
+
 ### v3.2.1 — Métrica de suite y `read -t` en el Wait Guard
 
 **Motivación:** la primera corrida real de 3.2.0 (Psikora HC-IHCE.17, specs 02 y 03, 2026-10-23) dejó la spec 03 en ~1 h 20 frente a las 4 h 30 de la 01, y dos fallas del framework: la línea de métricas registró `full_suite_runs: 8 · full_suite_minutes: 21.7` cuando eran 3 suites (16,5 min) más `type_check`, `lint` y mutación; y, con el `sleep` denegado, el epic-agent sondeó sus logs con `until …; do read -t 20 <> <(:); done`.
